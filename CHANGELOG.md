@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.4](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.2.3...v1.2.4) (2026-10-30)
+
+
+### Bug fixes
+
+* **recording:** never give a new segment the name of the file being written ([ff7d240](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/ff7d2406fc738c82e12f305d7800457079d406c6))
+
+
+### Refactorings
+
+* rename to AtcSoft.Video.Surveillance ([0110d77](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/0110d778816968cdb5604d7444f2e22190d4c49b))
+
+
+### Documentation
+
+* add the no-NuGet-packages rule to CLAUDE.md ([4fdc837](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/4fdc837892c5caddb31ee86aab018f4a890d1bf8))
+* use the new project names in short references ([db4a987](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/db4a9874e621c395a920574291a68a4fa2dd4d36))
+
 ## [1.2.3](https://github.com/davidkallesen/AtcSoft.VideoSurveillance/compare/v1.2.2...v1.2.3) (2026-09-22)
 
 
