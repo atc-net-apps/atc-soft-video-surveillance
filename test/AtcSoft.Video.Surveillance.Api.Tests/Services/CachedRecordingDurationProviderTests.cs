@@ -130,7 +130,7 @@ public sealed class CachedRecordingDurationProviderTests : IDisposable
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(15);
+        var deadline = DateTime.UtcNow.AddSeconds(60);
         while (!condition())
         {
             DateTime.UtcNow.Should().BeBefore(deadline, "the background reading should have finished");

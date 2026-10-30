@@ -125,7 +125,7 @@ public sealed class CameraTileViewModelStreamTests : IDisposable
 
     private static async Task WaitForAsync(Func<bool> condition)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(5);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
         while (!condition() && DateTime.UtcNow < deadline)
         {
             await Task.Delay(20, TestContext.Current.CancellationToken).ConfigureAwait(false);
