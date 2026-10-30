@@ -620,3 +620,9 @@ Debug logging is configured via Serilog in `App.xaml.cs`:
 dotnet build
 dotnet run --project src/AtcSoft.Video.Surveillance.CameraWall.Wpf.App
 ```
+
+## Learned rules
+
+Rules saved with atc-reflect from corrections made while working.
+
+- Do not mark any projects as packages (IsPackable false) for NuGet packages for now.
