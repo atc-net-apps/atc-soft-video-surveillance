@@ -116,4 +116,34 @@ public class UniqueFilenameTests
         actNull.Should().Throw<ArgumentException>();
         actEmpty.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void A_New_Segment_Never_Takes_The_Name_Of_The_File_Being_Written()
+    {
+        // The current file is not on disk yet: the recorder writes it on the first picture.
+        var result = UniqueFilename.EnsureDifferentFrom(Rec("Cam.mkv"), Rec("Cam.mkv"), _ => false);
+
+        result.Should().Be(Rec("Cam_2.mkv"));
+    }
+
+    [Fact]
+    public void A_New_Segment_With_Another_Name_Keeps_It()
+    {
+        UniqueFilename.EnsureDifferentFrom(Rec("Cam_1.mkv"), Rec("Cam.mkv"), _ => false).Should().Be(Rec("Cam_1.mkv"));
+        UniqueFilename.EnsureDifferentFrom(Rec("Cam.mkv"), currentPath: null, _ => false).Should().Be(Rec("Cam.mkv"));
+    }
+
+    [Fact]
+    public void A_New_Segment_Skips_Both_The_Current_File_And_Files_On_Disk()
+    {
+        var onDisk = new HashSet<string>(StringComparer.Ordinal) { Rec("Cam_2.mkv") };
+
+        var result = UniqueFilename.EnsureDifferentFrom(Rec("Cam.mkv"), Rec("Cam.mkv"), onDisk.Contains);
+
+        result.Should().Be(Rec("Cam_3.mkv"));
+    }
+
+    // Built with the platform's separator, so the tests mean the same on Windows and Linux.
+    private static string Rec(string fileName)
+        => Path.Combine(Path.GetTempPath(), "rec", fileName);
 }
