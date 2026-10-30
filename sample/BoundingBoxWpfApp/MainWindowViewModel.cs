@@ -285,7 +285,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             Log.Information("Swept {Combinations} combinations over {Scenes} scenes and {Recordings} reviewed recordings: {Report}", ranked.Count, scenes.Length, corpus.Count, path);
             Status = "Ready";
         }
-        catch (Exception ex) when (ex is StorybookException or IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException or AtcSoft.VideoEngine.FFmpeg.FFmpegException)
+        catch (Exception ex) when (ex is StorybookException or IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException or Atc.Video.Engine.FFmpeg.FFmpegException)
         {
             Log.Error(ex, "Sweeping {Folder} failed", scenesFolder);
             Status = $"Failed: {ex.Message}";
@@ -431,7 +431,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             window.Show();
             Status = "Ready";
         }
-        catch (Exception ex) when (ex is StorybookException or IOException or InvalidOperationException or AtcSoft.VideoEngine.FFmpeg.FFmpegException)
+        catch (Exception ex) when (ex is StorybookException or IOException or InvalidOperationException or Atc.Video.Engine.FFmpeg.FFmpegException)
         {
             Log.Error(ex, "Playing {Path} live failed", path);
             Status = $"Failed: {ex.Message}";
@@ -638,7 +638,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             Log.Information("Opened {Name} ({Way}, {Rate}/s): {Score}", run.Name, run.Way, rate, run.Run.Score.Summary);
             Status = "Ready";
         }
-        catch (Exception ex) when (ex is StorybookException or IOException or InvalidOperationException or InvalidDataException or AtcSoft.VideoEngine.FFmpeg.FFmpegException)
+        catch (Exception ex) when (ex is StorybookException or IOException or InvalidOperationException or InvalidDataException or Atc.Video.Engine.FFmpeg.FFmpegException)
         {
             Log.Error(ex, "Opening {Path} failed", path);
             Status = $"Failed: {ex.Message}";

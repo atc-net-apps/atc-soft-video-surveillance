@@ -1,0 +1,228 @@
+<UserControl
+    x:Class="AtcSoft.Video.Surveillance.Wpf.Views.CameraListView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcNetworkValueConverters="clr-namespace:Atc.Wpf.Network.ValueConverters;assembly=Atc.Wpf.Network"
+    xmlns:atcValueConverters="https://github.com/atc-net/atc-wpf/tree/main/schemas/value-converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fontIcons="clr-namespace:Atc.Wpf.FontIcons;assembly=Atc.Wpf.FontIcons"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModels="clr-namespace:AtcSoft.Video.Surveillance.Wpf.ViewModels"
+    d:DataContext="{d:DesignInstance Type=viewModels:CameraListViewModel}"
+    Loaded="OnLoaded"
+    mc:Ignorable="d">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!--  Title  -->
+        <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,16"
+            FontSize="24"
+            FontWeight="SemiBold"
+            Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Cameras}" />
+
+        <!--  Toolbar  -->
+        <ToolBar Grid.Row="1" Margin="0,0,0,8">
+            <Button AutomationProperties.Name="Add Camera" Command="{Binding AddCameraCommand}" ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AddCamera}">
+                <StackPanel Orientation="Horizontal">
+                    <fontIcons:ImageAwesomeSolid
+                        Width="16"
+                        Height="16"
+                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground}"
+                        Icon="Plus" />
+                    <TextBlock Margin="6,0,0,0" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AddCamera}" />
+                </StackPanel>
+            </Button>
+            <Separator />
+            <Button AutomationProperties.Name="Refresh" Command="{Binding LoadCommand}" ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Refresh}">
+                <StackPanel Orientation="Horizontal">
+                    <fontIcons:ImageAwesomeSolid
+                        Width="16"
+                        Height="16"
+                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground}"
+                        Icon="SyncAlt" />
+                    <TextBlock Margin="6,0,0,0" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Refresh}" />
+                </StackPanel>
+            </Button>
+            <Separator />
+            <!--  Filters on name, description, address and state as you type  -->
+            <atc:LabelTextBox
+                Width="280"
+                Margin="6,0,0,0"
+                VerticalAlignment="Center"
+                HideAreas="All"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Filter}"
+                LabelWidthSizeDefinition="Auto"
+                ShowClearTextButton="False"
+                Text="{Binding Path=FilterText, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=FilterCamerasToolTip}" />
+            <Button AutomationProperties.Name="Clear the filter" Command="{Binding ClearFilterCommand}" ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ClearFilter}">
+                <fontIcons:ImageAwesomeSolid
+                    Width="12"
+                    Height="12"
+                    Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground}"
+                    Icon="Times" />
+            </Button>
+        </ToolBar>
+
+        <!--  Camera DataGrid  -->
+        <DataGrid
+            Grid.Row="2"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            CanUserDeleteRows="False"
+            IsReadOnly="True"
+            ItemsSource="{Binding Cameras}"
+            SelectionMode="Single">
+            <DataGrid.Columns>
+                <DataGridTextColumn
+                    Width="*"
+                    Binding="{Binding DisplayName}"
+                    Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=DisplayName}" />
+                <DataGridTextColumn
+                    Width="120"
+                    Binding="{Binding IpAddress}"
+                    Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=IpAddress}" />
+                <DataGridTextColumn
+                    Width="60"
+                    Binding="{Binding Port}"
+                    Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Port}" />
+                <DataGridTextColumn
+                    Width="80"
+                    Binding="{Binding Protocol}"
+                    Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Protocol}" />
+
+                <!--  Connection State with color indicator  -->
+                <DataGridTemplateColumn Width="120" Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Status}">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                                <Ellipse
+                                    Width="10"
+                                    Height="10"
+                                    Margin="0,0,6,0"
+                                    Fill="{Binding ConnectionState, Converter={x:Static atcNetworkValueConverters:ConnectionStateToColorValueConverter.Instance}}" />
+                                <TextBlock Text="{Binding ConnectionState}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!--  Recording indicator  -->
+                <DataGridTemplateColumn Width="90" Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Recording}">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Visibility="{Binding IsRecording, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                                <Ellipse
+                                    Width="10"
+                                    Height="10"
+                                    Margin="0,0,6,0"
+                                    Fill="OrangeRed" />
+                                <TextBlock Foreground="OrangeRed" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Recording}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!--  Action buttons  -->
+                <DataGridTemplateColumn Width="200" Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Actions}">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                                <Button
+                                    AutomationProperties.Name="Edit"
+                                    Margin="2"
+                                    Padding="4,2"
+                                    Command="{Binding DataContext.EditCameraCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Edit}">
+                                    <fontIcons:ImageAwesomeSolid
+                                        Width="14"
+                                        Height="14"
+                                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground}"
+                                        Icon="Edit" />
+                                </Button>
+                                <Button
+                                    AutomationProperties.Name="Capture Snapshot"
+                                    Margin="2"
+                                    Padding="4,2"
+                                    Command="{Binding DataContext.CaptureSnapshotCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=CaptureSnapshot}">
+                                    <fontIcons:ImageAwesomeSolid
+                                        Width="14"
+                                        Height="14"
+                                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground}"
+                                        Icon="Camera" />
+                                </Button>
+                                <Button
+                                    AutomationProperties.Name="Start Recording"
+                                    Margin="2"
+                                    Padding="4,2"
+                                    Command="{Binding DataContext.StartRecordingCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=StartRecording}">
+                                    <fontIcons:ImageAwesomeSolid
+                                        Width="14"
+                                        Height="14"
+                                        Foreground="OrangeRed"
+                                        Icon="Circle" />
+                                </Button>
+                                <Button
+                                    AutomationProperties.Name="Stop Recording"
+                                    Margin="2"
+                                    Padding="4,2"
+                                    Command="{Binding DataContext.StopRecordingCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=StopRecording}">
+                                    <fontIcons:ImageAwesomeSolid
+                                        Width="14"
+                                        Height="14"
+                                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground}"
+                                        Icon="Stop" />
+                                </Button>
+                                <Button
+                                    AutomationProperties.Name="Delete"
+                                    Margin="2"
+                                    Padding="4,2"
+                                    Command="{Binding DataContext.DeleteCameraCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=DeleteRecording}">
+                                    <fontIcons:ImageAwesomeSolid
+                                        Width="14"
+                                        Height="14"
+                                        Foreground="OrangeRed"
+                                        Icon="TrashAlt" />
+                                </Button>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!--  Loading overlay  -->
+        <Border
+            Grid.Row="2"
+            Background="#80000000"
+            Visibility="{Binding IsLoading, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+            <TextBlock
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="16"
+                Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground}"
+                Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=LoadingCameras}" />
+        </Border>
+    </Grid>
+</UserControl>

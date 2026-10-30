@@ -1,4 +1,4 @@
-# 🗺️ AtcSoft.VideoSurveillance Roadmap
+# 🗺️ AtcSoft.Video.Surveillance Roadmap
 
 The one list of what is still open. Consolidated on **2026-10-19**: every item was checked against the code, and the plans of finished areas were deleted (they are in the git history; the last commit that has them is the one before the consolidation).
 
@@ -27,7 +27,7 @@ Sizes: **S** an hour or two, **M** a day, **L** several days.
 |---|---|
 | **Push and see CI green on generator 3.0.1** | The build left the local package for the released Atc.Rest.Api.SourceGenerator 3.0.1 on 2026-10-27; nothing of the v3 work has been through CI yet. Generator findings go to its `issues/feedback-from-VideoSurveillance.md` |
 | The hands-on checks below | Much of what was built since 2026-10-12 has unit, host and E2E tests but has not been looked at with real cameras |
-| Run the E2E smoke tests before a release | `ATCSOFT_E2E=1 dotnet test test/AtcSoft.VideoSurveillance.E2E.Tests` (see [`docs/e2e-smoke-tests.md`](../docs/e2e-smoke-tests.md)) |
+| Run the E2E smoke tests before a release | `ATCSOFT_E2E=1 dotnet test test/AtcSoft.Video.Surveillance.E2E.Tests` (see [`docs/e2e-smoke-tests.md`](../docs/e2e-smoke-tests.md)) |
 
 ---
 

@@ -1,4 +1,4 @@
-# ⚙️ AtcSoft.VideoSurveillance Settings Reference
+# ⚙️ AtcSoft.Video.Surveillance Settings Reference
 
 Complete reference for all application settings and parameters. Settings are stored as JSON in `%ProgramData%\AtcSoft\CameraWall\settings.json` and are shared between the WPF desktop app and the REST API server.
 
@@ -327,7 +327,7 @@ In addition to the override system, each camera has its own direct configuration
 | `Usb` | object | `null` | USB camera only — see [USB Connection Settings](#usb-connection-settings-per-camera) |
 | `ConnectionType` | enum | `None` | Physical link, shown by the connection-type icon — see [Connection Type Options](#connection-type-options). Display-only: changing it never restarts the stream |
 
-Network and USB shapes are mutually exclusive. The unused branch's fields are ignored at runtime. The `AtcSoft.VideoSurveillance.Wpf.Core` dialog (`CameraConfigurationDialog`) presents `Source` as a radio at the top; the IP/Port/Auth fields and the USB device picker swap into view based on the selection.
+Network and USB shapes are mutually exclusive. The unused branch's fields are ignored at runtime. The `AtcSoft.Video.Surveillance.Wpf.Core` dialog (`CameraConfigurationDialog`) presents `Source` as a radio at the top; the IP/Port/Auth fields and the USB device picker swap into view based on the selection.
 
 #### Camera Source Options
 

@@ -1,6 +1,6 @@
 # End-to-end smoke tests
 
-`test/AtcSoft.VideoSurveillance.E2E.Tests` starts the real apps and opens every window, page and
+`test/AtcSoft.Video.Surveillance.E2E.Tests` starts the real apps and opens every window, page and
 dialog they have, without cameras of their own and without touching anyone's data. A smoke test fails
 on a step that breaks, on a binding error or unhandled exception in an app's log, on a console error,
 page error or 5xx answer in the browser, and on a fatal entry in the server's output.
@@ -12,7 +12,7 @@ The tests need a desktop session (they drive real windows), so they skip unless 
 ```powershell
 dotnet build
 $env:ATCSOFT_E2E = "1"
-dotnet test test/AtcSoft.VideoSurveillance.E2E.Tests
+dotnet test test/AtcSoft.Video.Surveillance.E2E.Tests
 ```
 
 A run takes about three minutes. CI runs every test project, so there they skip.
@@ -109,7 +109,7 @@ control type. To see what a window offers, run the tree dump:
 
 ```powershell
 $env:ATCSOFT_E2E = "1"; $env:ATCSOFT_E2E_DUMP = "1"
-dotnet test test/AtcSoft.VideoSurveillance.E2E.Tests --filter-class "*UiTreeDumpTests"
+dotnet test test/AtcSoft.Video.Surveillance.E2E.Tests --filter-class "*UiTreeDumpTests"
 ```
 
 - **Owned windows:** UI Automation shows an owned (modal) dialog as a child of its owner, not of the

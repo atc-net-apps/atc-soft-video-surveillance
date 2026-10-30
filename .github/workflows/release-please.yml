@@ -54,7 +54,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore dependencies
-        run: dotnet restore AtcSoft.VideoSurveillance.slnx
+        run: dotnet restore AtcSoft.Video.Surveillance.slnx
 
       # Packs every project marked <IsPackable>true</IsPackable>. They must ship
       # together: each ProjectReference becomes a NuGet dependency pinned to the
@@ -64,7 +64,7 @@ jobs:
       # release-please stamped in the release commit. No -p:IsPackable=true
       # either: on a solution that would force the apps and tests to pack too.
       - name: Pack NuGet
-        run: dotnet pack AtcSoft.VideoSurveillance.slnx --configuration ${{ env.CONFIGURATION }} --no-restore --output ./nuget
+        run: dotnet pack AtcSoft.Video.Surveillance.slnx --configuration ${{ env.CONFIGURATION }} --no-restore --output ./nuget
 
       # Trusted Publishing: GitHub mints an OIDC token, NuGet.org validates it
       # against the publishing policy for this repository and workflow, and
@@ -135,16 +135,16 @@ jobs:
       matrix:
         include:
           - name: CameraWall
-            app: src/AtcSoft.CameraWall.Wpf.App/AtcSoft.CameraWall.Wpf.App.csproj
+            app: src/AtcSoft.Video.Surveillance.CameraWall.Wpf.App/AtcSoft.Video.Surveillance.CameraWall.Wpf.App.csproj
             publish_dir: publish-camerawall
-            installer: setup/AtcSoft.CameraWall.Installer/AtcSoft.CameraWall.Installer.wixproj
-            installer_bin: setup/AtcSoft.CameraWall.Installer/bin
+            installer: setup/AtcSoft.Video.Surveillance.CameraWall.Installer/AtcSoft.Video.Surveillance.CameraWall.Installer.wixproj
+            installer_bin: setup/AtcSoft.Video.Surveillance.CameraWall.Installer/bin
             artifact: msi-installer-camerawall
           - name: VideoSurveillance
-            app: src/AtcSoft.VideoSurveillance.Wpf.App/AtcSoft.VideoSurveillance.Wpf.App.csproj
+            app: src/AtcSoft.Video.Surveillance.Wpf.App/AtcSoft.Video.Surveillance.Wpf.App.csproj
             publish_dir: publish-videosurveillance
-            installer: setup/AtcSoft.VideoSurveillance.Installer/AtcSoft.VideoSurveillance.Installer.wixproj
-            installer_bin: setup/AtcSoft.VideoSurveillance.Installer/bin
+            installer: setup/AtcSoft.Video.Surveillance.Installer/AtcSoft.Video.Surveillance.Installer.wixproj
+            installer_bin: setup/AtcSoft.Video.Surveillance.Installer/bin
             artifact: msi-installer-videosurveillance
 
     steps:

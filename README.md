@@ -1,9 +1,9 @@
-# 📹 AtcSoft.VideoSurveillance
+# 📹 AtcSoft.Video.Surveillance
 
 A professional video surveillance platform for live monitoring of multiple RTSP/HTTP camera streams. Includes a WPF desktop application with an intuitive ribbon interface, a headless REST API server edition (live events over Server-Sent Events), and Aspire orchestration.
 
-[![Release](https://img.shields.io/github/v/release/davidkallesen/AtcSoft.VideoSurveillance?include_prereleases)](https://github.com/davidkallesen/AtcSoft.VideoSurveillance/releases)
-[![NuGet](https://img.shields.io/nuget/v/AtcSoft.VideoSurveillance.Wpf.Core)](https://www.nuget.org/packages/AtcSoft.VideoSurveillance.Wpf.Core)
+[![Release](https://img.shields.io/github/v/release/atc-net-apps/atc-soft-video-surveillance?include_prereleases)](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases)
+[![NuGet](https://img.shields.io/nuget/v/AtcSoft.Video.Surveillance.Wpf.Core)](https://www.nuget.org/packages/AtcSoft.Video.Surveillance.Wpf.Core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## ✨ Features
@@ -99,7 +99,7 @@ A professional video surveillance platform for live monitoring of multiple RTSP/
 | Desktop UI | WPF with Fluent.Ribbon, Atc.Wpf.Controls |
 | Server | ASP.NET Core, Server-Sent Events, HLS |
 | API Definition | OpenAPI 3.2 (atc-rest-api-source-generator v3) |
-| Video Engine | AtcSoft.VideoEngine (desktop + server, in-process FFmpeg) |
+| Video Engine | Atc.Video.Engine (desktop + server, in-process FFmpeg) |
 | Orchestration | .NET Aspire |
 | MVVM | Atc.XamlToolkit |
 | Source Generators | Atc.SourceGenerators |
@@ -111,33 +111,33 @@ A professional video surveillance platform for live monitoring of multiple RTSP/
 ## 🏗️ Solution Structure
 
 ```
-AtcSoft.VideoSurveillance/
+AtcSoft.Video.Surveillance/
 ├── src/
-│   ├── AtcSoft.VideoSurveillance.Core/        # 📚 Shared library: models, enums, events, service interfaces
-│   ├── AtcSoft.VideoEngine/                   # 🎬 Cross-platform video engine (FFmpeg in-process)
-│   ├── AtcSoft.VideoEngine.DirectX/           # 🖥️ D3D11VA GPU acceleration for WPF
-│   ├── AtcSoft.VideoPlayer.Wpf/               # 🎞️ WPF VideoHost control (DComp surface + overlay)
-│   ├── AtcSoft.VideoSurveillance.Wpf.Core/    # 🧩 Shared WPF library (dialogs, controls, services)
-│   ├── AtcSoft.CameraWall.Wpf/                # 🧱 CameraWall WPF library (used by the CameraWall app)
-│   ├── AtcSoft.CameraWall.Wpf.App/            # 🚀 Standalone WPF desktop app (Fluent.Ribbon)
-│   ├── AtcSoft.VideoSurveillance.Wpf/         # 🌐 WPF library for API client (GatewayService, event stream)
-│   ├── AtcSoft.VideoSurveillance.Wpf.App/     # 🚀 WPF API client app (Fluent.Ribbon)
+│   ├── AtcSoft.Video.Surveillance/        # 📚 Shared library: models, enums, events, service interfaces
+│   ├── Atc.Video.Engine/                   # 🎬 Cross-platform video engine (FFmpeg in-process)
+│   ├── Atc.Video.Engine.DirectX/           # 🖥️ D3D11VA GPU acceleration for WPF
+│   ├── Atc.Video.Player.Wpf/               # 🎞️ WPF VideoHost control (DComp surface + overlay)
+│   ├── AtcSoft.Video.Surveillance.Wpf.Core/    # 🧩 Shared WPF library (dialogs, controls, services)
+│   ├── AtcSoft.Video.Surveillance.CameraWall.Wpf/                # 🧱 CameraWall WPF library (used by the CameraWall app)
+│   ├── AtcSoft.Video.Surveillance.CameraWall.Wpf.App/            # 🚀 Standalone WPF desktop app (Fluent.Ribbon)
+│   ├── AtcSoft.Video.Surveillance.Wpf/         # 🌐 WPF library for API client (GatewayService, event stream)
+│   ├── AtcSoft.Video.Surveillance.Wpf.App/     # 🚀 WPF API client app (Fluent.Ribbon)
 │   ├── VideoSurveillance.yaml                  # 📝 OpenAPI 3.2 spec (shared contract)
-│   ├── AtcSoft.VideoSurveillance.Api.Contracts/ # 📋 Generated: endpoints, models, handler interfaces
-│   ├── AtcSoft.VideoSurveillance.Api.Domain/  # ⚙️ Handler implementations calling Core services
-│   ├── AtcSoft.VideoSurveillance.Api/         # 🌍 ASP.NET Core host (REST, events, HLS)
-│   ├── AtcSoft.VideoSurveillance.Blazor.App/  # 🌐 Blazor WebAssembly UI (MudBlazor)
-│   └── AtcSoft.VideoSurveillance.Aspire/      # ☁️ Aspire AppHost (orchestration + dashboard)
+│   ├── AtcSoft.Video.Surveillance.Api.Contracts/ # 📋 Generated: endpoints, models, handler interfaces
+│   ├── AtcSoft.Video.Surveillance.Api.Domain/  # ⚙️ Handler implementations calling Core services
+│   ├── AtcSoft.Video.Surveillance.Api/         # 🌍 ASP.NET Core host (REST, events, HLS)
+│   ├── AtcSoft.Video.Surveillance.Blazor.App/  # 🌐 Blazor WebAssembly UI (MudBlazor)
+│   └── AtcSoft.Video.Surveillance.Aspire/      # ☁️ Aspire AppHost (orchestration + dashboard)
 │
 ├── setup/
-│   ├── AtcSoft.CameraWall.Installer/          # 📦 WiX MSI installer (CameraWall)
-│   └── AtcSoft.VideoSurveillance.Installer/   # 📦 WiX MSI installer (VideoSurveillance)
+│   ├── AtcSoft.Video.Surveillance.CameraWall.Installer/          # 📦 WiX MSI installer (CameraWall)
+│   └── AtcSoft.Video.Surveillance.Installer/   # 📦 WiX MSI installer (VideoSurveillance)
 │
 ├── test/
-│   ├── AtcSoft.VideoSurveillance.Core.Tests/      # ✅ xUnit v3 tests for Core
-│   ├── AtcSoft.VideoSurveillance.Wpf.Core.Tests/  # ✅ xUnit v3 tests for Wpf.Core
-│   ├── AtcSoft.VideoSurveillance.Api.Tests/        # ✅ xUnit v3 tests for API
-│   └── AtcSoft.VideoEngine.Tests/                  # ✅ xUnit v3 tests for VideoEngine
+│   ├── AtcSoft.Video.Surveillance.Tests/      # ✅ xUnit v3 tests for Core
+│   ├── AtcSoft.Video.Surveillance.Wpf.Core.Tests/  # ✅ xUnit v3 tests for Wpf.Core
+│   ├── AtcSoft.Video.Surveillance.Api.Tests/        # ✅ xUnit v3 tests for API
+│   └── Atc.Video.Engine.Tests/                  # ✅ xUnit v3 tests for VideoEngine
 │
 ├── docs/                        # 📚 System documentation
 │   ├── architecture.md          # 🏛️ Architecture diagrams and assembly details
@@ -158,29 +158,29 @@ Arrows point from a project to the projects it depends on (compile-time `Project
 ```mermaid
 flowchart TD
     subgraph Foundation["📚 Foundation (cross-platform, net10.0)"]
-        Core[AtcSoft.VideoSurveillance.Core]
-        VE[AtcSoft.VideoEngine]
+        Core[AtcSoft.Video.Surveillance]
+        VE[Atc.Video.Engine]
     end
 
     subgraph Server["☁️ Server (REST + events)"]
-        Contracts[AtcSoft.VideoSurveillance.Api.Contracts]
-        Domain[AtcSoft.VideoSurveillance.Api.Domain]
-        Api[AtcSoft.VideoSurveillance.Api]
-        Blazor[AtcSoft.VideoSurveillance.Blazor.App]
+        Contracts[AtcSoft.Video.Surveillance.Api.Contracts]
+        Domain[AtcSoft.Video.Surveillance.Api.Domain]
+        Api[AtcSoft.Video.Surveillance.Api]
+        Blazor[AtcSoft.Video.Surveillance.Blazor.App]
     end
 
     subgraph Windows["🪟 Windows-only (net10.0-windows)"]
-        VEDx[AtcSoft.VideoEngine.DirectX]
-        VPWpf[AtcSoft.VideoPlayer.Wpf]
-        WpfCore[AtcSoft.VideoSurveillance.Wpf.Core]
-        CamWall[AtcSoft.CameraWall.Wpf]
-        VsWpf[AtcSoft.VideoSurveillance.Wpf]
+        VEDx[Atc.Video.Engine.DirectX]
+        VPWpf[Atc.Video.Player.Wpf]
+        WpfCore[AtcSoft.Video.Surveillance.Wpf.Core]
+        CamWall[AtcSoft.Video.Surveillance.CameraWall.Wpf]
+        VsWpf[AtcSoft.Video.Surveillance.Wpf]
     end
 
     subgraph Apps["🚀 Applications"]
-        CamApp[AtcSoft.CameraWall.Wpf.App]
-        VsApp[AtcSoft.VideoSurveillance.Wpf.App]
-        Aspire[AtcSoft.VideoSurveillance.Aspire]
+        CamApp[AtcSoft.Video.Surveillance.CameraWall.Wpf.App]
+        VsApp[AtcSoft.Video.Surveillance.Wpf.App]
+        Aspire[AtcSoft.Video.Surveillance.Aspire]
     end
 
     %% Server stack
@@ -214,7 +214,7 @@ flowchart TD
 
 Services are split between Core (shared) and WPF (UI-specific), all auto-registered via `[Registration]` attributes.
 
-### 📚 Core Services (AtcSoft.VideoSurveillance.Core)
+### 📚 Core Services (AtcSoft.Video.Surveillance)
 
 | Service | Description |
 |---------|-------------|
@@ -230,7 +230,7 @@ Services are split between Core (shared) and WPF (UI-specific), all auto-registe
 | `IMediaPipeline` | 🎬 Abstraction for video stream operations (record, capture frame) |
 | `IMediaPipelineFactory` | 🏭 Creates `IMediaPipeline` instances per camera |
 
-### 🖥️ WPF Services (AtcSoft.CameraWall.Wpf)
+### 🖥️ WPF Services (AtcSoft.Video.Surveillance.CameraWall.Wpf)
 
 | Service | Description |
 |---------|-------------|
@@ -261,7 +261,7 @@ Override categories: Connection, CameraDisplay, Performance, Recording, MotionDe
 
 ### 📥 Install
 
-Download the latest MSI installer from [GitHub Releases](https://github.com/davidkallesen/AtcSoft.VideoSurveillance/releases). The installers include FFmpeg, so there is nothing else to install.
+Download the latest MSI installer from [GitHub Releases](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases). The installers include FFmpeg, so there is nothing else to install.
 
 ### 🎞️ Install FFmpeg (building from source)
 
@@ -277,7 +277,7 @@ The video engine loads FFmpeg in-process, so when you run from source the FFmpeg
 The server has no dialog. Without FFmpeg 9 it logs what is needed and exits with code 1. Start it once with `--install-ffmpeg` to install it:
 
 ```bash
-dotnet run --project src/AtcSoft.VideoSurveillance.Api -- --install-ffmpeg
+dotnet run --project src/AtcSoft.Video.Surveillance.Api -- --install-ffmpeg
 ```
 
 **By hand:** download a shared FFmpeg 9 build ([gyan.dev](https://www.gyan.dev/ffmpeg/builds/) `ffmpeg-9.0.2-full_build-shared`, or [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases) `…-win64-gpl-shared-9.0.zip`) and copy everything in its `bin` folder to one of the folders below.
@@ -296,19 +296,19 @@ The engine looks in these folders, in this order, and uses the first one whose l
 
 A folder with another FFmpeg version is reported, not used. The server's live streams use `ffmpeg.exe` from the same folder.
 
-This applies to the CameraWall app, the VideoSurveillance WPF app and the API server (also when started through Aspire). NuGet consumers of `AtcSoft.VideoEngine` deploy the DLLs with their app, or call `FFmpegInstaller.InstallAsync`.
+This applies to the CameraWall app, the VideoSurveillance WPF app and the API server (also when started through Aspire). NuGet consumers of `Atc.Video.Engine` deploy the DLLs with their app, or call `FFmpegInstaller.InstallAsync`.
 
 ### 🔨 Build from Source
 
 ```bash
 dotnet build
-dotnet run --project src/AtcSoft.CameraWall.Wpf.App
+dotnet run --project src/AtcSoft.Video.Surveillance.CameraWall.Wpf.App
 ```
 
 ### ☁️ Run Server Edition with Aspire
 
 ```bash
-dotnet run --project src/AtcSoft.VideoSurveillance.Aspire
+dotnet run --project src/AtcSoft.Video.Surveillance.Aspire
 ```
 
 This starts the Aspire dashboard and the REST API server. The dashboard provides monitoring, logs, and traces for all orchestrated services.
@@ -316,7 +316,7 @@ This starts the Aspire dashboard and the REST API server. The dashboard provides
 ### 🌍 Run Server Edition Standalone
 
 ```bash
-dotnet run --project src/AtcSoft.VideoSurveillance.Api
+dotnet run --project src/AtcSoft.Video.Surveillance.Api
 ```
 
 ### 📁 User Data

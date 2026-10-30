@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "AtcSoft.Video.Surveillance.Api": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:64253;http://localhost:64254"
+    }
+  }
+}

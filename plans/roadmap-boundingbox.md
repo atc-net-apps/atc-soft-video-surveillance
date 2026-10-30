@@ -2,7 +2,7 @@
 
 Plan for making motion detection find **one box per moving object**, **no box for a tree in the wind**, and for showing **where in a recording something happened**. A sample app and a scored test harness come first, so every later change is measured against a stream whose content we know.
 
-Affects **`AtcSoft.VideoSurveillance.Core`** (the detector), **`AtcSoft.VideoEngine`** (frames for analysis), both motion services, the overlays in **both WPF apps** and the **web client**, recordings (a new activity file), the **server** (a timeline of every camera across its recordings), the **API spec**, and a new **`sample/BoundingBoxWpfApp`**.
+Affects **`AtcSoft.Video.Surveillance`** (the detector), **`Atc.Video.Engine`** (frames for analysis), both motion services, the overlays in **both WPF apps** and the **web client**, recordings (a new activity file), the **server** (a timeline of every camera across its recordings), the **API spec**, and a new **`sample/BoundingBoxWpfApp`**.
 
 ← Back to the [roadmap home](roadmap.md)
 
@@ -46,7 +46,7 @@ Checked against the code on 2026-10-18.
 
 | Step | Where |
 |---|---|
-| The player encodes the whole frame (full resolution) as **PNG**, on a pool thread | `VideoPlayer.CaptureFrameAsync`, `src/AtcSoft.VideoEngine/VideoPlayer.cs:539-588` |
+| The player encodes the whole frame (full resolution) as **PNG**, on a pool thread | `VideoPlayer.CaptureFrameAsync`, `src/Atc.Video.Engine/VideoPlayer.cs:539-588` |
 | The PNG is decoded again with GDI+, scaled to 800×600 **without keeping the aspect ratio**, and made grey | CameraWall: its own copy, `MotionDetectionService.cs:371-421`; server: `GdiMotionFrameReader.cs:25-28` |
 | The new grey picture is compared with **the previous analysed picture only** | `MotionDetectionService.cs:297,347`; `ServerMotionDetectionService.cs:248-255` |
 | Pixel threshold 15–35 from *Sensitivity*; 20×20 cells; a cell is active with ≥ 33 changed pixels; 8-connected cells form a box | `MotionFrameAnalyzer.cs:41,45,80,88-116` |
@@ -282,12 +282,12 @@ A scene, its objects and what is expected. The generator draws the frames from i
 
 | Test | Where | Needs |
 |---|---|---|
-| Storybook parsing, path maths, truth generation | `test/AtcSoft.VideoSurveillance.Storybook.Tests` | Nothing |
+| Storybook parsing, path maths, truth generation | `test/AtcSoft.Video.Surveillance.Storybook.Tests` | Nothing |
 | Scorer against hand-made box lists | same | Nothing |
 | **Detector against every scene, fast path** (the main regression test) | same | Nothing |
 | Detector through encode and decode | same | FFmpeg; skips without |
 | Overlay mapping (analysis → screen, letterbox, rotation) | `Core.Tests` (`MotionBoxMapper`), extended | Nothing |
-| **FlaUI walk of the sample app**: open a storybook, run deterministic, compare the drawn boxes (automation) with the detector output and the truth at chosen frames, read the score | `test/AtcSoft.VideoSurveillance.E2E.Tests`, a new `BoundingBoxSampleSmokeTests` | `ATCSOFT_E2E=1`, a desktop, FFmpeg |
+| **FlaUI walk of the sample app**: open a storybook, run deterministic, compare the drawn boxes (automation) with the detector output and the truth at chosen frames, read the score | `test/AtcSoft.Video.Surveillance.E2E.Tests`, a new `BoundingBoxSampleSmokeTests` | `ATCSOFT_E2E=1`, a desktop, FFmpeg |
 | Real recordings with reviews | `Storybook.Tests`, the corpus folder | `ATCSOFT_BBOX_CORPUS`; skips without |
 
 ### Scene catalogue
@@ -374,7 +374,7 @@ Done 2026-10-19: `BoxSmoother` (Core) smooths each box against its own previous 
 **Done 2026-10-19:**
 
 - The detector seam `IMotionDetector` (Core) with today's detection as `FrameDifferenceMotionDetector`; CameraWall and the server use only the seam, so the baseline measures what ships.
-- `src/AtcSoft.VideoSurveillance.Storybook` (not packable): the model and its reader (errors name the place, such as `objects[0].path[1].t`), a deterministic renderer (our own random generator keyed by seed and frame; truth from the pixels actually drawn; standing still and less than half visible are *dontCare*), the scorer and the fast-path runner. The runner squeezes to 800×600 as the apps do and scores the boxes the apps show (kept until the detector replaces them or motion ends).
+- `src/AtcSoft.Video.Surveillance.Storybook` (not packable): the model and its reader (errors name the place, such as `objects[0].path[1].t`), a deterministic renderer (our own random generator keyed by seed and frame; truth from the pixels actually drawn; standing still and less than half visible are *dontCare*), the scorer and the fast-path runner. The runner squeezes to 800×600 as the apps do and scores the boxes the apps show (kept until the detector replaces them or motion ends).
 - Scenes S1, S2, S3, S5 and S12; a ratchet: `baseline.json` holds every score, a test fails when one gets worse, `ATCSOFT_BBOX_UPDATE_BASELINE=1` writes new scores on purpose.
 
 **Baseline of today's detector** (default settings; recall over must-box frames after 0.5 s, false boxes per analysed frame):
@@ -391,8 +391,8 @@ It shows both complaints: a tree gives two to four boxes in every frame, and a s
 
 **Done 2026-10-27:** the encoder pipe and scene S11. `StorybookEncoder` draws every frame and pipes it to the FFmpeg tool (H.264, one thread, no B-frames, a key frame every 2 s, so a scene gives the same video on every run) at the storybook's `video.bitrateKbps`, and writes `*.truth.jsonl` (`TruthFile`) next to the video. `StorybookRunner.RunEncoded` reads the video back with `GreyFrameFileReader`, as *Analyse recording* does, and scores each picture with the truth of its frame. A scene with a bitrate is scored on the encoded path and skips without FFmpeg. S11 (S5 at 400 kbps: the noise smeared into blotches) meets S5's expectations: recall 1.000 at 4/s and 0.994 at 15/s, no false box, 3 tracks, the same as S5 encoded at a high quality, so the compression costs the new detector nothing. `EncodedPathTests` keeps the pipeline honest: S5 encoded at a high quality scores as on the fast path (new detector). Today's frame difference does not: through the encoder at a high quality it already moves (recall 0.955 → 0.926 at 4/s, 0.720 → 0.833 at 15/s), the way the picture is scaled (swscale's area filter against the fast path's bilinear) being enough, and S11 adds nothing to that. The render time: the suite took 57 s because one test class ran its 52 cases one after another; one class per detector and rate brings it to 27 s, with the same frames and scores (about 35 s with the encoded scenes).
 
-- A non-packable `src/AtcSoft.VideoSurveillance.Storybook` (net10.0): the model, JSON reading with clear errors, the frame renderer, the truth writer, the encoder pipe, the scorer.
-- Scenes S1–S12 as files under `test/AtcSoft.VideoSurveillance.Storybook.Tests/Scenes`.
+- A non-packable `src/AtcSoft.Video.Surveillance.Storybook` (net10.0): the model, JSON reading with clear errors, the frame renderer, the truth writer, the encoder pipe, the scorer.
+- Scenes S1–S12 as files under `test/AtcSoft.Video.Surveillance.Storybook.Tests/Scenes`.
 - **Baseline**: today's `MotionFrameAnalyzer`, with the services' gating, scored on every scene. The numbers go into this plan, so phase 4 shows its gain. The tests first assert the baseline as it is (marked known-bad), then tighten.
 
 **Test:** the parsing, truth and scorer tests; the detector-against-scenes test.
@@ -414,7 +414,7 @@ It shows both complaints: a tree gives two to four boxes in every frame, and a s
 **Changed from the design:** the engine's player plays a stream, not a file: it has no pause or seek, and a file runs to its end at once. So the deterministic clock does not use `VideoHost`: it shows the grey pictures the detector was given (what the detector sees), read with the same reader as the tests. **Debug layers, tuning panel and the detector's time (done 2026-10-28):** `BuiltInMotionDetector.KeepDiagnostics` (off by default, and then nothing is made) leaves `MotionDiagnostics` for each picture: the stage (learning, warm-up, change of light, settling, analysed), the foreground after the morphology packed to a bit a pixel, the ignore zones, and every blob with what became of it (`MotionCandidate`: too small, too new, not travelled, shown; its travel as a share of the confirming travel; held). Asking for them changes no box (S5, S6, S14, S15 at both rates; the storybook baseline unchanged). The sample draws the foreground in cyan, the ignore zones in purple and each blob with its reason, and names the stage under the picture. The tuning panel holds the four settings and the inner options (confirm time and travel, merge gap, track lost, background time, settle after light); a change runs the detector again over the pictures kept (`StorybookRunner.Rerun`, the same run with the same detector), within a second at the picture shown. *Save as storybook settings* writes the four settings into the storybook's `detector` section (which now takes all four, `StorybookWriter`, the rest of the file untouched), asking first for a scene of the suite. The score panel and each picture's line give the detector's time, with the diagnostics; a Debug build is many times slower than the apps (S5: 40 ms a picture in Debug, 1.7 ms in the cost test). The walk checks the debug line and a label per blob against a run made in the test, the tuned score against a run with that setting, and the saved file. Changed from the design: there is no *masked* reason, as an ignored pixel is never foreground; the ignore zones are a layer instead. The inner options are tried, not saved: they are not settings. **The live clock (done 2026-10-28):** *Play live…* (or `--live 0|90|180|270`) streams what is open to the engine's player as a camera sends it (`ffmpeg -re -copyts -muxdelay 0` over UDP, so the stream keeps the video's times from 0 and the truth is found by the picture's time), shows it in `VideoHost` turned as chosen with the boxes in its overlay window, and gives the detector the player's grey pictures at the analysis rate, as CameraWall does; the score is kept against the truth turned the same way. S7 through the player: S3 at 4/s turned 0, 90, 180 and 270°, recall 0.91-0.97, no false box, one track, found after 1.0-1.5 s (0.73 s on the deterministic clock; the player's first pictures come later). Whether FlaUI sees the overlay window: not in the window's tree, as `VideoHost` puts its picture and overlay in child windows WPF does not know of; asked by the child window's handle, UI Automation reads the overlay's boxes (`ChildWindows.Find` in the E2E infrastructure). The walk plays S3 at the four turns and checks a box on the walker and the score at the end. Live runs differ a little from run to run, so the deterministic clock stays the one compared with the baseline.
 
 
-- `sample/BoundingBoxWpfApp` as described above, added to `AtcSoft.VideoSurveillance.slnx` under `sample`.
+- `sample/BoundingBoxWpfApp` as described above, added to `AtcSoft.Video.Surveillance.slnx` under `sample`.
 - The overlay exposes each box to UI Automation (useful for the apps' E2E walks too).
 - `BoundingBoxSampleSmokeTests`: open S5, run deterministic, pause at chosen times, compare the automation boxes with the truth, read the score panel. Also open a plain recording.
 
@@ -606,7 +606,7 @@ At an analysis size of 640×360 a picture is 230 400 grey pixels, and each step 
 
 - **Production: pure C#** in Core, behind an `IMotionDetector` interface, used by both services and the sample app.
 - **OpenCvSharp as a reference, never shipped.** The sample app and the storybook tests may run an OpenCvSharp detector (Frigate's chain, or MOG2) on the same scenes as an oracle. If it scores clearly better, we see by how much, and on which scenes, before deciding to bring OpenCV in.
-- **A way back in, if needed.** Because of the interface, an OpenCvSharp detector could later ship as a package of its own (for example `AtcSoft.VideoSurveillance.Detection.OpenCv`) that a host chooses. Core stays free of native code.
+- **A way back in, if needed.** Because of the interface, an OpenCvSharp detector could later ship as a package of its own (for example `AtcSoft.Video.Surveillance.Detection.OpenCv`) that a host chooses. Core stays free of native code.
 
 ### When to revisit
 
@@ -624,7 +624,7 @@ At an analysis size of 640×360 a picture is 230 400 grey pixels, and each step 
 |---|---|
 | The seam | `IMotionDetector` in Core: a picture (grey, with its time) in, boxes and track ids out. Both services, the sample app and the scorer use only the interface |
 | The default | `BuiltInMotionDetector` in Core, pure C# |
-| OpenCV, if ever needed | A separate, optional package (for example `AtcSoft.VideoSurveillance.Detection.OpenCv`) with an `OpenCvMotionDetector`, chosen per camera or per app by a setting (`MotionDetectorEngine`: `builtIn` or `openCv`). Core and the default installers stay free of native code; only a host that picks it carries the runtime. Since OpenCV 4 has no C API, "natively" in practice means through OpenCvSharp's thin native layer, or a small native shim of our own if we ever need to own that too |
+| OpenCV, if ever needed | A separate, optional package (for example `AtcSoft.Video.Surveillance.Detection.OpenCv`) with an `OpenCvMotionDetector`, chosen per camera or per app by a setting (`MotionDetectorEngine`: `builtIn` or `openCv`). Core and the default installers stay free of native code; only a host that picks it carries the runtime. Since OpenCV 4 has no C API, "natively" in practice means through OpenCvSharp's thin native layer, or a small native shim of our own if we ever need to own that too |
 | Deciding by numbers | The sample app and the storybook tests can run both detectors on the same scenes. The tripwires above say when OpenCV earns its place |
 
 Nothing of the OpenCV option is built now: only the seam is, in phase 4.
@@ -638,7 +638,7 @@ Nothing of the OpenCV option is built now: only the seam is, in phase 4.
 | 1 | **Pure C# or OpenCvSharp for the detector?** | ✅ **Decided 2026-10-19: our own pure C# detector** behind `IMotionDetector`, as long as it does as well; an optional OpenCV detector in a separate package stays possible, chosen by a setting. See [Pure C# or OpenCvSharp?](#️-pure-c-or-opencvsharp) |
 | 2 | **Storybook in JSON or YAML?** | **JSON**, read with System.Text.Json: no new dependency, and a JSON schema gives editor help |
 | 3 | **Draw frames in C# or with FFmpeg filters?** | **C#**: the truth comes from the same drawing. FFmpeg only encodes |
-| 4 | **Where do storybook, generator and scorer live?** | A new non-packable `AtcSoft.VideoSurveillance.Storybook` project, used by the sample and the tests. **Not in Core** (published) |
+| 4 | **Where do storybook, generator and scorer live?** | A new non-packable `AtcSoft.Video.Surveillance.Storybook` project, used by the sample and the tests. **Not in Core** (published) |
 | 5 | **Activity index: a sidecar per recording or a database on the server?** | **Sidecar.** It moves and is deleted with the file, works for CameraWall without a server, and follows the folder layouts. The server can cache it in memory |
 | 6 | **Run detection for every recording camera?** | **Yes, at 2–4/s, while the index is on** (default on). Without it a continuous recording has no timeline. The grey-frame path of phase 2 makes it cheap |
 | 7 | **What decides "motion is active"?** | **A confirmed track.** The global `MinimumChangePercent` is deprecated and kept readable |

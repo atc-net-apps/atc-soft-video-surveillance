@@ -1,6 +1,6 @@
 # 🖧 Server
 
-How the headless server (`AtcSoft.VideoSurveillance.Api`) is configured and what it offers besides the REST endpoints in `src/VideoSurveillance.yaml`. The settings that the clients edit (recording folder, formats, clean-up and so on) are described in [settings.md](settings.md).
+How the headless server (`AtcSoft.Video.Surveillance.Api`) is configured and what it offers besides the REST endpoints in `src/VideoSurveillance.yaml`. The settings that the clients edit (recording folder, formats, clean-up and so on) are described in [settings.md](settings.md).
 
 ---
 
@@ -26,7 +26,7 @@ Use it to run a second server on the same machine, or to keep the server's data 
 
 ```powershell
 $env:Storage__DataPath = "D:\Surveillance"
-.\AtcSoft.VideoSurveillance.Api.exe --urls http://localhost:5000
+.\AtcSoft.Video.Surveillance.Api.exe --urls http://localhost:5000
 ```
 
 The log folder is decided before the rest of the configuration is read. For the debug log to follow the data folder, give `Storage:DataPath` as an environment variable or on the command line, not only in `appsettings.json`.

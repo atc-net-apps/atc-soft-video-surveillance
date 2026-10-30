@@ -9,7 +9,7 @@ Architectural overview, configuration model, and operator-facing behaviour for t
 - 💻 **Where it works.** Windows. The Linux V4L2 + macOS AVFoundation paths are scaffolded but deferred (Phase 10 in the roadmap).
 - ✅ **What you can do today.** Open a USB camera, record it, capture snapshots, rotate, watch it in the web client, and recover gracefully from unplug/replug. A camera that delivers uncompressed video (most webcams: YUY2 / NV12) is encoded to H.264 while it is recorded; see "Recording a webcam" below.
 - ⏸️ **What's deferred.** UVC PTZ + property pages (brightness / focus / exposure) — Phase 11.
-- 🏠 **Hosts.** `AtcSoft.CameraWall.Wpf.App` (standalone) wires the Windows enumerator into DI directly. `AtcSoft.VideoSurveillance.Api` (server) does the same when running on Windows. `AtcSoft.VideoSurveillance.Wpf.App` (API client) talks to the server over `GET /devices/usb` instead of enumerating locally.
+- 🏠 **Hosts.** `AtcSoft.Video.Surveillance.CameraWall.Wpf.App` (standalone) wires the Windows enumerator into DI directly. `AtcSoft.Video.Surveillance.Api` (server) does the same when running on Windows. `AtcSoft.Video.Surveillance.Wpf.App` (API client) talks to the server over `GET /devices/usb` instead of enumerating locally.
 
 ---
 
@@ -97,12 +97,12 @@ services.AddSingleton<IUsbCameraEnumerator>(NullUsbCameraEnumerator.Instance);
 services.AddSingleton<IUsbCameraWatcher, NullUsbCameraWatcher>();
 
 // Replace with the Windows implementation
-AtcSoft.VideoEngine.Windows.DependencyInjection.ServiceCollectionExtensions
+AtcSoft.Video.Surveillance.Windows.DependencyInjection.ServiceCollectionExtensions
     .AddWindowsUsbCameraSupport(services);
 ```
 
 Keep the Null fallbacks registered first so:
-- The composition root works on hosts that don't reference `AtcSoft.VideoEngine.Windows`.
+- The composition root works on hosts that don't reference `AtcSoft.Video.Surveillance.Windows`.
 - `GET /devices/usb` can detect the fallback case (`enumerator is NullUsbCameraEnumerator`) and return **HTTP 503** instead of an empty list — clients then know "platform doesn't support USB" vs. "no devices attached".
 
 ---
@@ -161,7 +161,7 @@ A USB camera whose *Capture audio* is on, with a microphone named, is opened tog
 |---------|----------------|--------------|
 | Capability discovery (resolution × FPS × pixfmt) | `MediaFoundationEnumerator` | Phase 3 first cut returns devices with empty `Capabilities`. The dialog will populate the capability picker by opening each device on demand once Phase 4.3 lands. |
 | UVC property pages (brightness, focus, …) | New `IUsbCameraPropertyService` | Phase 11. Blue-Iris-grade — pulls in `IAMCameraControl` / `IAMVideoProcAmp` interop. |
-| V4L2 + AVFoundation enumerators | `AtcSoft.VideoEngine.Linux` (future), `AtcSoft.VideoEngine.macOS` | Phase 10. The demuxer already accepts `InputFormatKind.V4l2` / `AVFoundation` and translates the option dict correctly — only the enumerator + DI binding are missing. |
+| V4L2 + AVFoundation enumerators | `Atc.Video.Engine.Linux` (future), `Atc.Video.Engine.macOS` | Phase 10. The demuxer already accepts `InputFormatKind.V4l2` / `AVFoundation` and translates the option dict correctly — only the enumerator + DI binding are missing. |
 
 ---
 

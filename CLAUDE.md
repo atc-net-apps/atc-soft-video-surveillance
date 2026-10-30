@@ -1,39 +1,39 @@
-# AtcSoft.VideoSurveillance - Claude Code Guidelines
+# AtcSoft.Video.Surveillance - Claude Code Guidelines
 
 ## Project Overview
-A multi-assembly video surveillance platform with a WPF desktop app and a headless REST API server (live events over Server-Sent Events), sharing a common Core library. Uses RTSP/HTTP protocols with AtcSoft.VideoEngine (in-process FFmpeg) for video on both WPF and server.
+A multi-assembly video surveillance platform with a WPF desktop app and a headless REST API server (live events over Server-Sent Events), sharing a common Core library. Uses RTSP/HTTP protocols with Atc.Video.Engine (in-process FFmpeg) for video on both WPF and server.
 
 ## Solution Structure
-- `AtcSoft.VideoSurveillance.Core` - Shared library: models, enums, events, service interfaces, helpers (net10.0, no WPF)
-- `AtcSoft.VideoSurveillance.Resources` - The texts of every client: `Translations.resx` in US English (neutral), `en-GB`, `da-DK`, `de-DE` (net10.0, no WPF, published)
-- `AtcSoft.VideoEngine` - Cross-platform video engine (net10.0): demux, decode, record, capture via in-process FFmpeg
-- `AtcSoft.VideoEngine.DirectX` - D3D11VA GPU acceleration, Video Processor, swap chain (net10.0-windows)
-- `AtcSoft.VideoEngine.Windows` - Windows-only parts shared by the standalone app and the server, not published: USB camera enumeration (Media Foundation) + hot-plug watcher (WMI), and the recording thumbnail generator (GDI+) (net10.0-windows)
-- `AtcSoft.VideoPlayer.Wpf` - WPF VideoHost control with DComp surface + XAML overlay (net10.0-windows)
-- `AtcSoft.CameraWall.Wpf` - WPF library with the complete camera wall: UI, dialogs, VideoEngine integration (not published; consumed by the CameraWall app)
-- `AtcSoft.CameraWall.Wpf.App` - Thin shell WPF application using the library (standalone, connects directly to cameras)
-- `AtcSoft.VideoSurveillance.Wpf` - WPF library for the VideoSurveillance API client (GatewayService, SurveillanceEventService, OpenAPI-generated client)
-- `AtcSoft.VideoSurveillance.Wpf.App` - WPF management application for the API server (Fluent.Ribbon, Serilog, splash screen)
-- `AtcSoft.VideoSurveillance.Api.Contracts` - Generated API models, endpoints, handler interfaces (OpenAPI-first via Atc.Rest.Api.SourceGenerator 3.0.1 from nuget.org)
-- `AtcSoft.VideoSurveillance.Api.Domain` - Handler implementations calling Core services
-- `AtcSoft.VideoSurveillance.Api` - ASP.NET Core host (REST, `GET /events`, HLS streams)
-- `AtcSoft.VideoSurveillance.Aspire` - Aspire AppHost for orchestrated startup and developer dashboard
-- `AtcSoft.VideoSurveillance.Blazor.App` - Blazor WebAssembly client for the API server (MudBlazor). Its logic lives in plain classes under `Logic/`, tested in `AtcSoft.VideoSurveillance.Blazor.App.Tests`
-- `AtcSoft.VideoSurveillance.Storybook` - Scenes with known content for measuring motion detection: the storybook model, a deterministic renderer with its truth, the scorer (net10.0, not published; see `docs/motion-detection-storybook.md`)
+- `AtcSoft.Video.Surveillance` - Shared library: models, enums, events, service interfaces, helpers (net10.0, no WPF)
+- `AtcSoft.Video.Surveillance.Resources` - The texts of every client: `Translations.resx` in US English (neutral), `en-GB`, `da-DK`, `de-DE` (net10.0, no WPF, published)
+- `Atc.Video.Engine` - Cross-platform video engine (net10.0): demux, decode, record, capture via in-process FFmpeg
+- `Atc.Video.Engine.DirectX` - D3D11VA GPU acceleration, Video Processor, swap chain (net10.0-windows)
+- `AtcSoft.Video.Surveillance.Windows` - Windows-only parts shared by the standalone app and the server, not published: USB camera enumeration (Media Foundation) + hot-plug watcher (WMI), and the recording thumbnail generator (GDI+) (net10.0-windows)
+- `Atc.Video.Player.Wpf` - WPF VideoHost control with DComp surface + XAML overlay (net10.0-windows)
+- `AtcSoft.Video.Surveillance.CameraWall.Wpf` - WPF library with the complete camera wall: UI, dialogs, VideoEngine integration (not published; consumed by the CameraWall app)
+- `AtcSoft.Video.Surveillance.CameraWall.Wpf.App` - Thin shell WPF application using the library (standalone, connects directly to cameras)
+- `AtcSoft.Video.Surveillance.Wpf` - WPF library for the VideoSurveillance API client (GatewayService, SurveillanceEventService, OpenAPI-generated client)
+- `AtcSoft.Video.Surveillance.Wpf.App` - WPF management application for the API server (Fluent.Ribbon, Serilog, splash screen)
+- `AtcSoft.Video.Surveillance.Api.Contracts` - Generated API models, endpoints, handler interfaces (OpenAPI-first via Atc.Rest.Api.SourceGenerator 3.0.1 from nuget.org)
+- `AtcSoft.Video.Surveillance.Api.Domain` - Handler implementations calling Core services
+- `AtcSoft.Video.Surveillance.Api` - ASP.NET Core host (REST, `GET /events`, HLS streams)
+- `AtcSoft.Video.Surveillance.Aspire` - Aspire AppHost for orchestrated startup and developer dashboard
+- `AtcSoft.Video.Surveillance.Blazor.App` - Blazor WebAssembly client for the API server (MudBlazor). Its logic lives in plain classes under `Logic/`, tested in `AtcSoft.Video.Surveillance.Blazor.App.Tests`
+- `AtcSoft.Video.Surveillance.Storybook` - Scenes with known content for measuring motion detection: the storybook model, a deterministic renderer with its truth, the scorer (net10.0, not published; see `docs/motion-detection-storybook.md`)
 - `sample/BoundingBoxWpfApp` - Developer tool, not published: a storybook or a recording through the real detector and box overlay, picture by picture, with the truth and the score; walked by `BoundingBoxSampleSmokeTests`
-- `test/*` - xUnit v3 test projects, one per source project that has tests (Core, VideoEngine, VideoEngine.Windows, Api, Wpf.Core, Wpf, CameraWall.Wpf, Blazor.App, Storybook), plus `AtcSoft.VideoSurveillance.E2E.Tests` (smoke tests of the running apps, see below). The storybook tests keep every detector score in `baseline.json` and fail when one gets worse; `ATCSOFT_BBOX_UPDATE_BASELINE=1` writes new scores after an improvement. A scene with `video.bitrateKbps` is encoded by the FFmpeg tool and scored as the apps read a recording; it skips without FFmpeg
+- `test/*` - xUnit v3 test projects, one per source project that has tests (Core, VideoEngine, VideoEngine.Windows, Api, Wpf.Core, Wpf, CameraWall.Wpf, Blazor.App, Storybook), plus `AtcSoft.Video.Surveillance.E2E.Tests` (smoke tests of the running apps, see below). The storybook tests keep every detector score in `baseline.json` and fail when one gets worse; `ATCSOFT_BBOX_UPDATE_BASELINE=1` writes new scores after an improvement. A scene with `video.bitrateKbps` is encoded by the FFmpeg tool and scored as the apps read a recording; it skips without FFmpeg
 
 ## NuGet Packages
 Six projects are published to nuget.org so external WPF apps can embed live camera tiles:
 
 | Package | Role |
 |---|---|
-| `AtcSoft.VideoSurveillance.Wpf.Core` | **Entry point for consumers** — `CameraTile`, `CameraGrid`, `CameraOverlay` |
-| `AtcSoft.VideoSurveillance.Core` | `CameraConfiguration` and the other shared models |
-| `AtcSoft.VideoPlayer.Wpf` | `VideoHost` control |
-| `AtcSoft.VideoEngine.DirectX` | D3D11VA rendering |
-| `AtcSoft.VideoEngine` | FFmpeg engine, including `VideoPlayerFactory` |
-| `AtcSoft.VideoSurveillance.Resources` | The texts in four languages, used by `Wpf.Core` |
+| `AtcSoft.Video.Surveillance.Wpf.Core` | **Entry point for consumers** — `CameraTile`, `CameraGrid`, `CameraOverlay` |
+| `AtcSoft.Video.Surveillance` | `CameraConfiguration` and the other shared models |
+| `Atc.Video.Player.Wpf` | `VideoHost` control |
+| `Atc.Video.Engine.DirectX` | D3D11VA rendering |
+| `Atc.Video.Engine` | FFmpeg engine, including `VideoPlayerFactory` |
+| `AtcSoft.Video.Surveillance.Resources` | The texts in four languages, used by `Wpf.Core` |
 
 These are exactly the projects with `<IsPackable>true</IsPackable>`; every other project is `false`. They **must ship together at the same version**: packing turns each `ProjectReference` into a NuGet dependency pinned to that version, so publishing a package without its dependencies leaves it uninstallable. The release workflow packs the whole solution for that reason, then asserts every package actually appears on nuget.org, since `--skip-duplicate` can mask rejected pushes.
 
@@ -61,7 +61,7 @@ The REST API server enables headless video surveillance:
 - **Endpoints**: Cameras CRUD, Layouts CRUD, Recordings list, Settings get/update, Snapshot capture, Recording start/stop
 - **Live streams**: a viewer takes a lease (`POST /cameras/{id}/stream` -> `leaseId`, `playlistUrl`, `renewSeconds`), renews it (`PUT .../stream/{leaseId}`; `404` means start again) and gives it back (`DELETE`). The stream stops with its last lease; a lease not renewed for two intervals runs out (`StreamingService`, swept by `HlsStreamReaperService`). There is no SignalR hub any more: a new kind of live message is an event on `GET /events` or a REST call
 - **Event stream**: `GET /events` streams the camera events (connection, recording, motion, USB) as Server-Sent Events, fed by the broadcaster (`HubEventMapping` -> `ToStreamEvent`) through `SurveillanceEventFeed` (replay buffer, bounded queue per reader). A new camera event goes into the stream. The WPF client reads it with `SurveillanceEventService` (its `IsConnected` drives the server status, `OnMissedEvents` a reload), the web client with `EventStreamService`, both on the generated `ReadResumingAsync`. The states use the REST values (`connected`); the WPF client reads them through `HubStates`. The ids start from the server's start time, so a client resuming after a restart is told it missed events
-- **Run with Aspire**: `dotnet run --project src/AtcSoft.VideoSurveillance.Aspire` starts the API with the Aspire dashboard
+- **Run with Aspire**: `dotnet run --project src/AtcSoft.Video.Surveillance.Aspire` starts the API with the Aspire dashboard
 
 ### Server rules
 - **Data folder:** the server takes the location of `settings.json` / `cameras.json` from `ServerDataPaths` (`Storage:DataPath`). Never read `ApplicationPaths.Default*` directly in the server.
@@ -75,15 +75,15 @@ The REST API server enables headless video surveillance:
 - **Secrets in logs:** camera credentials and webhook secrets never go into a log or to a client. FFmpeg command lines and output are cleaned with `HlsStreamCommand.Redact`; a webhook receiver is named by `WebhookEndpoint.LogName`.
 - **Sign-in and roles:** every operation needs a signed-in user (JWT bearer) or an API key (`X-API-Key`); the spec's root `security` says so, and a role list goes in `x-authorize-roles` (root: all three; operator and admin for changes; admin for settings, webhooks, users, API keys, audit). A new operation gets its roles in the spec, never in code. Addresses a player or an `<img>` fetches itself (`/recordings-files/...`) take the session's media token as `?media=` (`MediaAccessMiddleware`), and a live stream's files are reached only through its lease (`/streams/{leaseId:N}/`). A change that succeeds is written to the audit log by endpoint name (`AuditMiddleware`); one that should not be (sign-in, lease renewals) gets `x-audit: false` in the spec. Both clients send the credentials through the generated `AddApiCredentials` (`SessionCredentials`), which sends a token only to the operations whose `security` asks for it.
 - **Secrets at rest:** camera passwords and webhook secrets are encrypted in the data folder through `SecretProtector` (Data Protection, keys in `{data}/keys`), only at the file boundary: the objects in memory keep the plain value. A new stored secret goes through it too. CameraWall does the same for its `cameras.json` with `StoredSecret` (Wpf.Core; Windows data protection for the machine, prefix `dpapi:v1:`), applied in `CameraStorageService` at save and load; a plain password in an older file is read and the file written again encrypted.
-- **Host tests:** `test/AtcSoft.VideoSurveillance.Api.Tests/Host` runs the real server in-process (`ApiHostFixture`) against a temp data folder. Tests that need a camera start a live test stream with the FFmpeg command-line tool and skip without it. `CreateClient()` is signed in as the admin, `CreateAnonymousClient()` is not, and `SignInAsync` signs in another user. A rate-limited call goes through `ApiHostFixture.SendAsync` from an address of its own, so it does not use up the other tests' limit.
+- **Host tests:** `test/AtcSoft.Video.Surveillance.Api.Tests/Host` runs the real server in-process (`ApiHostFixture`) against a temp data folder. Tests that need a camera start a live test stream with the FFmpeg command-line tool and skip without it. `CreateClient()` is signed in as the admin, `CreateAnonymousClient()` is not, and `SignInAsync` signs in another user. A rate-limited call goes through `ApiHostFixture.SendAsync` from an address of its own, so it does not use up the other tests' limit.
 - See `docs/server.md`.
 
 ### Web client rules
-- The web client does not reference Core. Where it needs the same rule (recording path example, default settings, colour names, video qualities) it has its own copy under `Logic/`, and a test in `AtcSoft.VideoSurveillance.Blazor.App.Tests` (which does reference Core) keeps the copy equal to the original.
+- The web client does not reference Core. Where it needs the same rule (recording path example, default settings, colour names, video qualities) it has its own copy under `Logic/`, and a test in `AtcSoft.Video.Surveillance.Blazor.App.Tests` (which does reference Core) keeps the copy equal to the original.
 - Keep logic out of the `.razor` files: counts, filters, formatting and styles are plain classes with tests.
 
 ### Texts and languages
-- No literal visible text in a client: XAML uses `{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=…}`, C# and Razor `Translations.X` (with `string.Format(CultureInfo.CurrentCulture, …)` for parameters). `LiteralTextTests` finds a literal left in the API clients' views; an exception (a product name, a protocol, an example value) goes into `literal-text-allowed.txt` with the reason. Literals inside Razor `@( )` expressions and `@code` are not seen by it: review them.
+- No literal visible text in a client: XAML uses `{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=…}`, C# and Razor `Translations.X` (with `string.Format(CultureInfo.CurrentCulture, …)` for parameters). `LiteralTextTests` finds a literal left in the API clients' views; an exception (a product name, a protocol, an example value) goes into `literal-text-allowed.txt` with the reason. Literals inside Razor `@( )` expressions and `@code` are not seen by it: review them.
 - A key's last digit is its number of parameters (`LayoutRenamed2` takes `{0}` and `{1}`); a key without parameters ends in no digit (`RotationRotate90Degrees`, not `RotationRotate90`). Two keys never differ only in case: the build keeps one and drops the other. Reuse an existing text before adding a key.
 - A new key gets its da-DK, de-DE and en-GB texts in the same change. Every culture file has every key (Visual Studio's resx editor reports a missing one); en-GB repeats the US text unless British English differs (colour, maximised, start-up). The resource tests fail otherwise.
 - Logs, developer exceptions, the server's ProblemDetails and the wire values stay English.
@@ -94,7 +94,7 @@ The REST API server enables headless video surveillance:
 - **Binding errors are logged:** both WPF apps call `BindingErrorLogging.Start` (Wpf.Core) first thing, so every binding error is written to the log at Warning (`AtcSoft.BindingErrors`), with or without a debugger. A binding error is a bug: the E2E smoke tests fail on one.
 - **Logs reach Aspire:** under Aspire (`OTEL_EXPORTER_OTLP_ENDPOINT` set) the server and both WPF apps also write their Serilog logs over OTLP, so the WPF apps, which have no console, show up in the dashboard's structured logs.
 - **One data folder:** `ATCSOFT_DATA_PATH` moves all of a desktop app's data (ProgramData and the per-user LocalAppData files, under `{folder}\local`) into one folder. A new file a desktop app keeps goes through `ApplicationPaths` (Core: `GetLocalDataPath`, Wpf.Core: the `Default*` paths), never `Environment.GetFolderPath` directly. The AppHost passes a scratch folder to all apps with `AtcSoft__DataPath=...`.
-- **E2E smoke tests:** `test/AtcSoft.VideoSurveillance.E2E.Tests` starts the server, CameraWall, the WPF client and the web client in scratch folders and opens every window, page and dialog (FlaUI for WPF, Playwright with the installed Edge for the web). They need a desktop and run only with `ATCSOFT_E2E=1`. A new dialog, view or page gets a step in its walk; controls are found by their en-US text. See `docs/e2e-smoke-tests.md`.
+- **E2E smoke tests:** `test/AtcSoft.Video.Surveillance.E2E.Tests` starts the server, CameraWall, the WPF client and the web client in scratch folders and opens every window, page and dialog (FlaUI for WPF, Playwright with the installed Edge for the web). They need a desktop and run only with `ATCSOFT_E2E=1`. A new dialog, view or page gets a step in its walk; controls are found by their en-US text. See `docs/e2e-smoke-tests.md`.
 
 ## Hosted Background Services (Atc.Hosting)
 Long-running periodic work uses `Atc.Hosting` base classes instead of hand-rolled `System.Threading.Timer` loops. The base class supplies the loop, sequential (no-overlap) ticking, exception logging via `OnExceptionAsync`, and optional health tracking.
@@ -146,7 +146,7 @@ These start on `host.StartAsync()` and stop on `host.StopAsync()` — no explici
 - **Atc.SourceGenerators** - Source generators for DI registration (`[Registration]`), options binding (`[OptionsBinding]`)
 - **Atc.Wpf.Controls** - UI controls (`LabelTextBox`, `LabelComboBox`, `LabelPasswordBox`, `GridEx`)
 - **Atc.Wpf.NetworkControls** - `NetworkScannerView` for discovering cameras
-- **AtcSoft.VideoEngine** - In-process FFmpeg video engine for RTSP/HTTP streams (replaces FlyleafLib)
+- **Atc.Video.Engine** - In-process FFmpeg video engine for RTSP/HTTP streams (replaces FlyleafLib)
 - **Flyleaf.FFmpeg.Bindings** - FFmpeg P/Invoke bindings NuGet dependency
 - **Fluent.Ribbon** - Ribbon UI (App only)
 - **Serilog** - Structured logging with file sink (App only)
@@ -165,10 +165,10 @@ public interface ICameraWallManager : INotifyPropertyChanged
     int CameraCount { get; }
     int ConnectedCount { get; }
     string StatusText { get; }
-    AtcSoft.CameraWall.Wpf.UserControls.CameraGrid? CameraGrid { get; }
+    AtcSoft.Video.Surveillance.CameraWall.Wpf.UserControls.CameraGrid? CameraGrid { get; }
 
     // Initialization
-    void Initialize(AtcSoft.CameraWall.Wpf.UserControls.CameraGrid cameraGridControl);
+    void Initialize(AtcSoft.Video.Surveillance.CameraWall.Wpf.UserControls.CameraGrid cameraGridControl);
 
     // Camera operations
     void AddCamera();
@@ -425,7 +425,7 @@ public class UserService : IUserService { }
 public class LoggerService { }
 ```
 
-The generator creates `AddDependencyRegistrationsFrom{AssemblySuffix}()` extension methods. For `AtcSoft.CameraWall.Wpf`, this generates `AddDependencyRegistrationsFromWpf()`.
+The generator creates `AddDependencyRegistrationsFrom{AssemblySuffix}()` extension methods. For `AtcSoft.Video.Surveillance.CameraWall.Wpf`, this generates `AddDependencyRegistrationsFromWpf()`.
 
 Advanced options:
 ```csharp
@@ -616,5 +616,5 @@ Debug logging is configured via Serilog in `App.xaml.cs`:
 ## Build
 ```bash
 dotnet build
-dotnet run --project src/AtcSoft.CameraWall.Wpf.App
+dotnet run --project src/AtcSoft.Video.Surveillance.CameraWall.Wpf.App
 ```

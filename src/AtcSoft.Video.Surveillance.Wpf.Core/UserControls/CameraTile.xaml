@@ -1,0 +1,187 @@
+<UserControl
+    x:Class="AtcSoft.Video.Surveillance.Wpf.Core.UserControls.CameraTile"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:atcValueConverters="https://github.com/atc-net/atc-wpf/tree/main/schemas/value-converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.UserControls"
+    xmlns:lve="clr-namespace:Atc.Video.Player.Wpf;assembly=Atc.Video.Player.Wpf"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="240"
+    d:DesignWidth="320"
+    Background="Black"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <!--  Quick-action overlay button: rounded, semi-transparent, neutral hover. Mirrors the fullscreen close button style but smaller (32x32 vs 40x40) and not red on hover (since these are positive actions, not destructive).  -->
+        <Style x:Key="OverlayQuickActionButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#66000000" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="16">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#CC1E88E5" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <atc:GridEx>
+        <!--  Placeholder when player is lent to fullscreen window  -->
+        <Border
+            x:Name="PlayerLentPlaceholder"
+            Background="#2D2D2D"
+            Visibility="{Binding IsPlayerLent, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock
+                    FontSize="14"
+                    Foreground="#AAAAAA"
+                    Text="Viewing in Full Screen"
+                    TextAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!--  Video Player with Overlay Content  -->
+        <lve:VideoHost
+            x:Name="VideoPlayer"
+            DataContext="{Binding RelativeSource={RelativeSource AncestorType=UserControl}}"
+            Player="{Binding Player}">
+
+            <!--  This content goes into VideoHost's overlay window  -->
+            <atc:GridEx Background="Transparent">
+
+                <!--  Drag capture layer - must be hit-test visible to capture mouse events  -->
+                <Border
+                    x:Name="DragCaptureLayer"
+                    AllowDrop="True"
+                    Background="Transparent"
+                    DragOver="OnDragCaptureLayerDragOver"
+                    Drop="OnDragCaptureLayerDrop"
+                    MouseLeftButtonDown="OnDragCaptureLayerMouseLeftButtonDown"
+                    MouseMove="OnDragCaptureLayerMouseMove" />
+
+                <!--  Camera Overlay (Properties updated programmatically from CameraTile code-behind)  -->
+                <local:CameraOverlay
+                    x:Name="OverlayControl"
+                    Margin="8"
+                    HorizontalAlignment="{Binding HostDataContext.OverlayHorizontalAlignment}"
+                    VerticalAlignment="{Binding HostDataContext.OverlayVerticalAlignment}"
+                    IsHitTestVisible="False" />
+
+                <!--  Motion Bounding Box Overlay  -->
+                <local:MotionBoundingBoxOverlay x:Name="MotionOverlay" IsHitTestVisible="False" />
+
+                <!--  Connection-type icon (LAN / Wi-Fi / USB). Sits in one of the two corners adjacent to the info box (never the info box or quick-actions corner), set in UpdateOverlayPosition. Type, link-health tint and opacity are set from UpdateConnectionTypeIcon.  -->
+                <local:ConnectionTypeIcon
+                    x:Name="ConnectionTypeIconControl"
+                    Margin="8"
+                    IsHitTestVisible="False" />
+
+                <!--  Quick-action zone (positioned in the diagonal opposite corner of the overlay info box, computed in UpdateOverlayPosition). The outer Grid is a fixed-size, hit-test-visible hover hot-zone — the buttons inside collapse when hidden, so without this fixed shell the mouse would have nothing to hover when no quick action is currently visible. Visibility of the buttons is gated by ShowOverlayQuickActions, zoom state, hover, and connection state — toggled imperatively from CameraTile.xaml.cs.  -->
+                <Grid
+                    x:Name="QuickActionsContainer"
+                    Width="100"
+                    Height="120"
+                    Margin="8"
+                    HorizontalAlignment="{Binding QuickActionsHorizontalAlignment, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    VerticalAlignment="{Binding QuickActionsVerticalAlignment, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    Background="Transparent">
+
+                    <StackPanel
+                        HorizontalAlignment="{Binding QuickActionsHorizontalAlignment, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        VerticalAlignment="{Binding QuickActionsVerticalAlignment, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        Orientation="Vertical">
+
+                        <Button
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                          Key=ShowInFullScreen}"
+                            x:Name="FullScreenQuickButton"
+                            Margin="0,0,0,4"
+                            HorizontalAlignment="{Binding QuickActionsHorizontalAlignment, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Command="{Binding FullScreenCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Style="{StaticResource OverlayQuickActionButtonStyle}"
+                            ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                          Key=ShowInFullScreen}"
+                            Visibility="Hidden">
+                            <Path
+                                Width="14"
+                                Height="14"
+                                Data="M0,5 L0,0 L5,0 M9,0 L14,0 L14,5 M14,9 L14,14 L9,14 M5,14 L0,14 L0,9"
+                                Stroke="White"
+                                StrokeThickness="1.5" />
+                        </Button>
+
+                        <Button
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                          Key=ResetZoom}"
+                            x:Name="ZoomResetQuickButton"
+                            Margin="0,0,0,4"
+                            HorizontalAlignment="{Binding QuickActionsHorizontalAlignment, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Command="{Binding ZoomResetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Style="{StaticResource OverlayQuickActionButtonStyle}"
+                            ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                          Key=ResetZoom}"
+                            Visibility="Collapsed">
+                            <TextBlock
+                                FontSize="11"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                Text="1:1" />
+                        </Button>
+
+                        <Border
+                            x:Name="ZoomIndicatorBorder"
+                            Padding="6,3"
+                            HorizontalAlignment="{Binding QuickActionsHorizontalAlignment, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Background="#99000000"
+                            CornerRadius="3"
+                            IsHitTestVisible="False"
+                            Visibility="Collapsed">
+                            <TextBlock
+                                x:Name="ZoomIndicator"
+                                FontSize="11"
+                                FontWeight="SemiBold"
+                                Foreground="White" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!--  Zoom Selection Rectangle  -->
+                <Canvas
+                    x:Name="ZoomSelectionCanvas"
+                    IsHitTestVisible="False"
+                    Visibility="Collapsed">
+                    <Rectangle
+                        x:Name="ZoomSelectionRect"
+                        Fill="#22FFFFFF"
+                        Stroke="#CCFFFFFF"
+                        StrokeDashArray="4 2"
+                        StrokeThickness="1" />
+                </Canvas>
+
+                <!--  Selection Border  -->
+                <Border
+                    BorderBrush="{Binding HostDataContext.SelectionBorderBrush}"
+                    BorderThickness="2"
+                    IsHitTestVisible="False" />
+            </atc:GridEx>
+        </lve:VideoHost>
+    </atc:GridEx>
+</UserControl>

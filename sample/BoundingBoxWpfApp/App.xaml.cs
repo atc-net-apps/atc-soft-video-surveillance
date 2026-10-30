@@ -17,7 +17,7 @@ public partial class App
         ArgumentNullException.ThrowIfNull(e);
 
         // Atc.Wpf finds the texts only in loaded assemblies; the FFmpeg set-up dialog uses them.
-        _ = AtcSoft.VideoSurveillance.Resources.Translations.ResourceManager;
+        _ = AtcSoft.Video.Surveillance.Resources.Translations.ResourceManager;
 
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()

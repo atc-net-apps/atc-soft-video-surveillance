@@ -4,15 +4,15 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:app="clr-namespace:BoundingBoxWpfApp"
     xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
-    xmlns:cw="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.UserControls;assembly=AtcSoft.VideoSurveillance.Wpf.Core"
+    xmlns:cw="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.UserControls;assembly=AtcSoft.Video.Surveillance.Wpf.Core"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:lve="clr-namespace:AtcSoft.VideoPlayer.Wpf;assembly=AtcSoft.VideoPlayer.Wpf"
+    xmlns:lve="clr-namespace:Atc.Video.Player.Wpf;assembly=Atc.Video.Player.Wpf"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="{Binding Path=Title}"
     Width="1100"
     Height="720"
     d:DataContext="{d:DesignInstance Type=app:LiveWindowViewModel}"
-    Icon="pack://application:,,,/AtcSoft.VideoSurveillance.Wpf.Core;component/Resources/Images/cctv-camera.ico"
+    Icon="pack://application:,,,/AtcSoft.Video.Surveillance.Wpf.Core;component/Resources/Images/cctv-camera.ico"
     WindowStartupLocation="CenterOwner"
     mc:Ignorable="d">
 

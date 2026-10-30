@@ -1,6 +1,6 @@
 # 🏃 Motion Detection Guide
 
-Setup and configuration guide for the motion detection system in AtcSoft.VideoSurveillance. Covers both the WPF desktop app and the REST API server.
+Setup and configuration guide for the motion detection system in AtcSoft.Video.Surveillance. Covers both the WPF desktop app and the REST API server.
 
 ## 📖 Overview
 
@@ -40,7 +40,7 @@ The previous detector (the difference of two pictures in 20×20 cells, motion wh
 
 ### How it is measured
 
-`test/AtcSoft.VideoSurveillance.Storybook.Tests` draws scenes with known content (an empty scene, a tree in the wind, a slow walker, a car, a human and a cat together, a camera clock) and scores each detector against the truth: recall, false boxes per picture, latency and tracks. Every score is kept in `baseline.json`, and a test fails when one gets worse. See [Motion Detection Storybook](motion-detection-storybook.md) for writing a scene and running the tests, and `plans/roadmap-boundingbox.md` for the numbers.
+`test/AtcSoft.Video.Surveillance.Storybook.Tests` draws scenes with known content (an empty scene, a tree in the wind, a slow walker, a car, a human and a cat together, a camera clock) and scores each detector against the truth: recall, false boxes per picture, latency and tracks. Every score is kept in `baseline.json`, and a test fails when one gets worse. See [Motion Detection Storybook](motion-detection-storybook.md) for writing a scene and running the tests, and `plans/roadmap-boundingbox.md` for the numbers.
 
 ## ⚡ CPU Scheduling
 

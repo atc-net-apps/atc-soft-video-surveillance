@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AtcSoft.Video.Surveillance</RootNamespace>
+    <NoWarn>$(NoWarn);CA1716</NoWarn>
+    <!-- FreeSpaceReader asks Windows for a folder's free space (network shares too). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>true</IsPackable>
+    <Description>Core domain library for video surveillance — models, enums, events, and service interfaces with zero UI dependencies.</Description>
+    <PackageTags>surveillance;video;rtsp;camera;core</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup Label="NuGet Package Metadata">
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/atc-net-apps/atc-soft-video-surveillance</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/atc-net-apps/atc-soft-video-surveillance.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\images\icon.png" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Atc" Version="3.0.186" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AtcSoft.Video.Surveillance.Tests" />
+  </ItemGroup>
+
+</Project>

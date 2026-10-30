@@ -1,0 +1,298 @@
+<atc:NiceWindow
+    x:Class="AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.CameraConfigurationDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:atcValueConverters="https://github.com/atc-net/atc-wpf/tree/main/schemas/value-converters"
+    xmlns:cameraConfigs="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.Parts.CameraConfigurations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:userControls="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.UserControls"
+    Title="{Binding Path=DialogTitle}"
+    Width="1200"
+    Height="1000"
+    d:DataContext="{d:DesignInstance Type=dialogs:CameraConfigurationDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    ResizeMode="CanResize"
+    ShowInTaskbar="False"
+    WindowStartupLocation="CenterOwner"
+    WindowStyle="ToolWindow"
+    mc:Ignorable="d">
+
+    <atc:NiceWindow.Resources>
+        <!--  Network Scanner Template - only instantiated when IsNew is true  -->
+        <DataTemplate x:Key="NetworkScannerTemplate">
+            <cameraConfigs:NetworkScannerPart />
+        </DataTemplate>
+
+        <!--  Empty template for editing mode  -->
+        <DataTemplate x:Key="EmptyTemplate" />
+
+        <!--
+            Local-host (Atc.Wpf.Hardware) USB picker — used by the
+            standalone CameraWall app where USB enumeration runs
+            in-process via Media Foundation.
+        -->
+        <DataTemplate x:Key="LocalUsbDeviceTemplate">
+            <cameraConfigs:LocalUsbDevicePart />
+        </DataTemplate>
+
+        <!--
+            Remote (gateway-backed) USB picker — used by the API-client
+            app where /devices/usb on the server is the source of
+            truth for connected cameras.
+        -->
+        <DataTemplate x:Key="RemoteUsbDeviceTemplate">
+            <cameraConfigs:UsbDevicePart />
+        </DataTemplate>
+    </atc:NiceWindow.Resources>
+
+    <atc:BusyOverlay IsBusy="{Binding Path=IsTesting}">
+        <atc:GridEx Rows="*,20,Auto">
+
+            <TabControl
+                Grid.Row="0"
+                Margin="0,10,0,0"
+                atc:TabControlHelper.UnderlinePlacement="Bottom"
+                atc:TabControlHelper.Underlined="TabPanel"
+                BorderThickness="0"
+                TabStripPlacement="Top">
+
+                <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=General}">
+                    <ScrollViewer
+                        Padding="0,0,20,0"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+
+                        <StackPanel Margin="15,15,0,15">
+
+                            <!--  Source picker (Network / USB)  -->
+                            <cameraConfigs:SourceTypePart />
+
+                            <!--  Network Scanner (only when adding a new *network* camera)  -->
+                            <ContentControl Content="{Binding}">
+                                <ContentControl.Style>
+                                    <Style TargetType="ContentControl">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource EmptyTemplate}" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding Path=IsNew}" Value="True" />
+                                                    <Condition Binding="{Binding Path=IsNetworkSource}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="ContentTemplate" Value="{StaticResource NetworkScannerTemplate}" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ContentControl.Style>
+                            </ContentControl>
+
+                            <!--  Network branch — 3-column basic settings  -->
+                            <atc:GroupBoxExpander
+                                Margin="0,0,0,20"
+                                Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                             Key=CameraConfiguration}"
+                                Visibility="{Binding Path=IsNetworkSource, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                                <atc:GridEx
+                                    Margin="0,20,0,0"
+                                    Columns="*,20,*,20,*"
+                                    Rows="Auto">
+                                    <cameraConfigs:BasicDisplaySettingsPart Grid.Row="0" Grid.Column="0" />
+                                    <cameraConfigs:BasicConnectionSettingsPart Grid.Row="0" Grid.Column="2" />
+                                    <cameraConfigs:BasicAuthenticationSettingsPart Grid.Row="0" Grid.Column="4" />
+                                </atc:GridEx>
+                            </atc:GroupBoxExpander>
+
+                            <!--  USB branch — display name + device picker side by side  -->
+                            <atc:GroupBoxExpander
+                                Margin="0,0,0,20"
+                                Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                             Key=CameraConfiguration}"
+                                Visibility="{Binding Path=IsUsbSource, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                                <atc:GridEx
+                                    Margin="0,20,0,0"
+                                    Columns="*,20,*"
+                                    Rows="Auto">
+                                    <cameraConfigs:BasicDisplaySettingsPart Grid.Row="0" Grid.Column="0" />
+
+                                    <!--
+                                        Source-specific USB picker. Standalone app uses
+                                        the local Atc.Wpf.Hardware picker (live preview,
+                                        in-process enumeration); API client keeps the
+                                        gateway-backed dropdown.
+                                    -->
+                                    <ContentControl
+                                        Grid.Row="0"
+                                        Grid.Column="2"
+                                        Content="{Binding}">
+                                        <ContentControl.Style>
+                                            <Style TargetType="ContentControl">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource RemoteUsbDeviceTemplate}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Path=UseLocalUsbPicker}" Value="True">
+                                                        <Setter Property="ContentTemplate" Value="{StaticResource LocalUsbDeviceTemplate}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ContentControl.Style>
+                                    </ContentControl>
+                                </atc:GridEx>
+                            </atc:GroupBoxExpander>
+
+                            <!--
+                                Advanced Settings — RTSP-only knobs
+                                (low-latency, jitter buffer, transport).
+                                None apply to local DirectShow USB
+                                capture, so the whole groupbox is
+                                hidden when Source = USB.
+                            -->
+                            <atc:GroupBoxExpander Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AdvancedSettings}" Visibility="{Binding Path=IsNetworkSource, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                                <cameraConfigs:AdvancedStreamSettingsPart Margin="10,15,0,-5" />
+                            </atc:GroupBoxExpander>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Overrides}">
+                    <atc:GridEx Rows="Auto,*">
+
+                        <!--  Info text  -->
+                        <TextBlock
+                            Grid.Row="0"
+                            Margin="15,15,15,10"
+                            FontStyle="Italic"
+                            Foreground="{DynamicResource AtcApps.Brushes.Text}"
+                            Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                       Key=OverrideSettingsInfo}"
+                            TextWrapping="Wrap" />
+
+                        <!--  Camera-Specific Overrides - Left-side tab menu  -->
+                        <TabControl
+                            Grid.Row="1"
+                            BorderThickness="0"
+                            TabStripPlacement="Left">
+
+                            <!--  Display Overrides  -->
+                            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=CameraDisplay}">
+                                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                    <cameraConfigs:DisplayOverridesPart Margin="15" />
+                                </ScrollViewer>
+                            </TabItem>
+
+                            <!--  Connection Overrides  -->
+                            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Connection}">
+                                <ScrollViewer
+                                    Padding="0,0,20,0"
+                                    HorizontalScrollBarVisibility="Disabled"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <cameraConfigs:ConnectionOverridesPart Margin="15" />
+                                </ScrollViewer>
+                            </TabItem>
+
+                            <!--  Performance Overrides  -->
+                            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Performance}">
+                                <ScrollViewer
+                                    Padding="0,0,20,0"
+                                    HorizontalScrollBarVisibility="Disabled"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <cameraConfigs:PerformanceOverridesPart Margin="15" />
+                                </ScrollViewer>
+                            </TabItem>
+
+                            <!--  Capture Overrides  -->
+                            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Capture}">
+                                <ScrollViewer
+                                    Padding="0,0,20,0"
+                                    HorizontalScrollBarVisibility="Disabled"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <cameraConfigs:CaptureOverridesPart Margin="15" />
+                                </ScrollViewer>
+                            </TabItem>
+
+                            <!--  Timelapse Overrides  -->
+                            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Timelapse}">
+                                <ScrollViewer
+                                    Padding="0,0,20,0"
+                                    HorizontalScrollBarVisibility="Disabled"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <cameraConfigs:TimelapseOverridesPart Margin="15" />
+                                </ScrollViewer>
+                            </TabItem>
+
+                            <!--  Motion Detection Overrides  -->
+                            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=MotionDetection}">
+                                <ScrollViewer
+                                    Padding="0,0,20,0"
+                                    HorizontalScrollBarVisibility="Disabled"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <cameraConfigs:MotionDetectionOverridesPart Margin="15" />
+                                </ScrollViewer>
+                            </TabItem>
+
+                        </TabControl>
+
+                    </atc:GridEx>
+                </TabItem>
+
+                <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=MotionZones}">
+                    <atc:BusyOverlay IsBusy="{Binding Path=IsTakingZonePicture}">
+                        <userControls:MotionZoneEditor
+                            Margin="15"
+                            CameraSmallestObjectPercent="{Binding Path=CameraSmallestObjectPercent}"
+                            Picture="{Binding Path=ZonePicture}"
+                            Status="{Binding Path=ZonePictureStatus}"
+                            TakePictureCommand="{Binding Path=TakeZonePictureCommand}"
+                            Zones="{Binding Path=MotionZones, Mode=TwoWay}" />
+                    </atc:BusyOverlay>
+                </TabItem>
+
+            </TabControl>
+
+            <!--  Test Result | Buttons (sticky at bottom)  -->
+            <atc:GridEx
+                Grid.Row="2"
+                Margin="20,0,0,20"
+                Columns="*,20,Auto,24">
+                <atc:LabelTextInfo
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    HideAreas="All"
+                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                    Key=TestResult}"
+                    Text="{Binding Path=TestResult}" />
+
+                <atc:UniformSpacingPanel
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        MinWidth="80"
+                        Padding="16,8"
+                        Command="{Binding Path=TestConnectionCommand}"
+                        Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                      Key=Test}" />
+                    <Button
+                        MinWidth="80"
+                        Padding="16,8"
+                        Command="{Binding Path=SaveCommand}"
+                        Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                      Key=Save}"
+                        IsDefault="True" />
+                    <Button
+                        MinWidth="80"
+                        Padding="16,8"
+                        Command="{Binding Path=CancelCommand}"
+                        Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                      Key=Cancel}"
+                        IsCancel="True" />
+                </atc:UniformSpacingPanel>
+            </atc:GridEx>
+
+        </atc:GridEx>
+    </atc:BusyOverlay>
+
+</atc:NiceWindow>

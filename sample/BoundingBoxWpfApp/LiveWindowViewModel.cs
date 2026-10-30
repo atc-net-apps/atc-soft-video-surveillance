@@ -118,7 +118,7 @@ public sealed partial class LiveWindowViewModel : ViewModelBase, IDisposable
             {
                 created.Open(address, new StreamOptions());
             }
-            catch (Exception ex) when (ex is InvalidOperationException or IOException or AtcSoft.VideoEngine.FFmpeg.FFmpegException)
+            catch (Exception ex) when (ex is InvalidOperationException or IOException or Atc.Video.Engine.FFmpeg.FFmpegException)
             {
                 Log.Error(ex, "The player could not open the live stream {Address}", address);
             }

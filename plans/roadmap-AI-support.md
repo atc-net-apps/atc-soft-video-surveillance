@@ -2,7 +2,7 @@
 
 Plan for telling **what** moved: a label (*person*, *car*, *cat*, *dog*, …) and a score on the tracks our motion detector already finds. It runs on top of motion detection, never instead of it. [CodeProject.AI Server](https://github.com/codeproject/CodeProject.AI-Server) is the main inspiration.
 
-Affects **`AtcSoft.VideoSurveillance.Core`** (a detector seam, labels on tracks, the activity index), a new **detection project** (ONNX Runtime, not in Core), both motion services, the **server** (spec, timeline, webhooks, `GET /events`), the overlays and timelines in **both WPF apps** and the **web client**, the settings dialogs, and the **storybook**.
+Affects **`AtcSoft.Video.Surveillance`** (a detector seam, labels on tracks, the activity index), a new **detection project** (ONNX Runtime, not in Core), both motion services, the **server** (spec, timeline, webhooks, `GET /events`), the overlays and timelines in **both WPF apps** and the **web client**, the settings dialogs, and the **storybook**.
 
 ← Back to the [roadmap home](roadmap.md) · Builds on the [bounding-box plan](roadmap-boundingbox.md) (detector, tracker, activity index, timeline)
 
@@ -48,7 +48,7 @@ Checked against the code on 2026-10-19.
 | **Track ids on the box** | `BoundingBox.TrackId` (Core), `MotionBox.trackId` in `src/VideoSurveillance.yaml`, on `GET /events` | The wire already carries one optional per-box field; `label` and `score` follow the same way |
 | **Activity index** | `{video}.activity.jsonl` beside every recording (`RecordingPathHelper.BuildActivityPath`). Header `{"v":1,"start":…}`, then one line per analysed second: `t`, `a`, `n`, `ids`. Written by `ActivityLogWriter` (fed by `ActivityAccumulator`), read by `ActivityLogFormat` | A place for labels. The reader (`ActivityLogFormat.TryReadSecond`) **already skips unknown keys**, and the header check accepts any numeric `v`, so an extra optional field does not break old readers |
 | **Summaries and server timeline** | `ActivitySummarizer` (10 s stretches by max, events), `ActivitySummaryCache`, `TimelineBuilder`; `GET /timeline`, `GET /timeline/events`, `GET /recordings/activity` | Events to carry labels; a filter by class later |
-| **Storybook harness** | `src/AtcSoft.VideoSurveillance.Storybook` (model, deterministic renderer with truth, scorer); scenes and `baseline.json` in `test/AtcSoft.VideoSurveillance.Storybook.Tests` (`ATCSOFT_BBOX_UPDATE_BASELINE=1` writes new scores) | Scenes with a known class per object (`car`, `human`, `cat`, `dog`). The silhouettes are too simple for a real model (see phase 3) |
+| **Storybook harness** | `src/AtcSoft.Video.Surveillance.Storybook` (model, deterministic renderer with truth, scorer); scenes and `baseline.json` in `test/AtcSoft.Video.Surveillance.Storybook.Tests` (`ATCSOFT_BBOX_UPDATE_BASELINE=1` writes new scores) | Scenes with a known class per object (`car`, `human`, `cat`, `dog`). The silhouettes are too simple for a real model (see phase 3) |
 
 ---
 
@@ -168,7 +168,7 @@ A host process of ours that starts detector processes, queues work for them, ins
 **Build (a) first, behind a seam, and add (b) as a second implementation. Do not build (c) now.**
 
 - A new seam **`IObjectDetector`** in Core: crops (or a picture with regions) in, labelled boxes with scores out, asynchronous, cancellable. No ONNX types in Core.
-- **`OnnxObjectDetector`** in a new project (for example `AtcSoft.VideoSurveillance.Detection.Onnx`), referenced by the server and CameraWall only. Not packable at first. If it ever is, it joins the lockstep and the Trusted Publishing globs (CLAUDE.md).
+- **`OnnxObjectDetector`** in a new project (for example `AtcSoft.Video.Surveillance.Detection.Onnx`), referenced by the server and CameraWall only. Not packable at first. If it ever is, it joins the lockstep and the Trusted Publishing globs (CLAUDE.md).
 - **`HttpObjectDetector`**: a client for the CodeProject.AI / DeepStack `vision/detection` shape, so a user can point a camera at such a server.
 - **Why this order:** (a) works for everyone with nothing else installed, is fastest and is deterministic for the tests. (b) is small once the seam exists, serves users who already run an AI box, and gives an escape hatch for hardware we do not support. (c) only makes sense if (a) proves unstable in-process; the seam keeps that door open, since our own host would just be another `HttpObjectDetector` target.
 
@@ -256,7 +256,7 @@ A host process of ours that starts detector processes, queues work for them, ins
 
 ### Phase 2 — ONNX in-process ⬜ (L)
 
-- New project `AtcSoft.VideoSurveillance.Detection.Onnx` (net10.0, not packable): `OnnxObjectDetector` with the model chosen in phase 0; pre- and post-processing in C# (letterbox; NMS for YOLO-style models, none for the DETR family); the CPU provider by default, DirectML on Windows when asked and available.
+- New project `AtcSoft.Video.Surveillance.Detection.Onnx` (net10.0, not packable): `OnnxObjectDetector` with the model chosen in phase 0; pre- and post-processing in C# (letterbox; NMS for YOLO-style models, none for the DETR family); the CPU provider by default, DirectML on Windows when asked and available.
 - The model manifest (`model.json`): id, classes, input size, licence and URL of code and weights, source URL, SHA-256, size. A download into the data folder (`ServerDataPaths` on the server, `ApplicationPaths` in CameraWall), checked against the SHA-256 before it is loaded; a model with a wrong hash is refused and the reason logged.
 - The server and CameraWall reference it; Core does not.
 

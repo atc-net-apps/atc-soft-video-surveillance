@@ -9,12 +9,12 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>BoundingBoxWpfApp</RootNamespace>
     <IsPackable>false</IsPackable>
-    <ApplicationIcon>..\..\src\AtcSoft.VideoSurveillance.Wpf.Core\Resources\Images\cctv-camera.ico</ApplicationIcon>
+    <ApplicationIcon>..\..\src\AtcSoft.Video.Surveillance.Wpf.Core\Resources\Images\cctv-camera.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Storybook\AtcSoft.VideoSurveillance.Storybook.csproj" />
-    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Wpf.Core\AtcSoft.VideoSurveillance.Wpf.Core.csproj" />
+    <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Storybook\AtcSoft.Video.Surveillance.Storybook.csproj" />
+    <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Wpf.Core\AtcSoft.Video.Surveillance.Wpf.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -12,9 +12,9 @@ A camera's recordings never say where the moving things were, so they cannot tel
 
 | Part | Where |
 |---|---|
-| The model, the reader, the renderer, the scorer, the encoder | `src/AtcSoft.VideoSurveillance.Storybook` (net10.0, not published) |
-| The scenes | `test/AtcSoft.VideoSurveillance.Storybook.Tests/Scenes/*.storybook.json` |
-| Every score of every detector | `test/AtcSoft.VideoSurveillance.Storybook.Tests/baseline.json` |
+| The model, the reader, the renderer, the scorer, the encoder | `src/AtcSoft.Video.Surveillance.Storybook` (net10.0, not published) |
+| The scenes | `test/AtcSoft.Video.Surveillance.Storybook.Tests/Scenes/*.storybook.json` |
+| Every score of every detector | `test/AtcSoft.Video.Surveillance.Storybook.Tests/baseline.json` |
 | The detectors | `BuiltInMotionDetector` (what the apps use) and `FrameDifferenceMotionDetector` (the old detector, for comparison), both in Core behind `IMotionDetector` |
 
 Each scene is run at the server's rate (4 pictures a second) and CameraWall's (15 a second), by both detectors.
@@ -37,7 +37,7 @@ The baseline and expectation tests share their scenes through `[MemberData]` on 
 Run them:
 
 ```bash
-dotnet test test/AtcSoft.VideoSurveillance.Storybook.Tests
+dotnet test test/AtcSoft.Video.Surveillance.Storybook.Tests
 ```
 
 The suite takes about 35 s on a developer machine (about 27 s without FFmpeg, where the encoded scenes skip).
@@ -163,7 +163,7 @@ A test fails when recall drops or false boxes rise by more than 0.005, and when 
 After an improvement, or for a new scene, write the current scores:
 
 ```bash
-ATCSOFT_BBOX_UPDATE_BASELINE=1 dotnet test test/AtcSoft.VideoSurveillance.Storybook.Tests
+ATCSOFT_BBOX_UPDATE_BASELINE=1 dotnet test test/AtcSoft.Video.Surveillance.Storybook.Tests
 ```
 
 Then check the diff of `baseline.json`: only the scores you meant to change should move. The tests read the copy in the output folder, so build again before running them without the variable.
@@ -219,7 +219,7 @@ S7 (rotation) is not a file: the fast path already sees the shown picture, so it
 `sample/BoundingBoxWpfApp` shows a run picture by picture: the grey picture the detector was given, its boxes in red (smoothed, as the apps show them), the objects to box in green and the distractors in orange, with the score beside it as a line and as JSON.
 
 ```bash
-dotnet run --project sample/BoundingBoxWpfApp -- --storybook test/AtcSoft.VideoSurveillance.Storybook.Tests/Scenes/s05-car-human-cat.storybook.json --rate 15
+dotnet run --project sample/BoundingBoxWpfApp -- --storybook test/AtcSoft.Video.Surveillance.Storybook.Tests/Scenes/s05-car-human-cat.storybook.json --rate 15
 dotnet run --project sample/BoundingBoxWpfApp -- --recording path/to/recording.mp4
 ```
 
@@ -278,7 +278,7 @@ Put reviewed recordings with their reviews in one folder, outside git (they show
 
 ```powershell
 $env:ATCSOFT_BBOX_CORPUS = "D:\corpus"
-dotnet test test/AtcSoft.VideoSurveillance.Storybook.Tests --filter CorpusTests
+dotnet test test/AtcSoft.Video.Surveillance.Storybook.Tests --filter CorpusTests
 ```
 
 ### The sweep
@@ -286,7 +286,7 @@ dotnet test test/AtcSoft.VideoSurveillance.Storybook.Tests --filter CorpusTests
 Which defaults do best? *Sweep scenes…* in the sample app (or `--sweep folder`, with `--corpus folder` or `ATCSOFT_BBOX_CORPUS` for reviewed recordings) tries combinations of the settings a person can change: sensitivity 10 to 70 in steps of 10, the smallest object 0.01, 0.02 and 0.05 % of the picture, the stopped-object time 60 s. Each goes on top of a scene's own settings (S14 keeps its lighting), at 4 and 15 pictures a second, and over every reviewed recording as *Analyse recording* reads it (the review's zones). The combinations are ranked: the most scene runs meeting their expectations first (known-bad scenes not judged), then the corpus's recall and false boxes, then the scenes' mean recall and false boxes. The report (Markdown, in `{data}\sweeps`) says where the shipped defaults stand and in which scenes the best differs from them. Scenes run on the fast path, each drawn once per rate (`StorybookRunner.Draw`), so a scene with a bitrate is not encoded here.
 
 ```powershell
-dotnet run --project sample/BoundingBoxWpfApp -- --sweep test/AtcSoft.VideoSurveillance.Storybook.Tests/Scenes
+dotnet run --project sample/BoundingBoxWpfApp -- --sweep test/AtcSoft.Video.Surveillance.Storybook.Tests/Scenes
 ```
 
 ---

@@ -1,0 +1,20 @@
+# relative/path|literal text|why it is not translated
+src/AtcSoft.Video.Surveillance.Wpf.App/MainWindow.xaml|.:: AtcSoft Video Surveillance ::.|the product name
+src/AtcSoft.Video.Surveillance.Wpf.App/Dialogs/ServerConnectionDialog.xaml|https://server:5000|an example address, the same in every language
+src/AtcSoft.Video.Surveillance.Wpf.App/Dialogs/ServerProfileEditDialog.xaml|https://server:5000|an example address, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|/stream1|an example path
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|HTTPS|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|HTTP|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|Microphone (HD Webcam)|an example device name
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|RTSP|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|TCP|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|UDP|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/SettingsTabs/CaptureTab.razor|AVI|a file format, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/SettingsTabs/CaptureTab.razor|MP4|a file format, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/SettingsTabs/ConnectionTab.razor|HTTPS|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/SettingsTabs/ConnectionTab.razor|HTTP|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/SettingsTabs/ConnectionTab.razor|RTSP|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/SettingsTabs/PerformanceTab.razor|TCP|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Pages/SettingsTabs/PerformanceTab.razor|UDP|a protocol, the same in every language
+src/AtcSoft.Video.Surveillance.Blazor.App/Shared/MainLayout.razor|Video Surveillance|the product name
+src/AtcSoft.Video.Surveillance.Blazor.App/Shared/WebhookDialog.razor|https://example.com/hooks/surveillance|an example address

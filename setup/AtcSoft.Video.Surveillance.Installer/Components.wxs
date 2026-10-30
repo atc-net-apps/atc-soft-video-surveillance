@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <!-- All published files are auto-harvested via HarvestDirectory in the wixproj.
+         The HarvestedComponents group is populated automatically by WixToolset.Heat. -->
+
+    <!-- Start Menu Shortcut -->
+    <Component Id="ApplicationShortcut" Guid="B7C8D9E0-F1A2-3456-7890-ABCDEF012345" Directory="ApplicationProgramsFolder">
+      <Shortcut Id="ApplicationStartMenuShortcut"
+                Name="AtcSoft Video Surveillance"
+                Description="Video Surveillance application for monitoring multiple camera streams"
+                Target="[INSTALLFOLDER]AtcSoft.Video.Surveillance.Wpf.App.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="VideoSurveillanceIcon" />
+      <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\AtcSoft\VideoSurveillance" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <!-- Desktop Shortcut -->
+    <Component Id="DesktopShortcut" Guid="C8D9E0F1-A2B3-4567-8901-BCDEF0123456" Directory="DesktopFolder">
+      <Shortcut Id="DesktopShortcutLink"
+                Name="AtcSoft Video Surveillance"
+                Description="Video Surveillance application for monitoring multiple camera streams"
+                Target="[INSTALLFOLDER]AtcSoft.Video.Surveillance.Wpf.App.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="VideoSurveillanceIcon" />
+      <RegistryValue Root="HKCU" Key="Software\AtcSoft\VideoSurveillance" Name="desktopshortcut" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+  </Fragment>
+</Wix>

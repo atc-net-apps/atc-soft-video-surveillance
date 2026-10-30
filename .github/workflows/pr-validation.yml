@@ -50,10 +50,10 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Publish Application
-        run: dotnet publish src/AtcSoft.CameraWall.Wpf.App/AtcSoft.CameraWall.Wpf.App.csproj --configuration ${{ env.CONFIGURATION }} --output ./publish
+        run: dotnet publish src/AtcSoft.Video.Surveillance.CameraWall.Wpf.App/AtcSoft.Video.Surveillance.CameraWall.Wpf.App.csproj --configuration ${{ env.CONFIGURATION }} --output ./publish
 
       - name: Build Installer
-        run: dotnet build setup/AtcSoft.CameraWall.Installer/AtcSoft.CameraWall.Installer.wixproj --configuration ${{ env.CONFIGURATION }}
+        run: dotnet build setup/AtcSoft.Video.Surveillance.CameraWall.Installer/AtcSoft.Video.Surveillance.CameraWall.Installer.wixproj --configuration ${{ env.CONFIGURATION }}
 
   build-installer-videosurveillance:
     name: Build VideoSurveillance Installer (Validation)
@@ -72,7 +72,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Publish Application
-        run: dotnet publish src/AtcSoft.VideoSurveillance.Wpf.App/AtcSoft.VideoSurveillance.Wpf.App.csproj --configuration ${{ env.CONFIGURATION }} --output ./publish-vs
+        run: dotnet publish src/AtcSoft.Video.Surveillance.Wpf.App/AtcSoft.Video.Surveillance.Wpf.App.csproj --configuration ${{ env.CONFIGURATION }} --output ./publish-vs
 
       - name: Build Installer
-        run: dotnet build setup/AtcSoft.VideoSurveillance.Installer/AtcSoft.VideoSurveillance.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-vs
+        run: dotnet build setup/AtcSoft.Video.Surveillance.Installer/AtcSoft.Video.Surveillance.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-vs

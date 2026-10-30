@@ -1,0 +1,389 @@
+<atc:NiceWindow
+    x:Class="AtcSoft.Video.Surveillance.Wpf.Core.Windows.FullScreenRecordingWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:atcValueConverters="https://github.com/atc-net/atc-wpf/tree/main/schemas/value-converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:userControls="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.UserControls"
+    xmlns:windows="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.Windows"
+    Title="{Binding Path=FileName}"
+    d:DataContext="{d:DesignInstance Type=windows:FullScreenRecordingWindowViewModel,
+                                     IsDesignTimeCreatable=False}"
+    AllowsTransparency="False"
+    IgnoreTaskbarOnMaximize="True"
+    Background="Black"
+    ResizeMode="NoResize"
+    ShowInTaskbar="True"
+    Topmost="True"
+    UseNoneWindowStyle="True"
+    WindowState="Maximized"
+    WindowStyle="None"
+    mc:Ignorable="d">
+
+    <atc:NiceWindow.Resources>
+        <ResourceDictionary Source="/AtcSoft.Video.Surveillance.Wpf.Core;component/Themes/FullScreenStyles.xaml" />
+    </atc:NiceWindow.Resources>
+
+    <Grid x:Name="RootGrid">
+        <!--  Video Player (MediaElement for local file playback)  -->
+        <MediaElement
+            x:Name="VideoPlayer"
+            LoadedBehavior="Manual"
+            Stretch="Uniform"
+            UnloadedBehavior="Stop">
+            <MediaElement.LayoutTransform>
+                <RotateTransform Angle="{Binding Path=VideoRotationAngle}" />
+            </MediaElement.LayoutTransform>
+        </MediaElement>
+
+        <!--  Overlay content (directly in visual tree - no airspace issue for MediaElement)  -->
+        <Grid Background="Transparent">
+            <!--  Recording Info Overlay (Top-Left) - Always visible  -->
+            <Border
+                x:Name="OverlayBorder"
+                Margin="20"
+                Padding="12,8"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Background="#B3000000"
+                CornerRadius="4">
+                <StackPanel>
+                    <TextBlock
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Foreground="{Binding Path=FilenameColor}"
+                        Text="{Binding Path=FileName}"
+                        Visibility="{Binding Path=ShowFilename, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
+                    <TextBlock
+                        Margin="0,4,0,0"
+                        FontFamily="Consolas"
+                        FontSize="20"
+                        FontWeight="Bold"
+                        Foreground="{Binding Path=TimestampColor}"
+                        Text="{Binding Path=RecordingTimeText}"
+                        Visibility="{Binding Path=ShowTimestamp, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
+                </StackPanel>
+            </Border>
+
+            <!--  Close Button (Top-Right)  -->
+            <Button
+                AutomationProperties.Name="Close"
+                Width="40"
+                Height="40"
+                Margin="20"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Command="{Binding Path=CloseCommand}"
+                Opacity="{Binding Path=IsOverlayVisible, Converter={x:Static atcValueConverters:BoolToOpacityValueConverter.Instance}}"
+                Style="{StaticResource FullScreenCloseButtonStyle}"
+                ToolTip="Close">
+                <Path
+                    Width="14"
+                    Height="14"
+                    Data="M0,0 L14,14 M14,0 L0,14"
+                    Stroke="White"
+                    StrokeThickness="2" />
+            </Button>
+
+            <!--  Playback Controls Bar (Bottom)  -->
+            <Border
+                x:Name="ControlsBar"
+                Margin="20"
+                Padding="16,12"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Background="#B3000000"
+                CornerRadius="8"
+                Opacity="{Binding Path=IsOverlayVisible, Converter={x:Static atcValueConverters:BoolToOpacityValueConverter.Instance}}">
+                <StackPanel Orientation="Horizontal">
+                    <!--  Play/Pause Button  -->
+                    <Button
+                        x:Name="PlayPauseButton"
+                        Width="40"
+                        Height="40"
+                        Margin="0,0,12,0"
+                        Command="{Binding Path=PlayPauseCommand}"
+                        Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="AutomationProperties.Name" Value="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Play}" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="20">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#33FFFFFF" />
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding Path=IsPlaying}" Value="True">
+                                        <Setter Property="AutomationProperties.Name" Value="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Pause}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Grid>
+                            <!--  Play Icon (shown when paused)  -->
+                            <Path
+                                x:Name="PlayIcon"
+                                Width="20"
+                                Height="20"
+                                Data="M5,3 L19,12 L5,21 Z"
+                                Fill="White"
+                                Stretch="Uniform">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Path=IsPlaying}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+                            <!--  Pause Icon (shown when playing)  -->
+                            <Grid Width="20" Height="20">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Path=IsPlaying}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Rectangle
+                                    Width="6"
+                                    Height="18"
+                                    HorizontalAlignment="Left"
+                                    Fill="White" />
+                                <Rectangle
+                                    Width="6"
+                                    Height="18"
+                                    HorizontalAlignment="Right"
+                                    Fill="White" />
+                            </Grid>
+                        </Grid>
+                    </Button>
+
+                    <!--  Speed Button  -->
+                    <Button
+                        AutomationProperties.Name="Click to change playback speed"
+                        Width="50"
+                        Height="40"
+                        Margin="0,0,12,0"
+                        Command="{Binding Path=CycleSpeedCommand}"
+                        Cursor="Hand"
+                        ToolTip="Click to change playback speed">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="4">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#33FFFFFF" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Text="{Binding Path=SpeedText}" />
+                    </Button>
+
+                    <!--  Previous / next event: shown when the recording has an activity index  -->
+                    <StackPanel
+                        Margin="0,0,12,0"
+                        Orientation="Horizontal"
+                        Visibility="{Binding Path=HasActivity, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                        <Button
+                            Width="36"
+                            Height="40"
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                            Key=PreviousEvent}"
+                            Command="{Binding Path=PreviousEventCommand}"
+                            Style="{StaticResource FullScreenIconButtonStyle}"
+                            ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                          Key=PreviousEvent}">
+                            <Path
+                                Width="16"
+                                Height="16"
+                                Data="M2,2 L4,2 L4,14 L2,14 Z M14,2 L6,8 L14,14 Z"
+                                Fill="#FF8C00"
+                                Stretch="Uniform" />
+                        </Button>
+                        <Button
+                            Width="36"
+                            Height="40"
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                            Key=NextEvent}"
+                            Command="{Binding Path=NextEventCommand}"
+                            Style="{StaticResource FullScreenIconButtonStyle}"
+                            ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                          Key=NextEvent}">
+                            <Path
+                                Width="16"
+                                Height="16"
+                                Data="M12,2 L14,2 L14,14 L12,14 Z M2,2 L10,8 L2,14 Z"
+                                Fill="#FF8C00"
+                                Stretch="Uniform" />
+                        </Button>
+                        <ToggleButton
+                            Width="36"
+                            Height="40"
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                            Key=PlayEventsOnly}"
+                            IsChecked="{Binding Path=PlayEventsOnly, Mode=TwoWay}"
+                            Style="{StaticResource FullScreenToggleIconButtonStyle}"
+                            ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                          Key=PlayEventsOnly}">
+                            <Path
+                                Width="16"
+                                Height="16"
+                                Data="M1,6 L4,6 L4,10 L1,10 Z M6,3 L10,3 L10,13 L6,13 Z M12,6 L15,6 L15,10 L12,10 Z"
+                                Fill="#FF8C00"
+                                Stretch="Uniform" />
+                        </ToggleButton>
+                        <Button
+                            Width="36"
+                            Height="40"
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                            Key=ZoomOut}"
+                            Command="{Binding Path=ZoomActivityOutCommand}"
+                            Style="{StaticResource FullScreenIconButtonStyle}"
+                            ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                          Key=ZoomOut}">
+                            <Path
+                                Width="16"
+                                Height="16"
+                                Data="M6.5,1.5 A5,5 0 1 1 6.5,11.5 A5,5 0 1 1 6.5,1.5 Z M10.2,10.2 L14.5,14.5 M4,6.5 L9,6.5"
+                                Stretch="Uniform"
+                                Stroke="#FF8C00"
+                                StrokeThickness="2" />
+                        </Button>
+                        <Button
+                            Width="36"
+                            Height="40"
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                            Key=ZoomIn}"
+                            Command="{Binding Path=ZoomActivityInCommand}"
+                            Style="{StaticResource FullScreenIconButtonStyle}"
+                            ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                          Key=ZoomIn}">
+                            <Path
+                                Width="16"
+                                Height="16"
+                                Data="M6.5,1.5 A5,5 0 1 1 6.5,11.5 A5,5 0 1 1 6.5,1.5 Z M10.2,10.2 L14.5,14.5 M4,6.5 L9,6.5 M6.5,4 L6.5,9"
+                                Stretch="Uniform"
+                                Stroke="#FF8C00"
+                                StrokeThickness="2" />
+                        </Button>
+                    </StackPanel>
+
+                    <!--  Position Text  -->
+                    <TextBlock
+                        MinWidth="50"
+                        Margin="0,0,12,0"
+                        VerticalAlignment="Center"
+                        FontSize="14"
+                        Foreground="White"
+                        Text="{Binding Path=PositionText}" />
+
+                    <!--  Activity timeline over the seek slider: one stretch per pixel  -->
+                    <StackPanel
+                        Width="400"
+                        Margin="0,0,12,0"
+                        VerticalAlignment="Center">
+                        <userControls:ActivityTimeline
+                            Height="28"
+                            Margin="5,0,5,2"
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                            Key=ActivityTimeline}"
+                            Buckets="{Binding Path=ActivityBuckets}"
+                            DurationSeconds="{Binding Path=ActivityDurationSeconds}"
+                            Position="{Binding Path=ActivityPosition}"
+                            Previews="{Binding Path=ActivityPreviews}"
+                            RecordingStart="{Binding Path=ActivityRecordingStart}"
+                            SeekCommand="{Binding Path=SeekActivityCommand}"
+                            VerdictCommand="{Binding Path=GiveVerdictCommand}"
+                            VisibleEnd="{Binding Path=ActivityEnd}"
+                            VisibleStart="{Binding Path=ActivityStart}"
+                            ZoomCommand="{Binding Path=ZoomActivityCommand}"
+                            ZoneBrushes="{Binding Path=ZoneBrushes}"
+                            Visibility="{Binding Path=HasActivity, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
+
+                        <!--  What became of a verdict given on the timeline  -->
+                        <TextBlock
+                            Margin="5,0,5,2"
+                            AutomationProperties.AutomationId="VerdictMessage"
+                            FontSize="12"
+                            Foreground="White"
+                            Text="{Binding Path=VerdictMessage}"
+                            TextWrapping="Wrap"
+                            Visibility="{Binding Path=VerdictMessage, Converter={x:Static atcValueConverters:StringNullOrEmptyToVisibilityCollapsedValueConverter.Instance}}" />
+
+                        <!--  Seek Slider  -->
+                        <Slider
+                            x:Name="SeekSlider"
+                            Focusable="True"
+                            IsEnabled="{Binding Path=CanSeek}"
+                            IsMoveToPointEnabled="True"
+                            IsSnapToTickEnabled="False"
+                            Maximum="{Binding Path=SeekMaximum}"
+                            Minimum="0"
+                            Value="{Binding Path=SeekPosition, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <!--  Duration Text  -->
+                    <TextBlock
+                        MinWidth="50"
+                        VerticalAlignment="Center"
+                        FontSize="14"
+                        Foreground="White"
+                        Text="{Binding Path=DurationText}" />
+                </StackPanel>
+            </Border>
+
+            <!--  ESC hint at bottom  -->
+            <TextBlock
+                Margin="0,0,0,80"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                FontSize="12"
+                Foreground="#66FFFFFF"
+                Opacity="{Binding Path=IsOverlayVisible, Converter={x:Static atcValueConverters:BoolToOpacityValueConverter.Instance}}"
+                Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                           Key=PressEscToExit}" />
+        </Grid>
+    </Grid>
+</atc:NiceWindow>
