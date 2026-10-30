@@ -416,7 +416,9 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         }
 
         var oldFilePath = session.CurrentFilePath;
-        var newFilePath = GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera));
+        var newFilePath = UniqueFilename.EnsureDifferentFrom(
+            GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera)),
+            oldFilePath);
 
         var directory = Path.GetDirectoryName(newFilePath);
         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))

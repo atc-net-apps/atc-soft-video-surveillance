@@ -57,4 +57,33 @@ public static class UniqueFilename
         var ms = DateTime.UtcNow.ToString("HHmmssfff", CultureInfo.InvariantCulture);
         return Path.Combine(dir, string.Create(CultureInfo.InvariantCulture, $"{stem}_{ms}{ext}"));
     }
+
+    /// <summary>
+    /// Returns <paramref name="desiredPath"/> unless it is the file being written now, in which
+    /// case it gets a suffix as with <see cref="EnsureUnique"/>. A recorder writes its file on
+    /// the first picture, so a new segment started in the same millisecond as the current one
+    /// would otherwise get the current file's name, which is not on disk yet.
+    /// </summary>
+    /// <param name="desiredPath">The intended path of the new file.</param>
+    /// <param name="currentPath">The path of the file being written now, if any.</param>
+    /// <param name="fileExists">
+    /// Optional override of <see cref="File.Exists"/> for testability.
+    /// </param>
+    public static string EnsureDifferentFrom(
+        string desiredPath,
+        string? currentPath,
+        Func<string, bool>? fileExists = null)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(desiredPath);
+
+        if (!string.Equals(desiredPath, currentPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return desiredPath;
+        }
+
+        var exists = fileExists ?? File.Exists;
+        return EnsureUnique(
+            desiredPath,
+            path => exists(path) || string.Equals(path, currentPath, StringComparison.OrdinalIgnoreCase));
+    }
 }

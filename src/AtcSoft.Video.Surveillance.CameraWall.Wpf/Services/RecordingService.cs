@@ -388,7 +388,9 @@ public partial class RecordingService : IRecordingService, IDisposable
 
             // 2. Generate new filename with current timestamp
             var format = GetEffectiveRecordingFormat(camera);
-            var newFilePath = GenerateRecordingFilename(camera, format);
+            var newFilePath = UniqueFilename.EnsureDifferentFrom(
+                GenerateRecordingFilename(camera, format),
+                oldFilePath);
 
             // Ensure directory exists
             var directory = Path.GetDirectoryName(newFilePath);
