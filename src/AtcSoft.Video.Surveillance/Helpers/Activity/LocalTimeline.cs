@@ -86,6 +86,7 @@ public static class LocalTimeline
 
         var touching = found.Where(f => f.Start < to && f.End > from).ToList();
         var summaries = new ActivitySummary?[touching.Count];
+        cache.Reserve(touching.Count);
         Parallel.For(0, touching.Count, i => summaries[i] = cache.Get(RecordingPathHelper.BuildActivityPath(touching[i].Path)));
 
         var byCamera = new Dictionary<Guid, List<TimelineRecording>>();

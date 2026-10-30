@@ -16,12 +16,23 @@ public class ActivitySummaryCacheBenchmarks
     [Params(4_000, 6_000)]
     public int Recordings { get; set; }
 
+    /// <summary>
+    /// Whether the timeline makes room in the cache first, as the server's and CameraWall's do.
+    /// </summary>
+    [Params(false, true)]
+    public bool Reserve { get; set; }
+
     [GlobalSetup]
     public void Setup()
     {
         archive = Archive.Create(cameraCount: 30, Recordings);
         indexes = [.. archive.Videos.Select(RecordingPathHelper.BuildActivityPath)];
         cache = new ActivitySummaryCache(Capacity);
+        if (Reserve)
+        {
+            cache.Reserve(indexes.Length);
+        }
+
         ReadAll();
     }
 

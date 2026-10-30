@@ -23,6 +23,9 @@ internal static class TimelineRecordings
             .Where(f => f.StartedAt < to && f.LastWrittenAt > from)
             .ToList();
 
+        // A timeline built again a moment later finds every summary still kept.
+        cache.Reserve(touching.Count);
+
         var summaries = new AtcSoft.Video.Surveillance.Models.ActivitySummary?[touching.Count];
         Parallel.For(
             0,
