@@ -15,11 +15,20 @@ public static class SafeJsonFile
     /// previous file or the new file fully intact — never a half-written one.
     /// </summary>
     /// <typeparam name="T">Type of <paramref name="value"/> being serialized.</typeparam>
+    /// <param name="path">The file to write.</param>
+    /// <param name="value">The value to serialize.</param>
+    /// <param name="options">The serializer options.</param>
+    /// <param name="writeTempFile">
+    /// Writes the temp file (path, text); <see cref="File.WriteAllText(string, string?)"/> when not given.
+    /// A file with secrets passes one that creates it with restricted access, which the replaced
+    /// file then keeps: <see cref="File.Replace(string, string, string?)"/> keeps the access of the file it replaces.
+    /// </param>
     /// <returns><c>true</c> on success, <c>false</c> if any step failed.</returns>
     public static bool TryWrite<T>(
         string path,
         T value,
-        JsonSerializerOptions? options = null)
+        JsonSerializerOptions? options = null,
+        Action<string, string>? writeTempFile = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
 
@@ -37,7 +46,7 @@ public static class SafeJsonFile
             var json = JsonSerializer.Serialize(value, options);
 
             // Write+flush the temp file
-            File.WriteAllText(tempPath, json);
+            (writeTempFile ?? File.WriteAllText)(tempPath, json);
 
             // Round-trip verify before promoting; catches truncated writes
             // (e.g. disk full mid-write) and serializer regressions.

@@ -129,6 +129,10 @@ public sealed class AccessTokens
 
     private static byte[] LoadOrCreateKey(string keyPath)
     {
+        // Whoever reads the key can sign an admin's token: it is kept from the
+        // machine's other users, also when an older server wrote it.
+        SecretFile.TryRestrict(keyPath);
+
         if (File.Exists(keyPath) &&
             Convert.TryFromBase64String(File.ReadAllText(keyPath).Trim(), new byte[KeyLength], out var length) &&
             length == KeyLength)
@@ -137,8 +141,7 @@ public sealed class AccessTokens
         }
 
         var created = RandomNumberGenerator.GetBytes(KeyLength);
-        Directory.CreateDirectory(Path.GetDirectoryName(keyPath)!);
-        File.WriteAllText(keyPath, Convert.ToBase64String(created));
+        SecretFile.WriteAllText(keyPath, Convert.ToBase64String(created));
         return created;
     }
 }

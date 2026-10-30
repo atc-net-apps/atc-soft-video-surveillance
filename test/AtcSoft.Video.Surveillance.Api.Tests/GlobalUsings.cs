@@ -3,6 +3,9 @@ global using System.Diagnostics;
 global using System.Globalization;
 global using System.Net;
 global using System.Net.Http.Json;
+global using System.Runtime.Versioning;
+global using System.Security.AccessControl;
+global using System.Security.Principal;
 global using System.Text.Json;
 global using System.Text.Json.Nodes;
 

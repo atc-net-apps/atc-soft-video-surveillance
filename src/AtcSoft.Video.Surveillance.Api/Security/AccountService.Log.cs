@@ -19,4 +19,7 @@ public sealed partial class AccountService
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The accounts could not be saved to {Path}")]
     private partial void LogSaveFailed(string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The access to {Path} could not be restricted; other users of this machine may be able to read it. Move the server's data folder (Storage:DataPath) to a folder only the server's account can use")]
+    private partial void LogSecretNotRestricted(string path);
 }

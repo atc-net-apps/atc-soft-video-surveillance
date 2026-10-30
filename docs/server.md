@@ -41,6 +41,8 @@ The data folder also holds the server's security files. Keep them with the rest 
 | `setup-code.txt` | The one-time code that creates the first admin. Only there while the server has no user |
 | `audit.log` | Who changed what |
 
+The default data folder, `%ProgramData%\AtcSoft\VideoSurveillance`, is shared: every user of the machine may read it, and the desktop client's installer lets them change it. So the server gives `accounts.json` (and its `.bak`), `signing.key`, `setup-code.txt` and the `keys\` folder access of their own: the local system, the administrators and the account the server runs as, nothing inherited from the folder. It does this when it writes them, and at every start for files an older version wrote. Where that is not possible (a share that does not support it), it logs a warning; then give the server a data folder of its own with `Storage:DataPath`.
+
 ---
 
 ## 🔐 Sign-in and access

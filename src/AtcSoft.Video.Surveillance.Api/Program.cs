@@ -71,7 +71,15 @@ try
 
     // The camera passwords and webhook secrets are encrypted in the data
     // folder, with keys kept in it too: the folder moves as a whole, and a
-    // copy of cameras.json alone gives no password away.
+    // copy of cameras.json alone gives no password away. The keys folder is
+    // kept from the machine's other users: the default data folder is shared.
+    if (!SecretFile.TryCreateRestrictedDirectory(dataPaths.KeysPath))
+    {
+        Log.Warning(
+            "The access to {Path} could not be restricted; other users of this machine may be able to read the keys",
+            dataPaths.KeysPath);
+    }
+
     builder.Services
         .AddDataProtection()
         .SetApplicationName("AtcSoft.Video.Surveillance")

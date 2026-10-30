@@ -71,6 +71,17 @@ public sealed partial class AccountService : IAccountService
         this.time = time;
         this.logger = logger;
         Tokens = new AccessTokens(paths.SigningKeyPath, time);
+
+        // Files an older server wrote with the folder's access are kept from
+        // the machine's other users from now on.
+        foreach (var secret in new[] { paths.SigningKeyPath, paths.AccountsPath, paths.AccountsPath + ".bak", paths.SetupCodePath })
+        {
+            if (!SecretFile.TryRestrict(secret))
+            {
+                LogSecretNotRestricted(secret);
+            }
+        }
+
         file = SafeJsonFile.TryRead<StoredAccounts>(paths.AccountsPath, FileOptions) ?? new StoredAccounts();
 
         // A file from before sessions had an id.
@@ -577,9 +588,9 @@ public sealed partial class AccountService : IAccountService
     {
         if (ReadSetupCode() is null)
         {
+            // Whoever reads the code becomes the first admin.
             var code = new string(RandomNumberGenerator.GetItems(SetupCodeAlphabet.AsSpan(), SetupCodeLength));
-            Directory.CreateDirectory(Path.GetDirectoryName(paths.SetupCodePath)!);
-            File.WriteAllText(paths.SetupCodePath, code);
+            SecretFile.WriteAllText(paths.SetupCodePath, code);
         }
 
         // Where the code is, never the code itself.
@@ -601,7 +612,8 @@ public sealed partial class AccountService : IAccountService
 
     private void Save()
     {
-        if (!SafeJsonFile.TryWrite(paths.AccountsPath, file, FileOptions))
+        // The users' password hashes and sessions: kept from the machine's other users.
+        if (!SafeJsonFile.TryWrite(paths.AccountsPath, file, FileOptions, SecretFile.WriteAllText))
         {
             LogSaveFailed(paths.AccountsPath);
         }
