@@ -9,10 +9,12 @@ public sealed class GitHubReleaseService : IGitHubReleaseService, IDisposable
 {
     private const string GitHubApiUrl = "https://api.github.com/repos/atc-net-apps/atc-soft-video-surveillance/releases/latest";
     private const string UserAgent = "AtcSoft-VideoSurveillance";
+    private const string AppSuffix = ".Wpf.App";
     private static readonly TimeSpan LockAcquisitionTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan HttpRequestTimeout = TimeSpan.FromSeconds(10);
 
     private readonly HttpClient httpClient;
+    private readonly string? installerAssetName;
     private readonly SemaphoreSlim cacheLock = new(1, 1);
     private string? cachedResponse;
     private bool disposed;
@@ -27,7 +29,19 @@ public sealed class GitHubReleaseService : IGitHubReleaseService, IDisposable
             Timeout = HttpRequestTimeout,
         };
         httpClient.DefaultRequestHeaders.Add("User-Agent", UserAgent);
+        installerAssetName = GetInstallerAssetName(System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name);
     }
+
+    /// <summary>
+    /// Gets the name of the installer a desktop app is updated with. Every release carries one
+    /// installer per app, named after the app: <c>X.Wpf.App</c> is installed by <c>X.Installer.msi</c>.
+    /// </summary>
+    /// <param name="appAssemblyName">The app's assembly name, e.g. <c>AtcSoft.Video.Surveillance.Wpf.App</c>.</param>
+    /// <returns>The installer's file name, or <see langword="null"/> for anything that is not a desktop app.</returns>
+    public static string? GetInstallerAssetName(string? appAssemblyName)
+        => appAssemblyName is not null && appAssemblyName.EndsWith(AppSuffix, StringComparison.Ordinal)
+            ? string.Concat(appAssemblyName.AsSpan(0, appAssemblyName.Length - AppSuffix.Length), ".Installer.msi")
+            : null;
 
     /// <inheritdoc />
     public async Task<Version?> GetLatestVersionAsync()
@@ -121,7 +135,7 @@ public sealed class GitHubReleaseService : IGitHubReleaseService, IDisposable
                 {
                     if (asset.TryGetProperty("name", out var name) &&
                         name.GetString() is { } assetName &&
-                        assetName.EndsWith(".msi", StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(assetName, installerAssetName, StringComparison.OrdinalIgnoreCase) &&
                         asset.TryGetProperty("browser_download_url", out var downloadUrl))
                     {
                         var urlString = downloadUrl.GetString();
@@ -138,7 +152,7 @@ public sealed class GitHubReleaseService : IGitHubReleaseService, IDisposable
             // Silently fail - update check is not critical
         }
 
-        // Fall back to release page URL
+        // Without this app's installer in the release, the release page lets the user choose.
         return await GetLatestReleaseUrlAsync().ConfigureAwait(false);
     }
 
