@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/benchmark/">
+    <Project Path="benchmark/AtcSoft.Video.Surveillance.Benchmarks/AtcSoft.Video.Surveillance.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/docs/">
     <File Path="docs/architecture.md" />
     <File Path="docs/motion-detection.md" />
