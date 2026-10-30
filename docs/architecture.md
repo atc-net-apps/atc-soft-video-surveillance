@@ -72,7 +72,7 @@ graph BT
     Aspire --> VSApp
 ```
 
-`AtcSoft.Video.Surveillance.Windows` is the optional Windows-only USB layer — Media Foundation device enumeration plus a WMI hot-plug watcher. The Core abstraction (`IUsbCameraEnumerator` / `IUsbCameraWatcher`) lives in `AtcSoft.Video.Surveillance` so non-Windows hosts can compose with `NullUsbCameraEnumerator` / `NullUsbCameraWatcher` and a future V4L2 / AVFoundation implementation can drop in without touching consumers. The `Api` host targets `net10.0-windows` so it can reference `VideoEngine.Windows` directly; Linux and macOS USB support is deferred (it is not on the roadmap).
+`AtcSoft.Video.Surveillance.Windows` is the optional Windows-only USB layer — Media Foundation device enumeration plus a WMI hot-plug watcher. The Core abstraction (`IUsbCameraEnumerator` / `IUsbCameraWatcher`) lives in `AtcSoft.Video.Surveillance` so non-Windows hosts can compose with `NullUsbCameraEnumerator` / `NullUsbCameraWatcher` and a future V4L2 / AVFoundation implementation can drop in without touching consumers. The `Api` host targets `net10.0-windows` so it can reference `AtcSoft.Video.Surveillance.Windows` directly; Linux and macOS USB support is deferred (it is not on the roadmap).
 
 ## 📊 Layered Architecture
 
@@ -93,9 +93,9 @@ graph TB
 
     subgraph VideoLayer["Video Layer"]
         direction LR
-        VideoPlayer["Wpf.VideoPlayer<br/><i>VideoHost + DComp Overlay</i>"]
-        DirectX["VideoEngine.DirectX<br/><i>D3D11VA, SwapChain</i>"]
-        VideoEngine["VideoEngine<br/><i>FFmpeg Demux/Decode/Record</i>"]
+        VideoPlayer["Atc.Video.Player.Wpf<br/><i>VideoHost + DComp Overlay</i>"]
+        DirectX["Atc.Video.Engine.DirectX<br/><i>D3D11VA, SwapChain</i>"]
+        VideoEngine["Atc.Video.Engine<br/><i>FFmpeg Demux/Decode/Record</i>"]
     end
 
     subgraph APILayer["API Layer"]
@@ -137,13 +137,13 @@ graph LR
         Capture["FrameCapture<br/><i>PNG snapshots</i>"]
     end
 
-    subgraph DirectX["VideoEngine.DirectX"]
+    subgraph DirectX["Atc.Video.Engine.DirectX"]
         HwAccel["HwAccelContext<br/><i>D3D11VA device</i>"]
         VPR["VideoProcessorRenderer<br/><i>NV12 → BGRA + per-stream rotation</i>"]
         SCP["SwapChainPresenter<br/><i>DirectComposition</i>"]
     end
 
-    subgraph WPF["Wpf.VideoPlayer"]
+    subgraph WPF["Atc.Video.Player.Wpf"]
         VideoHost["VideoHost<br/><i>DComp Surface + Overlay</i>"]
     end
 
@@ -259,7 +259,7 @@ sequenceDiagram
 | Assembly | Target | Description |
 |----------|--------|-------------|
 | **AtcSoft.Video.Surveillance.Tests** | net10.0 | xUnit v3 unit tests for Core library. Tests models, enums, events, extensions, factories, and helpers. Uses AutoFixture, AwesomeAssertions, and NSubstitute. |
-| **Atc.Video.Engine.Tests** | net10.0 | xUnit v3 unit tests for VideoEngine. Tests FFmpeg integration, video player, and frame capture. |
+| **Atc.Video.Engine.Tests** | net10.0 | xUnit v3 unit tests for Atc.Video.Engine. Tests FFmpeg integration, video player, and frame capture. |
 | **AtcSoft.Video.Surveillance.Api.Tests** | net10.0 | xUnit v3 unit tests for API handlers and domain logic. Tests CRUD operations and mapping extensions. |
 
 ### 📦 Installer

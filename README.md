@@ -136,7 +136,7 @@ AtcSoft.Video.Surveillance/
 │   ├── AtcSoft.Video.Surveillance.Tests/      # ✅ xUnit v3 tests for Core
 │   ├── AtcSoft.Video.Surveillance.Wpf.Core.Tests/  # ✅ xUnit v3 tests for Wpf.Core
 │   ├── AtcSoft.Video.Surveillance.Api.Tests/        # ✅ xUnit v3 tests for API
-│   └── Atc.Video.Engine.Tests/                  # ✅ xUnit v3 tests for VideoEngine
+│   └── Atc.Video.Engine.Tests/                  # ✅ xUnit v3 tests for Atc.Video.Engine
 │
 ├── docs/                        # 📚 System documentation
 │   ├── architecture.md          # 🏛️ Architecture diagrams and assembly details

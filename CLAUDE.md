@@ -10,7 +10,7 @@ A multi-assembly video surveillance platform with a WPF desktop app and a headle
 - `Atc.Video.Engine.DirectX` - D3D11VA GPU acceleration, Video Processor, swap chain (net10.0-windows)
 - `AtcSoft.Video.Surveillance.Windows` - Windows-only parts shared by the standalone app and the server, not published: USB camera enumeration (Media Foundation) + hot-plug watcher (WMI), and the recording thumbnail generator (GDI+) (net10.0-windows)
 - `Atc.Video.Player.Wpf` - WPF VideoHost control with DComp surface + XAML overlay (net10.0-windows)
-- `AtcSoft.Video.Surveillance.CameraWall.Wpf` - WPF library with the complete camera wall: UI, dialogs, VideoEngine integration (not published; consumed by the CameraWall app)
+- `AtcSoft.Video.Surveillance.CameraWall.Wpf` - WPF library with the complete camera wall: UI, dialogs, Video.Engine integration (not published; consumed by the CameraWall app)
 - `AtcSoft.Video.Surveillance.CameraWall.Wpf.App` - Thin shell WPF application using the library (standalone, connects directly to cameras)
 - `AtcSoft.Video.Surveillance.Wpf` - WPF library for the VideoSurveillance API client (GatewayService, SurveillanceEventService, OpenAPI-generated client)
 - `AtcSoft.Video.Surveillance.Wpf.App` - WPF management application for the API server (Fluent.Ribbon, Serilog, splash screen)
@@ -21,7 +21,7 @@ A multi-assembly video surveillance platform with a WPF desktop app and a headle
 - `AtcSoft.Video.Surveillance.Blazor.App` - Blazor WebAssembly client for the API server (MudBlazor). Its logic lives in plain classes under `Logic/`, tested in `AtcSoft.Video.Surveillance.Blazor.App.Tests`
 - `AtcSoft.Video.Surveillance.Storybook` - Scenes with known content for measuring motion detection: the storybook model, a deterministic renderer with its truth, the scorer (net10.0, not published; see `docs/motion-detection-storybook.md`)
 - `sample/BoundingBoxWpfApp` - Developer tool, not published: a storybook or a recording through the real detector and box overlay, picture by picture, with the truth and the score; walked by `BoundingBoxSampleSmokeTests`
-- `test/*` - xUnit v3 test projects, one per source project that has tests (Core, VideoEngine, VideoEngine.Windows, Api, Wpf.Core, Wpf, CameraWall.Wpf, Blazor.App, Storybook), plus `AtcSoft.Video.Surveillance.E2E.Tests` (smoke tests of the running apps, see below). The storybook tests keep every detector score in `baseline.json` and fail when one gets worse; `ATCSOFT_BBOX_UPDATE_BASELINE=1` writes new scores after an improvement. A scene with `video.bitrateKbps` is encoded by the FFmpeg tool and scored as the apps read a recording; it skips without FFmpeg
+- `test/*` - xUnit v3 test projects, one per source project that has tests (Core, Video.Engine, Windows, Api, Wpf.Core, Wpf, CameraWall.Wpf, Blazor.App, Storybook), plus `AtcSoft.Video.Surveillance.E2E.Tests` (smoke tests of the running apps, see below). The storybook tests keep every detector score in `baseline.json` and fail when one gets worse; `ATCSOFT_BBOX_UPDATE_BASELINE=1` writes new scores after an improvement. A scene with `video.bitrateKbps` is encoded by the FFmpeg tool and scored as the apps read a recording; it skips without FFmpeg
 
 ## NuGet Packages
 **Publishing is off for now:** every project is `<IsPackable>false</IsPackable>`, and the `publish-nuget` job in `release-please.yml` is disabled with `if: false && ...`. Releases ship only the MSI installers. The rest of this section describes how the packages work when publishing is turned back on; the new package ids then also need a nuget.org Trusted Publishing policy (the old `AtcSoft.VideoSurveillance.*`, `AtcSoft.VideoEngine*` and `AtcSoft.VideoPlayer.Wpf` ids get a deprecation pointing to the new ones).
@@ -48,11 +48,11 @@ A consumer must call `CameraTile.InitializeServices(..., videoPlayerFactory: ...
 ## Architecture
 The solution follows a layered architecture with Core at the base:
 - **Core** contains all shared models, enums, events, service interfaces, and helpers (zero UI dependencies)
-- **VideoEngine** provides cross-platform video: demuxing, decoding (CPU/D3D11VA), recording, snapshots. DirectX project adds GPU rendering for WPF.
-- **VideoEngine.Windows** provides USB / DirectShow source support: Media Foundation device enumeration, WMI hot-plug events, and the dshow demuxer wiring needed by the engine to open `video=Friendly Name` sources.
-- **CameraWall WPF library** references Core and VideoEngine, adds UI controls, dialogs, VideoHost-based media pipeline
+- **Atc.Video.Engine** provides cross-platform video: demuxing, decoding (CPU/D3D11VA), recording, snapshots. DirectX project adds GPU rendering for WPF.
+- **AtcSoft.Video.Surveillance.Windows** provides USB / DirectShow source support: Media Foundation device enumeration, WMI hot-plug events, and the dshow demuxer wiring needed by the engine to open `video=Friendly Name` sources.
+- **CameraWall WPF library** references Core and Atc.Video.Engine, adds UI controls, dialogs, VideoHost-based media pipeline
 - **CameraWall WPF App** is a standalone thin shell with Ribbon UI delegating to `ICameraWallManager` (connects directly to cameras)
-- **VideoSurveillance WPF library** references Core and VideoPlayer, provides `GatewayService` (OpenAPI REST client) and `SurveillanceEventService` (the `GET /events` reader)
+- **VideoSurveillance WPF library** references Core and Atc.Video.Player.Wpf, provides `GatewayService` (OpenAPI REST client) and `SurveillanceEventService` (the `GET /events` reader)
 - **VideoSurveillance WPF App** is an API client thin shell with Ribbon UI, connects to the REST API and its event stream (not directly to cameras)
 - **API** references Core and provides REST endpoints and real-time events (`GET /events`)
 - **Aspire** orchestrates the API, Blazor.App, and Wpf.App with a developer dashboard
