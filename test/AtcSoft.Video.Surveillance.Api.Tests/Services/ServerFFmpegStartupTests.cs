@@ -74,7 +74,11 @@ public sealed class ServerFFmpegStartupTests
 
     private sealed class ListLogger : Microsoft.Extensions.Logging.ILogger
     {
-        public List<(LogLevel Level, string Text)> Messages { get; } = [];
+        // Progress<T> logs from a thread-pool thread, so a line can arrive while a test reads the list.
+        private readonly ConcurrentQueue<(LogLevel Level, string Text)> messages = new();
+
+        public IReadOnlyList<(LogLevel Level, string Text)> Messages
+            => [.. messages];
 
         public IDisposable? BeginScope<TState>(TState state)
             where TState : notnull
@@ -89,6 +93,6 @@ public sealed class ServerFFmpegStartupTests
             TState state,
             Exception? exception,
             Func<TState, Exception?, string> formatter)
-            => Messages.Add((logLevel, formatter(state, exception)));
+            => messages.Enqueue((logLevel, formatter(state, exception)));
     }
 }
