@@ -79,6 +79,32 @@ public sealed class SurveillanceEventFeedTests
     }
 
     [Fact]
+    public void A_Client_A_Few_Seconds_Behind_32_Cameras_In_Motion_Is_Not_Cut_Off_And_Can_Resume()
+    {
+        // Four motion events a second per camera, for five seconds, while the client is busy.
+        const int perSecond = 32 * 4;
+        var feed = new SurveillanceEventFeed();
+        using var busy = feed.Subscribe(lastSequence: null);
+        var first = feed.Publish(Event(0));
+        for (var i = 1; i < perSecond * 5; i++)
+        {
+            feed.Publish(Event(i));
+        }
+
+        var read = 0;
+        while (busy.Live.TryRead(out _))
+        {
+            read++;
+        }
+
+        read.Should().Be(perSecond * 5, "the client gets every event once it reads again");
+
+        using var resumed = feed.Subscribe(first);
+        resumed.Missed.Should().Be(0, "a client whose connection dropped resumes without a reload");
+        resumed.Replayed.Should().HaveCount((perSecond * 5) - 1);
+    }
+
+    [Fact]
     public async Task A_Subscriber_That_Falls_Behind_Is_Cut_Off_And_The_Others_Go_On()
     {
         var feed = new SurveillanceEventFeed();

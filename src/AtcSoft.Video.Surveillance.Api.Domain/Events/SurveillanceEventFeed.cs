@@ -13,14 +13,18 @@ namespace AtcSoft.Video.Surveillance.Api.Domain.Events;
 public sealed class SurveillanceEventFeed
 {
     /// <summary>
-    /// How many of the latest events a resuming client can get again.
+    /// How many of the latest events a resuming client can get again. Motion goes out up to four
+    /// times a second per camera, so 32 cameras in motion send some 128 events a second: this is
+    /// half a minute of them, enough to resume after a dropped connection without a full reload.
     /// </summary>
-    public const int ReplayCapacity = 256;
+    public const int ReplayCapacity = 4096;
 
     /// <summary>
-    /// How many events a subscriber may be behind before it is cut off.
+    /// How many events a subscriber may be behind before it is cut off: some 8 seconds of 32
+    /// cameras in motion, so a client that is busy for a moment (a GC pause, a slow network) is
+    /// not cut off and made to reload everything.
     /// </summary>
-    public const int SubscriberCapacity = 256;
+    public const int SubscriberCapacity = 1024;
 
     private readonly Lock gate = new();
     private readonly Queue<SequencedEvent> replay = new();
