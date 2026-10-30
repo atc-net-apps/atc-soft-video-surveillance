@@ -13,10 +13,6 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
 
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/atc-net-apps/atc-soft-video-surveillance</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/atc-net-apps/atc-soft-video-surveillance.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>

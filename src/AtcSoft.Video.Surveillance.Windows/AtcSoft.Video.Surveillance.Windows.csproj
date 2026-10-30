@@ -8,13 +8,6 @@
     <PackageTags>video;engine;mediafoundation;dshow;usb;webcam;windows</PackageTags>
   </PropertyGroup>
 
-  <PropertyGroup Label="NuGet Package Metadata">
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/atc-net-apps/atc-soft-video-surveillance</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/atc-net-apps/atc-soft-video-surveillance.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Atc.Video.Engine\Atc.Video.Engine.csproj" />
     <ProjectReference Include="..\AtcSoft.Video.Surveillance\AtcSoft.Video.Surveillance.csproj" />

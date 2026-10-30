@@ -52,6 +52,10 @@
   <!-- Nothing is published to NuGet for now -->
   <PropertyGroup Label="Packaging">
     <IsPackable>false</IsPackable>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/$(OrganizationName)/$(RepositoryName)</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/$(OrganizationName)/$(RepositoryName).git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup Label="Code Analyzers">
