@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.4](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.2.3...v1.2.4) (2026-10-30)
+## [1.2.4](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases/tag/v1.2.4) (2026-10-30)
 
 
 ### Bug fixes
