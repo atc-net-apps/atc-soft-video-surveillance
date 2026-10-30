@@ -26,5 +26,14 @@
                 Icon="VideoSurveillanceIcon" />
       <RegistryValue Root="HKCU" Key="Software\AtcSoft\VideoSurveillance" Name="desktopshortcut" Type="integer" Value="1" KeyPath="yes" />
     </Component>
+
+    <!-- Data folder: SYSTEM and Administrators full control, Users modify, inherited by
+         everything below it. The SIDs (SY, BA, BU) work in every Windows language. Permanent,
+         so an uninstall or upgrade never deletes the data. -->
+    <Component Id="DataFolder" Guid="C2F6A1D8-4B3E-4F7A-9C5D-1E8B2A7F6D30" Directory="DATAFOLDER" Permanent="yes">
+      <CreateFolder>
+        <PermissionEx Sddl="D:(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1301bf;;;BU)" />
+      </CreateFolder>
+    </Component>
   </Fragment>
 </Wix>

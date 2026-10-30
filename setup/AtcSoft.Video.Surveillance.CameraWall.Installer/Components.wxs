@@ -26,5 +26,14 @@
                 Icon="CameraWallIcon" />
       <RegistryValue Root="HKCU" Key="Software\AtcSoft\CameraWall" Name="desktopshortcut" Type="integer" Value="1" KeyPath="yes" />
     </Component>
+
+    <!-- Data folder: SYSTEM and Administrators full control, Users modify, inherited by
+         everything below it. The SIDs (SY, BA, BU) work in every Windows language. Permanent,
+         so an uninstall or upgrade never deletes the data. -->
+    <Component Id="DataFolder" Guid="9A4E7C2B-6D1F-4E8A-B3C5-7F2D0E9A1B64" Directory="DATAFOLDER" Permanent="yes">
+      <CreateFolder>
+        <PermissionEx Sddl="D:(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1301bf;;;BU)" />
+      </CreateFolder>
+    </Component>
   </Fragment>
 </Wix>

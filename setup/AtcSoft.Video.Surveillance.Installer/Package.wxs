@@ -18,6 +18,7 @@
       <ComponentGroupRef Id="HarvestedComponents" />
       <ComponentRef Id="ApplicationShortcut" />
       <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="DataFolder" />
     </Feature>
 
     <Icon Id="VideoSurveillanceIcon" SourceFile="$(HarvestDirectory)\cctv-camera.ico" />
