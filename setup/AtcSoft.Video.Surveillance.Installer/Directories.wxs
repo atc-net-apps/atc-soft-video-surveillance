@@ -12,5 +12,13 @@
     </StandardDirectory>
 
     <StandardDirectory Id="DesktopFolder" />
+
+    <!-- The app's data folder (ApplicationPaths): settings, cameras, recordings and logs.
+         Created here so every user of the PC can write to it, not only the first one to start the app. -->
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="DataManufacturerFolder" Name="AtcSoft">
+        <Directory Id="DATAFOLDER" Name="VideoSurveillance" />
+      </Directory>
+    </StandardDirectory>
   </Fragment>
 </Wix>
