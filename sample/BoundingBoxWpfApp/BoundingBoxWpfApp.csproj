@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A developer tool for tuning motion detection: plays a storybook or a recording through
+       the real detector and the real box overlay, with the truth and the score. Never shipped,
+       not translated. See docs/motion-detection-storybook.md. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>BoundingBoxWpfApp</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <ApplicationIcon>..\..\src\AtcSoft.Video.Surveillance.Wpf.Core\Resources\Images\cctv-camera.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Storybook\AtcSoft.Video.Surveillance.Storybook.csproj" />
+    <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Wpf.Core\AtcSoft.Video.Surveillance.Wpf.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+</Project>

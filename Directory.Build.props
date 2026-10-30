@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup Label="Metadata configuration">
+    <OrganizationName>atc-net-apps</OrganizationName>
+    <RepositoryName>atc-soft-video-surveillance</RepositoryName>
+  </PropertyGroup>
+
+  <!--
+    The version is owned by release-please. It rewrites the value between the
+    x-release-please markers when a release pull request is merged. Do not edit
+    it by hand.
+  -->
+  <PropertyGroup Label="Versioning">
+    <!-- x-release-please-start-version -->
+    <Version>1.2.3</Version>
+    <!-- x-release-please-end -->
+  </PropertyGroup>
+
+  <!-- Solution wide properties -->
+  <PropertyGroup Label="Assembly Naming">
+    <Company>$(OrganizationName)</Company>
+    <Authors>$(OrganizationName)</Authors>
+    <NeutralLanguage>en</NeutralLanguage>
+    <DefaultLanguage>en-US</DefaultLanguage>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Compile settings">
+    <Nullable>enable</Nullable>
+    <LangVersion>14.0</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>1573,1591,1712,CA1014,CS0436</NoWarn>
+
+    <!-- Used by code coverage -->
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Analyzer settings">
+    <AnalysisLevel>latest-All</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <!-- Treat warnings as errors are always on when building in release -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- Shared code analyzers used for all projects in the solution -->
+  <!-- Nothing is published to NuGet for now -->
+  <PropertyGroup Label="Packaging">
+    <IsPackable>false</IsPackable>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/$(OrganizationName)/$(RepositoryName)</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/$(OrganizationName)/$(RepositoryName).git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup Label="Code Analyzers">
+    <PackageReference Include="Atc.Analyzer" Version="0.1.23" PrivateAssets="All" />
+    <PackageReference Include="AsyncFixer" Version="2.1.0" PrivateAssets="All" />
+    <PackageReference Include="Meziantou.Analyzer" Version="3.0.317" PrivateAssets="All" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.3.151-beta" PrivateAssets="All" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>

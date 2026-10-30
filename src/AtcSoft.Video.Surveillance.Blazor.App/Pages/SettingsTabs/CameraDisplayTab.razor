@@ -1,0 +1,48 @@
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.CameraOverlay</MudText>
+<SettingSwitch @bind-Value="State.ShowOverlayTitle" Label="@Translations.ShowTitle" />
+<SettingSwitch @bind-Value="State.ShowOverlayDescription" Label="@Translations.ShowDescription" />
+<SettingSwitch @bind-Value="State.ShowOverlayTime" Label="@Translations.ShowTime" />
+<SettingSwitch @bind-Value="State.ShowOverlayConnectionStatus" Label="@Translations.ShowCameraOverlayConnectionStatus" />
+<SettingSwitch @bind-Value="State.ShowOverlayQuickActions" Label="@Translations.ShowQuickActions" />
+
+<MudSelect @bind-Value="State.OverlayOpacity" Label="@Translations.OverlayOpacity" Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.OverlayOpacities, State.OverlayOpacity, v => v.ToString("P0", CultureInfo.InvariantCulture)))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+
+<MudSelect @bind-Value="State.OverlayPosition" Label="@Translations.OverlayPosition" Class="mt-2">
+    <MudSelectItem Value="AppSettingsOverlayPosition.TopLeft">@Translations.OverlayPositionTopLeft</MudSelectItem>
+    <MudSelectItem Value="AppSettingsOverlayPosition.TopRight">@Translations.OverlayPositionTopRight</MudSelectItem>
+    <MudSelectItem Value="AppSettingsOverlayPosition.BottomLeft">@Translations.OverlayPositionBottomLeft</MudSelectItem>
+    <MudSelectItem Value="AppSettingsOverlayPosition.BottomRight">@Translations.OverlayPositionBottomRight</MudSelectItem>
+</MudSelect>
+
+<SettingSwitch @bind-Value="State.ShowOverlayConnectionTypeIcon"
+               Label="@Translations.ShowCameraOverlayConnectionTypeIcon"
+               Help="@Translations.ConnectionTypeIconHelp"
+               Class="mt-2" />
+<MudSelect @bind-Value="State.ConnectionTypeIconPlacement" Label="@Translations.ConnectionTypeIconPosition" Disabled="!State.ShowOverlayConnectionTypeIcon" Class="mt-2">
+    <MudSelectItem Value="AppSettingsConnectionTypeIconPlacement.SameRow">@State.GetConnectionTypeIconPlacementLabel(AppSettingsConnectionTypeIconPlacement.SameRow)</MudSelectItem>
+    <MudSelectItem Value="AppSettingsConnectionTypeIconPlacement.SameColumn">@State.GetConnectionTypeIconPlacementLabel(AppSettingsConnectionTypeIconPlacement.SameColumn)</MudSelectItem>
+</MudSelect>
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.GridLayout</MudText>
+<SettingSwitch @bind-Value="State.AllowDragAndDropReorder" Label="@Translations.AllowDragAndDropReorder" />
+<SettingSwitch @bind-Value="State.AutoSaveLayoutChanges" Label="@Translations.SaveLayoutChangesAutomatically" />
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.Snapshots</MudText>
+<MudTextField @bind-Value="State.SnapshotPath"
+              Label="@Translations.SnapshotPath"
+              HelperText="@Translations.AFolderOnTheServer"
+              Class="mt-2" />
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsState State { get; set; } = null!;
+}

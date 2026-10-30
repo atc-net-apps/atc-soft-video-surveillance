@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Description>Cross-platform video engine for RTSP/HTTP surveillance streams. FFmpeg-based demuxing, decoding, recording, and frame capture.</Description>
+    <PackageTags>video;engine;ffmpeg;rtsp;surveillance;streaming</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup Label="NuGet Package Metadata">
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\images\icon.png" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Flyleaf.FFmpeg.Bindings" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Atc.Video.Engine.Tests" />
+  </ItemGroup>
+
+</Project>

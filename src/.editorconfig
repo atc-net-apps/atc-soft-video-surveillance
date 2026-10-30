@@ -1,0 +1,39 @@
+# ATC coding rules - https://github.com/atc-net/atc-coding-rules
+# Version: 1.0.2
+# Updated: 20-10-2026
+# Location: src
+# Distribution: DotNet10
+# Inspired by: https://learn.microsoft.com/dotnet/fundamentals/code-analysis/code-style-rule-options
+
+##########################################
+# Code Analyzers Rules
+##########################################
+[*.{cs,csx,cake}]
+
+# AsyncFixer
+# http://www.asyncfixer.com
+
+
+# Meziantou
+# https://www.meziantou.net/enforcing-asynchronous-code-good-practices-using-a-roslyn-analyzer.htm
+
+
+# Microsoft - Code Analysis
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/
+
+
+# Microsoft - Compiler Errors
+# https://learn.microsoft.com/dotnet/csharp/language-reference/compiler-messages/
+
+
+# StyleCop
+# https://github.com/DotNetAnalyzers/StyleCopAnalyzers
+
+
+# SonarAnalyzer.CSharp
+# https://rules.sonarsource.com/csharp
+
+
+##########################################
+# Custom - Code Analyzers Rules
+##########################################

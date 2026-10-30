@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--
+    Mirrors <Version> from the root Directory.Build.props, because this file
+    shadows it: MSBuild stops at the nearest Directory.Build.props, and unlike
+    src/Directory.Build.props this one does not import its parent. Importing it
+    would drag the root analyzer package references back into the WiX builds
+    that this file exists to strip out.
+
+    Also owned by release-please. Do not edit by hand.
+  -->
+  <PropertyGroup Label="Versioning">
+    <!-- x-release-please-start-version -->
+    <ProductVersion>1.2.3</ProductVersion>
+    <!-- x-release-please-end -->
+  </PropertyGroup>
+
+  <!-- Disable all analyzers for WiX projects -->
+  <PropertyGroup>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <RunAnalyzersDuringLiveAnalysis>false</RunAnalyzersDuringLiveAnalysis>
+  </PropertyGroup>
+
+  <!-- Remove all analyzer package references inherited from root -->
+  <ItemGroup>
+    <PackageReference Remove="Atc.Analyzer" />
+    <PackageReference Remove="AsyncFixer" />
+    <PackageReference Remove="Asyncify" />
+    <PackageReference Remove="Meziantou.Analyzer" />
+    <PackageReference Remove="SecurityCodeScan.VS2019" />
+    <PackageReference Remove="StyleCop.Analyzers" />
+    <PackageReference Remove="SonarAnalyzer.CSharp" />
+  </ItemGroup>
+
+</Project>

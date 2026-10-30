@@ -1,0 +1,367 @@
+@inject IJSRuntime JS
+
+@* A camera's motion zones drawn on a snapshot. The editing is MotionZoneEditorState; this only draws it and passes the pointer on. *@
+<MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" Class="mb-2">
+    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="TakePicture" Disabled="@(!CanTakePicture || IsTakingPicture)">
+        @Translations.TakeSnapshot
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddZoneAsync" Disabled="@(!state.CanAddZone)">
+        @Translations.AddZone
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="RemoveZoneAsync" Disabled="@(state.Picked is null)">
+        @Translations.RemoveZone
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddCornerAsync" Disabled="@(!state.CanAddCorner)">
+        @Translations.AddCorner
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="RemoveCornerAsync" Disabled="@(!state.CanRemoveCorner)">
+        @Translations.RemoveCorner
+    </MudButton>
+</MudStack>
+
+@if (state.Picked is { } picked)
+{
+    <MudTextField T="string"
+                  Value="picked.Name"
+                  ValueChanged="RenameAsync"
+                  Label="@Translations.Name"
+                  MaxLength="MotionZoneEditing.MaxNameLength"
+                  Immediate="true"
+                  Class="mb-2" />
+    <MudStack Row="true" Spacing="2" Class="mb-2">
+        <MudSelect T="string"
+                   Value="picked.Kind.Value"
+                   ValueChanged="SetKindAsync"
+                   Label="@Translations.Type">
+            <MudSelectItem Value="MotionZoneKind.Names.Ignore">@Translations.ZoneKindIgnore</MudSelectItem>
+            <MudSelectItem Value="MotionZoneKind.Names.Watch">@Translations.ZoneKindWatch</MudSelectItem>
+        </MudSelect>
+        @if (picked.Kind.Value == MotionZoneKind.Names.Watch)
+        {
+            <MudTextField T="string"
+                          Value="sensitivityText"
+                          ValueChanged="SetSensitivityAsync"
+                          Label="@Translations.Sensitivity"
+                          Placeholder="@Translations.CamerasOwn"
+                          Immediate="true" />
+            <MudTextField T="string"
+                          Value="smallestObjectText"
+                          ValueChanged="SetSmallestObjectAsync"
+                          Label="@Translations.SmallestObjectPercent"
+                          Placeholder="@Translations.CamerasOwn"
+                          Immediate="true" />
+            <MudSelect T="string"
+                       Value="@(picked.Color ?? string.Empty)"
+                       ValueChanged="SetColourAsync"
+                       Label="@Translations.TimelineColour">
+                <MudSelectItem Value="@string.Empty">@Translations.ConnectionTypeNone</MudSelectItem>
+                @foreach (var colour in ColorChoices.Names)
+                {
+                    <MudSelectItem Value="@colour">@ColorChoices.Label(colour)</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </MudStack>
+}
+
+<MudText Typo="Typo.body2" Class="mb-1">@Translations.MotionZonesHelp</MudText>
+@if (!string.IsNullOrEmpty(Status))
+{
+    <MudText Typo="Typo.body2" Class="mb-1" Style="font-style: italic;">@Status</MudText>
+}
+
+<div style="width: 100%; aspect-ratio: @SvgNumber.Format(aspectRatio);">
+    <svg @ref="drawing"
+         role="img"
+         aria-label="@Translations.MotionZones"
+         viewBox="0 0 @SvgNumber.Format(width) @SvgNumber.Format(MotionZoneShapes.Height)"
+         style="width: 100%; height: 100%; display: block; touch-action: none; user-select: none;"
+         @onpointerdown="OnPointerDownAsync"
+         @onpointermove="OnPointerMove"
+         @onpointerup="OnPointerUpAsync"
+         @ondblclick="OnDoubleClickAsync">
+        <rect width="@SvgNumber.Format(width)" height="@SvgNumber.Format(MotionZoneShapes.Height)" fill="#3C3C3C" />
+        @if (pictureUrl is not null)
+        {
+            var (imageWidth, imageHeight, transform) = MotionZoneShapes.Picture(width, PictureQuarters);
+            <image href="@pictureUrl" width="@SvgNumber.Format(imageWidth)" height="@SvgNumber.Format(imageHeight)" transform="@transform" preserveAspectRatio="none" />
+        }
+        @for (var i = 0; i < state.Zones.Count; i++)
+        {
+            var zone = state.Zones[i];
+            var corners = state.Corners(i);
+            var isPicked = i == state.SelectedZone;
+            var (labelX, labelY) = MotionZoneShapes.Label(corners, width);
+            <g>
+                <polygon points="@MotionZoneShapes.Points(corners, width)"
+                         fill="@MotionZoneShapes.Colour(zone)"
+                         fill-opacity="@SvgNumber.Format(MotionZoneShapes.FillOpacity)"
+                         fill-rule="evenodd"
+                         stroke="@MotionZoneShapes.Stroke(zone, isPicked)"
+                         stroke-width="@(isPicked ? "5" : "3")"
+                         stroke-linejoin="round" />
+                <text x="@SvgNumber.Format(labelX)" y="@SvgNumber.Format(labelY)" fill="#FFFFFF" font-size="28" style="pointer-events: none;">@zone.Name</text>
+            </g>
+        }
+        @foreach (var (handle, isPickedCorner) in Handles())
+        {
+            <rect x="@SvgNumber.Format(handle.X)" y="@SvgNumber.Format(handle.Y)" width="@SvgNumber.Format(handle.Width)" height="@SvgNumber.Format(handle.Height)"
+                  fill="@(isPickedCorner ? "#FF8C00" : "#FFFFFF")" stroke="#000000" stroke-width="2" />
+        }
+    </svg>
+</div>
+
+@code {
+    private ElementReference drawing;
+    private readonly MotionZoneEditorState state = new([]);
+    private IReadOnlyList<MotionZone>? shownZones;
+    private byte[]? shownPicture;
+    private string? pictureUrl;
+    private (int Width, int Height)? pictureSize;
+    private double aspectRatio = MotionZoneEditing.DefaultAspectRatio;
+    private double width = MotionZoneShapes.Width(MotionZoneEditing.DefaultAspectRatio);
+
+    // Where the drawing is on the page while the pointer is down: left, top, width, height.
+    private double[] box = [0, 0, 0, 0];
+
+    // The watch zone's fields as typed, so "0.0" on the way to "0.05" stays; filled again when
+    // another zone is picked or the value means something else.
+    private string sensitivityText = string.Empty;
+    private string smallestObjectText = string.Empty;
+
+    // A move outside a drag draws nothing new: the page is not drawn again for it. Moves are always
+    // listened to, so the first moves of a quick drag are not lost while the press is handled.
+    private bool skipRender;
+
+    /// <summary>
+    /// Gets or sets the zones, as shown at the rotation chosen in the form.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<MotionZone> Zones { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets what is told each change: new zones, the old ones left as they were.
+    /// </summary>
+    [Parameter]
+    public EventCallback<IReadOnlyList<MotionZone>> ZonesChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets the snapshot as PNG, or <see langword="null"/>.
+    /// </summary>
+    [Parameter]
+    public byte[]? Picture { get; set; }
+
+    /// <summary>
+    /// Gets or sets the quarter turns from the snapshot to the picture as shown.
+    /// </summary>
+    [Parameter]
+    public int PictureQuarters { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a snapshot can be taken.
+    /// </summary>
+    [Parameter]
+    public bool CanTakePicture { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a snapshot is on its way.
+    /// </summary>
+    [Parameter]
+    public bool IsTakingPicture { get; set; }
+
+    /// <summary>
+    /// Gets or sets what asks for a snapshot.
+    /// </summary>
+    [Parameter]
+    public EventCallback TakePicture { get; set; }
+
+    /// <summary>
+    /// Gets or sets a line about the snapshot (none yet, or none to be had), or <see langword="null"/>.
+    /// </summary>
+    [Parameter]
+    public string? Status { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(Zones, shownZones) && !ReferenceEquals(Zones, state.Zones))
+        {
+            state.Load(Zones);
+        }
+
+        shownZones = Zones;
+        if (!ReferenceEquals(Picture, shownPicture))
+        {
+            shownPicture = Picture;
+            pictureSize = MotionZoneShapes.PngSize(Picture);
+            pictureUrl = Picture is null ? null : "data:image/png;base64," + Convert.ToBase64String(Picture);
+        }
+
+        aspectRatio = MotionZoneShapes.AspectRatio(pictureSize, PictureQuarters);
+        width = MotionZoneShapes.Width(aspectRatio);
+        ShowValues();
+    }
+
+    private void ShowValues()
+    {
+        var zone = state.Picked;
+        if (!MotionZoneEditing.TryReadSensitivity(sensitivityText, CultureInfo.CurrentCulture, out var sensitivity) ||
+            sensitivity != zone?.Sensitivity)
+        {
+            sensitivityText = zone?.Sensitivity?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
+        }
+
+        if (!MotionZoneEditing.TryReadSmallestObjectPercent(smallestObjectText, CultureInfo.CurrentCulture, out var smallest) ||
+            !EqualityComparer<double?>.Default.Equals(smallest, zone?.SmallestObjectPercent))
+        {
+            smallestObjectText = zone?.SmallestObjectPercent?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
+        }
+    }
+
+    private async Task SetKindAsync(string kind)
+    {
+        if (state.SetKind(new MotionZoneKind(kind)))
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task SetColourAsync(string colour)
+    {
+        if (state.SetColour(string.IsNullOrEmpty(colour) ? null : colour))
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task SetSensitivityAsync(string text)
+    {
+        sensitivityText = text ?? string.Empty;
+        if (MotionZoneEditing.TryReadSensitivity(sensitivityText, CultureInfo.CurrentCulture, out var value) &&
+            state.SetSensitivity(value))
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task SetSmallestObjectAsync(string text)
+    {
+        smallestObjectText = text ?? string.Empty;
+        if (MotionZoneEditing.TryReadSmallestObjectPercent(smallestObjectText, CultureInfo.CurrentCulture, out var value) &&
+            state.SetSmallestObjectPercent(value))
+        {
+            await TellAsync();
+        }
+    }
+
+    // The handles of the picked zone's corners, and which is the picked corner.
+    private IEnumerable<(TimelineRect Handle, bool IsPicked)> Handles()
+        => state.Picked is null
+            ? []
+            : state.Corners(state.SelectedZone).Select((corner, i) => (MotionZoneShapes.Handle(corner, width), i == state.SelectedCorner));
+
+    // In the browser (WebAssembly) the drawing's place is read at once, so a drag has begun before
+    // the next move is handled; an await here would let the first moves of a quick drag go by.
+    private async Task<(double X, double Y)> ToFractionAsync(
+        MouseEventArgs e,
+        long? pointerId)
+    {
+        box = JS is IJSInProcessRuntime inProcess
+            ? inProcess.Invoke<double[]>("zoneEditor.box", drawing, pointerId)
+            : await JS.InvokeAsync<double[]>("zoneEditor.box", drawing, pointerId);
+        return Fraction(e);
+    }
+
+    private (double X, double Y) Fraction(MouseEventArgs e)
+        => box[2] > 0 && box[3] > 0
+            ? ((e.ClientX - box[0]) / box[2], (e.ClientY - box[1]) / box[3])
+            : (0, 0);
+
+    private async Task OnPointerDownAsync(PointerEventArgs e)
+    {
+        var (x, y) = await ToFractionAsync(e, e.PointerId);
+        state.PointerDown(x, y, box[2], box[3]);
+    }
+
+    private void OnPointerMove(PointerEventArgs e)
+    {
+        if (!state.IsDragging)
+        {
+            skipRender = true;
+            return;
+        }
+
+        var (x, y) = Fraction(e);
+        state.PointerMove(x, y);
+    }
+
+    protected override bool ShouldRender()
+    {
+        var render = !skipRender;
+        skipRender = false;
+        return render;
+    }
+
+    private async Task OnPointerUpAsync(PointerEventArgs e)
+    {
+        if (state.PointerUp())
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task OnDoubleClickAsync(MouseEventArgs e)
+    {
+        var (x, y) = await ToFractionAsync(e, pointerId: null);
+        if (state.DoubleClick(x, y, box[2], box[3]))
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task AddZoneAsync()
+    {
+        if (state.AddZone(n => string.Format(CultureInfo.CurrentCulture, Translations.Zone1, n)))
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task RemoveZoneAsync()
+    {
+        if (state.RemoveZone())
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task AddCornerAsync()
+    {
+        box = await JS.InvokeAsync<double[]>("zoneEditor.box", drawing, null);
+        if (state.AddCorner(box[2], box[3]))
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task RemoveCornerAsync()
+    {
+        if (state.RemoveCorner())
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task RenameAsync(string name)
+    {
+        if (state.Rename(name))
+        {
+            await TellAsync();
+        }
+    }
+
+    private async Task TellAsync()
+    {
+        shownZones = state.Zones;
+        await ZonesChanged.InvokeAsync(state.Zones);
+    }
+}

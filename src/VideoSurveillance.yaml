@@ -1,0 +1,3962 @@
+openapi: "3.2.0"
+info:
+  version: 1.0.0
+  title: AtcSoft Video Surveillance API
+  description: REST API for headless video surveillance — camera management, recording, and live streaming.
+  license:
+    name: MIT
+
+# Every operation needs a signed-in user (the access token) or an API key; the
+# sign-in operations say security: [] themselves. x-authorize-roles narrows an
+# operation to operators or admins.
+security:
+  - bearer: []
+  - apiKey: []
+
+paths:
+  /auth/setup:
+    get:
+      summary: Whether the server still needs its first admin
+      operationId: getSetupStatus
+      security: []
+      tags:
+        - auth
+      responses:
+        '200':
+          description: The setup status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetupStatus"
+    post:
+      summary: Create the first admin
+      description: >-
+        Only while the server has no user. The setup code is in the file setup-code.txt in the server's data folder,
+        so only someone who can read the server's disk can create the first admin.
+      operationId: completeSetup
+      # Not a change for the audit log: sign-in writes its own entries, a lease renewal is no change.
+      x-audit: false
+      security: []
+      x-retry-enabled: false
+      # Guessing passwords or the setup code: ten tries a minute from one address.
+      x-ratelimit-policy: sign-in
+      x-ratelimit-permit-limit: 10
+      x-ratelimit-window-seconds: 60
+      x-ratelimit-algorithm: fixed
+      x-ratelimit-partition: ip
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteSetupRequest"
+      responses:
+        '200':
+          description: The first admin is created and signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        '400':
+          description: The setup code is not right
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: The server has users already
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '429':
+          description: Too many tries from this address; Retry-After says when to try again.
+          headers:
+            Retry-After:
+              description: Seconds to wait before trying again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /auth/token:
+    post:
+      summary: Sign in
+      operationId: createSession
+      # Not a change for the audit log: sign-in writes its own entries, a lease renewal is no change.
+      x-audit: false
+      security: []
+      x-retry-enabled: false
+      # Guessing passwords or the setup code: ten tries a minute from one address.
+      x-ratelimit-policy: sign-in
+      x-ratelimit-permit-limit: 10
+      x-ratelimit-window-seconds: 60
+      x-ratelimit-algorithm: fixed
+      x-ratelimit-partition: ip
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignInRequest"
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        '400':
+          description: The user name or the password is not right (which of them is not said)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '429':
+          description: Too many tries from this address; Retry-After says when to try again.
+          headers:
+            Retry-After:
+              description: Seconds to wait before trying again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /auth/refresh:
+    post:
+      summary: Renew a session
+      description: Gives a new access token and a new refresh token for a refresh token, which can then not be used again.
+      operationId: refreshSession
+      # Not a change for the audit log: sign-in writes its own entries, a lease renewal is no change.
+      x-audit: false
+      security: []
+      x-retry-enabled: false
+      # A refresh token cannot be guessed, so not the sign-in limit: the web client renews its
+      # session on every page load (the access token is kept in memory only), and ten loads a
+      # minute from one address (an office behind one address) signed browsers out.
+      x-ratelimit-policy: session-renewal
+      x-ratelimit-permit-limit: 60
+      x-ratelimit-window-seconds: 60
+      x-ratelimit-algorithm: fixed
+      x-ratelimit-partition: ip
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshSessionRequest"
+      responses:
+        '200':
+          description: The session is renewed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        '400':
+          description: The refresh token is not known, or has run out; sign in again
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '429':
+          description: Too many tries from this address; Retry-After says when to try again.
+          headers:
+            Retry-After:
+              description: Seconds to wait before trying again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /auth/sign-out:
+    post:
+      summary: Sign out
+      description: Ends the session the refresh token belongs to. One that is already gone is no error.
+      operationId: endSession
+      # Not a change for the audit log: sign-in writes its own entries, a lease renewal is no change.
+      x-audit: false
+      security: []
+      x-retry-enabled: false
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshSessionRequest"
+      responses:
+        '204':
+          description: Signed out
+
+  /auth/me:
+    get:
+      summary: The signed-in user
+      operationId: getCurrentUser
+      tags:
+        - auth
+      responses:
+        '200':
+          description: The signed-in user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /auth/me/password:
+    put:
+      summary: Change the signed-in user's own password
+      description: Needs the current password. The user's sessions end, so other devices sign in again.
+      operationId: updateOwnPassword
+      x-retry-enabled: false
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        '204':
+          description: Changed
+        '400':
+          description: The current password is not right
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /users:
+    get:
+      summary: List the users
+      operationId: listUsers
+      x-authorize-roles:
+        - admin
+      tags:
+        - users
+      responses:
+        '200':
+          description: The users, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserAccount"
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '403':
+          description: Only an admin may
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: Add a user
+      operationId: createUser
+      x-retry-enabled: false
+      x-authorize-roles:
+        - admin
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        '201':
+          description: The user is added
+          headers:
+            Location:
+              description: Where the new one is.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAccount"
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '403':
+          description: Only an admin may
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: A user has that name already
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /users/{userId}:
+    put:
+      summary: Change a user's role or password
+      description: What the request leaves out stays. A new password ends the user's sessions. The last admin keeps the role.
+      operationId: updateUser
+      x-retry-enabled: false
+      x-authorize-roles:
+        - admin
+      tags:
+        - users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        '200':
+          description: The user is changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAccount"
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '403':
+          description: Only an admin may
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: User not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: The server always keeps one admin
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Remove a user
+      description: Their sessions end. The last admin cannot be removed.
+      operationId: deleteUser
+      x-retry-enabled: false
+      x-authorize-roles:
+        - admin
+      tags:
+        - users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Removed
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '403':
+          description: Only an admin may
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: User not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: The server always keeps one admin
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api-keys:
+    get:
+      summary: List the API keys
+      description: Their names and roles; a key itself is shown only when it is made.
+      operationId: listApiKeys
+      x-authorize-roles:
+        - admin
+      tags:
+        - users
+      responses:
+        '200':
+          description: The API keys, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '403':
+          description: Only an admin may
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: Make an API key
+      description: For an integration (Home Assistant, a script). The key is in the answer once; the server keeps only its hash.
+      operationId: createApiKey
+      x-retry-enabled: false
+      x-authorize-roles:
+        - admin
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiKeyRequest"
+      responses:
+        '201':
+          description: The key is made
+          headers:
+            Location:
+              description: Where the new one is.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewApiKey"
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '403':
+          description: Only an admin may
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api-keys/{keyId}:
+    delete:
+      summary: Remove an API key
+      operationId: deleteApiKey
+      x-retry-enabled: false
+      x-authorize-roles:
+        - admin
+      tags:
+        - users
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Removed
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '403':
+          description: Only an admin may
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: API key not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /audit:
+    get:
+      summary: What was changed, by whom
+      description: The latest changes first. Sign-ins, refused ones too, are in it; watching and renewing a stream are not.
+      operationId: listAuditEntries
+      x-authorize-roles:
+        - admin
+      tags:
+        - users
+      parameters:
+        - name: take
+          in: query
+          required: false
+          description: How many (100 when left out).
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 1000
+      responses:
+        '200':
+          description: The latest changes first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEntry"
+        '401':
+          description: Not signed in
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '403':
+          description: Only an admin may
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /cameras:
+    get:
+      summary: List all cameras
+      operationId: listCameras
+      tags:
+        - cameras
+      responses:
+        '200':
+          description: A list of cameras
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Camera"
+    post:
+      summary: Add a new camera
+      operationId: createCamera
+      x-authorize-roles:
+        - operator
+        - admin
+      tags:
+        - cameras
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCameraRequest"
+      responses:
+        '201':
+          description: Camera created
+          headers:
+            Location:
+              description: The new resource's address.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Camera"
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /cameras/{cameraId}:
+    get:
+      summary: Get camera by ID
+      operationId: getCameraById
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Camera details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Camera"
+        '404':
+          description: Camera not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: Update a camera
+      operationId: updateCamera
+      x-authorize-roles:
+        - operator
+        - admin
+      x-retry-enabled: false
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCameraRequest"
+      responses:
+        '200':
+          description: Camera updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Camera"
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: Camera not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Delete a camera
+      operationId: deleteCamera
+      x-authorize-roles:
+        - operator
+        - admin
+      x-retry-enabled: false
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Camera deleted
+        '404':
+          description: Camera not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /cameras/{cameraId}/snapshot:
+    get:
+      summary: Capture a snapshot from a camera
+      operationId: captureSnapshot
+      x-authorize-roles:
+        - operator
+        - admin
+      # A GET named capture: it also saves the picture, which "capture" says.
+      x-atc-suppress: ATC_API_OPR003
+      # A snapshot opens the camera's stream; a client in a loop would keep the
+      # server opening streams. Twenty per ten seconds is more than a person clicks.
+      x-ratelimit-policy: snapshots
+      x-ratelimit-permit-limit: 20
+      x-ratelimit-window-seconds: 10
+      x-ratelimit-algorithm: fixed
+      x-ratelimit-partition: ip
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Snapshot image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Camera not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '429':
+          description: Too many calls from this client; Retry-After says when to call again.
+          headers:
+            Retry-After:
+              description: Seconds to wait before calling again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '503':
+          description: Camera not connected
+          headers:
+            Retry-After:
+              description: Seconds to wait before asking again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /cameras/{cameraId}/detect-connection-type:
+    post:
+      summary: Detect the camera's connection type (wired or Wi-Fi) via ONVIF
+      description: >-
+        Probes the camera with its stored credentials and returns the detected
+        connection type without saving it. The client decides whether to apply
+        it. Returns none when the camera does not support ONVIF, rejects the
+        credentials, or reports an unknown interface type.
+      operationId: detectConnectionType
+      x-authorize-roles:
+        - operator
+        - admin
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detection result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionTypeDetection"
+        '404':
+          description: Camera not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /cameras/{cameraId}/recording:
+    post:
+      summary: Start recording a camera
+      operationId: startRecording
+      x-authorize-roles:
+        - operator
+        - admin
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recording started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordingStatus"
+        '404':
+          description: Camera not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: Already recording
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Stop recording a camera
+      operationId: stopRecording
+      x-authorize-roles:
+        - operator
+        - admin
+      # A DELETE named stop: it stops a recording; deleteRecording deletes a file.
+      x-atc-suppress: ATC_API_OPR007
+      x-retry-enabled: false
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recording stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordingStatus"
+        '404':
+          description: Camera not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /cameras/{cameraId}/stream:
+    post:
+      summary: Start watching a camera live
+      description: >-
+        Takes a lease on the camera's HLS stream and answers when the stream can be played (up to a minute for a
+        camera that is slow to deliver its first segment). The viewer renews the lease every renewSeconds and gives
+        it back when it stops watching; a lease that is not renewed ends by itself, and the stream stops when the
+        last lease on it is gone.
+      operationId: startStream
+      x-retry-enabled: false
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The stream can be played
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreamLease"
+        '404':
+          description: Camera not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '503':
+          description: The stream could not be started (the camera cannot be opened, or gave no picture in time)
+          headers:
+            Retry-After:
+              description: Seconds to wait before asking again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /cameras/{cameraId}/stream/{leaseId}:
+    put:
+      summary: Renew a stream lease
+      description: A viewer still watching renews its lease; a lease the server does not have (it ended, or the server restarted) is not found, and the viewer starts the stream again.
+      operationId: renewStreamLease
+      # Not a change for the audit log: sign-in writes its own entries, a lease renewal is no change.
+      x-audit: false
+      # A PUT named renew: it changes nothing in the lease but how long it lasts.
+      x-atc-suppress: ATC_API_OPR005
+      x-retry-enabled: false
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: leaseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Renewed
+        '404':
+          description: Lease not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Give a stream lease back
+      description: The viewer stopped watching. A lease that is already gone is given back all the same.
+      operationId: deleteStreamLease
+      # Not a change for the audit log: sign-in writes its own entries, a lease renewal is no change.
+      x-audit: false
+      x-retry-enabled: false
+      tags:
+        - cameras
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: leaseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Given back
+
+  /devices/usb:
+    get:
+      summary: List USB cameras visible to the server host
+      operationId: listUsbDevices
+      x-authorize-roles:
+        - operator
+        - admin
+      # Enumerating the devices takes a moment; the list is kept 5 seconds, and
+      # the server drops it as soon as a USB camera is plugged in or pulled out.
+      # It is the same for every caller, so it is shared between them.
+      x-cache-type: output
+      x-cache-shared: true
+      x-cache-policy: usb-devices
+      x-cache-expiration-seconds: 5
+      x-cache-tags:
+        - usb-devices
+      tags:
+        - devices
+      responses:
+        '200':
+          description: A list of USB camera descriptors currently enumerable on the server.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UsbDeviceDescriptor"
+        '503':
+          description: USB enumeration is not supported on this host (e.g. headless Linux without v4l2 yet).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /layouts:
+    get:
+      summary: List all layouts
+      operationId: listLayouts
+      tags:
+        - layouts
+      responses:
+        '200':
+          description: A list of layouts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Layout"
+    post:
+      summary: Create a new layout
+      operationId: createLayout
+      x-authorize-roles:
+        - operator
+        - admin
+      tags:
+        - layouts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLayoutRequest"
+      responses:
+        '201':
+          description: Layout created
+          headers:
+            Location:
+              description: The new resource's address.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Layout"
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /layouts/{layoutId}:
+    put:
+      summary: Update a layout
+      operationId: updateLayout
+      x-authorize-roles:
+        - operator
+        - admin
+      x-retry-enabled: false
+      tags:
+        - layouts
+      parameters:
+        - name: layoutId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLayoutRequest"
+      responses:
+        '200':
+          description: Layout updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Layout"
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: Layout not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Delete a layout
+      operationId: deleteLayout
+      x-authorize-roles:
+        - operator
+        - admin
+      x-retry-enabled: false
+      tags:
+        - layouts
+      parameters:
+        - name: layoutId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Layout deleted
+        '404':
+          description: Layout not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /layouts/{layoutId}/apply:
+    post:
+      summary: Apply a layout as the active layout
+      operationId: applyLayout
+      x-authorize-roles:
+        - operator
+        - admin
+      tags:
+        - layouts
+      parameters:
+        - name: layoutId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Layout applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Layout"
+        '404':
+          description: Layout not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /recordings:
+    get:
+      summary: List recordings
+      operationId: listRecordings
+      tags:
+        - recordings
+      parameters:
+        - name: cameraId
+          in: query
+          required: false
+          description: Filter by camera ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: A list of recordings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recording"
+    delete:
+      summary: Delete a recording
+      description: Deletes one finished recording together with its thumbnail. A recording that is still being made cannot be deleted.
+      operationId: deleteRecording
+      x-authorize-roles:
+        - operator
+        - admin
+      x-retry-enabled: false
+      tags:
+        - recordings
+      parameters:
+        - name: filePath
+          in: query
+          required: true
+          description: The recording's path relative to the recordings root, as the listing returns it in filePath.
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Recording deleted
+        '400':
+          description: The path does not name a recording
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: Recording not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: The recording is still being made
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /recordings/activity:
+    # No cache: the index of a recording in progress grows every second.
+    get:
+      summary: Get the activity of a recording
+      description: What moved when in one recording, from the activity index written beside it, shrunk to the given number of equal stretches by keeping the most of each (never the average, so a short event stays visible). A recording made before the index existed has none; the answer then says so in hasIndex.
+      operationId: getRecordingActivity
+      tags:
+        - recordings
+      parameters:
+        - name: filePath
+          in: query
+          required: true
+          description: The recording's path relative to the recordings root, as the listing returns it in filePath.
+          schema:
+            type: string
+        - name: buckets
+          in: query
+          required: false
+          description: How many stretches to split the recording into, usually the width of the timeline in pixels.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 4000
+            default: 500
+        - name: durationSeconds
+          in: query
+          required: false
+          description: How long the recording is, in seconds, as the listing gives it. Without it the stretches cover the index as far as it reaches.
+          schema:
+            type: number
+            format: double
+            minimum: 0
+      responses:
+        '200':
+          description: The activity of the recording
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordingActivity"
+        '400':
+          description: The path does not name a recording
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: Recording not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: Analyse a recording for its activity
+      description: Gives a recording made without an activity index (before the index existed, or with it turned off) the index a recording analysed while it was made has, by decoding it and running the motion detector over its pictures, with its camera's own motion settings. The analysis runs in the background, one recording at a time, decoding with two threads so recording and live viewing go on. Ten minutes of 1080p H.264 took about three minutes on an ordinary 16-thread machine, so an hour takes about a quarter of an hour. The recording has its index when getRecordingActivity says hasIndex; while it is waiting or being analysed it says isBeingAnalysed.
+      operationId: startRecordingAnalysis
+      x-atc-suppress: ATC_API_OPR023
+      # The POST starts work on a recording named in the query, which may not
+      # exist: 404 is the answer for a path that names no file.
+      x-authorize-roles:
+        - operator
+        - admin
+      x-retry-enabled: false
+      tags:
+        - recordings
+      parameters:
+        - name: filePath
+          in: query
+          required: true
+          description: The recording's path relative to the recordings root, as the listing returns it in filePath.
+          schema:
+            type: string
+      responses:
+        '202':
+          description: The analysis is queued
+        '400':
+          description: The path does not name a recording
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: Recording not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: The recording has an index already, is still being made, or is being analysed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /recordings/previews:
+    # No cache: the previews of a recording are made after it, and may be made again
+    # when it is analysed.
+    get:
+      summary: Get the preview pictures of a recording
+      description: The small pictures a timeline shows under the mouse, all in one JPEG beside the recording (imagePath, fetched from /recordings-files/ with the session's media token). A grid of tiles evenly over the recording, and a tile of the busiest second of each event. The server makes them when a recording or segment ends, and when it is analysed. A finished recording without them (one from before the previews existed) is queued for them on this call, so the answer says isBeingMade and a later call has them; a recording still being written has none until it ends.
+      operationId: getRecordingPreviews
+      tags:
+        - recordings
+      parameters:
+        - name: filePath
+          in: query
+          required: true
+          description: The recording's path relative to the recordings root, as the listing returns it in filePath.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The previews of the recording, or that it has none yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordingPreviewSheet"
+        '400':
+          description: The path does not name a recording
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: Recording not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /recordings/review/verdicts:
+    post:
+      summary: Add a verdict to a recording's review
+      description: A person's verdict on the motion boxes in a stretch of a recording, as a timeline's right-click gives it (boxed as it should be, a false alarm, something missed). It is added to the review beside the recording ({video}.review.json), which a recording without one gets, with its camera's motion settings and zones. The reviews are the truth that real recordings are scored against when the detector changes; they move and are deleted with their recording.
+      operationId: addRecordingVerdict
+      x-atc-suppress: ATC_API_OPR023
+      # The POST adds to a file beside a recording named in the query, which may not
+      # exist: 404 is the answer for a path that names no file.
+      x-authorize-roles:
+        - operator
+        - admin
+      x-retry-enabled: false
+      tags:
+        - recordings
+      parameters:
+        - name: filePath
+          in: query
+          required: true
+          description: The recording's path relative to the recordings root, as the listing returns it in filePath.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddRecordingVerdictRequest"
+      responses:
+        '204':
+          description: The verdict is added to the recording's review
+        '400':
+          description: The path does not name a recording, or the stretch does not end after it starts
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: Recording not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: The recording is still being made, or the review beside it cannot be read (it is not written over)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /timeline:
+    # No cache: a span that reaches now grows every second; the server keeps the summaries
+    # of the activity indexes instead.
+    get:
+      summary: Get the timeline of the cameras
+      description: One lane per camera over the span, from its recordings and their activity indexes. Coverage is where a recording exists; a stretch is recorded, recorded but not analysed, or a gap. Each stretch keeps the most that happened in it, never the average, and the events are given to the second with the recording and offset to play them from. The span may be at most seven days.
+      operationId: getTimeline
+      tags:
+        - timeline
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: The start of the span.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          description: The end of the span, after from and at most seven days later.
+          schema:
+            type: string
+            format: date-time
+        - name: cameraId
+          in: query
+          required: false
+          description: Only this camera's lane; every camera's when left out.
+          schema:
+            type: string
+            format: uuid
+        - name: buckets
+          in: query
+          required: false
+          description: How many equal stretches to split the span into, usually the width of the timeline in pixels.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 4000
+            default: 1000
+      responses:
+        '200':
+          description: The timeline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Timeline"
+        '400':
+          description: The span does not end after it starts, or is longer than seven days
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /timeline/events:
+    get:
+      summary: Find the next or previous events
+      description: The events nearest after a moment (earliest first) or before it (latest first), across the recordings of the cameras, looking at most seven days away. Give after or before, not both.
+      operationId: listTimelineEvents
+      tags:
+        - timeline
+      parameters:
+        - name: after
+          in: query
+          required: false
+          description: Find the events that start after this moment.
+          schema:
+            type: string
+            format: date-time
+        - name: before
+          in: query
+          required: false
+          description: Find the events that start before this moment.
+          schema:
+            type: string
+            format: date-time
+        - name: cameraId
+          in: query
+          required: false
+          description: Only this camera's events; every camera's when left out.
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          description: How many events at most.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 1
+      responses:
+        '200':
+          description: The events, nearest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimelineEvent"
+        '400':
+          description: Neither after nor before was given, or both
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /events:
+    # No retry: a live stream is not sent again from the start; the client resumes with Last-Event-ID.
+    x-retry-enabled: false
+    get:
+      summary: The camera events as they happen, as Server-Sent Events
+      operationId: listEvents
+      tags:
+        - events
+      description: |
+        One stream of what the hub sends to every client: connection, recording, motion and USB events, each with
+        an id. A client that sends the last id it read as Last-Event-ID gets the events after it from a buffer of the
+        latest ones (X-Events-Missed says how many the buffer no longer had), then the live ones. When nothing
+        happens for heartbeatSeconds, a named event "ping" - which the generated clients read past - keeps a proxy
+        from closing the idle connection. A reader that falls behind is cut off, and resumes.
+      parameters:
+        - name: cameraId
+          in: query
+          required: false
+          description: Only the events of this camera.
+          schema:
+            type: string
+            format: uuid
+        - name: heartbeatSeconds
+          in: query
+          required: false
+          description: Seconds without an event before a ping event (15 when left out).
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 60
+        - name: Last-Event-ID
+          in: header
+          required: false
+          description: The id of the last event read; the stream goes on after it.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The events, one at a time.
+          headers:
+            X-Events-Missed:
+              description: How many events after Last-Event-ID the buffer no longer had (0 when it had them all; at least 1 for an id of an earlier run of the server, whose events since are not known).
+              schema:
+                type: integer
+                format: int64
+          content:
+            text/event-stream:
+              itemSchema:
+                $ref: "#/components/schemas/SurveillanceEvent"
+
+  /settings:
+    get:
+      summary: Get application settings
+      operationId: getSettings
+      tags:
+        - settings
+      responses:
+        '200':
+          description: Application settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+    put:
+      summary: Update application settings
+      operationId: updateSettings
+      x-authorize-roles:
+        - admin
+      x-retry-enabled: false
+      tags:
+        - settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsRequest"
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+        '400':
+          description: Invalid settings
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /settings/storage:
+    get:
+      summary: Get how full the disk with the recordings is
+      operationId: getStorageStatus
+      tags:
+        - settings
+      responses:
+        '200':
+          description: The space on the disk the recording folder is on.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageStatus"
+        '503':
+          description: The disk of the recording folder cannot be read (a share that is offline, a drive that is gone).
+          headers:
+            Retry-After:
+              description: Seconds to wait before asking again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /webhooks:
+    get:
+      summary: List the receivers the server posts its events to
+      operationId: listWebhooks
+      x-authorize-roles:
+        - admin
+      tags:
+        - webhooks
+      responses:
+        '200':
+          description: The receivers, those from the server's configuration first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Webhook"
+    post:
+      summary: Add a receiver
+      operationId: createWebhook
+      x-authorize-roles:
+        - admin
+      tags:
+        - webhooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookRequest"
+      responses:
+        '201':
+          description: Receiver added
+          headers:
+            Location:
+              description: The new resource's address.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        '400':
+          description: The address is not an http or https address
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /webhooks/{webhookId}:
+    put:
+      summary: Change a receiver
+      operationId: updateWebhook
+      x-authorize-roles:
+        - admin
+      x-retry-enabled: false
+      tags:
+        - webhooks
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWebhookRequest"
+      responses:
+        '200':
+          description: Receiver changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        '400':
+          description: The address is not an http or https address
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '404':
+          description: Receiver not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: The receiver comes from the server's configuration and cannot be changed here
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Remove a receiver
+      operationId: deleteWebhook
+      x-authorize-roles:
+        - admin
+      x-retry-enabled: false
+      tags:
+        - webhooks
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Receiver removed
+        '404':
+          description: Receiver not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '409':
+          description: The receiver comes from the server's configuration and cannot be removed here
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /webhooks/{webhookId}/test:
+    post:
+      summary: Send a test event to a receiver
+      operationId: testWebhook
+      x-authorize-roles:
+        - admin
+      # A test sends a request to someone else's server.
+      x-ratelimit-policy: webhook-tests
+      x-ratelimit-permit-limit: 10
+      x-ratelimit-window-seconds: 60
+      x-ratelimit-algorithm: fixed
+      x-ratelimit-partition: ip
+      tags:
+        - webhooks
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The test event was sent; the result says whether the receiver took it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTestResult"
+        '404':
+          description: Receiver not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '429':
+          description: Too many calls from this client; Retry-After says when to call again.
+          headers:
+            Retry-After:
+              description: Seconds to wait before calling again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+# The clients' resilience. Some calls are slow by nature (starting a recording
+# waits for the camera, saving a changed folder layout moves the recordings), so
+# an attempt has two minutes and all of them together five; the breaker samples at
+# least twice an attempt. Only reads are repeated: POST and PATCH never are, and
+# every PUT and DELETE says so below.
+x-retry-policy: standard
+x-retry-max-attempts: 3
+x-retry-delay-seconds: 2
+x-retry-backoff: exponential
+x-retry-use-jitter: true
+x-retry-timeout-seconds: 120
+x-retry-total-timeout-seconds: 300
+x-retry-circuit-breaker: true
+x-retry-cb-sampling-duration-seconds: 240
+x-retry-handle-429: true
+
+x-authorize-roles:
+  - viewer
+  - operator
+  - admin
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The access token from createSession, completeSetup or refreshSession.
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: An API key an admin made (createApiKey), for an integration.
+
+  schemas:
+    UserRole:
+      type: string
+      description: >-
+        viewer watches and reads; operator also records, takes snapshots and edits cameras and layouts; admin also
+        changes the settings, the webhooks, the users and the API keys.
+      enum: [viewer, operator, admin]
+
+    SetupStatus:
+      title: SetupStatus
+      type: object
+      required:
+        - setupRequired
+      properties:
+        setupRequired:
+          type: boolean
+          description: True while the server has no user; completeSetup creates the first admin.
+
+    CompleteSetupRequest:
+      title: CompleteSetupRequest
+      type: object
+      required:
+        - setupCode
+        - userName
+        - password
+      properties:
+        setupCode:
+          type: string
+          minLength: 1
+          description: The code in setup-code.txt in the server's data folder.
+        userName:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          type: string
+          minLength: 8
+          maxLength: 256
+
+    SignInRequest:
+      title: SignInRequest
+      type: object
+      required:
+        - userName
+        - password
+      properties:
+        userName:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+
+    RefreshSessionRequest:
+      title: RefreshSessionRequest
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+
+    Session:
+      title: Session
+      type: object
+      description: >-
+        A signed-in session. The access token is sent as "Authorization: Bearer <token>" until it runs out, then
+        refreshSession gives a new one for the refresh token.
+      required:
+        - accessToken
+        - expiresInSeconds
+        - refreshToken
+        - userName
+        - role
+        - mediaToken
+      properties:
+        accessToken:
+          type: string
+        expiresInSeconds:
+          type: integer
+          format: int32
+          description: How long the access token is valid.
+        refreshToken:
+          type: string
+          description: Renews the session (refreshSession) or ends it (endSession). It is valid for 30 days after its last use.
+        mediaToken:
+          type: string
+          description: >-
+            Read-only access to the recordings and their thumbnails (/recordings-files), for a player or an image that
+            cannot send a header: added to the address as ?media=<token>. Valid for 12 hours; a renewed session has a new one.
+        userName:
+          type: string
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    ChangePasswordRequest:
+      title: ChangePasswordRequest
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 256
+
+    UserAccount:
+      title: UserAccount
+      type: object
+      required:
+        - id
+        - userName
+        - role
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        userName:
+          type: string
+        role:
+          $ref: "#/components/schemas/UserRole"
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateUserRequest:
+      title: CreateUserRequest
+      type: object
+      required:
+        - userName
+        - password
+        - role
+      properties:
+        userName:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          type: string
+          minLength: 8
+          maxLength: 256
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    UpdateUserRequest:
+      title: UpdateUserRequest
+      type: object
+      description: What is left out stays.
+      properties:
+        role:
+          $ref: "#/components/schemas/UserRole"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 256
+
+    ApiKey:
+      title: ApiKey
+      type: object
+      required:
+        - id
+        - name
+        - role
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/UserRole"
+        createdAt:
+          type: string
+          format: date-time
+
+    NewApiKey:
+      title: NewApiKey
+      type: object
+      description: A key that was just made; the key itself is shown this once.
+      required:
+        - id
+        - name
+        - role
+        - createdAt
+        - key
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/UserRole"
+        createdAt:
+          type: string
+          format: date-time
+        key:
+          type: string
+          description: Sent as the X-API-Key header.
+
+    CreateApiKeyRequest:
+      title: CreateApiKeyRequest
+      type: object
+      required:
+        - name
+        - role
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    AuditEntry:
+      title: AuditEntry
+      type: object
+      required:
+        - timestamp
+        - userName
+        - action
+        - target
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        userName:
+          type: string
+          description: Who; for a sign-in the name that was given, for an API key its name.
+        action:
+          type: string
+          description: The operation (createCamera, updateSettings, createSession, createSessionRefused, ...).
+        target:
+          type: string
+          description: The address it was done on (/cameras/{id}).
+
+    CurrentUser:
+      title: CurrentUser
+      type: object
+      required:
+        - userName
+        - role
+      properties:
+        userName:
+          type: string
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    Camera:
+      title: Camera
+      type: object
+      required:
+        - id
+        - displayName
+        - description
+        - source
+        - connectionType
+        - rotation
+        - ipAddress
+        - port
+        - protocol
+        - path
+        - username
+        - overlayPosition
+        - streamUseLowLatencyMode
+        - streamMaxLatencyMs
+        - streamRtspTransport
+        - streamBufferDurationMs
+        - isRecording
+        - motionZones
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        description:
+          type: string
+        source:
+          type: string
+          enum: [network, usb]
+          default: network
+        connectionType:
+          type: string
+          enum: [none, lan, wifi, usb]
+          description: Physical link to the camera, shown as the connection-type icon. USB cameras are always usb; network cameras use none, lan or wifi.
+        rotation:
+          type: string
+          enum: [none, rotate90, rotate180, rotate270]
+          description: Clockwise rotation applied to the picture. Recordings carry it as a rotation flag.
+        ipAddress:
+          type: string
+        port:
+          type: integer
+          format: int32
+        protocol:
+          type: string
+          enum: [rtsp, http, https]
+        path:
+          type: string
+        username:
+          type: string
+        # USB-camera fields — populated only when source = usb
+        usbDeviceId:
+          type: string
+        usbFriendlyName:
+          type: string
+        usbWidth:
+          type: integer
+          format: int32
+        usbHeight:
+          type: integer
+          format: int32
+        usbFrameRate:
+          type: number
+          format: double
+        usbPixelFormat:
+          type: string
+        usbCaptureAudio:
+          type: boolean
+        usbAudioDeviceName:
+          type: string
+          description: DirectShow friendly name of the companion audio capture device (e.g. "Microphone (Logitech BRIO)"). Only consulted when usbCaptureAudio is true.
+        overlayPosition:
+          type: string
+          enum: [topLeft, topRight, bottomLeft, bottomRight]
+        streamUseLowLatencyMode:
+          type: boolean
+        streamMaxLatencyMs:
+          type: integer
+          format: int32
+        streamRtspTransport:
+          type: string
+          enum: [tcp, udp]
+        streamBufferDurationMs:
+          type: integer
+          format: int32
+        connectionState:
+          $ref: "#/components/schemas/CameraConnectionState"
+        isRecording:
+          type: boolean
+        motionZones:
+          type: array
+          maxItems: 16
+          description: Areas of the picture motion detection ignores or watches on their own, drawn on the picture as it is shown (rotated).
+          items:
+            $ref: "#/components/schemas/MotionZone"
+
+    ConnectionTypeDetection:
+      title: ConnectionTypeDetection
+      type: object
+      required:
+        - connectionType
+      properties:
+        connectionType:
+          type: string
+          enum: [none, lan, wifi, usb]
+    UsbDeviceDescriptor:
+      title: UsbDeviceDescriptor
+      type: object
+      required:
+        - deviceId
+        - friendlyName
+        - isPresent
+        - capabilities
+      properties:
+        deviceId:
+          type: string
+          description: Stable Media Foundation symbolic link.
+        friendlyName:
+          type: string
+        vendorId:
+          type: string
+          description: Hex 4-digit USB vendor id.
+        productId:
+          type: string
+          description: Hex 4-digit USB product id.
+        isPresent:
+          type: boolean
+        capabilities:
+          type: array
+          description: Capture-format triples the device advertises (resolution × frame-rate × pixel-format).
+          items:
+            $ref: "#/components/schemas/UsbStreamFormat"
+
+    UsbStreamFormat:
+      title: UsbStreamFormat
+      type: object
+      required:
+        - width
+        - height
+        - frameRate
+        - pixelFormat
+      properties:
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        frameRate:
+          type: number
+          format: double
+        pixelFormat:
+          type: string
+          description: FFmpeg pixel-format string (nv12 / yuyv422 / mjpeg / h264 / etc).
+
+    CreateCameraRequest:
+      title: CreateCameraRequest
+      type: object
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 256
+        description:
+          type: string
+        source:
+          type: string
+          enum: [network, usb]
+          default: network
+        connectionType:
+          type: string
+          enum: [none, lan, wifi, usb]
+          description: Physical link to the camera, shown as the connection-type icon. USB cameras are always usb; network cameras use none, lan or wifi.
+        rotation:
+          type: string
+          enum: [none, rotate90, rotate180, rotate270]
+          description: Clockwise rotation applied to the picture. Recordings carry it as a rotation flag.
+        ipAddress:
+          type: string
+        port:
+          type: integer
+          format: int32
+          default: 554
+          minimum: 1
+          maximum: 65535
+        protocol:
+          type: string
+          enum: [rtsp, http, https]
+          default: rtsp
+        path:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        usbDeviceId:
+          type: string
+        usbFriendlyName:
+          type: string
+        usbWidth:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 8192
+        usbHeight:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 8192
+        usbFrameRate:
+          type: number
+          format: double
+          minimum: 0.1
+          maximum: 1000
+        usbPixelFormat:
+          type: string
+        usbCaptureAudio:
+          type: boolean
+        usbAudioDeviceName:
+          type: string
+          description: DirectShow friendly name of the companion audio capture device (e.g. "Microphone (Logitech BRIO)"). Only consulted when usbCaptureAudio is true.
+        overlayPosition:
+          type: string
+          enum: [topLeft, topRight, bottomLeft, bottomRight]
+        streamUseLowLatencyMode:
+          type: boolean
+        streamMaxLatencyMs:
+          type: integer
+          format: int32
+        streamRtspTransport:
+          type: string
+          enum: [tcp, udp]
+        streamBufferDurationMs:
+          type: integer
+          format: int32
+        motionZones:
+          type: array
+          maxItems: 16
+          description: Areas of the picture motion detection ignores or watches on their own, drawn on the picture as it is shown (rotated).
+          items:
+            $ref: "#/components/schemas/MotionZone"
+
+    UpdateCameraRequest:
+      title: UpdateCameraRequest
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 256
+        description:
+          type: string
+        source:
+          type: string
+          enum: [network, usb]
+        connectionType:
+          type: string
+          enum: [none, lan, wifi, usb]
+          description: Physical link to the camera, shown as the connection-type icon. USB cameras are always usb; network cameras use none, lan or wifi.
+        rotation:
+          type: string
+          enum: [none, rotate90, rotate180, rotate270]
+          description: Clockwise rotation applied to the picture. Recordings carry it as a rotation flag.
+        ipAddress:
+          type: string
+        port:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+        protocol:
+          type: string
+          enum: [rtsp, http, https]
+        path:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        usbDeviceId:
+          type: string
+        usbFriendlyName:
+          type: string
+        usbWidth:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 8192
+        usbHeight:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 8192
+        usbFrameRate:
+          type: number
+          format: double
+          minimum: 0.1
+          maximum: 1000
+        usbPixelFormat:
+          type: string
+        usbCaptureAudio:
+          type: boolean
+        usbAudioDeviceName:
+          type: string
+          description: DirectShow friendly name of the companion audio capture device (e.g. "Microphone (Logitech BRIO)"). Only consulted when usbCaptureAudio is true.
+        overlayPosition:
+          type: string
+          enum: [topLeft, topRight, bottomLeft, bottomRight]
+        streamUseLowLatencyMode:
+          type: boolean
+        streamMaxLatencyMs:
+          type: integer
+          format: int32
+        streamRtspTransport:
+          type: string
+          enum: [tcp, udp]
+        streamBufferDurationMs:
+          type: integer
+          format: int32
+        motionZones:
+          type: array
+          maxItems: 16
+          description: Replaces the camera's zones; an empty list removes them. Left out, the zones are kept, turned with the picture when the rotation changes.
+          items:
+            $ref: "#/components/schemas/MotionZone"
+
+    MotionZone:
+      title: MotionZone
+      type: object
+      description: An area of a camera's picture that motion detection ignores or watches on its own. A polygon in fractions of the picture as it is shown, 0 to 1 from the top left.
+      required:
+        - name
+        - kind
+        - points
+      properties:
+        name:
+          type: string
+          maxLength: 64
+        kind:
+          type: string
+          enum: [ignore, watch]
+        points:
+          type: array
+          minItems: 3
+          maxItems: 32
+          items:
+            $ref: "#/components/schemas/ZonePoint"
+        color:
+          type: string
+          maxLength: 32
+          description: The zone's colour by name, for the editor and the timeline.
+        sensitivity:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+          description: A watch zone's sensitivity, 0 to 100 as the camera's. Left out, the zone takes the camera's own (not "keep what is stored", as in an update).
+        smallestObjectPercent:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: The smallest object that counts in a watch zone, in percent of the picture's area. Left out, the zone takes the camera's (the smallestObjectPercent setting).
+
+    ZonePoint:
+      title: ZonePoint
+      type: object
+      description: A corner of a motion zone, in fractions of the picture as it is shown.
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        y:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+
+    StreamLease:
+      title: StreamLease
+      type: object
+      description: A viewer's lease on a camera's live stream.
+      required:
+        - leaseId
+        - cameraId
+        - playlistUrl
+        - renewSeconds
+      properties:
+        leaseId:
+          type: string
+          format: uuid
+        cameraId:
+          type: string
+          format: uuid
+        playlistUrl:
+          type: string
+          description: The HLS playlist, relative to the server (/streams/...).
+        renewSeconds:
+          type: integer
+          format: int32
+          description: How often the viewer renews the lease; one that is not renewed for twice as long ends.
+
+    RecordingStatus:
+      title: RecordingStatus
+      type: object
+      required:
+        - cameraId
+        - state
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        state:
+          $ref: "#/components/schemas/RecordingStatusState"
+        filePath:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+
+    Layout:
+      title: Layout
+      type: object
+      required:
+        - id
+        - name
+        - rows
+        - columns
+        - cameras
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        rows:
+          type: integer
+          format: int32
+        columns:
+          type: integer
+          format: int32
+        cameras:
+          type: array
+          items:
+            $ref: "#/components/schemas/LayoutItem"
+
+    LayoutItem:
+      title: LayoutItem
+      type: object
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        position:
+          type: integer
+          format: int32
+
+    CreateLayoutRequest:
+      title: CreateLayoutRequest
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 256
+        rows:
+          type: integer
+          format: int32
+          default: 2
+          minimum: 1
+        columns:
+          type: integer
+          format: int32
+          default: 2
+          minimum: 1
+
+    UpdateLayoutRequest:
+      title: UpdateLayoutRequest
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 256
+        rows:
+          type: integer
+          format: int32
+          minimum: 1
+        columns:
+          type: integer
+          format: int32
+          minimum: 1
+        cameras:
+          type: array
+          items:
+            $ref: "#/components/schemas/LayoutItem"
+
+    Recording:
+      title: Recording
+      type: object
+      required:
+        - id
+        - cameraId
+        - cameraName
+        - filePath
+        - startedAt
+        - duration
+        - fileSizeBytes
+        - hasThumbnail
+        - inProgress
+      properties:
+        id:
+          type: string
+          format: uuid
+        cameraId:
+          type: string
+          format: uuid
+        cameraName:
+          type: string
+        filePath:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        duration:
+          type: string
+          description: ISO 8601 duration
+        fileSizeBytes:
+          type: integer
+          format: int64
+        hasThumbnail:
+          type: boolean
+        inProgress:
+          type: boolean
+          description: True while the recording is still being made. Its size and duration are not final, and it may not play until it is finished.
+        thumbnailPath:
+          type: string
+          description: Path of the thumbnail relative to the recordings root, with forward slashes; fetch it from /recordings-files/{thumbnailPath}. Null when the recording has no thumbnail.
+        activity:
+          type: array
+          description: The recording's activity for a sparkline in a list - 24 equal stretches from its start, each the most that changed in it (0 to 100), never the average. Left out for a recording without an activity index.
+          maxItems: 24
+          items:
+            type: integer
+            format: int32
+            minimum: 0
+            maximum: 100
+
+    Timeline:
+      title: Timeline
+      type: object
+      description: The cameras' activity over a span, one lane per camera.
+      required:
+        - from
+        - to
+        - lanes
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        lanes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineLane"
+
+    TimelineLane:
+      title: TimelineLane
+      type: object
+      description: One camera's timeline over the span.
+      required:
+        - cameraId
+        - cameraName
+        - coverage
+        - gaps
+        - buckets
+        - events
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        cameraName:
+          type: string
+        coverage:
+          type: array
+          description: Where recordings cover the span, cut to it, from its start.
+          items:
+            $ref: "#/components/schemas/TimelineCoverage"
+        gaps:
+          type: array
+          description: Where no recording covers the span, and why, from its start.
+          items:
+            $ref: "#/components/schemas/TimelineGap"
+        buckets:
+          type: array
+          description: The span in equal stretches, from its start.
+          items:
+            $ref: "#/components/schemas/TimelineBucket"
+        events:
+          type: array
+          description: What moved in the span, from its start.
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+
+    TimelineCoverage:
+      title: TimelineCoverage
+      type: object
+      description: Where a recording covers the span.
+      required:
+        - start
+        - end
+        - filePath
+        - recordingStart
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        filePath:
+          type: string
+          description: The recording's path relative to the recordings root, as the listing gives it.
+        recordingStart:
+          type: string
+          format: date-time
+          description: When the recording itself starts, before it was cut to the span. A moment in the span is played this far into the file.
+
+    TimelineGap:
+      title: TimelineGap
+      type: object
+      description: A stretch of a lane without a recording, and why.
+      required:
+        - start
+        - end
+        - reason
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          enum: [unknown, offline, notRecording, diskFull, serverDown]
+          description: >-
+            offline - the camera could not be reached; notRecording - it was there but not recorded;
+            diskFull - the recording was stopped or refused for a full disk; serverDown - the server was
+            not running; unknown - no history reaches that far back.
+
+    TimelineBucket:
+      title: TimelineBucket
+      type: object
+      description: One stretch of a lane, with the most that happened in it.
+      required:
+        - level
+        - tracks
+        - isRecorded
+        - isAnalysed
+      properties:
+        level:
+          type: number
+          format: double
+          description: The largest share of the picture that differed from the learnt scene, 0 to 100.
+        tracks:
+          type: integer
+          format: int32
+          description: The most moving things followed at once.
+        isRecorded:
+          type: boolean
+          description: Whether a recording covers any of the stretch. A stretch without one is a gap.
+        isAnalysed:
+          type: boolean
+          description: Whether any of it was analysed. Recorded but not analysed is unknown, not quiet.
+
+    TimelineEvent:
+      title: TimelineEvent
+      type: object
+      description: Something that moved, to the second, and where to play it.
+      required:
+        - cameraId
+        - start
+        - end
+        - peakLevel
+        - tracks
+        - filePath
+        - offsetSeconds
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        peakLevel:
+          type: number
+          format: double
+          description: The highest level in it, 0 to 100.
+        tracks:
+          type: integer
+          format: int32
+          description: The most moving things at once in it.
+        filePath:
+          type: string
+          description: The recording it starts in, as the listing gives it.
+        offsetSeconds:
+          type: number
+          format: double
+          description: Where in that recording it starts, in seconds.
+
+    ReviewVerdict:
+      type: string
+      description: >-
+        A person's verdict on the motion boxes in a stretch of a recording. correct: boxed as it should be; falseBox:
+        boxed, but nothing that matters moves (a tree, a reflection); missed: something moved and was not boxed;
+        wrongCount: boxed, with the wrong number of boxes.
+      enum: [correct, falseBox, missed, wrongCount]
+
+    AddRecordingVerdictRequest:
+      title: AddRecordingVerdictRequest
+      type: object
+      description: A verdict on a stretch of a recording, its times in seconds into it (as the player and the timeline count them).
+      required:
+        - fromSeconds
+        - toSeconds
+        - verdict
+      properties:
+        fromSeconds:
+          type: number
+          format: double
+          minimum: 0
+          description: Where the stretch starts, in seconds into the recording.
+        toSeconds:
+          type: number
+          format: double
+          minimum: 0
+          description: Where it ends, after fromSeconds.
+        verdict:
+          $ref: "#/components/schemas/ReviewVerdict"
+        count:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+          description: How many things move in the stretch; 1 when left out. Never for falseBox.
+        label:
+          type: string
+          maxLength: 64
+          description: What moves (person, car, cat, ...).
+
+    RecordingActivity:
+      title: RecordingActivity
+      type: object
+      description: What moved when in one recording, in equal stretches from its start.
+      required:
+        - hasIndex
+        - isBeingAnalysed
+        - durationSeconds
+        - buckets
+      properties:
+        hasIndex:
+          type: boolean
+          description: Whether the recording has an activity index. Without one the buckets are empty.
+        isBeingAnalysed:
+          type: boolean
+          description: Whether the recording is queued or being analysed for its index (startRecordingAnalysis). Neither this nor hasIndex means an analysis asked for has failed, or the server restarted and forgot it.
+        startedAt:
+          type: string
+          format: date-time
+          description: When the index starts, in UTC. Left out without an index.
+        durationSeconds:
+          type: number
+          format: double
+          description: How many seconds the buckets cover together.
+        buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecordingActivityBucket"
+
+    RecordingPreviewSheet:
+      title: RecordingPreviewSheet
+      type: object
+      description: Where the preview pictures of a recording are in their JPEG. Tiles of one size, row by row, columns to a row; first the grid (tile i is i times intervalSeconds into the recording), then a tile for each event.
+      required:
+        - hasPreviews
+        - isBeingMade
+        - intervalSeconds
+        - tileWidth
+        - tileHeight
+        - columns
+        - gridCount
+        - events
+      properties:
+        hasPreviews:
+          type: boolean
+          description: Whether the recording has previews. Without them the numbers are 0 and events is empty.
+        isBeingMade:
+          type: boolean
+          description: Whether the previews are queued or being made. Neither this nor hasPreviews means the recording is still being written, or they could not be made.
+        imagePath:
+          type: string
+          description: The JPEG's path relative to the recordings root, fetched from /recordings-files/ like a thumbnail. Left out without previews.
+        intervalSeconds:
+          type: number
+          format: double
+          description: How far apart the grid's tiles are, in seconds.
+        tileWidth:
+          type: integer
+          format: int32
+          description: The width of a tile in pixels, as the picture is displayed.
+        tileHeight:
+          type: integer
+          format: int32
+          description: The height of a tile in pixels.
+        columns:
+          type: integer
+          format: int32
+          description: How many tiles a row of the JPEG has.
+        gridCount:
+          type: integer
+          format: int32
+          description: How many tiles the grid has.
+        events:
+          type: array
+          maxItems: 200
+          description: The events' tiles, from the start, after the grid.
+          items:
+            $ref: "#/components/schemas/RecordingPreviewTile"
+
+    RecordingPreviewTile:
+      title: RecordingPreviewTile
+      type: object
+      description: The preview tile of an event, of its busiest second.
+      required:
+        - seconds
+        - tile
+      properties:
+        seconds:
+          type: number
+          format: double
+          description: How far into the recording the picture is, in seconds.
+        tile:
+          type: integer
+          format: int32
+          description: The tile's number in the JPEG.
+
+    RecordingActivityBucket:
+      title: RecordingActivityBucket
+      type: object
+      description: One stretch of a recording, with the most that happened in it.
+      required:
+        - level
+        - tracks
+        - isAnalysed
+      properties:
+        level:
+          type: number
+          format: double
+          description: The largest share of the picture that differed from the learnt scene, 0 to 100. Something that only sways (a tree) counts here too.
+        tracks:
+          type: integer
+          format: int32
+          description: The most moving things followed at once (confirmed tracks). Above 0 means something went somewhere.
+        isAnalysed:
+          type: boolean
+          description: Whether any second of the stretch was analysed. A stretch that was not is unknown, not quiet.
+        zones:
+          type: array
+          maxItems: 16
+          description: The names of the camera's watch zones a moving thing was in during the stretch, in the order first seen; left out when none. A client draws an event in its zone's colour.
+          items:
+            type: string
+            maxLength: 64
+
+    AppSettings:
+      title: AppSettings
+      type: object
+      description: The settings as the server has them. Every setting is always there.
+      required:
+        - themeBase
+        - themeAccent
+        - language
+        - connectOnStartup
+        - startMaximized
+        - showOverlayTitle
+        - showOverlayDescription
+        - showOverlayTime
+        - showOverlayConnectionStatus
+        - showOverlayQuickActions
+        - showOverlayConnectionTypeIcon
+        - connectionTypeIconPlacement
+        - overlayOpacity
+        - overlayPosition
+        - allowDragAndDropReorder
+        - autoSaveLayoutChanges
+        - snapshotPath
+        - defaultProtocol
+        - defaultPort
+        - connectionTimeoutSeconds
+        - reconnectDelaySeconds
+        - autoReconnectOnFailure
+        - showNotificationOnDisconnect
+        - showNotificationOnReconnect
+        - playNotificationSound
+        - videoQuality
+        - hardwareAcceleration
+        - lowLatencyMode
+        - bufferDurationMs
+        - rtspTransport
+        - maxLatencyMs
+        - motionSensitivity
+        - smallestObjectPercent
+        - stoppedObjectSeconds
+        - ignoreLightingChanges
+        - minimumChangePercent
+        - analysisFrameRate
+        - analysisWidth
+        - analysisHeight
+        - postMotionDurationSeconds
+        - cooldownSeconds
+        - boundingBoxShowInGrid
+        - boundingBoxShowInFullScreen
+        - boundingBoxColor
+        - boundingBoxThickness
+        - boundingBoxMinArea
+        - boundingBoxPadding
+        - boundingBoxSmoothing
+        - recordingPath
+        - recordingFormat
+        - recordAsH264
+        - enableRecordingOnMotion
+        - enableRecordingOnConnect
+        - enableActivityIndex
+        - enableHourlySegmentation
+        - maxRecordingDurationMinutes
+        - thumbnailTileCount
+        - useDailySubfolders
+        - separateThumbnailFolder
+        - enableTimelapse
+        - timelapseInterval
+        - cleanupSchedule
+        - recordingRetentionDays
+        - cleanupIncludeSnapshots
+        - snapshotRetentionDays
+        - enableDiskSpaceGuard
+        - minFreeSpaceMb
+        - maxRecordingStorageGb
+        - playbackShowFilename
+        - playbackFilenameColor
+        - playbackShowTimestamp
+        - playbackTimestampColor
+        - enableDebugLogging
+        - logPath
+      properties:
+        # General
+        themeBase:
+          $ref: "#/components/schemas/AppSettingsThemeBase"
+        themeAccent:
+          type: string
+        language:
+          type: string
+          deprecated: true
+          description: Not used by the clients any more; each client keeps its own language. Kept so an older client is not refused.
+        connectOnStartup:
+          type: boolean
+        startMaximized:
+          type: boolean
+        # Camera Display
+        showOverlayTitle:
+          type: boolean
+        showOverlayDescription:
+          type: boolean
+        showOverlayTime:
+          type: boolean
+        showOverlayConnectionStatus:
+          type: boolean
+        showOverlayQuickActions:
+          type: boolean
+          description: Show the quick-action buttons on a camera tile. On by default.
+        showOverlayConnectionTypeIcon:
+          type: boolean
+          description: Show the connection-type icon (LAN / Wi-Fi / USB) in a free tile corner.
+        connectionTypeIconPlacement:
+          $ref: "#/components/schemas/AppSettingsConnectionTypeIconPlacement"
+          description: Which corner adjacent to the overlay info box holds the connection-type icon.
+        overlayOpacity:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        overlayPosition:
+          $ref: "#/components/schemas/AppSettingsOverlayPosition"
+        allowDragAndDropReorder:
+          type: boolean
+        autoSaveLayoutChanges:
+          type: boolean
+        snapshotPath:
+          type: string
+        # Connection
+        defaultProtocol:
+          $ref: "#/components/schemas/AppSettingsDefaultProtocol"
+        defaultPort:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+        connectionTimeoutSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        reconnectDelaySeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        autoReconnectOnFailure:
+          type: boolean
+        showNotificationOnDisconnect:
+          type: boolean
+        showNotificationOnReconnect:
+          type: boolean
+        playNotificationSound:
+          type: boolean
+        # Performance
+        videoQuality:
+          type: string
+          description: "The highest resolution to decode at: Auto (the camera's own), 1080p, 720p, 480p or 360p. The older names low, medium, high and ultra are still accepted."
+        hardwareAcceleration:
+          type: boolean
+        lowLatencyMode:
+          type: boolean
+        bufferDurationMs:
+          type: integer
+          format: int32
+          minimum: 1
+        rtspTransport:
+          $ref: "#/components/schemas/AppSettingsRtspTransport"
+        maxLatencyMs:
+          type: integer
+          format: int32
+          minimum: 1
+        # Motion Detection
+        motionSensitivity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        smallestObjectPercent:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: The smallest object that counts, in percent of the picture's area (0.02 by default). A watch zone without its own takes this one.
+        stoppedObjectSeconds:
+          type: integer
+          format: int32
+          minimum: 10
+          maximum: 600
+          description: How long something that stops moving (a parked car) is seen at most before it becomes part of the background, in seconds (60 by default); something that differs little goes sooner.
+        ignoreLightingChanges:
+          type: boolean
+          description: Whether a change over most of the picture at once is taken for light (a cloud, a lamp) and ignored (true by default). On, someone filling most of the picture (a camera at a door) is taken for light while close; off, they are seen, but after a change of light motion is missed until the new light has become background.
+        minimumChangePercent:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          deprecated: true
+          description: Read only by the comparison detector; the built-in detector uses smallestObjectPercent. Kept so an older client is not refused.
+        analysisFrameRate:
+          type: integer
+          format: int32
+          minimum: 1
+        analysisWidth:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 8192
+          description: The longer side of the analysed picture, in pixels (its width for a camera lying down); the other side follows the camera's picture.
+        analysisHeight:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 8192
+          deprecated: true
+          description: Not used any more; the height follows the camera's picture. Kept so an older client is not refused.
+        postMotionDurationSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        cooldownSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        boundingBoxShowInGrid:
+          type: boolean
+        boundingBoxShowInFullScreen:
+          type: boolean
+        boundingBoxColor:
+          type: string
+        boundingBoxThickness:
+          type: integer
+          format: int32
+          minimum: 1
+        boundingBoxMinArea:
+          type: integer
+          format: int32
+          minimum: 1
+          deprecated: true
+          description: Read only by the comparison detector; the built-in detector uses smallestObjectPercent. Kept so an older client is not refused.
+        boundingBoxPadding:
+          type: integer
+          format: int32
+          minimum: 0
+        boundingBoxSmoothing:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        # Recording
+        recordingPath:
+          type: string
+        recordingFormat:
+          $ref: "#/components/schemas/AppSettingsRecordingFormat"
+        recordAsH264:
+          type: boolean
+          description: Record every camera as H.264 whatever it sends. A camera that sends anything else (H.265, MJPEG) is then decoded and encoded again while it is recorded, which costs processor time. Takes effect the next time a camera is opened.
+        enableRecordingOnMotion:
+          type: boolean
+        enableRecordingOnConnect:
+          type: boolean
+        enableActivityIndex:
+          type: boolean
+          description: Keep an activity index beside every recording, for the timelines. It costs the analysis of the recorded cameras; turned off, the next recording or segment is made without one.
+        enableHourlySegmentation:
+          type: boolean
+        maxRecordingDurationMinutes:
+          type: integer
+          format: int32
+          minimum: 1
+        thumbnailTileCount:
+          type: integer
+          format: int32
+          minimum: 1
+        useDailySubfolders:
+          type: boolean
+          description: Put each day's recordings in their own yyyy-MM-dd folder below the camera folder. On by default. Changing it moves the existing recordings.
+        separateThumbnailFolder:
+          type: boolean
+          description: Keep thumbnails in a thumbnails folder below the recording path instead of next to the videos. On by default. Changing it moves the existing thumbnails.
+        enableTimelapse:
+          type: boolean
+        timelapseInterval:
+          type: string
+        cleanupSchedule:
+          $ref: "#/components/schemas/AppSettingsCleanupSchedule"
+        recordingRetentionDays:
+          type: integer
+          format: int32
+          minimum: 1
+        cleanupIncludeSnapshots:
+          type: boolean
+        snapshotRetentionDays:
+          type: integer
+          format: int32
+          minimum: 1
+        enableDiskSpaceGuard:
+          type: boolean
+          description: Delete the oldest recordings when free disk space drops below minFreeSpaceMb.
+        minFreeSpaceMb:
+          type: integer
+          format: int32
+          description: Free disk space, in megabytes, the disk space guard keeps available.
+        maxRecordingStorageGb:
+          type: integer
+          format: int32
+          minimum: 0
+          description: The most space, in gigabytes, all recordings together may take; the oldest go first when they take more. 0 is no limit.
+        playbackShowFilename:
+          type: boolean
+        playbackFilenameColor:
+          type: string
+        playbackShowTimestamp:
+          type: boolean
+        playbackTimestampColor:
+          type: string
+        # Advanced
+        enableDebugLogging:
+          type: boolean
+        logPath:
+          type: string
+
+    UpdateSettingsRequest:
+      title: UpdateSettingsRequest
+      type: object
+      description: A change of the settings. A setting that is left out keeps its value, so a client that does not know a setting yet does not reset it.
+      properties:
+        # General
+        themeBase:
+          $ref: "#/components/schemas/AppSettingsThemeBase"
+        themeAccent:
+          type: string
+        language:
+          type: string
+          deprecated: true
+          description: Not used by the clients any more; each client keeps its own language. Kept so an older client is not refused.
+        connectOnStartup:
+          type: boolean
+        startMaximized:
+          type: boolean
+        # Camera Display
+        showOverlayTitle:
+          type: boolean
+        showOverlayDescription:
+          type: boolean
+        showOverlayTime:
+          type: boolean
+        showOverlayConnectionStatus:
+          type: boolean
+        showOverlayQuickActions:
+          type: boolean
+          description: Show the quick-action buttons on a camera tile. On by default.
+        showOverlayConnectionTypeIcon:
+          type: boolean
+          description: Show the connection-type icon (LAN / Wi-Fi / USB) in a free tile corner.
+        connectionTypeIconPlacement:
+          $ref: "#/components/schemas/AppSettingsConnectionTypeIconPlacement"
+          description: Which corner adjacent to the overlay info box holds the connection-type icon.
+        overlayOpacity:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        overlayPosition:
+          $ref: "#/components/schemas/AppSettingsOverlayPosition"
+        allowDragAndDropReorder:
+          type: boolean
+        autoSaveLayoutChanges:
+          type: boolean
+        snapshotPath:
+          type: string
+        # Connection
+        defaultProtocol:
+          $ref: "#/components/schemas/AppSettingsDefaultProtocol"
+        defaultPort:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+        connectionTimeoutSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        reconnectDelaySeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        autoReconnectOnFailure:
+          type: boolean
+        showNotificationOnDisconnect:
+          type: boolean
+        showNotificationOnReconnect:
+          type: boolean
+        playNotificationSound:
+          type: boolean
+        # Performance
+        videoQuality:
+          type: string
+          description: "The highest resolution to decode at: Auto (the camera's own), 1080p, 720p, 480p or 360p. The older names low, medium, high and ultra are still accepted."
+        hardwareAcceleration:
+          type: boolean
+        lowLatencyMode:
+          type: boolean
+        bufferDurationMs:
+          type: integer
+          format: int32
+          minimum: 1
+        rtspTransport:
+          $ref: "#/components/schemas/AppSettingsRtspTransport"
+        maxLatencyMs:
+          type: integer
+          format: int32
+          minimum: 1
+        # Motion Detection
+        motionSensitivity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        smallestObjectPercent:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: The smallest object that counts, in percent of the picture's area (0.02 by default). A watch zone without its own takes this one.
+        stoppedObjectSeconds:
+          type: integer
+          format: int32
+          minimum: 10
+          maximum: 600
+          description: How long something that stops moving (a parked car) is seen at most before it becomes part of the background, in seconds (60 by default); something that differs little goes sooner.
+        ignoreLightingChanges:
+          type: boolean
+          description: Whether a change over most of the picture at once is taken for light (a cloud, a lamp) and ignored (true by default). On, someone filling most of the picture (a camera at a door) is taken for light while close; off, they are seen, but after a change of light motion is missed until the new light has become background.
+        minimumChangePercent:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          deprecated: true
+          description: Read only by the comparison detector; the built-in detector uses smallestObjectPercent. Kept so an older client is not refused.
+        analysisFrameRate:
+          type: integer
+          format: int32
+          minimum: 1
+        analysisWidth:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 8192
+          description: The longer side of the analysed picture, in pixels (its width for a camera lying down); the other side follows the camera's picture.
+        analysisHeight:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 8192
+          deprecated: true
+          description: Not used any more; the height follows the camera's picture. Kept so an older client is not refused.
+        postMotionDurationSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        cooldownSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        boundingBoxShowInGrid:
+          type: boolean
+        boundingBoxShowInFullScreen:
+          type: boolean
+        boundingBoxColor:
+          type: string
+        boundingBoxThickness:
+          type: integer
+          format: int32
+          minimum: 1
+        boundingBoxMinArea:
+          type: integer
+          format: int32
+          minimum: 1
+          deprecated: true
+          description: Read only by the comparison detector; the built-in detector uses smallestObjectPercent. Kept so an older client is not refused.
+        boundingBoxPadding:
+          type: integer
+          format: int32
+          minimum: 0
+        boundingBoxSmoothing:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        # Recording
+        recordingPath:
+          type: string
+        recordingFormat:
+          $ref: "#/components/schemas/AppSettingsRecordingFormat"
+        recordAsH264:
+          type: boolean
+          description: Record every camera as H.264 whatever it sends. A camera that sends anything else (H.265, MJPEG) is then decoded and encoded again while it is recorded, which costs processor time. Takes effect the next time a camera is opened.
+        enableRecordingOnMotion:
+          type: boolean
+        enableRecordingOnConnect:
+          type: boolean
+        enableActivityIndex:
+          type: boolean
+          description: Keep an activity index beside every recording, for the timelines. It costs the analysis of the recorded cameras; turned off, the next recording or segment is made without one.
+        enableHourlySegmentation:
+          type: boolean
+        maxRecordingDurationMinutes:
+          type: integer
+          format: int32
+          minimum: 1
+        thumbnailTileCount:
+          type: integer
+          format: int32
+          minimum: 1
+        useDailySubfolders:
+          type: boolean
+          description: Put each day's recordings in their own yyyy-MM-dd folder below the camera folder. On by default. Changing it moves the existing recordings.
+        separateThumbnailFolder:
+          type: boolean
+          description: Keep thumbnails in a thumbnails folder below the recording path instead of next to the videos. On by default. Changing it moves the existing thumbnails.
+        enableTimelapse:
+          type: boolean
+        timelapseInterval:
+          type: string
+        cleanupSchedule:
+          $ref: "#/components/schemas/AppSettingsCleanupSchedule"
+        recordingRetentionDays:
+          type: integer
+          format: int32
+          minimum: 1
+        cleanupIncludeSnapshots:
+          type: boolean
+        snapshotRetentionDays:
+          type: integer
+          format: int32
+          minimum: 1
+        enableDiskSpaceGuard:
+          type: boolean
+          description: Delete the oldest recordings when free disk space drops below minFreeSpaceMb.
+        minFreeSpaceMb:
+          type: integer
+          format: int32
+          description: Free disk space, in megabytes, the disk space guard keeps available.
+        maxRecordingStorageGb:
+          type: integer
+          format: int32
+          minimum: 0
+          description: The most space, in gigabytes, all recordings together may take; the oldest go first when they take more. 0 is no limit.
+        playbackShowFilename:
+          type: boolean
+        playbackFilenameColor:
+          type: string
+        playbackShowTimestamp:
+          type: boolean
+        playbackTimestampColor:
+          type: string
+        # Advanced
+        enableDebugLogging:
+          type: boolean
+        logPath:
+          type: string
+
+    AppSettingsThemeBase:
+      type: string
+      enum: [dark, light]
+
+    AppSettingsConnectionTypeIconPlacement:
+      type: string
+      enum: [sameRow, sameColumn]
+
+    AppSettingsOverlayPosition:
+      type: string
+      enum: [topLeft, topRight, bottomLeft, bottomRight]
+
+    AppSettingsDefaultProtocol:
+      type: string
+      enum: [rtsp, http, https]
+
+    AppSettingsRtspTransport:
+      type: string
+      enum: [tcp, udp]
+
+    AppSettingsRecordingFormat:
+      type: string
+      enum: [mp4, mkv, avi]
+
+    AppSettingsCleanupSchedule:
+      type: string
+      enum: [disabled, onStartup, onStartupAndPeriodically]
+
+    ProblemDetails:
+      title: ProblemDetails
+      type: object
+      description: An RFC 9457 problem, as every error response is written.
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+
+    Webhook:
+      title: Webhook
+      type: object
+      required:
+        - id
+        - url
+        - events
+        - hasSecret
+        - isEditable
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          description: The http or https address events are posted to.
+        events:
+          type: array
+          description: The events the receiver gets, by name ("motion.started") or by group ("motion.*"). Empty means all events.
+          items:
+            type: string
+        hasSecret:
+          type: boolean
+          description: Whether requests to the receiver are signed. The secret itself is never sent out.
+        isEditable:
+          type: boolean
+          description: False for a receiver that comes from the server's configuration.
+
+    CreateWebhookRequest:
+      title: CreateWebhookRequest
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          minLength: 1
+        secret:
+          type: string
+          description: Signs each request (X-AtcSoft-Signature). Leave out for unsigned requests.
+        events:
+          type: array
+          items:
+            type: string
+
+    UpdateWebhookRequest:
+      title: UpdateWebhookRequest
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          minLength: 1
+        secret:
+          type: string
+          description: Leave out to keep the secret as it is; send an empty text to remove it.
+        events:
+          type: array
+          items:
+            type: string
+
+    WebhookTestResult:
+      title: WebhookTestResult
+      type: object
+      required:
+        - delivered
+      properties:
+        delivered:
+          type: boolean
+          description: Whether the receiver answered the test event with a success status.
+
+    StorageStatus:
+      title: StorageStatus
+      type: object
+      required:
+        - freeBytes
+        - totalBytes
+        - minFreeBytes
+        - isLow
+        - usedPercent
+        - text
+      properties:
+        freeBytes:
+          type: integer
+          format: int64
+          description: The space left on the disk.
+        totalBytes:
+          type: integer
+          format: int64
+          description: The size of the disk.
+        minFreeBytes:
+          type: integer
+          format: int64
+          description: The space the disk-space guard keeps free; zero when the guard is off.
+        isLow:
+          type: boolean
+          description: Whether less is left than the guard keeps free. New recordings are then refused.
+        usedPercent:
+          type: integer
+          format: int32
+        text:
+          type: string
+          description: The status in words, for a status bar ("120 GB free of 500 GB").
+
+    CameraConnectionState:
+      type: string
+      description: How the server's connection to a camera is.
+      enum: [disconnected, connecting, connected, reconnecting, error, deviceUnplugged]
+
+    RecordingStatusState:
+      type: string
+      description: Whether a camera is being recorded, and why.
+      enum: [idle, recording, recordingMotion, recordingPostMotion]
+
+    UsbCameraLifecyclePhase:
+      type: string
+      description: A USB camera on the server was unplugged, or plugged in again.
+      enum: [unplugged, replugged]
+
+    ConnectionStateChangedEvent:
+      title: ConnectionStateChangedEvent
+      type: object
+      description: Event (GET /events) - the server's connection to a camera changed.
+      required:
+        - cameraId
+        - newState
+        - timestamp
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        newState:
+          $ref: "#/components/schemas/CameraConnectionState"
+        timestamp:
+          type: string
+          format: date-time
+
+    RecordingStateChangedEvent:
+      title: RecordingStateChangedEvent
+      type: object
+      description: Event (GET /events) - a camera started or stopped being recorded.
+      required:
+        - cameraId
+        - newState
+        - oldState
+        - timestamp
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        newState:
+          $ref: "#/components/schemas/RecordingStatusState"
+        oldState:
+          $ref: "#/components/schemas/RecordingStatusState"
+        filePath:
+          type: string
+          description: The file being written, or the file just finished.
+        timestamp:
+          type: string
+          format: date-time
+
+    MotionBox:
+      title: MotionBox
+      type: object
+      description: Where something moved, in the coordinates of the analysed picture.
+      required:
+        - x
+        - y
+        - width
+        - height
+      properties:
+        x:
+          type: number
+          format: double
+        y:
+          type: number
+          format: double
+        width:
+          type: number
+          format: double
+        height:
+          type: number
+          format: double
+        trackId:
+          type: integer
+          format: int32
+          description: The track the box belongs to. The same moving thing keeps its id from event to event, so a client can follow (and smooth) each box; left out by a detector that does not track.
+
+    MotionDetectedEvent:
+      title: MotionDetectedEvent
+      type: object
+      description: Event (GET /events) - motion on a camera started, goes on, or ended.
+      required:
+        - cameraId
+        - isMotionActive
+        - changePercentage
+        - boundingBoxes
+        - analysisWidth
+        - analysisHeight
+        - timestamp
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        isMotionActive:
+          type: boolean
+        changePercentage:
+          type: number
+          format: double
+        boundingBoxes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MotionBox"
+        analysisWidth:
+          type: integer
+          format: int32
+          description: The width of the analysed picture, which the boxes are in.
+        analysisHeight:
+          type: integer
+          format: int32
+        timestamp:
+          type: string
+          format: date-time
+
+    UsbCameraLifecycleEvent:
+      title: UsbCameraLifecycleEvent
+      type: object
+      description: Event (GET /events) - a USB camera on the server was unplugged or plugged in again.
+      required:
+        - cameraId
+        - phase
+        - deviceId
+        - friendlyName
+        - timestamp
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        phase:
+          $ref: "#/components/schemas/UsbCameraLifecyclePhase"
+        deviceId:
+          type: string
+        friendlyName:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    WebhookPayload:
+      title: WebhookPayload
+      type: object
+      description: >-
+        What the server posts to a webhook receiver. Not an operation of this API - the server sends it - so it is
+        declared here only to document the body and generate its type. Headers - X-AtcSoft-Event (the event),
+        X-AtcSoft-Delivery (the same for every attempt) and X-AtcSoft-Signature (sha256= and the HMAC-SHA256 of the
+        body, when the receiver has a secret).
+      required:
+        - event
+        - cameraId
+        - cameraName
+        - timestamp
+        - data
+      properties:
+        event:
+          type: string
+          description: camera.connected, camera.disconnected, recording.started, recording.stopped, motion.started, motion.stopped, or webhook.test.
+        cameraId:
+          type: string
+          format: uuid
+        cameraName:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          $ref: "#/components/schemas/WebhookPayloadData"
+
+    WebhookPayloadData:
+      title: WebhookPayloadData
+      type: object
+      description: What else is known about the event. A field the event has no value for is left out.
+      properties:
+        filePath:
+          type: string
+          description: recording.* - the recording, below the recording folder, with forward slashes.
+        state:
+          type: string
+          description: camera.* - the camera's state as the server names it (Connected, Disconnected, Error).
+        changePercentage:
+          type: number
+          format: double
+          description: motion.* - how much of the picture changed.
+        message:
+          type: string
+          description: webhook.test - what the test is.
+
+    ActivityChangedEvent:
+      title: ActivityChangedEvent
+      type: object
+      description: Event (GET /events) - on a camera that is recorded, something started to move somewhere (a confirmed track), or nothing has moved for a few seconds. An open timeline grows by it.
+      required:
+        - cameraId
+        - isActive
+        - start
+        - filePath
+        - offsetSeconds
+        - peakLevel
+        - tracks
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        isActive:
+          type: boolean
+          description: True when it started, false when it ended.
+        start:
+          type: string
+          format: date-time
+          description: When it started.
+        end:
+          type: string
+          format: date-time
+          description: When it ended; left out while it goes on.
+        filePath:
+          type: string
+          description: The recording it started in, as the listing gives it.
+        offsetSeconds:
+          type: number
+          format: double
+          description: Where in that recording it started, in seconds.
+        peakLevel:
+          type: number
+          format: double
+          description: The highest level so far, 0 to 100.
+        tracks:
+          type: integer
+          format: int32
+          description: The most moving things at once so far.
+
+    SurveillanceEvent:
+      title: SurveillanceEvent
+      type: object
+      description: >-
+        One event of GET /events. type names the part that is filled; a type this
+        client does not know yet can be read past.
+      required:
+        - type
+        - cameraId
+        - timestamp
+      properties:
+        type:
+          type: string
+          description: connectionStateChanged, recordingStateChanged, motionDetected, usbCameraLifecycleChanged or activityChanged.
+        cameraId:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        connection:
+          $ref: "#/components/schemas/ConnectionStateChangedEvent"
+        recording:
+          $ref: "#/components/schemas/RecordingStateChangedEvent"
+        motion:
+          $ref: "#/components/schemas/MotionDetectedEvent"
+        usb:
+          $ref: "#/components/schemas/UsbCameraLifecycleEvent"
+        activity:
+          $ref: "#/components/schemas/ActivityChangedEvent"

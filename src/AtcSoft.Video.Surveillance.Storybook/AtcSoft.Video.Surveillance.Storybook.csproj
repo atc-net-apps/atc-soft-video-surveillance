@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Scenes with known content for measuring motion detection: the storybook model, the
+       frame renderer and its truth, and the scorer. A test and sample tool, never shipped. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AtcSoft.Video.Surveillance.Storybook</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AtcSoft.Video.Surveillance\AtcSoft.Video.Surveillance.csproj" />
+    <!-- The encoded path reads a scene's video back as the apps read a recording. -->
+    <ProjectReference Include="..\Atc.Video.Engine\Atc.Video.Engine.csproj" />
+  </ItemGroup>
+
+</Project>

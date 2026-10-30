@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "name": "S4 a car passing fast",
+  "video": {
+    "width": 1280,
+    "height": 720,
+    "fps": 15,
+    "durationSeconds": 12,
+    "noise": 2.0
+  },
+  "background": {
+    "seed": 4,
+    "distractors": []
+  },
+  "objects": [
+    {
+      "id": "car",
+      "kind": "car",
+      "size": [
+        0.2,
+        0.13
+      ],
+      "path": [
+        {
+          "t": 2,
+          "at": [
+            -0.1,
+            0.7
+          ]
+        },
+        {
+          "t": 4,
+          "at": [
+            1.1,
+            0.7
+          ]
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "tracks": 1
+  }
+}

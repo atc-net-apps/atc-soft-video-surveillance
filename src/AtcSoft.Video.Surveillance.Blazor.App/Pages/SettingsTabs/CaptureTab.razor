@@ -1,0 +1,55 @@
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.Recording</MudText>
+<MudTextField @bind-Value="State.RecordingPath"
+              Label="@Translations.RecordingPath"
+              HelperText="@Translations.AFolderOnTheServer"
+              Class="mt-2" />
+<MudSelect @bind-Value="State.RecordingFormat"
+           Label="@Translations.RecordingFormat"
+           HelperText="@Translations.RecordingFormatHelp"
+           Class="mt-2">
+    <MudSelectItem Value="AppSettingsRecordingFormat.Mp4">MP4</MudSelectItem>
+    <MudSelectItem Value="AppSettingsRecordingFormat.Mkv">@Translations.RecordingFormatMkv</MudSelectItem>
+    @if (State.RecordingFormat == AppSettingsRecordingFormat.Avi)
+    {
+        <MudSelectItem Value="AppSettingsRecordingFormat.Avi">AVI</MudSelectItem>
+    }
+</MudSelect>
+<SettingSwitch @bind-Value="State.RecordAsH264"
+               Label="@Translations.AlwaysRecordAsH264Video"
+               Help="@Translations.RecordAsH264Help" />
+<MudSelect @bind-Value="State.ThumbnailTileCount" Label="@Translations.ThumbnailTileCount" Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.ThumbnailTiles)
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+
+<SettingSwitch @bind-Value="State.EnableRecordingOnMotion" Label="@Translations.RecordWhenMotionDetected" Class="mt-2" />
+<SettingSwitch @bind-Value="State.EnableRecordingOnConnect" Label="@Translations.RecordWhenCameraConnects" />
+<SettingSwitch @bind-Value="State.EnableActivityIndex" Label="@Translations.EnableActivityIndex" />
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.FolderLayout</MudText>
+<SettingSwitch @bind-Value="State.UseDailySubfolders"
+               Label="@Translations.UseDailySubfolders"
+               Help="@State.UseDailySubfoldersHint"
+               Monospace="true" />
+<SettingSwitch @bind-Value="State.SeparateThumbnailFolder"
+               Label="@Translations.SeparateThumbnailFolder"
+               Help="@State.SeparateThumbnailFolderHint"
+               Monospace="true" />
+
+<MudAlert Severity="@(State.HasRecordingLayoutChanged ? Severity.Warning : Severity.Info)" Dense="true" Class="mt-2">
+    <div style="font-family: Consolas, 'Courier New', monospace; white-space: pre-wrap; word-break: break-all;">@(string.Format(CultureInfo.CurrentCulture, Translations.RecordingLayoutExampleVideoAndThumbnail2, State.RecordingPathExample, State.ThumbnailPathExample))</div>
+    <div class="mt-1">
+        @(State.HasRecordingLayoutChanged
+            ? Translations.RecordingsMovedWhenYouSave
+            : Translations.RecordingsMovedWhenLayoutChanges)
+    </div>
+</MudAlert>
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsState State { get; set; } = null!;
+}

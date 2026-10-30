@@ -1,0 +1,360 @@
+@page "/timeline"
+@inject GatewayService Gateway
+@inject BrowserSession Session
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject EventStreamService EventStream
+@implements IDisposable
+
+<MudText Typo="Typo.h4" Class="mb-2">@Translations.Timeline</MudText>
+<MudText Typo="Typo.body2" Class="mb-4 mud-text-secondary">@Translations.TimelineHelp</MudText>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudButton Variant="@(day is null ? Variant.Filled : Variant.Outlined)"
+               Color="Color.Primary"
+               OnClick="ShowLast24HoursAsync">@Translations.Last24Hours</MudButton>
+    <MudDatePicker Label="@Translations.Day"
+                   Date="@(day?.ToDateTime(TimeOnly.MinValue))"
+                   DateChanged="OnDayChangedAsync"
+                   MaxDate="@DateTime.Today"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="max-width: 200px;" />
+    <MudTooltip Text="@Translations.PreviousEvent">
+        <MudIconButton Icon="@Icons.Material.Filled.SkipPrevious"
+                       aria-label="@Translations.PreviousEvent"
+                       OnClick="@(() => JumpAsync(forward: false))" />
+    </MudTooltip>
+    <MudTooltip Text="@Translations.NextEvent">
+        <MudIconButton Icon="@Icons.Material.Filled.SkipNext"
+                       aria-label="@Translations.NextEvent"
+                       OnClick="@(() => JumpAsync(forward: true))" />
+    </MudTooltip>
+    <MudButton Variant="Variant.Outlined"
+               StartIcon="@Icons.Material.Filled.GridView"
+               OnClick="PlayAllAsync">@Translations.PlayAllFromHere</MudButton>
+    <MudTooltip Text="@Translations.Earlier">
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
+                       aria-label="@Translations.Earlier"
+                       OnClick="@(() => MoveAsync(later: false))" />
+    </MudTooltip>
+    <MudTooltip Text="@Translations.ZoomOut">
+        <MudIconButton Icon="@Icons.Material.Filled.ZoomOut"
+                       aria-label="@Translations.ZoomOut"
+                       OnClick="@(() => ZoomAsync(zoomIn: false))" />
+    </MudTooltip>
+    <MudTooltip Text="@Translations.ZoomIn">
+        <MudIconButton Icon="@Icons.Material.Filled.ZoomIn"
+                       aria-label="@Translations.ZoomIn"
+                       OnClick="@(() => ZoomAsync(zoomIn: true))" />
+    </MudTooltip>
+    <MudTooltip Text="@Translations.Later">
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
+                       aria-label="@Translations.Later"
+                       OnClick="@(() => MoveAsync(later: true))" />
+    </MudTooltip>
+    <MudButton StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">@Translations.Refresh</MudButton>
+</MudStack>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (timeline is { } shown)
+{
+    @foreach (var lane in shown.Lanes)
+    {
+        <div class="d-flex align-center mb-1">
+            <MudText Typo="Typo.body2" Style="width: 160px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@lane.CameraName</MudText>
+            <svg id="@LaneId(lane)"
+                 role="img"
+                 aria-label="@lane.CameraName"
+                 viewBox="0 0 @lane.Buckets.Count @SvgNumber.Format(ActivityTimelineShapes.BoxHeight)"
+                 preserveAspectRatio="none"
+                 style="flex: 1; height: 36px; cursor: pointer; background: rgba(128,128,128,0.06);"
+                 @onclick="@(e => PlayAtAsync(lane, e))">
+                @foreach (var gap in TimelineLaneShapes.Gaps(lane, span))
+                {
+                    <rect x="@SvgNumber.Format(gap.Rect.X)" y="@SvgNumber.Format(gap.Rect.Y)" width="@SvgNumber.Format(gap.Rect.Width)" height="@SvgNumber.Format(gap.Rect.Height)" fill="@gap.Fill"><title>@gap.Text</title></rect>
+                }
+                @foreach (var shape in TimelineLaneShapes.NotAnalysed(lane))
+                {
+                    <rect x="@SvgNumber.Format(shape.X)" y="@SvgNumber.Format(shape.Y)" width="@SvgNumber.Format(shape.Width)" height="@SvgNumber.Format(shape.Height)" fill="rgba(128,128,128,0.15)" />
+                }
+                @foreach (var shape in TimelineLaneShapes.Bars(lane))
+                {
+                    <rect x="@SvgNumber.Format(shape.X)" y="@SvgNumber.Format(shape.Y)" width="@SvgNumber.Format(shape.Width)" height="@SvgNumber.Format(shape.Height)" fill="rgba(128,128,128,0.8)" />
+                }
+                @foreach (var shape in TimelineLaneShapes.Bands(lane, span))
+                {
+                    <rect x="@SvgNumber.Format(shape.X)" y="@SvgNumber.Format(shape.Y)" width="@SvgNumber.Format(shape.Width)" height="@SvgNumber.Format(shape.Height)" fill="#FF8C00" />
+                }
+                @if (span.FractionOf(DateTimeOffset.UtcNow) is { } now)
+                {
+                    <rect x="@SvgNumber.Format(now * lane.Buckets.Count)" y="0" width="1" height="@SvgNumber.Format(ActivityTimelineShapes.BoxHeight)" fill="#E53935" />
+                }
+            </svg>
+        </div>
+    }
+
+    <div class="d-flex">
+        <div style="width: 160px; flex: none;"></div>
+        <div style="flex: 1; position: relative; height: 20px;">
+            @foreach (var tick in TimelineTicks.For(span, TimeZoneInfo.Local, CultureInfo.CurrentCulture))
+            {
+                <MudText Typo="Typo.caption" Style="@($"position: absolute; left: {tick.Left}; transform: translateX(-50%);")">@tick.Label</MudText>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-center gap-3 mt-2">
+        <div style="width: 160px; flex: none;"></div>
+        @foreach (var reason in TimelineGapStyle.Reasons)
+        {
+            <div class="d-flex align-center gap-1">
+                <span style="@TimelineGapStyle.Swatch(reason)"></span>
+                <MudText Typo="Typo.caption">@TimelineGapStyle.Text(reason)</MudText>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    // About one stretch per two pixels of a wide page.
+    private const int BucketCount = 720;
+
+    private TimelineSpan span = TimelineSpan.Last24Hours(DateTimeOffset.UtcNow);
+    private DateOnly? day;
+
+    // A span zoomed or moved by the viewer stays as it is; the last 24 hours and a day reset it.
+    private bool zoomed;
+    private Timeline? timeline;
+    private bool loading = true;
+
+    // Where previous and next count from: the last place played, else the end of the span.
+    private DateTimeOffset? cursor;
+
+    // The page grows by itself while it shows a span up to now.
+    private readonly CancellationTokenSource leaving = new();
+    private DateTimeOffset lastLoad;
+    private bool reloadPending;
+
+    protected override Task OnInitializedAsync()
+    {
+        _ = EventStream.RunAsync(OnEventAsync, leaving.Token);
+        return LoadAsync();
+    }
+
+    public void Dispose()
+    {
+        leaving.Cancel();
+        leaving.Dispose();
+    }
+
+    private async Task OnEventAsync(SurveillanceEvent surveillanceEvent)
+    {
+        if (reloadPending || !TimelineRefresh.ShouldReload(surveillanceEvent, showsNow: day is null && !zoomed))
+        {
+            return;
+        }
+
+        reloadPending = true;
+        try
+        {
+            await Task.Delay(TimelineRefresh.Wait(lastLoad, DateTimeOffset.UtcNow), leaving.Token);
+            await InvokeAsync(async () =>
+            {
+                await LoadAsync();
+                StateHasChanged();
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left.
+        }
+        finally
+        {
+            reloadPending = false;
+        }
+    }
+
+    private static string LaneId(TimelineLane lane)
+        => "timeline-lane-" + lane.CameraId.ToString("N");
+
+    private async Task LoadAsync()
+    {
+        lastLoad = DateTimeOffset.UtcNow;
+        loading = timeline is null;
+        if (day is null && !zoomed)
+        {
+            span = TimelineSpan.Last24Hours(DateTimeOffset.UtcNow);
+        }
+
+        try
+        {
+            timeline = await Gateway.GetTimelineAsync(span.From, span.To, BucketCount);
+        }
+        catch (HttpRequestException)
+        {
+            timeline = null;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task ShowLast24HoursAsync()
+    {
+        day = null;
+        zoomed = false;
+        cursor = null;
+        return LoadAsync();
+    }
+
+    private Task OnDayChangedAsync(DateTime? date)
+    {
+        if (date is not { } chosen)
+        {
+            return ShowLast24HoursAsync();
+        }
+
+        day = DateOnly.FromDateTime(chosen);
+        zoomed = false;
+        span = TimelineSpan.Day(day.Value, TimeZoneInfo.Local);
+        cursor = null;
+        return LoadAsync();
+    }
+
+    // Around the place last played, or the middle; the span stays put until the next zoom or move.
+    private Task ZoomAsync(bool zoomIn)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var focus = cursor ?? span.At(0.5);
+        span = zoomIn ? TimelineZoom.In(span, focus, now) : TimelineZoom.Out(span, focus, now);
+        zoomed = true;
+        return LoadAsync();
+    }
+
+    private Task MoveAsync(bool later)
+    {
+        span = TimelineZoom.Move(span, later, DateTimeOffset.UtcNow);
+        zoomed = true;
+        return LoadAsync();
+    }
+
+    private async Task PlayAtAsync(TimelineLane lane, MouseEventArgs e)
+    {
+        var fraction = await JS.InvokeAsync<double>("timelineInterop.fractionAt", LaneId(lane), e.ClientX);
+        var moment = span.At(fraction);
+        cursor = moment;
+
+        if (TimelinePlayback.At(lane, moment) is { } playback)
+        {
+            await PlayAsync(lane, playback, moment);
+        }
+        else
+        {
+            Snackbar.Add(Translations.NothingRecordedThen, Severity.Info);
+        }
+    }
+
+    private async Task JumpAsync(bool forward)
+    {
+        var from = cursor ?? (forward ? span.From : span.To);
+        TimelineEvent? found;
+        try
+        {
+            found = await Gateway.FindTimelineEventAsync(from, forward);
+        }
+        catch (HttpRequestException)
+        {
+            found = null;
+        }
+
+        if (found is null)
+        {
+            Snackbar.Add(Translations.NoEventWithinAWeek, Severity.Info);
+            return;
+        }
+
+        cursor = found.Start;
+        var lane = timeline?.Lanes.FirstOrDefault(l => l.CameraId == found.CameraId);
+        await PlayAsync(lane, TimelinePlayback.Of(found), found.Start);
+    }
+
+    private async Task PlayAsync(TimelineLane? lane, TimelinePlayback playback, DateTimeOffset moment)
+    {
+        // What plays after it: the camera's following recordings in the span, gaps skipped.
+        var following = lane is null
+            ? []
+            : TimelinePlayback.Following(lane, playback.FilePath)
+                .Select(c => new RecordingPlaybackSegment(
+                    c.FilePath,
+                    RecordingDisplay.FileUrl(Gateway.ApiBaseUrl, c.FilePath, Session.MediaToken) ?? string.Empty,
+                    RecordingDisplay.DownloadUrl(Gateway.ApiBaseUrl, c.FilePath, Session.MediaToken) ?? string.Empty,
+                    TitleOf(lane.CameraName, c.RecordingStart),
+                    c.RecordingStart))
+                .ToList();
+
+        var parameters = new DialogParameters<RecordingPlaybackDialog>
+        {
+            { x => x.VideoUrl, RecordingDisplay.FileUrl(Gateway.ApiBaseUrl, playback.FilePath, Session.MediaToken) ?? string.Empty },
+            { x => x.DownloadUrl, RecordingDisplay.DownloadUrl(Gateway.ApiBaseUrl, playback.FilePath, Session.MediaToken) ?? string.Empty },
+            { x => x.Title, TitleOf(lane?.CameraName, moment) },
+            { x => x.FollowingSegments, following },
+            { x => x.FileName, RecordingDisplay.FileName(playback.FilePath) },
+            { x => x.PlaysInBrowser, RecordingDisplay.PlaysInBrowser(playback.FilePath) },
+            { x => x.FilePath, playback.FilePath },
+            { x => x.StartSeconds, playback.OffsetSeconds },
+            { x => x.RecordingStart, moment.AddSeconds(-playback.OffsetSeconds) },
+            { x => x.CameraId, lane?.CameraId },
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            CloseButton = true,
+        };
+
+        await DialogService.ShowAsync<RecordingPlaybackDialog>(Translations.RecordingPlayback, parameters, options);
+    }
+
+    // Every camera from the place last clicked or played, else from the first recording in the span.
+    private async Task PlayAllAsync()
+    {
+        var lanes = timeline?.Lanes ?? [];
+        var moment = PlayAllPlan.Moment(lanes, cursor, span);
+        var tiles = PlayAllPlan.Tiles(lanes, moment, path => RecordingDisplay.FileUrl(Gateway.ApiBaseUrl, path, Session.MediaToken) ?? string.Empty);
+        if (tiles.Count == 0)
+        {
+            Snackbar.Add(Translations.NothingRecordedThen, Severity.Info);
+            return;
+        }
+
+        var title = string.Format(CultureInfo.CurrentCulture, Translations.PlayAllFrom1, moment.ToLocalTime().ToString("G", CultureInfo.CurrentCulture));
+        var parameters = new DialogParameters<PlayAllDialog>
+        {
+            { x => x.Title, title },
+            { x => x.Moment, moment },
+            { x => x.Tiles, tiles },
+            { x => x.LimitText, PlayAllPlan.LimitText(lanes, moment) },
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraLarge,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            CloseButton = true,
+        };
+
+        await DialogService.ShowAsync<PlayAllDialog>(title, parameters, options);
+    }
+
+    private static string TitleOf(string? cameraName, DateTimeOffset moment)
+        => $"{(string.IsNullOrEmpty(cameraName) ? Translations.Recording : cameraName)} - {moment.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}";
+}

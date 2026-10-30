@@ -1,0 +1,14 @@
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.Logging</MudText>
+<SettingSwitch @bind-Value="State.EnableDebugLogging"
+               Label="@Translations.WriteADebugLog"
+               Help="@Translations.TakesEffectWhenServerStarts" />
+<MudTextField @bind-Value="State.LogPath"
+              Label="@Translations.LogPath"
+              HelperText="@Translations.AFolderOnTheServer"
+              Disabled="!State.EnableDebugLogging"
+              Class="mt-2" />
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsState State { get; set; } = null!;
+}

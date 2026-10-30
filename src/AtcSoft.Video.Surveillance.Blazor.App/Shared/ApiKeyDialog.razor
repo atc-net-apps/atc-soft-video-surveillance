@@ -1,0 +1,72 @@
+@* Makes an API key; the key itself is shown here once. *@
+@inject GatewayService Gateway
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: 380px;">
+            @if (made is null)
+            {
+                <MudTextField @bind-Value="name" Label="@Translations.Name" Variant="Variant.Outlined" AutoFocus="true" />
+                <MudSelect T="UserRole" @bind-Value="role" Label="@Translations.Role" Variant="Variant.Outlined">
+                    @foreach (var choice in RoleText.Choices)
+                    {
+                        <MudSelectItem Value="@choice">@RoleText.For(choice)</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@Translations.ApiKeyShownOnce</MudAlert>
+                <MudTextField Value="@made.Key" Label="@Translations.ApiKey" ReadOnly="true" Variant="Variant.Outlined" Lines="2" />
+            }
+            @if (problem is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@problem</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        @if (made is null)
+        {
+            <MudButton OnClick="Cancel">@Translations.Cancel</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@busy" OnClick="MakeAsync">@Translations.AddApiKey</MudButton>
+        }
+        else
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Done">@Translations.Close</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string name = string.Empty;
+    private UserRole role = UserRole.Viewer;
+    private NewApiKey? made;
+    private string? problem;
+    private bool busy;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private void Cancel()
+        => MudDialog.Cancel();
+
+    private void Done()
+        => MudDialog.Close(DialogResult.Ok(true));
+
+    private async Task MakeAsync()
+    {
+        busy = true;
+        problem = null;
+
+        var result = await Gateway.CreateApiKeyAsync(name, role);
+        busy = false;
+        if (result.Value is { } key)
+        {
+            made = key;
+            return;
+        }
+
+        problem = ProblemText.WithReason(Translations.ApiKeyCouldNotBeMade, result.Problem);
+    }
+}

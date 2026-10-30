@@ -1,0 +1,23 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.4.5">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- Aspire convention uses AppHost.cs for the top-level program entry point. -->
+    <NoWarn>$(NoWarn);MA0048</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AtcSoft.Video.Surveillance.CameraWall.Wpf.App\AtcSoft.Video.Surveillance.CameraWall.Wpf.App.csproj" />
+    <ProjectReference Include="..\AtcSoft.Video.Surveillance.Api\AtcSoft.Video.Surveillance.Api.csproj" />
+    <ProjectReference Include="..\AtcSoft.Video.Surveillance.Blazor.App\AtcSoft.Video.Surveillance.Blazor.App.csproj" />
+    <ProjectReference Include="..\AtcSoft.Video.Surveillance.Wpf.App\AtcSoft.Video.Surveillance.Wpf.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Aspire brings MessagePack 2.5.302 (GHSA-qhrr-8q5h-9q3h, fixed in 2.5.303); drop this when Aspire takes a fixed one. -->
+    <PackageReference Include="MessagePack" Version="3.1.12" />
+  </ItemGroup>
+
+</Project>

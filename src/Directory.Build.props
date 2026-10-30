@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--
+    Add any shared properties you want for the projects under this directory that need to be set before the auto imported Directory.Build.props
+  -->
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory).., Directory.Build.props))\Directory.Build.props" />
+
+  <PropertyGroup Label="Build instructions">
+    <OutputType>Library</OutputType>
+    <!--
+      No separate symbols package. DebugType=embedded (below) puts the PDB inside
+      the DLL, so a .snupkg would contain no .pdb files, and nuget.org rejects
+      such a package with 400 "The package does not contain any symbol (.pdb)
+      files". Consumers still get full debugging information, because it ships
+      inside the DLL in the main package.
+    -->
+    <IncludeSymbols>false</IncludeSymbols>
+    <!--
+      Instruct the build system to embed project source files that are not tracked by the source control
+      or imported from a source package to the generated PDB.
+    -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <!-- Recommended: Embed symbols containing Source Link in the main file (exe/dll) -->
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+</Project>

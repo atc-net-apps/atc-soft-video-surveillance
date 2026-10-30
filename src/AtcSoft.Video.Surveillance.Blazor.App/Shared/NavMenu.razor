@@ -1,0 +1,20 @@
+@inject BrowserSession Session
+<MudNavMenu>
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Translations.Home</MudNavLink>
+    <MudNavGroup Title="@Translations.Cameras" Icon="@Icons.Material.Filled.Videocam" Expanded="true">
+        <MudNavLink Href="/cameras" Icon="@Icons.Material.Filled.List">@Translations.ListCameras</MudNavLink>
+        <MudNavLink Href="/cameras/create" Icon="@Icons.Material.Filled.Add">@Translations.AddCamera</MudNavLink>
+    </MudNavGroup>
+    <MudNavGroup Title="@Translations.Layouts" Icon="@Icons.Material.Filled.GridView" Expanded="true">
+        <MudNavLink Href="/layouts" Icon="@Icons.Material.Filled.List">@Translations.ListLayouts</MudNavLink>
+    </MudNavGroup>
+    <MudNavLink Href="/live" Icon="@Icons.Material.Filled.LiveTv">@Translations.LiveView</MudNavLink>
+    <MudNavLink Href="/recordings" Icon="@Icons.Material.Filled.FiberManualRecord">@Translations.Recordings</MudNavLink>
+    <MudNavLink Href="/timeline" Icon="@Icons.Material.Filled.Timeline">@Translations.Timeline</MudNavLink>
+    <MudNavLink Href="/webhooks" Icon="@Icons.Material.Filled.Webhook">@Translations.Webhooks</MudNavLink>
+    <MudNavLink Href="/settings" Icon="@Icons.Material.Filled.Settings">@Translations.Settings</MudNavLink>
+    @if (Session.IsAdmin)
+    {
+        <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People">@Translations.Users</MudNavLink>
+    }
+</MudNavMenu>

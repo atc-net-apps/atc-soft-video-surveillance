@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "name": "S5 car, human and cat at the same time",
+  "video": {
+    "width": 1280,
+    "height": 720,
+    "fps": 15,
+    "durationSeconds": 12,
+    "noise": 2.0
+  },
+  "background": {
+    "seed": 5,
+    "distractors": [
+      {
+        "id": "tree",
+        "kind": "swayingTree",
+        "at": [
+          0.1,
+          0.55
+        ],
+        "size": 0.3,
+        "amplitude": 0.01,
+        "periodSeconds": 1.7
+      }
+    ]
+  },
+  "objects": [
+    {
+      "id": "car",
+      "kind": "car",
+      "size": [
+        0.22,
+        0.14
+      ],
+      "path": [
+        {
+          "t": 2,
+          "at": [
+            -0.12,
+            0.78
+          ]
+        },
+        {
+          "t": 8,
+          "at": [
+            1.12,
+            0.78
+          ]
+        }
+      ]
+    },
+    {
+      "id": "human",
+      "kind": "human",
+      "size": [
+        0.05,
+        0.2
+      ],
+      "path": [
+        {
+          "t": 1,
+          "at": [
+            0.3,
+            0.55
+          ]
+        },
+        {
+          "t": 7,
+          "at": [
+            0.6,
+            0.55
+          ]
+        },
+        {
+          "t": 9,
+          "at": [
+            0.6,
+            0.55
+          ]
+        },
+        {
+          "t": 11,
+          "at": [
+            0.85,
+            0.57
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cat",
+      "kind": "cat",
+      "size": [
+        0.05,
+        0.05
+      ],
+      "path": [
+        {
+          "t": 3,
+          "at": [
+            0.85,
+            0.9
+          ]
+        },
+        {
+          "t": 9,
+          "at": [
+            0.45,
+            0.9
+          ]
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "tracks": 3,
+    "spans": [
+      {
+        "object": "human",
+        "from": 7.2,
+        "to": 9.0,
+        "state": "dontCare",
+        "why": "stands still"
+      }
+    ]
+  }
+}

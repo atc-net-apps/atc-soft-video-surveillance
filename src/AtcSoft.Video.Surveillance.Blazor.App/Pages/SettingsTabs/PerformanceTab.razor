@@ -1,0 +1,27 @@
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.Video</MudText>
+<MudSelect @bind-Value="State.VideoQuality"
+           Label="@Translations.VideoQuality"
+           HelperText="@Translations.DecodeResolutionHelp"
+           Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.VideoQualities, State.VideoQuality, v => v))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+<SettingSwitch @bind-Value="State.HardwareAcceleration" Label="@Translations.HardwareAcceleration" Class="mt-2" />
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.Streaming</MudText>
+<SettingSwitch @bind-Value="State.LowLatencyMode" Label="@Translations.LowLatencyMode" />
+<MudNumericField @bind-Value="State.MaxLatencyMs" Label="@Translations.MaxLatencyMs" Min="100" Max="10000" Step="50" Class="mt-2" />
+<MudNumericField @bind-Value="State.BufferDurationMs" Label="@Translations.BufferDurationMs" Min="100" Max="5000" Step="50" Class="mt-2" />
+<MudSelect @bind-Value="State.RtspTransport" Label="@Translations.RtspTransport" Class="mt-2">
+    <MudSelectItem Value="AppSettingsRtspTransport.Tcp">TCP</MudSelectItem>
+    <MudSelectItem Value="AppSettingsRtspTransport.Udp">UDP</MudSelectItem>
+</MudSelect>
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsState State { get; set; } = null!;
+}

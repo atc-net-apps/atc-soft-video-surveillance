@@ -1,0 +1,442 @@
+<atc:NiceWindow
+    x:Class="BoundingBoxWpfApp.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:app="clr-namespace:BoundingBoxWpfApp"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:cw="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.UserControls;assembly=AtcSoft.Video.Surveillance.Wpf.Core"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="{Binding Path=Title}"
+    Width="1500"
+    Height="820"
+    MinWidth="800"
+    MinHeight="500"
+    d:DataContext="{d:DesignInstance Type=app:MainWindowViewModel}"
+    Icon="pack://application:,,,/AtcSoft.Video.Surveillance.Wpf.Core;component/Resources/Images/cctv-camera.ico"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+
+    <atc:NiceWindow.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </atc:NiceWindow.Resources>
+
+    <DockPanel Margin="8">
+
+        <!--  Open, rate, step and play  -->
+        <StackPanel
+            Margin="0,0,0,8"
+            DockPanel.Dock="Top"
+            Orientation="Horizontal">
+            <Button
+                Margin="0,0,8,0"
+                Padding="10,4"
+                AutomationProperties.AutomationId="OpenStorybookButton"
+                Command="{Binding Path=OpenStorybookCommand}"
+                Content="Open storybook…" />
+            <Button
+                Margin="0,0,16,0"
+                Padding="10,4"
+                AutomationProperties.AutomationId="OpenRecordingButton"
+                Command="{Binding Path=OpenRecordingCommand}"
+                Content="Open recording…" />
+            <Button
+                Margin="0,0,16,0"
+                Padding="10,4"
+                AutomationProperties.AutomationId="SweepButton"
+                Command="{Binding Path=SweepCommand}"
+                Content="Sweep scenes…"
+                ToolTip="Try combinations of the motion settings over a folder of storybooks (and the corpus of reviewed recordings named by ATCSOFT_BBOX_CORPUS), and rank them" />
+            <TextBlock
+                Margin="0,0,6,0"
+                VerticalAlignment="Center"
+                Text="Pictures a second:" />
+            <ComboBox
+                Width="70"
+                Margin="0,0,16,0"
+                AutomationProperties.AutomationId="RateComboBox"
+                IsEnabled="{Binding Path=IsBusy, Converter={x:Static app:InverseBoolConverter.Instance}}"
+                ItemsSource="{Binding Path=Rates}"
+                SelectedItem="{Binding Path=AnalysesPerSecond}" />
+            <Button
+                Margin="0,0,4,0"
+                Padding="10,4"
+                AutomationProperties.AutomationId="PreviousFrameButton"
+                Command="{Binding Path=PreviousFrameCommand}"
+                Content="◀ Previous" />
+            <Button
+                Margin="0,0,4,0"
+                Padding="10,4"
+                AutomationProperties.AutomationId="PlayPauseButton"
+                Command="{Binding Path=PlayPauseCommand}">
+                <Button.Style>
+                    <Style BasedOn="{StaticResource {x:Type Button}}" TargetType="Button">
+                        <Setter Property="Content" Value="Play" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Path=IsPlaying}" Value="True">
+                                <Setter Property="Content" Value="Pause" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button
+                Margin="0,0,16,0"
+                Padding="10,4"
+                AutomationProperties.AutomationId="NextFrameButton"
+                Command="{Binding Path=NextFrameCommand}"
+                Content="Next ▶" />
+            <TextBlock
+                Margin="0,0,6,0"
+                VerticalAlignment="Center"
+                Text="Turned:" />
+            <ComboBox
+                Width="60"
+                Margin="0,0,4,0"
+                AutomationProperties.AutomationId="LiveRotationComboBox"
+                ItemsSource="{Binding Path=Rotations}"
+                SelectedItem="{Binding Path=LiveRotation}" />
+            <Button
+                Padding="10,4"
+                AutomationProperties.AutomationId="PlayLiveButton"
+                Command="{Binding Path=PlayLiveCommand}"
+                Content="Play live…"
+                ToolTip="Stream what is open to the engine's player as a camera sends it, turned as chosen, and run the detector on the player's pictures, as CameraWall does" />
+        </StackPanel>
+
+        <!--  Where in the run, and what the sample is doing  -->
+        <StackPanel Margin="0,8,0,0" DockPanel.Dock="Bottom">
+            <Slider
+                AutomationProperties.AutomationId="FrameSlider"
+                IsSnapToTickEnabled="True"
+                Maximum="{Binding Path=LastFrameIndex}"
+                Minimum="0"
+                SmallChange="1"
+                TickFrequency="1"
+                Value="{Binding Path=FrameIndex}" />
+            <DockPanel Margin="0,4,0,0">
+                <TextBlock
+                    AutomationProperties.AutomationId="Status"
+                    DockPanel.Dock="Right"
+                    Text="{Binding Path=Status}" />
+                <TextBlock AutomationProperties.AutomationId="FrameInfo" Text="{Binding Path=FrameInfo}" />
+            </DockPanel>
+            <TextBlock
+                Margin="0,2,0,0"
+                AutomationProperties.AutomationId="DebugInfo"
+                Text="{Binding Path=DebugInfo}" />
+        </StackPanel>
+
+        <!--  The debug layers and the tuning: the detector runs again over the pictures kept at once  -->
+        <ScrollViewer
+            Width="250"
+            Margin="0,0,8,0"
+            DockPanel.Dock="Left"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock
+                    Margin="0,0,0,4"
+                    FontWeight="SemiBold"
+                    Text="Debug layers" />
+                <CheckBox
+                    Margin="0,0,0,2"
+                    AutomationProperties.AutomationId="ShowForegroundCheckBox"
+                    Content="Foreground (cyan)"
+                    IsChecked="{Binding Path=ShowForeground}" />
+                <CheckBox
+                    Margin="0,0,0,2"
+                    AutomationProperties.AutomationId="ShowCandidatesCheckBox"
+                    Content="Blobs and what became of them"
+                    IsChecked="{Binding Path=ShowCandidates}" />
+                <CheckBox
+                    Margin="0,0,0,10"
+                    AutomationProperties.AutomationId="ShowIgnoredCheckBox"
+                    Content="Ignore zones (purple)"
+                    IsChecked="{Binding Path=ShowIgnored}" />
+
+                <TextBlock
+                    Margin="0,0,0,4"
+                    FontWeight="SemiBold"
+                    Text="Settings" />
+                <DockPanel Margin="0,0,0,2">
+                    <TextBlock
+                        Width="34"
+                        DockPanel.Dock="Right"
+                        Text="{Binding Path=Sensitivity}"
+                        TextAlignment="Right" />
+                    <TextBlock Text="Sensitivity" />
+                </DockPanel>
+                <Slider
+                    Margin="0,0,0,6"
+                    AutomationProperties.AutomationId="SensitivitySlider"
+                    IsSnapToTickEnabled="True"
+                    Maximum="100"
+                    Minimum="0"
+                    SmallChange="1"
+                    TickFrequency="1"
+                    Value="{Binding Path=Sensitivity, Delay=150}" />
+                <TextBlock Text="Smallest object (% of the picture)" />
+                <TextBox
+                    Margin="0,0,0,6"
+                    AutomationProperties.AutomationId="SmallestObjectTextBox"
+                    Text="{Binding Path=SmallestObjectPercent, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                <TextBlock Text="Something that stops is background after (s)" />
+                <TextBox
+                    Margin="0,0,0,6"
+                    AutomationProperties.AutomationId="StoppedObjectTextBox"
+                    Text="{Binding Path=StoppedObjectSeconds, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                <CheckBox
+                    Margin="0,0,0,10"
+                    AutomationProperties.AutomationId="IgnoreLightingCheckBox"
+                    Content="Ignore lighting changes"
+                    IsChecked="{Binding Path=IgnoreLightingChanges}" />
+
+                <TextBlock
+                    Margin="0,0,0,4"
+                    FontWeight="SemiBold"
+                    Text="Inner options (not saved)" />
+                <TextBlock Text="Seen before a track shows (s)" />
+                <TextBox
+                    Margin="0,0,0,4"
+                    AutomationProperties.AutomationId="ConfirmTextBox"
+                    Text="{Binding Path=ConfirmSeconds, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                <TextBlock Text="Travel before a track shows (% of width)" />
+                <TextBox
+                    Margin="0,0,0,4"
+                    AutomationProperties.AutomationId="TravelTextBox"
+                    Text="{Binding Path=MinTravelPercent, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                <TextBlock Text="Blobs closer are one (% of width)" />
+                <TextBox
+                    Margin="0,0,0,4"
+                    AutomationProperties.AutomationId="MergeGapTextBox"
+                    Text="{Binding Path=MergeGapPercent, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                <TextBlock Text="A track unseen ends after (s)" />
+                <TextBox
+                    Margin="0,0,0,4"
+                    AutomationProperties.AutomationId="TrackLostTextBox"
+                    Text="{Binding Path=TrackLostSeconds, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                <TextBlock Text="Background learns what stays (s)" />
+                <TextBox
+                    Margin="0,0,0,4"
+                    AutomationProperties.AutomationId="BackgroundTextBox"
+                    Text="{Binding Path=BackgroundSeconds, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                <TextBlock Text="No box after a change of light (s)" />
+                <TextBox
+                    Margin="0,0,0,10"
+                    AutomationProperties.AutomationId="LightingSettleTextBox"
+                    Text="{Binding Path=LightingSettleSeconds, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+
+                <WrapPanel Margin="0,0,0,4">
+                    <Button
+                        Margin="0,0,4,4"
+                        Padding="8,3"
+                        AutomationProperties.AutomationId="ResetTuningButton"
+                        Command="{Binding Path=ResetTuningCommand}"
+                        Content="The file's settings" />
+                    <Button
+                        Margin="0,0,0,4"
+                        Padding="8,3"
+                        AutomationProperties.AutomationId="SaveStorybookSettingsButton"
+                        Command="{Binding Path=SaveStorybookSettingsCommand}"
+                        Content="Save as storybook settings" />
+                </WrapPanel>
+                <TextBlock
+                    AutomationProperties.AutomationId="TuningInfo"
+                    Text="{Binding Path=TuningInfo}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!--  The score  -->
+        <DockPanel
+            Width="380"
+            Margin="8,0,0,0"
+            DockPanel.Dock="Right">
+            <TextBlock
+                Margin="0,0,0,6"
+                DockPanel.Dock="Top"
+                FontWeight="SemiBold"
+                Text="Score" />
+            <TextBlock
+                Margin="0,0,0,6"
+                AutomationProperties.AutomationId="ScoreSummary"
+                DockPanel.Dock="Top"
+                Text="{Binding Path=ScoreSummary}"
+                TextWrapping="Wrap" />
+            <TextBlock
+                Margin="0,0,0,6"
+                AutomationProperties.AutomationId="DetectorTime"
+                DockPanel.Dock="Top"
+                Text="{Binding Path=DetectorTime}"
+                TextWrapping="Wrap" />
+            <TextBlock
+                Margin="0,0,0,6"
+                DockPanel.Dock="Top"
+                Text="Red: the detector's boxes, as the apps show them. Green: objects to box. Orange: must not be boxed. White: the tracks shown, where the detector found them; grey: blobs left out, with the reason."
+                TextWrapping="Wrap" />
+
+            <!--  Review mode, for a recording: marked stretches with verdicts, saved beside it  -->
+            <StackPanel
+                Margin="0,4,0,8"
+                DockPanel.Dock="Top"
+                Visibility="{Binding Path=IsReviewing, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock
+                    Margin="0,0,0,4"
+                    FontWeight="SemiBold"
+                    Text="Review" />
+                <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Center"
+                        Text="Verdict:" />
+                    <ComboBox
+                        Width="110"
+                        Margin="0,0,8,0"
+                        AutomationProperties.AutomationId="VerdictComboBox"
+                        ItemsSource="{Binding Path=Verdicts}"
+                        SelectedItem="{Binding Path=SelectedVerdict}" />
+                    <TextBlock
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Center"
+                        Text="Count:" />
+                    <TextBox
+                        Width="32"
+                        Margin="0,0,8,0"
+                        AutomationProperties.AutomationId="CountTextBox"
+                        Text="{Binding Path=SpanCount, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="How many things move" />
+                    <TextBlock
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Center"
+                        Text="Label:" />
+                    <TextBox
+                        Width="70"
+                        AutomationProperties.AutomationId="LabelTextBox"
+                        Text="{Binding Path=SpanLabel, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="What moves: person, car, cat, ..." />
+                </StackPanel>
+                <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                    <Button
+                        Margin="0,0,4,0"
+                        Padding="8,3"
+                        AutomationProperties.AutomationId="MarkStartButton"
+                        Command="{Binding Path=MarkStartCommand}"
+                        Content="Mark start" />
+                    <Button
+                        Padding="8,3"
+                        AutomationProperties.AutomationId="AddSpanButton"
+                        Command="{Binding Path=AddSpanCommand}"
+                        Content="Add stretch to here" />
+                </StackPanel>
+                <ListBox
+                    Height="90"
+                    Margin="0,0,0,4"
+                    AutomationProperties.AutomationId="ReviewSpans"
+                    ItemsSource="{Binding Path=ReviewSpans}"
+                    SelectedIndex="{Binding Path=SelectedSpanIndex}" />
+                <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                    <Button
+                        Margin="0,0,4,0"
+                        Padding="8,3"
+                        AutomationProperties.AutomationId="RemoveSpanButton"
+                        Command="{Binding Path=RemoveSpanCommand}"
+                        Content="Remove" />
+                    <Button
+                        Padding="8,3"
+                        AutomationProperties.AutomationId="SaveReviewButton"
+                        Command="{Binding Path=SaveReviewCommand}"
+                        Content="Save review" />
+                </StackPanel>
+                <TextBlock
+                    AutomationProperties.AutomationId="ReviewInfo"
+                    Text="{Binding Path=ReviewInfo}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBox
+                AutomationProperties.AutomationId="ScoreJson"
+                FontFamily="Consolas"
+                HorizontalScrollBarVisibility="Auto"
+                IsReadOnly="True"
+                Text="{Binding Path=ScoreJson, Mode=OneWay}"
+                VerticalScrollBarVisibility="Auto" />
+        </DockPanel>
+
+        <!--  The picture the detector was given, with the boxes in video pixels; the truth on top, so it shows where a box covers it  -->
+        <Grid Background="Black">
+            <Image
+                AutomationProperties.AutomationId="Picture"
+                RenderOptions.BitmapScalingMode="NearestNeighbor"
+                Source="{Binding Path=Picture}"
+                Stretch="Uniform" />
+            <!--  The blobs in analysed pixels, scaled as the picture is  -->
+            <Viewbox IsHitTestVisible="False" Stretch="Uniform">
+                <ItemsControl
+                    Width="{Binding Path=AnalysisWidth}"
+                    Height="{Binding Path=AnalysisHeight}"
+                    AutomationProperties.AutomationId="Candidates"
+                    ItemsSource="{Binding Path=Candidates}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Left" Value="{Binding Path=X}" />
+                            <Setter Property="Canvas.Top" Value="{Binding Path=Y}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type app:CandidateView}">
+                            <Grid>
+                                <Border
+                                    Width="{Binding Path=Width}"
+                                    Height="{Binding Path=Height}"
+                                    BorderBrush="{Binding Path=Stroke}"
+                                    BorderThickness="1" />
+                                <TextBlock
+                                    Margin="0,-13,0,0"
+                                    Padding="2,0"
+                                    VerticalAlignment="Top"
+                                    Background="#99000000"
+                                    FontSize="10"
+                                    Foreground="{Binding Path=Stroke}"
+                                    Text="{Binding Path=Label}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Viewbox>
+            <cw:MotionBoundingBoxOverlay
+                AnalysisHeight="{Binding Path=VideoHeight}"
+                AnalysisWidth="{Binding Path=VideoWidth}"
+                AutomationProperties.AutomationId="MustNotBoxes"
+                BoxColor="Orange"
+                BoxThickness="1"
+                MotionBoxes="{Binding Path=MustNotBoxes}"
+                SmoothingFactor="0"
+                VideoHeight="{Binding Path=VideoHeight}"
+                VideoWidth="{Binding Path=VideoWidth}" />
+            <cw:MotionBoundingBoxOverlay
+                AnalysisHeight="{Binding Path=VideoHeight}"
+                AnalysisWidth="{Binding Path=VideoWidth}"
+                AutomationProperties.AutomationId="DetectorBoxes"
+                BoxColor="Red"
+                BoxThickness="2"
+                MotionBoxes="{Binding Path=DetectedBoxes}"
+                VideoHeight="{Binding Path=VideoHeight}"
+                VideoWidth="{Binding Path=VideoWidth}" />
+            <cw:MotionBoundingBoxOverlay
+                AnalysisHeight="{Binding Path=VideoHeight}"
+                AnalysisWidth="{Binding Path=VideoWidth}"
+                AutomationProperties.AutomationId="TruthBoxes"
+                BoxColor="LimeGreen"
+                BoxThickness="1"
+                MotionBoxes="{Binding Path=TruthBoxes}"
+                SmoothingFactor="0"
+                VideoHeight="{Binding Path=VideoHeight}"
+                VideoWidth="{Binding Path=VideoWidth}" />
+        </Grid>
+    </DockPanel>
+</atc:NiceWindow>

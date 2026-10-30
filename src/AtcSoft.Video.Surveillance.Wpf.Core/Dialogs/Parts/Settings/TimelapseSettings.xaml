@@ -1,0 +1,36 @@
+<UserControl
+    x:Class="AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.Parts.Settings.TimelapseSettings"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=dialogs:SettingsDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    d:DesignWidth="600"
+    mc:Ignorable="d">
+
+    <GroupBox Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=TimelapseSettings}">
+        <StackPanel Margin="0,5,0,-20" Orientation="Vertical">
+
+            <atc:LabelToggleSwitch
+                Margin="0,0,0,10"
+                HideAreas="Validation"
+                IsOn="{Binding Path=EnableTimelapse, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                Key=EnableTimelapse}" />
+
+            <atc:LabelComboBox
+                IsEnabled="{Binding Path=IsTimelapseIntervalEnabled}"
+                Items="{Binding Path=TimelapseIntervalItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                Key=TimelapseInterval}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedTimelapseInterval, Mode=TwoWay}" />
+
+        </StackPanel>
+    </GroupBox>
+</UserControl>

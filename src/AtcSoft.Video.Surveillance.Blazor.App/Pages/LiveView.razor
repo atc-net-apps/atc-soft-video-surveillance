@@ -1,0 +1,505 @@
+@page "/live"
+@inject GatewayService Gateway
+@inject EventStreamService EventStream
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<style>
+    @@keyframes pulse-motion {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* A size container: a camera turned a quarter sizes its video from the tile. */
+    .live-tile {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        background: #12121c;
+        border-radius: 4px;
+        container-type: size;
+    }
+
+    .live-tile-label {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 2px 8px;
+        border-radius: 4px;
+        color: white;
+    }
+</style>
+
+<MudText Typo="Typo.h4" Class="mb-4">@Translations.LiveView</MudText>
+
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (loadFailed)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" Style="max-width: 700px;">
+        @Translations.ServerDidNotAnswer
+    </MudAlert>
+}
+else if (layouts.Length == 0)
+{
+    <MudAlert Severity="Severity.Info" Style="max-width: 700px;">
+        @Translations.NoLayoutYet
+        <MudLink Href="/layouts" Class="ml-1">@Translations.CreateALayout</MudLink>
+    </MudAlert>
+}
+else
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4" Wrap="Wrap.Wrap">
+        <MudSelect T="Guid"
+                   Value="selectedLayoutId"
+                   ValueChanged="OnLayoutChangedAsync"
+                   Label="@Translations.Layout"
+                   Variant="Variant.Outlined"
+                   Dense="true"
+                   Style="min-width: 240px; max-width: 320px;">
+            @foreach (var item in layouts)
+            {
+                <MudSelectItem Value="@item.Id">@item.Name (@(item.Rows) x @(item.Columns))</MudSelectItem>
+            }
+        </MudSelect>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.PlayArrow"
+                   OnClick="StartAllAsync"
+                   Disabled="@(!HasStoppedTiles)">
+            @Translations.StartAll
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.Stop"
+                   OnClick="StopAllAsync"
+                   Disabled="@(streamUrls.Count == 0 && starting.Count == 0)">
+            @Translations.StopAll
+        </MudButton>
+        <MudTooltip Text="@Translations.StartUpLayoutHelp">
+            <MudButton Variant="Variant.Text" OnClick="SetAsStartupLayoutAsync">@Translations.SetAsStartUpLayout</MudButton>
+        </MudTooltip>
+        <MudSpacer />
+        <MudChip T="string" Size="Size.Small" Color="@(EventStream.IsReading ? Color.Success : Color.Warning)">
+            @(EventStream.IsReading ? Translations.ConnectedToTheServer : Translations.ConnectingToServer)
+        </MudChip>
+    </MudStack>
+
+    @if (serverWasReached && !EventStream.IsReading)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-4">
+            @Translations.ServerConnectionLostMessage
+        </MudAlert>
+    }
+
+    @if (activeLayout is not null)
+    {
+        <div style="display: grid; grid-template-columns: repeat(@activeLayout.Columns, 1fr); gap: 4px;">
+            @for (var i = 0; i < activeLayout.Rows * activeLayout.Columns; i++)
+            {
+                var position = i;
+                var gridItem = activeLayout.Cameras?.FirstOrDefault(c => c.Position == position);
+                var camera = gridItem is not null
+                    ? cameras.FirstOrDefault(c => c.Id == gridItem.CameraId)
+                    : null;
+
+                <div class="live-tile">
+                    @if (camera is not null)
+                    {
+                        @if (streamUrls.ContainsKey(camera.Id))
+                        {
+                            @* The browser's own controls turn with a turned picture, so they are left out then. *@
+                            <video id="video-@camera.Id"
+                                   autoplay
+                                   muted
+                                   playsinline
+                                   controls="@(!VideoRotationStyle.IsRotated(camera.Rotation))"
+                                   @onloadedmetadata="@(() => ReadPictureSizeAsync(camera.Id))"
+                                   style="@VideoRotationStyle.For(camera.Rotation)"></video>
+                            <div style="position: absolute; bottom: 4px; right: 4px;">
+                                <MudTooltip Text="@Translations.Stop">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Stop"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => StopStreamAsync(camera.Id))"
+                                                   Style="background: rgba(0,0,0,0.6); border-radius: 4px;" />
+                                </MudTooltip>
+                            </div>
+                        }
+                        else if (starting.Contains(camera.Id))
+                        {
+                            <MudStack Justify="Justify.Center" AlignItems="AlignItems.Center" Style="height: 100%;" Spacing="2">
+                                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                                <MudText Typo="Typo.caption" Style="color: #bbb;">@Translations.StartingTheStream</MudText>
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudStack Justify="Justify.Center" AlignItems="AlignItems.Center" Style="height: 100%; padding: 8px;" Spacing="2">
+                                @if (errors.TryGetValue(camera.Id, out var error))
+                                {
+                                    <MudText Typo="Typo.caption" Align="Align.Center" Style="color: #ffb4a9; max-height: 60%; overflow: auto;">@error</MudText>
+                                }
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.PlayArrow"
+                                           OnClick="@(() => StartStreamAsync(camera.Id))">
+                                    @(errors.ContainsKey(camera.Id) ? Translations.TryAgain : Translations.Start)
+                                </MudButton>
+                            </MudStack>
+                        }
+                        <div class="live-tile-label" style="top: 4px; left: 4px;">
+                            <MudText Typo="Typo.caption">@camera.DisplayName</MudText>
+                        </div>
+                        @if (motionStates.TryGetValue(camera.Id, out var motion) && motion.IsActive)
+                        {
+                            @* The outer drawing has the picture's shape and is fitted into the tile the way the
+                               picture is, bars and all; the inner one spreads the analysed picture over it. Until
+                               the picture's size is known, the tile's own shape is the best guess. *@
+                            var shown = MotionOverlay.ShownSize(pictureSizes.GetValueOrDefault(camera.Id), camera.Rotation) ?? (Width: 16, Height: 9);
+                            <svg viewBox="0 0 @shown.Width @shown.Height"
+                                 preserveAspectRatio="xMidYMid meet"
+                                 style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;">
+                                <svg class="motion-boxes"
+                                     x="0" y="0" width="@shown.Width" height="@shown.Height"
+                                     viewBox="0 0 @motion.AnalysisWidth @motion.AnalysisHeight"
+                                     preserveAspectRatio="none">
+                                    @foreach (var box in motion.BoundingBoxes)
+                                    {
+                                        <rect x="@SvgNumber.Format(box.X)" y="@SvgNumber.Format(box.Y)"
+                                              width="@SvgNumber.Format(box.Width)" height="@SvgNumber.Format(box.Height)"
+                                              fill="none" stroke="red" stroke-width="2"
+                                              vector-effect="non-scaling-stroke" />
+                                    }
+                                </svg>
+                            </svg>
+                            <div class="live-tile-label" style="top: 4px; right: 4px; background: rgba(220,20,20,0.85); animation: pulse-motion 1s ease-in-out infinite;">
+                                <MudText Typo="Typo.caption" Style="font-weight: bold;">@Translations.MotionBadge</MudText>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <MudStack Justify="Justify.Center" AlignItems="AlignItems.Center" Style="height: 100%;">
+                            <MudText Typo="Typo.caption" Style="color: #777;">@Translations.Empty</MudText>
+                        </MudStack>
+                    }
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private Layout[] layouts = [];
+    private Camera[] cameras = [];
+    private Layout? activeLayout;
+    private Guid selectedLayoutId;
+    private bool isLoading = true;
+    private bool loadFailed;
+    private readonly Dictionary<Guid, string> streamUrls = new();
+
+    // The page's lease on each stream it shows, renewed while it is open.
+    private readonly StreamLeases leases = new();
+    private bool serverWasReached;
+    private readonly HashSet<Guid> starting = new();
+    private readonly Dictionary<Guid, string> errors = new();
+    private readonly HashSet<Guid> pendingStreamInits = new();
+    private readonly Dictionary<Guid, MotionState> motionStates = new();
+    private readonly Dictionary<Guid, MotionBoxSmoother> motionSmoothers = new();
+
+    // What each playing video's picture measures, as the browser reports it.
+    private readonly Dictionary<Guid, int[]> pictureSizes = new();
+    private readonly CancellationTokenSource heartbeatCancellation = new();
+    private readonly CancellationTokenSource leaving = new();
+
+    private bool HasStoppedTiles
+        => LayoutCameraIds().Any(id => !streamUrls.ContainsKey(id) && !starting.Contains(id));
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The camera states and motion come from the server's event stream
+        // (GET /events) until the page is left; it also says whether the
+        // server can be reached.
+        EventStream.ReadingChanged += OnReadingChanged;
+        _ = EventStream.RunAsync(OnEventAsync, leaving.Token);
+
+        // No answer is not the same as no layouts.
+        var loadedLayouts = await Gateway.GetLayoutsAsync();
+        loadFailed = loadedLayouts is null;
+        layouts = loadedLayouts ?? [];
+        cameras = await Gateway.GetCamerasAsync() ?? [];
+
+        if (layouts.Length > 0)
+        {
+            // The layout is shown straight away; its streams start on request.
+            selectedLayoutId = layouts[0].Id;
+            activeLayout = layouts[0];
+        }
+
+        isLoading = false;
+        _ = RunHeartbeatAsync(heartbeatCancellation.Token);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (pendingStreamInits.Count == 0)
+        {
+            return;
+        }
+
+        var toInit = pendingStreamInits.ToList();
+        pendingStreamInits.Clear();
+
+        foreach (var cameraId in toInit)
+        {
+            if (streamUrls.TryGetValue(cameraId, out var url))
+            {
+                await JS.InvokeVoidAsync("hlsInterop.initPlayer", $"video-{cameraId}", url);
+            }
+        }
+    }
+
+    private IEnumerable<Guid> LayoutCameraIds()
+        => (activeLayout?.Cameras ?? [])
+            .Select(c => c.CameraId ?? Guid.Empty)
+            .Where(id => cameras.Any(c => c.Id == id))
+            .Distinct();
+
+    private async Task OnLayoutChangedAsync(Guid layoutId)
+    {
+        selectedLayoutId = layoutId;
+        var next = layouts.FirstOrDefault(l => l.Id == layoutId);
+
+        // Streams of cameras that are not in the new layout are let go.
+        var keep = (next?.Cameras ?? []).Select(c => c.CameraId).ToHashSet();
+        foreach (var cameraId in streamUrls.Keys.Concat(starting).Where(id => !keep.Contains(id)).ToList())
+        {
+            await StopStreamAsync(cameraId);
+        }
+
+        activeLayout = next;
+    }
+
+    private async Task SetAsStartupLayoutAsync()
+    {
+        var applied = await Gateway.ApplyLayoutAsync(selectedLayoutId);
+        Snackbar.Add(
+            !applied.IsSuccess ? ProblemText.WithReason(Translations.StartUpLayoutCouldNotBeSet, applied.Problem) : string.Format(CultureInfo.CurrentCulture, Translations.IsNowTheStartUpLayout1, applied.Value!.Name),
+            applied.IsSuccess ? Severity.Success : Severity.Error);
+    }
+
+    private Task StartAllAsync()
+        => Task.WhenAll(LayoutCameraIds()
+            .Where(id => !streamUrls.ContainsKey(id) && !starting.Contains(id))
+            .Select(StartStreamAsync)
+            .ToList());
+
+    private async Task StopAllAsync()
+    {
+        foreach (var cameraId in streamUrls.Keys.Concat(starting).Distinct().ToList())
+        {
+            await StopStreamAsync(cameraId);
+        }
+    }
+
+    private async Task StartStreamAsync(Guid cameraId)
+    {
+        if (!starting.Add(cameraId))
+        {
+            return;
+        }
+
+        errors.Remove(cameraId);
+        StateHasChanged();
+
+        // Answered when the stream can be played, or with the server's reason.
+        var started = await Gateway.StartStreamAsync(cameraId);
+        if (started.Value is { } lease)
+        {
+            if (starting.Contains(cameraId))
+            {
+                leases.Add(cameraId, lease.LeaseId, lease.RenewSeconds);
+                streamUrls[cameraId] = $"{Gateway.ApiBaseUrl.TrimEnd('/')}{lease.PlaylistUrl}";
+                pendingStreamInits.Add(cameraId);
+            }
+            else
+            {
+                // Stopped while it was starting.
+                await Gateway.StopStreamAsync(cameraId, lease.LeaseId);
+            }
+        }
+        else if (starting.Contains(cameraId))
+        {
+            errors[cameraId] = started.Problem ?? Translations.StreamCouldNotBeStarted;
+        }
+
+        starting.Remove(cameraId);
+        StateHasChanged();
+    }
+
+    private async Task StopStreamAsync(Guid cameraId)
+    {
+        starting.Remove(cameraId);
+        errors.Remove(cameraId);
+
+        // Taken off the page first: a camera that was only open for this
+        // viewer is closed by the stop, and its "disconnected" must not be
+        // taken for a stream that broke.
+        var wasShown = streamUrls.Remove(cameraId);
+
+        if (leases.TryTake(cameraId, out var leaseId))
+        {
+            // A server that is away lets the lease run out by itself.
+            await Gateway.StopStreamAsync(cameraId, leaseId);
+        }
+
+        if (wasShown)
+        {
+            await JS.InvokeVoidAsync("hlsInterop.destroyPlayer", $"video-{cameraId}");
+        }
+
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Renews the page's stream leases for as long as it is open; without it
+    /// the server takes a stream for abandoned and stops it. A stream whose
+    /// lease the server no longer has (it restarted) is started again.
+    /// </summary>
+    private async Task RunHeartbeatAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(leases.RenewInterval, cancellationToken);
+
+                var gone = await leases.RenewAllAsync((cameraId, leaseId) => Gateway.RenewStreamLeaseAsync(cameraId, leaseId, cancellationToken));
+                foreach (var cameraId in gone)
+                {
+                    if (streamUrls.Remove(cameraId))
+                    {
+                        await JS.InvokeVoidAsync("hlsInterop.destroyPlayer", $"video-{cameraId}");
+                    }
+
+                    await StartStreamAsync(cameraId);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was closed.
+        }
+    }
+
+    private void OnReadingChanged()
+        => InvokeAsync(() =>
+        {
+            serverWasReached |= EventStream.IsReading;
+            StateHasChanged();
+        });
+
+    private void OnConnectionStateChanged(ConnectionStateChangedEvent e)
+    {
+        InvokeAsync(async () =>
+        {
+            if ((e.NewState == CameraConnectionState.Disconnected || e.NewState == CameraConnectionState.Error)
+                && streamUrls.Remove(e.CameraId))
+            {
+                if (leases.TryTake(e.CameraId, out var leaseId))
+                {
+                    await Gateway.StopStreamAsync(e.CameraId, leaseId);
+                }
+
+                await JS.InvokeVoidAsync("hlsInterop.destroyPlayer", $"video-{e.CameraId}");
+                errors[e.CameraId] = Translations.TheCameraDisconnected;
+                StateHasChanged();
+            }
+        });
+    }
+
+    private Task OnEventAsync(SurveillanceEvent surveillanceEvent)
+    {
+        if (surveillanceEvent.Connection is { } connection)
+        {
+            OnConnectionStateChanged(connection);
+        }
+
+        if (surveillanceEvent.Motion is { } motion)
+        {
+            OnMotionDetected(motion);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task ReadPictureSizeAsync(Guid cameraId)
+    {
+        pictureSizes[cameraId] = await JS.InvokeAsync<int[]>("hlsInterop.videoSize", $"video-{cameraId}");
+    }
+
+    private void OnMotionDetected(MotionDetectedEvent e)
+    {
+        InvokeAsync(() =>
+        {
+            if (e.IsMotionActive)
+            {
+                if (!motionSmoothers.TryGetValue(e.CameraId, out var smoother))
+                {
+                    smoother = new MotionBoxSmoother();
+                    motionSmoothers[e.CameraId] = smoother;
+                }
+
+                motionStates[e.CameraId] = new MotionState(
+                    true,
+                    smoother.Smooth(e.BoundingBoxes),
+                    e.AnalysisWidth,
+                    e.AnalysisHeight);
+            }
+            else
+            {
+                motionStates.Remove(e.CameraId);
+                motionSmoothers.Remove(e.CameraId);
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        EventStream.ReadingChanged -= OnReadingChanged;
+        await leaving.CancelAsync();
+        leaving.Dispose();
+
+        await heartbeatCancellation.CancelAsync();
+        heartbeatCancellation.Dispose();
+
+        // Leaving the page lets the server stop the transcoders right away.
+        foreach (var cameraId in streamUrls.Keys.ToList())
+        {
+            try
+            {
+                if (leases.TryTake(cameraId, out var leaseId))
+                {
+                    await Gateway.StopStreamAsync(cameraId, leaseId);
+                }
+
+                await JS.InvokeVoidAsync("hlsInterop.destroyPlayer", $"video-{cameraId}");
+            }
+            catch (Exception)
+            {
+                // The server or the page is already gone.
+            }
+        }
+    }
+
+    private sealed record MotionState(
+        bool IsActive,
+        IReadOnlyList<MotionBox> BoundingBoxes,
+        int AnalysisWidth,
+        int AnalysisHeight);
+}

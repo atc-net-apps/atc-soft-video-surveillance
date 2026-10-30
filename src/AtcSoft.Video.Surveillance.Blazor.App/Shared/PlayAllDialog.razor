@@ -1,0 +1,195 @@
+@using MudBlazor
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.GridView" Class="mr-2" />
+            @Title
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-2">
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@PlayPauseIcon"
+                       OnClick="TogglePauseAsync">@PlayPauseText</MudButton>
+            <MudText Typo="Typo.body1" Style="font-family: Consolas, monospace;">@clockText</MudText>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@LimitText</MudText>
+        </MudStack>
+
+        <div style="@PlayAllPlan.GridStyle(Tiles.Count)">
+            @for (var i = 0; i < Tiles.Count; i++)
+            {
+                var tile = Tiles[i];
+                <div style="@PlayAllPlan.TileStyle(Tiles.Count)">
+                    <video id="@VideoId(i)" muted playsinline style="width: 100%; height: 100%; object-fit: contain;"></video>
+                    <div style="position: absolute; top: 6px; left: 6px; padding: 2px 6px; background: rgba(0,0,0,0.7); color: #fff; border-radius: 3px;">@tile.CameraName</div>
+                    <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #ccc; pointer-events: none;">@tile.StatusText</div>
+                </div>
+            }
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(250);
+
+    private readonly string idPrefix = "play-all-" + Guid.NewGuid().ToString("N");
+    private readonly CancellationTokenSource stopping = new();
+    private PlayAllPacer pacer = new(DateTimeOffset.MinValue);
+    private string clockText = string.Empty;
+    private bool paused;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The moment every tile plays from.
+    /// </summary>
+    [Parameter]
+    public DateTimeOffset Moment { get; set; }
+
+    /// <summary>
+    /// The cameras' tiles.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PlayAllTileLogic> Tiles { get; set; } = [];
+
+    /// <summary>
+    /// Says that cameras were left out; empty when every camera got a tile.
+    /// </summary>
+    [Parameter]
+    public string LimitText { get; set; } = string.Empty;
+
+    private string PlayPauseText => paused ? Translations.Play : Translations.Pause;
+
+    private string PlayPauseIcon => paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause;
+
+    protected override void OnInitialized()
+    {
+        pacer = new PlayAllPacer(Moment);
+        clockText = FormatClock(Moment);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _ = RunAsync(stopping.Token);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await stopping.CancelAsync();
+        stopping.Dispose();
+        try
+        {
+            for (var i = 0; i < Tiles.Count; i++)
+            {
+                await JS.InvokeVoidAsync("playAllInterop.close", VideoId(i));
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone, and its video elements with it.
+        }
+    }
+
+    private string VideoId(int index)
+        => $"{idPrefix}-{index}";
+
+    private static string FormatClock(DateTimeOffset moment)
+        => moment.ToLocalTime().ToString("G", CultureInfo.CurrentCulture);
+
+    private async Task RunAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TickInterval);
+            var sinceTick = System.Diagnostics.Stopwatch.StartNew();
+            await StepAsync(TimeSpan.Zero);
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var elapsed = sinceTick.Elapsed;
+                sinceTick.Restart();
+                await StepAsync(elapsed);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The dialog closed.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone.
+        }
+    }
+
+    // Read every video element, let the pacer decide, and pass its actions on.
+    private async Task StepAsync(TimeSpan elapsed)
+    {
+        var readings = await JS.InvokeAsync<PlayAllReading[]>(
+            "playAllInterop.read",
+            stopping.Token,
+            [Enumerable.Range(0, Tiles.Count).Select(VideoId).ToArray()]);
+
+        for (var i = 0; i < Tiles.Count; i++)
+        {
+            if (readings[i].Failed)
+            {
+                await SendAsync(i, Tiles[i].Failed());
+            }
+            else if (readings[i].Ended)
+            {
+                Tiles[i].Ended();
+            }
+            else if (readings[i].Opened)
+            {
+                await SendAsync(i, Tiles[i].Opened());
+            }
+        }
+
+        var actions = pacer.Tick(elapsed, [.. Tiles.Select((t, i) => t.Report(readings[i].Time))]);
+        for (var i = 0; i < Tiles.Count; i++)
+        {
+            await SendAsync(i, Tiles[i].Apply(actions[i], pacer.Clock));
+        }
+
+        clockText = FormatClock(pacer.Clock);
+        StateHasChanged();
+    }
+
+    private async Task TogglePauseAsync()
+    {
+        paused = !paused;
+        pacer.IsPaused = paused;
+        for (var i = 0; i < Tiles.Count; i++)
+        {
+            await SendAsync(i, Tiles[i].SetPaused(paused));
+        }
+    }
+
+    private async Task SendAsync(int index, PlayAllCommand? command)
+    {
+        switch (command?.Kind)
+        {
+            case PlayAllCommandKind.Open:
+                await JS.InvokeVoidAsync("playAllInterop.open", VideoId(index), command.Source, command.Seconds);
+                break;
+            case PlayAllCommandKind.Play:
+                await JS.InvokeVoidAsync("playAllInterop.play", VideoId(index));
+                break;
+            case PlayAllCommandKind.Pause:
+                await JS.InvokeVoidAsync("playAllInterop.pause", VideoId(index));
+                break;
+            case PlayAllCommandKind.Close:
+                await JS.InvokeVoidAsync("playAllInterop.close", VideoId(index));
+                break;
+        }
+    }
+}

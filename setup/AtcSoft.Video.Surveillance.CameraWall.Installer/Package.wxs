@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package
+    Name="AtcSoft Camera Wall"
+    Manufacturer="AtcSoft"
+    Version="$(ProductVersion)"
+    UpgradeCode="E5A8B4C1-9D2F-4E3A-8B7C-6D5E4F3A2B1C"
+    Scope="perMachine">
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+      AllowSameVersionUpgrades="yes" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="ProductFeature" Title="AtcSoft Camera Wall" Level="1">
+      <ComponentGroupRef Id="HarvestedComponents" />
+      <ComponentRef Id="ApplicationShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+
+    <Icon Id="CameraWallIcon" SourceFile="$(HarvestDirectory)\cctv-camera.ico" />
+    <Property Id="ARPPRODUCTICON" Value="CameraWallIcon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/atc-net-apps/atc-soft-video-surveillance" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+  </Package>
+</Wix>

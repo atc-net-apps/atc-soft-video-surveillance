@@ -1,0 +1,192 @@
+@page "/layouts"
+@inject GatewayService Gateway
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@Translations.Layouts</MudText>
+
+<MudPaper Class="pa-4 mb-4" MaxWidth="500px">
+    <MudText Typo="Typo.h6" Class="mb-2">@Translations.CreateLayout</MudText>
+    <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+        <MudTextField @bind-Value="newLayoutName" Label="@Translations.Name" />
+        <MudNumericField @bind-Value="newRows" Label="@Translations.Rows" Min="1" Max="8" />
+        <MudNumericField @bind-Value="newColumns" Label="@Translations.Columns" Min="1" Max="8" />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="CreateLayoutAsync"
+                   Disabled="string.IsNullOrWhiteSpace(newLayoutName)">
+            @Translations.Create
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="@layouts" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>@Translations.Name</MudTh>
+            <MudTh>@Translations.GridSizeGroup</MudTh>
+            <MudTh>@Translations.Cameras</MudTh>
+            <MudTh>@Translations.Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="@Translations.Name">@context.Name</MudTd>
+            <MudTd DataLabel="@Translations.GridSizeGroup">@(context.Rows)x@(context.Columns)</MudTd>
+            <MudTd DataLabel="@Translations.Cameras">@(context.Cameras?.Count ?? 0)</MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.GridView"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               OnClick="@(() => EditLayout(context))" />
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="@(() => ApplyLayoutAsync(context))">
+                    @Translations.Apply
+                </MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="@(() => DeleteLayoutAsync(context))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>@Translations.NoLayoutsConfigured</MudText>
+        </NoRecordsContent>
+    </MudTable>
+}
+
+@if (editingLayout is not null && cameras is not null)
+{
+    <MudDivider Class="my-4" />
+    <LayoutEditor @ref="editorRef"
+                  Layout="editingLayout"
+                  AllCameras="cameras"
+                  OnSave="OnEditorSaveAsync"
+                  OnCancel="CancelEdit" />
+}
+
+@code {
+    private Layout[]? layouts;
+    private Camera[]? cameras;
+    private Layout? editingLayout;
+    private LayoutEditor? editorRef;
+    private bool isLoading = true;
+
+    private string newLayoutName = string.Empty;
+    private int newRows = 2;
+    private int newColumns = 2;
+
+    protected override async Task OnInitializedAsync()
+    {
+        cameras = await Gateway.GetCamerasAsync();
+        await LoadLayoutsAsync();
+    }
+
+    private async Task LoadLayoutsAsync()
+    {
+        isLoading = true;
+        layouts = await Gateway.GetLayoutsAsync();
+        isLoading = false;
+    }
+
+    private async Task CreateLayoutAsync()
+    {
+        var request = new CreateLayoutRequest(
+            Name: newLayoutName,
+            Rows: newRows,
+            Columns: newColumns);
+
+        var result = await Gateway.CreateLayoutAsync(request);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(string.Format(CultureInfo.CurrentCulture, Translations.LayoutCreated1, newLayoutName), Severity.Success);
+            newLayoutName = string.Empty;
+            await LoadLayoutsAsync();
+        }
+        else
+        {
+            Snackbar.Add(ProblemText.WithReason(Translations.FailedToCreateLayout, result.Problem), Severity.Error);
+        }
+    }
+
+    private async Task ApplyLayoutAsync(Layout layout)
+    {
+        var result = await Gateway.ApplyLayoutAsync(layout.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(string.Format(CultureInfo.CurrentCulture, Translations.LayoutApplied1, layout.Name), Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(ProblemText.WithReason(Translations.FailedToApplyLayout, result.Problem), Severity.Error);
+        }
+    }
+
+    private async Task DeleteLayoutAsync(Layout layout)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, string.Format(CultureInfo.CurrentCulture, Translations.DeleteLayoutQuestion1, layout.Name) },
+            { x => x.ButtonText, Translations.DeleteRecording },
+            { x => x.Color, Color.Error },
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(Translations.DeleteLayoutTitle, parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var deleted = await Gateway.DeleteLayoutAsync(layout.Id);
+            if (!deleted.IsSuccess)
+            {
+                Snackbar.Add(ProblemText.WithReason(string.Format(CultureInfo.CurrentCulture, Translations.LayoutCouldNotBeDeleted1, layout.Name), deleted.Problem), Severity.Error);
+                return;
+            }
+
+            Snackbar.Add(string.Format(CultureInfo.CurrentCulture, Translations.LayoutDeleted1, layout.Name), Severity.Success);
+
+            if (editingLayout?.Id == layout.Id)
+            {
+                editingLayout = null;
+            }
+
+            await LoadLayoutsAsync();
+        }
+    }
+
+    private void EditLayout(Layout layout)
+    {
+        editingLayout = layout;
+    }
+
+    private async Task OnEditorSaveAsync()
+    {
+        var request = editorRef?.LastSaveRequest;
+        if (editingLayout is null || request is null)
+        {
+            return;
+        }
+
+        var result = await Gateway.UpdateLayoutAsync(editingLayout.Id, request);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(string.Format(CultureInfo.CurrentCulture, Translations.LayoutSaved1, editingLayout.Name), Severity.Success);
+            editingLayout = null;
+            await LoadLayoutsAsync();
+        }
+        else
+        {
+            Snackbar.Add(ProblemText.WithReason(Translations.FailedToSaveLayout, result.Problem), Severity.Error);
+        }
+    }
+
+    private void CancelEdit()
+    {
+        editingLayout = null;
+    }
+}

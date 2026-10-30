@@ -1,0 +1,34 @@
+<UserControl
+    x:Class="AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.Parts.CameraConfigurations.NetworkScannerPart"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:scanner="clr-namespace:Atc.Wpf.Network.Scanner;assembly=Atc.Wpf.Network"
+    d:DataContext="{d:DesignInstance Type=dialogs:CameraConfigurationDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    d:DesignWidth="600"
+    mc:Ignorable="d">
+
+    <atc:GroupBoxExpander
+        Margin="0,0,0,20"
+        Padding="0,20,0,0"
+        Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                     Key=NetworkScannerHeader}">
+        <atc:GridEx Rows="Auto,Auto,*">
+            <!--  Scanner Settings  -->
+            <scanner:NetworkScannerSettingsView Grid.Row="1" DataContext="{Binding Path=NetworkScanner}" />
+
+            <!--  Scanner Results  -->
+            <Border
+                Grid.Row="2"
+                MinHeight="225"
+                BorderBrush="{DynamicResource AtcApps.Brushes.Control.Border}">
+                <scanner:NetworkScannerView DataContext="{Binding Path=NetworkScanner}" />
+            </Border>
+        </atc:GridEx>
+    </atc:GroupBoxExpander>
+</UserControl>

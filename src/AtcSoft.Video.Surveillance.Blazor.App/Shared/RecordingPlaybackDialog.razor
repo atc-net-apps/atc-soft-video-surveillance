@@ -1,0 +1,638 @@
+@using MudBlazor
+@inject IJSRuntime JS
+@inject GatewayService Gateway
+@inject BrowserSession Session
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Class="mr-2" />
+            @Title
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (!PlaysInBrowser && !failed)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                @Translations.BrowserPlaybackHelp
+            </MudAlert>
+        }
+
+        @if (failed)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-2">
+                @Translations.BrowserCannotPlayRecording
+            </MudAlert>
+        }
+        else
+        {
+            <video id="@videoId"
+                   controls
+                   autoplay
+                   style="width: 100%; max-height: 70vh; background: #000;"
+                   src="@VideoUrl"
+                   @onerror="OnVideoError"></video>
+        }
+
+        @if (HasActivity)
+        {
+            @* What moved when: bars for how much changed, orange where something went somewhere. *@
+            <div class="d-flex align-center mt-1">
+                <MudTooltip Text="@Translations.PreviousEvent">
+                    <MudIconButton Icon="@Icons.Material.Filled.SkipPrevious"
+                                   aria-label="@Translations.PreviousEvent"
+                                   Size="Size.Small"
+                                   Disabled="@(events.Count == 0)"
+                                   OnClick="PreviousEventAsync" />
+                </MudTooltip>
+                <div style="flex: 1; position: relative;">
+                @if (HasHover)
+                {
+                    <div role="tooltip"
+                         class="mud-elevation-4"
+                         style="position: absolute; bottom: 100%; left: @ActivityHoverText.Left(hoverShare); transform: translateX(-50%); margin-bottom: 4px; padding: 4px 8px; border-radius: 4px; background: rgba(33,33,33,0.92); color: #fff; font-size: 12px; white-space: nowrap; pointer-events: none; z-index: 1;">
+                        @if (hoverPicture is { } picture)
+                        {
+                            <div aria-hidden="true" style="@picture; margin: 0 auto 4px auto;"></div>
+                        }
+                        @foreach (var hoverLine in hoverLines)
+                        {
+                            <div>@hoverLine</div>
+                        }
+                    </div>
+                }
+                @if (verdictChoices.Count > 0)
+                {
+                    @* A right-click's verdicts on the place, saved in the recording's review on the server. *@
+                    <MudPaper role="menu"
+                              aria-label="@Translations.ActivityTimeline"
+                              Elevation="8"
+                              Style="@($"position: absolute; top: 100%; left: {ActivityHoverText.Left(verdictShare)}; transform: translateX(-50%); margin-top: 4px; z-index: 2;")"
+                              @onmouseleave="CloseVerdicts">
+                        @foreach (var choice in verdictChoices)
+                        {
+                            <MudButton role="menuitem"
+                                       Variant="Variant.Text"
+                                       FullWidth="true"
+                                       Size="Size.Small"
+                                       OnClick="@(() => GiveVerdictAsync(choice))">@TimelineVerdicts.Text(choice.Verdict)</MudButton>
+                        }
+                    </MudPaper>
+                }
+                <svg @ref="timeline"
+                     role="img"
+                     aria-label="@Translations.ActivityTimeline"
+                     viewBox="0 0 @ActivityTimelineShapes.BoxWidth @SvgNumber.Format(ActivityTimelineShapes.BoxHeight)"
+                     preserveAspectRatio="none"
+                     style="display: block; width: 100%; height: 32px; cursor: pointer;"
+                     @onclick="SeekAtAsync">
+                    <title>@Translations.ActivityTimelineHint</title>
+                    @foreach (var shape in notAnalysed)
+                    {
+                        <rect x="@SvgNumber.Format(shape.X)" y="@SvgNumber.Format(shape.Y)" width="@SvgNumber.Format(shape.Width)" height="@SvgNumber.Format(shape.Height)" fill="rgba(128,128,128,0.2)" />
+                    }
+                    @foreach (var shape in bars)
+                    {
+                        <rect x="@SvgNumber.Format(shape.X)" y="@SvgNumber.Format(shape.Y)" width="@SvgNumber.Format(shape.Width)" height="@SvgNumber.Format(shape.Height)" fill="rgba(128,128,128,0.8)" />
+                    }
+                    @foreach (var (shape, fill) in bands)
+                    {
+                        <rect x="@SvgNumber.Format(shape.X)" y="@SvgNumber.Format(shape.Y)" width="@SvgNumber.Format(shape.Width)" height="@SvgNumber.Format(shape.Height)" fill="@fill" />
+                    }
+                    @if (ActivityTimelineShapes.Playhead(playhead, zoomStart, zoomEnd) is { } line)
+                    {
+                        <rect x="@SvgNumber.Format(line.X)" y="@SvgNumber.Format(line.Y)" width="@SvgNumber.Format(line.Width)" height="@SvgNumber.Format(line.Height)" fill="#1E88E5" />
+                    }
+                </svg>
+                </div>
+                <MudTooltip Text="@Translations.NextEvent">
+                    <MudIconButton Icon="@Icons.Material.Filled.SkipNext"
+                                   aria-label="@Translations.NextEvent"
+                                   Size="Size.Small"
+                                   Disabled="@(events.Count == 0)"
+                                   OnClick="NextEventAsync" />
+                </MudTooltip>
+                <MudTooltip Text="@Translations.PlayEventsOnly">
+                    <MudToggleIconButton @bind-Toggled="playEventsOnly"
+                                         Icon="@Icons.Material.Filled.FilterAlt"
+                                         ToggledIcon="@Icons.Material.Filled.FilterAlt"
+                                         ToggledColor="Color.Warning"
+                                         aria-label="@Translations.PlayEventsOnly"
+                                         Size="Size.Small" />
+                </MudTooltip>
+                <MudTooltip Text="@Translations.ZoomOut">
+                    <MudIconButton Icon="@Icons.Material.Filled.ZoomOut"
+                                   aria-label="@Translations.ZoomOut"
+                                   Size="Size.Small"
+                                   Disabled="@(!ActivityTimelineZoom.CanZoomOut(zoomStart, zoomEnd))"
+                                   OnClick="ZoomOut" />
+                </MudTooltip>
+                <MudTooltip Text="@Translations.ZoomIn">
+                    <MudIconButton Icon="@Icons.Material.Filled.ZoomIn"
+                                   aria-label="@Translations.ZoomIn"
+                                   Size="Size.Small"
+                                   Disabled="@(!ActivityTimelineZoom.CanZoomIn(zoomStart, zoomEnd, ShownSeconds))"
+                                   OnClick="ZoomIn" />
+                </MudTooltip>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudText Typo="Typo.caption" Class="ml-4 mud-text-secondary" Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@FileName</MudText>
+        <MudSpacer />
+        <MudButton StartIcon="@Icons.Material.Filled.Download" OnClick="DownloadAsync">@Translations.Download</MudButton>
+        <MudButton OnClick="Close">@Translations.Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly string videoId = "recording-" + Guid.NewGuid().ToString("N");
+    private bool failed;
+    private ElementReference timeline;
+    private IReadOnlyList<RecordingActivityBucket>? buckets;
+    private IReadOnlyList<ActivityTimelineEvent> events = [];
+    private IReadOnlyList<TimelineVerdict> verdictChoices = [];
+    private double verdictShare;
+    private IReadOnlyList<TimelineRect> bars = [];
+    private IReadOnlyList<TimelineRect> notAnalysed = [];
+    private IReadOnlyList<(TimelineRect Band, string Fill)> bands = [];
+    private IReadOnlyDictionary<string, string>? zoneColours;
+
+    // The part of the recording the timeline shows, as fractions of it (ActivityTimelineZoom).
+    private double zoomStart;
+    private double zoomEnd = 1;
+
+    // How long the player says the recording is; 0 while not known.
+    private double videoSeconds;
+    private bool wheelListened;
+
+    // Loaded again for the video's length once per recording, worked or not.
+    private bool reloadedForLength;
+
+    // What the timeline tells under the mouse, and where; nothing while the mouse is elsewhere.
+    private IReadOnlyList<string> hoverLines = [];
+
+    // The preview pictures of the recording, and where their JPEG is; the picture under the mouse as CSS.
+    private RecordingPreviewSheet? previews;
+    private string? previewsUrl;
+    private string? hoverPicture;
+    private CancellationTokenSource previewsLoading = new();
+    private double hoverShare;
+
+    private bool HasHover
+        => hoverLines.Count != 0;
+
+    // Written as a property: a pattern with ">" in the markup reads as text to the literal-text check.
+    private bool HasActivity
+        => buckets is { Count: > 0 };
+    private DotNetObjectReference<RecordingPlaybackDialog>? self;
+    private int nextSegment;
+
+    // Where the player is, 0 to 1, for the playhead; below 0 before it plays.
+    private double playhead = -1;
+    private bool playEventsOnly;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string VideoUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The address that makes the browser save the file instead of showing it.
+    /// </summary>
+    [Parameter]
+    public string DownloadUrl { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Title { get; set; } = Translations.RecordingPlayback;
+
+    [Parameter]
+    public string FileName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// False for a format a browser is not sure to play (MKV, AVI).
+    /// </summary>
+    [Parameter]
+    public bool PlaysInBrowser { get; set; } = true;
+
+    /// <summary>
+    /// The recording's path, as the listing gave it, for its activity.
+    /// </summary>
+    [Parameter]
+    public string FilePath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// How long the recording is, in seconds; 0 when not known.
+    /// </summary>
+    [Parameter]
+    public double DurationSeconds { get; set; }
+
+    /// <summary>
+    /// Where to start, in seconds into the recording: the Timeline page plays from a moment.
+    /// </summary>
+    [Parameter]
+    public double StartSeconds { get; set; }
+
+    /// <summary>
+    /// When the recording started, for the time the timeline tells under the mouse; the time into it when not known.
+    /// </summary>
+    [Parameter]
+    public DateTimeOffset? RecordingStart { get; set; }
+
+    /// <summary>
+    /// The recording's camera, whose watch zones colour the events; <see langword="null"/> draws them orange.
+    /// </summary>
+    [Parameter]
+    public Guid? CameraId { get; set; }
+
+    /// <summary>
+    /// The recordings to move on to, one after another, when the one playing ends.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<RecordingPlaybackSegment> FollowingSegments { get; set; } = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (failed)
+        {
+            return;
+        }
+
+        if (firstRender)
+        {
+            if (StartSeconds > 0)
+            {
+                await JS.InvokeVoidAsync("timelineInterop.startAt", videoId, StartSeconds);
+            }
+
+            self = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("recordingTimeline.onTime", videoId, self);
+            if (FollowingSegments.Count > 0)
+            {
+                await JS.InvokeVoidAsync("timelineInterop.onEnded", videoId, self);
+            }
+        }
+
+        // The timeline comes with its activity, after the first drawing, and again with each recording.
+        if (HasActivity && !wheelListened && self is not null)
+        {
+            wheelListened = true;
+            await JS.InvokeVoidAsync("recordingTimeline.listen", timeline, self);
+        }
+    }
+
+    /// <summary>
+    /// The recording played to its end: the next one plays from its start, with its own activity.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnEndedAsync()
+    {
+        if (nextSegment >= FollowingSegments.Count)
+        {
+            return;
+        }
+
+        var next = FollowingSegments[nextSegment++];
+        VideoUrl = next.VideoUrl;
+        DownloadUrl = next.DownloadUrl;
+        Title = next.Title;
+        FileName = RecordingDisplay.FileName(next.FilePath);
+        FilePath = next.FilePath;
+        DurationSeconds = 0;
+        StartSeconds = 0;
+        buckets = null;
+        events = [];
+        (zoomStart, zoomEnd) = (0, 1);
+        videoSeconds = 0;
+        wheelListened = false;
+        reloadedForLength = false;
+        hoverLines = [];
+        hoverPicture = null;
+        previews = null;
+        previewsUrl = null;
+        await previewsLoading.CancelAsync();
+        previewsLoading.Dispose();
+        previewsLoading = new CancellationTokenSource();
+        RecordingStart = next.RecordingStart;
+        StateHasChanged();
+        await OnInitializedAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        previewsLoading.Cancel();
+        previewsLoading.Dispose();
+        self?.Dispose();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(FilePath))
+        {
+            return;
+        }
+
+        var camera = await LoadActivityAsync(DurationSeconds) && CameraId is { } id
+            ? await TryGetCameraAsync(id)
+            : null;
+        zoneColours = MotionZoneColors.ByZone(camera?.MotionZones);
+        Redraw();
+        if (HasActivity)
+        {
+            _ = LoadPreviewsAsync(FilePath, previewsLoading.Token);
+        }
+    }
+
+    // Previews still being made (a recording from before them) are asked for again a while.
+    private async Task LoadPreviewsAsync(string filePath, CancellationToken cancellationToken)
+    {
+        try
+        {
+            for (var attempt = 0; attempt <= 24; attempt++)
+            {
+                if (attempt > 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+
+                var sheet = await Gateway.GetRecordingPreviewsAsync(filePath, cancellationToken);
+                if (sheet is { HasPreviews: true, ImagePath: { Length: > 0 } imagePath })
+                {
+                    previews = sheet;
+                    previewsUrl = RecordingDisplay.FileUrl(Gateway.ApiBaseUrl, imagePath, Session.MediaToken);
+                    return;
+                }
+
+                if (sheet is not { IsBeingMade: true })
+                {
+                    return;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or HttpRequestException)
+        {
+            // The dialog closed or moved on, or the server did not answer: words only.
+        }
+    }
+
+    // One stretch a second, so a minute zoomed in still has its seconds; false when there is none.
+    private async Task<bool> LoadActivityAsync(double durationSeconds)
+    {
+        try
+        {
+            if (await Gateway.GetRecordingActivityAsync(FilePath, ActivityTimelineZoom.BucketsFor(durationSeconds), durationSeconds) is { HasIndex: true, Buckets.Count: > 0 } activity)
+            {
+                buckets = activity.Buckets;
+                events = ActivityTimelineLayout.FindEvents(activity.Buckets, durationSeconds);
+                return true;
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // Without its activity the recording plays without a timeline.
+        }
+
+        return false;
+    }
+
+    private async Task<Camera?> TryGetCameraAsync(Guid id)
+    {
+        try
+        {
+            return await Gateway.GetCameraByIdAsync(id);
+        }
+        catch (HttpRequestException)
+        {
+            // Without the camera, events are orange.
+            return null;
+        }
+    }
+
+    // A recording opened without its length was loaded in the fewest stretches: once the video
+    // tells it, load as many as it should have.
+    private async Task ReloadForLengthAsync(double durationSeconds)
+    {
+        var segmentPath = FilePath;
+        reloadedForLength = true;
+        if (await LoadActivityAsync(durationSeconds) && string.Equals(segmentPath, FilePath, StringComparison.Ordinal))
+        {
+            Redraw();
+            StateHasChanged();
+        }
+    }
+
+    private async Task SeekAtAsync(MouseEventArgs e)
+    {
+        CloseVerdicts();
+        await JS.InvokeVoidAsync("recordingTimeline.seekAt", videoId, timeline, e.ClientX, zoomStart, zoomEnd);
+    }
+
+    /// <summary>
+    /// A right-click on the timeline: offer the verdicts on the place (TimelineVerdicts).
+    /// </summary>
+    /// <param name="share">Where the click was on the timeline, 0 (left) to 1 (right).</param>
+    [JSInvokable]
+    public void OnTimelineContextMenu(double share)
+    {
+        if (!HasActivity || share < 0)
+        {
+            return;
+        }
+
+        verdictShare = share;
+        verdictChoices = TimelineVerdicts.At(
+            events,
+            ActivityTimelineZoom.ToRecording(zoomStart, zoomEnd, share),
+            ShownSeconds,
+            (zoomEnd - zoomStart) * ActivityHoverText.HalfWidth);
+        StateHasChanged();
+    }
+
+    private void CloseVerdicts()
+        => verdictChoices = [];
+
+    // Saved in the review of the recording playing now; the server's words when it refuses.
+    private async Task GiveVerdictAsync(TimelineVerdict verdict)
+    {
+        CloseVerdicts();
+        var result = await Gateway.AddRecordingVerdictAsync(FilePath, verdict);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(Translations.VerdictSaved, Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(string.Format(CultureInfo.CurrentCulture, Translations.VerdictNotSaved1, result.Problem), Severity.Warning);
+        }
+    }
+
+    // The length the zoom stops at a minute of: the player's, else the listing's.
+    private double ShownSeconds
+        => videoSeconds > 0 ? videoSeconds : DurationSeconds;
+
+    // The buttons zoom around the player, else the middle.
+    private void ZoomIn()
+        => Zoom(playhead, zoomIn: true);
+
+    private void ZoomOut()
+        => Zoom(playhead, zoomIn: false);
+
+    /// <summary>
+    /// The mouse wheel turned over the timeline: zoom around the place under the mouse.
+    /// </summary>
+    /// <param name="share">Where the mouse is on the timeline, 0 (left) to 1 (right).</param>
+    /// <param name="zoomIn">Whether to zoom in; out when <see langword="false"/>.</param>
+    [JSInvokable]
+    public void OnTimelineWheel(double share, bool zoomIn)
+    {
+        Zoom(ActivityTimelineZoom.ToRecording(zoomStart, zoomEnd, share), zoomIn);
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// The mouse moved over the timeline, or left it: tell what happened under it.
+    /// </summary>
+    /// <param name="share">Where the mouse is on the timeline, 0 (left) to 1 (right); below 0 when it left.</param>
+    [JSInvokable]
+    public void OnTimelineHover(double share)
+    {
+        hoverShare = share;
+        hoverLines = [];
+        hoverPicture = null;
+        var from = ActivityTimelineZoom.ToRecording(zoomStart, zoomEnd, share - ActivityHoverText.HalfWidth);
+        var to = ActivityTimelineZoom.ToRecording(zoomStart, zoomEnd, share + ActivityHoverText.HalfWidth);
+        if (share >= 0 && buckets is not null && ActivityTimelineHover.At(buckets, events, from, to) is { } hover)
+        {
+            // With a picture, the time told is the picture's.
+            if (previewsUrl is not null && RecordingPreviewLayout.Pick(previews, events, from, to, ShownSeconds) is { } pick)
+            {
+                hoverPicture = RecordingPreviewLayout.TileStyle(previews!, pick.Tile, previewsUrl);
+                hover = hover with { Position = pick.Position };
+            }
+
+            hoverLines = ActivityHoverText.Lines(hover, RecordingStart, ShownSeconds);
+        }
+
+        StateHasChanged();
+    }
+
+    private void Zoom(double focus, bool zoomIn)
+    {
+        if (zoomIn && ActivityTimelineZoom.CanZoomIn(zoomStart, zoomEnd, ShownSeconds))
+        {
+            (zoomStart, zoomEnd) = ActivityTimelineZoom.In(zoomStart, zoomEnd, focus, ShownSeconds);
+        }
+        else if (!zoomIn && ActivityTimelineZoom.CanZoomOut(zoomStart, zoomEnd))
+        {
+            (zoomStart, zoomEnd) = ActivityTimelineZoom.Out(zoomStart, zoomEnd, focus);
+        }
+        else
+        {
+            return;
+        }
+
+        Redraw();
+    }
+
+    // The shapes of the part shown.
+    private void Redraw()
+    {
+        if (buckets is null)
+        {
+            return;
+        }
+
+        bars = ActivityTimelineShapes.Bars(buckets, zoomStart, zoomEnd);
+        notAnalysed = ActivityTimelineShapes.NotAnalysed(buckets, zoomStart, zoomEnd);
+        bands = ActivityTimelineShapes.Bands(events, zoneColours, zoomStart, zoomEnd);
+    }
+
+    private async Task NextEventAsync()
+    {
+        var position = await JS.InvokeAsync<double[]>("recordingTimeline.position", videoId);
+        if (ActivityEventJumps.Next(events, position[0], position[1]) is { } seconds)
+        {
+            await JS.InvokeVoidAsync("recordingTimeline.seekTo", videoId, seconds);
+        }
+    }
+
+    private async Task PreviousEventAsync()
+    {
+        var position = await JS.InvokeAsync<double[]>("recordingTimeline.position", videoId);
+        if (ActivityEventJumps.Previous(events, position[0], position[1]) is { } seconds)
+        {
+            await JS.InvokeVoidAsync("recordingTimeline.seekTo", videoId, seconds);
+        }
+    }
+
+    /// <summary>
+    /// The player moved on: the playhead follows, and *play events only* skips what is quiet.
+    /// </summary>
+    /// <param name="currentSeconds">Where the player is.</param>
+    /// <param name="durationSeconds">How long the recording is; 0 while not known.</param>
+    [JSInvokable]
+    public async Task OnTimeAsync(double currentSeconds, double durationSeconds)
+    {
+        var shownColumn = ActivityTimelineShapes.PlayheadColumn(playhead, zoomStart, zoomEnd);
+        var previous = playhead;
+        videoSeconds = durationSeconds;
+        playhead = durationSeconds > 0 ? currentSeconds / durationSeconds : -1;
+
+        if (!reloadedForLength && buckets is not null && ActivityReload.IsNeeded(buckets.Count, durationSeconds))
+        {
+            _ = ReloadForLengthAsync(durationSeconds);
+        }
+
+        // The part shown follows the player out of it.
+        var window = ActivityTimelineZoom.Follow(zoomStart, zoomEnd, previous, playhead);
+        var moved = window != (zoomStart, zoomEnd);
+        if (moved)
+        {
+            (zoomStart, zoomEnd) = window;
+            Redraw();
+        }
+
+        if (playEventsOnly && HasActivity && durationSeconds > 0)
+        {
+            var target = events.Count == 0 ? durationSeconds : ActivityEventJumps.EventsOnly(events, currentSeconds, durationSeconds);
+            if (target >= durationSeconds)
+            {
+                await FinishEventsOnlyAsync();
+            }
+            else if (target is { } seconds)
+            {
+                await JS.InvokeVoidAsync("recordingTimeline.seekTo", videoId, seconds);
+            }
+        }
+
+        // The whole timeline is drawn again only when the playhead moves into another column.
+        if (moved || ActivityTimelineShapes.PlayheadColumn(playhead, zoomStart, zoomEnd) != shownColumn)
+        {
+            StateHasChanged();
+        }
+    }
+
+    // After the last event: the next recording, else the player stops where it is.
+    private async Task FinishEventsOnlyAsync()
+    {
+        if (nextSegment < FollowingSegments.Count)
+        {
+            await OnEndedAsync();
+            return;
+        }
+
+        await JS.InvokeVoidAsync("recordingTimeline.pause", videoId);
+    }
+
+    private void OnVideoError()
+        => failed = true;
+
+    private async Task DownloadAsync()
+        => await JS.InvokeVoidAsync("fileInterop.downloadFromUrl", DownloadUrl, FileName);
+
+    private void Close() => MudDialog.Cancel();
+}

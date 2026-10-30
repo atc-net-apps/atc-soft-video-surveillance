@@ -1,0 +1,20 @@
+global using System.Diagnostics;
+global using System.Diagnostics.CodeAnalysis;
+global using System.Globalization;
+global using System.Runtime.InteropServices;
+global using System.Text;
+global using System.Text.Json;
+global using System.Text.Json.Serialization;
+
+global using Atc.Video.Engine;
+global using Atc.Video.Engine.Capture;
+global using AtcSoft.Video.Surveillance.Enums;
+global using AtcSoft.Video.Surveillance.Helpers.Activity;
+global using AtcSoft.Video.Surveillance.Helpers.MotionDetection;
+global using AtcSoft.Video.Surveillance.Helpers.Review;
+global using AtcSoft.Video.Surveillance.Models;
+global using AtcSoft.Video.Surveillance.Models.Settings;
+global using AtcSoft.Video.Surveillance.Services;
+global using AtcSoft.Video.Surveillance.Storybook.Model;
+global using AtcSoft.Video.Surveillance.Storybook.Rendering;
+global using AtcSoft.Video.Surveillance.Storybook.Truth;

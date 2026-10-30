@@ -1,0 +1,48 @@
+<atcTheming:NiceWindow
+    x:Class="AtcSoft.Video.Surveillance.Wpf.App.Dialogs.KeyboardShortcutsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTheming="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=KeyboardShortcuts}"
+    Width="400"
+    ResizeMode="NoResize"
+    SizeToContent="Height"
+    WindowStartupLocation="CenterOwner"
+    WindowStyle="ToolWindow"
+    mc:Ignorable="d">
+
+    <atc:GridEx Margin="20" Rows="Auto,Auto">
+
+        <ItemsControl x:Name="ShortcutsList" Grid.Row="0">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <atc:GridEx Columns="120,*" Margin="0,4">
+                        <TextBlock
+                            Grid.Column="0"
+                            FontFamily="Consolas"
+                            FontWeight="SemiBold"
+                            Text="{Binding Path=Key}" />
+                        <TextBlock
+                            Grid.Column="1"
+                            Text="{Binding Path=Description}" />
+                    </atc:GridEx>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Button
+            Grid.Row="1"
+            MinWidth="80"
+            Margin="0,20,0,0"
+            Padding="16,8"
+            HorizontalAlignment="Right"
+            Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Ok}"
+            IsDefault="True"
+            Click="OkButton_Click" />
+
+    </atc:GridEx>
+</atcTheming:NiceWindow>

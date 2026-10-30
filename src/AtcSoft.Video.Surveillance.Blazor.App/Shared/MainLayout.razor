@@ -1,0 +1,42 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h5" Class="ml-3">Video Surveillance</MudText>
+        <MudSpacer />
+        <LanguageMenu />
+        @if (Session.IsSignedIn)
+        {
+            <UserMenu />
+        }
+        <MudTooltip Text="@(AppInstance?.IsDarkMode == true ? Translations.SwitchToLightMode : Translations.SwitchToDarkMode)">
+            <MudIconButton Icon="@(AppInstance?.IsDarkMode == true ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Inherit"
+                           OnClick="@ToggleDarkMode" />
+        </MudTooltip>
+    </MudAppBar>
+    @if (Session.IsSignedIn)
+    {
+        <MudDrawer @bind-Open="drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+            <NavMenu />
+        </MudDrawer>
+    }
+    <MudMainContent Class="pt-16 px-4">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-4">
+            @if (!initialized)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else if (Session.IsSignedIn)
+            {
+                @Body
+            }
+            else
+            {
+                <SignInPanel />
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>

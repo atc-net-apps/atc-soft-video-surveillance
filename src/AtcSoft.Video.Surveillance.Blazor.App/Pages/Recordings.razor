@@ -1,0 +1,394 @@
+@page "/recordings"
+@inject GatewayService Gateway
+@inject BrowserSession Session
+@inject EventStreamService EventStream
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@implements IDisposable
+
+<MudText Typo="Typo.h4" Class="mb-4">@Translations.Recordings</MudText>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudSelect T="Guid?"
+               Value="filter.CameraId"
+               ValueChanged="OnCameraFilterChanged"
+               Label="@Translations.Camera"
+               Variant="Variant.Outlined"
+               Dense="true"
+               Style="min-width: 220px; max-width: 320px;">
+        <MudSelectItem T="Guid?" Value="@((Guid?)null)">@Translations.AllCameras</MudSelectItem>
+        @foreach (var (id, name) in cameraChoices)
+        {
+            <MudSelectItem T="Guid?" Value="@((Guid?)id)">@name</MudSelectItem>
+        }
+    </MudSelect>
+    <MudSelect T="RecordingDayFilter"
+               Value="filter.Day"
+               ValueChanged="OnDayFilterChanged"
+               Label="@Translations.Day"
+               Variant="Variant.Outlined"
+               Dense="true"
+               Style="min-width: 160px; max-width: 220px;">
+        <MudSelectItem Value="RecordingDayFilter.All">@Translations.FilterAll</MudSelectItem>
+        <MudSelectItem Value="RecordingDayFilter.Today">@Translations.FilterToday</MudSelectItem>
+        <MudSelectItem Value="RecordingDayFilter.Yesterday">@Translations.FilterYesterday</MudSelectItem>
+        <MudSelectItem Value="RecordingDayFilter.Last7Days">@Translations.FilterLast7Days</MudSelectItem>
+        <MudSelectItem Value="RecordingDayFilter.Last30Days">@Translations.FilterLast30Days</MudSelectItem>
+    </MudSelect>
+    <MudSpacer />
+    <MudText Typo="Typo.body2" Class="mud-text-secondary">@StatusText</MudText>
+    <MudButton Variant="Variant.Outlined"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="LoadRecordingsAsync"
+               Disabled="isLoading">
+        @Translations.Refresh
+    </MudButton>
+</MudStack>
+
+@if (loadFailed)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">
+        @Translations.RecordingsCouldNotBeLoaded
+    </MudAlert>
+}
+
+<MudTable Items="@visible"
+          Hover="true"
+          Dense="true"
+          Loading="isLoading"
+          RowsPerPage="25"
+          OnRowClick="@((TableRowClickEventArgs<Recording> e) => PlayRecordingAsync(e.Item))"
+          RowStyle="cursor: pointer;">
+    <HeaderContent>
+        <MudTh Style="width: 112px;">@Translations.Thumbnail</MudTh>
+        <MudTh><MudTableSortLabel SortBy="@(new Func<Recording, object?>(r => r.CameraName))">@Translations.Camera</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel InitialDirection="SortDirection.Descending" SortBy="@(new Func<Recording, object?>(r => r.StartedAt))">@Translations.Started</MudTableSortLabel></MudTh>
+        <MudTh>@Translations.Length</MudTh>
+        <MudTh>@Translations.ActivityTimeline</MudTh>
+        <MudTh><MudTableSortLabel SortBy="@(new Func<Recording, object?>(r => r.FileSizeBytes))">@Translations.RecordingSize</MudTableSortLabel></MudTh>
+        <MudTh>@Translations.File</MudTh>
+        <MudTh Style="width: 150px;"></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="@Translations.Thumbnail">
+            @if (RecordingDisplay.FileUrl(Gateway.ApiBaseUrl, context.ThumbnailPath, Session.MediaToken) is { } thumbnailUrl)
+            {
+                <img src="@thumbnailUrl"
+                     alt="@(string.Format(CultureInfo.CurrentCulture, Translations.ThumbnailOf1, context.CameraName))"
+                     loading="lazy"
+                     style="width: 96px; height: 72px; object-fit: contain; background: #000; border-radius: 4px; display: block;" />
+            }
+            else
+            {
+                <div style="width: 96px; height: 72px; border-radius: 4px; background: rgba(128,128,128,0.15); display: flex; align-items: center; justify-content: center;">
+                    <MudIcon Icon="@Icons.Material.Outlined.HideImage" Color="Color.Default" />
+                </div>
+            }
+        </MudTd>
+        <MudTd DataLabel="@Translations.Camera">
+            @(string.IsNullOrEmpty(context.CameraName) ? Translations.UnknownCamera : context.CameraName)
+            @if (context.InProgress)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="ml-2">@Translations.Recording</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="@Translations.Started">@context.StartedAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)</MudTd>
+        <MudTd DataLabel="@Translations.Length">@RecordingDisplay.FormatDuration(context.Duration)</MudTd>
+        <MudTd DataLabel="@Translations.ActivityTimeline">
+            @if (context.Activity is { } levels)
+            {
+                <svg role="img"
+                     aria-label="@Translations.ActivityTimeline"
+                     viewBox="0 0 @levels.Count @SvgNumber.Format(ActivityTimelineShapes.BoxHeight)"
+                     preserveAspectRatio="none"
+                     style="width: 72px; height: 18px; display: block;">
+                    @foreach (var bar in ActivitySparklineShapes.Bars(levels))
+                    {
+                        <rect x="@SvgNumber.Format(bar.Rect.X)" y="@SvgNumber.Format(bar.Rect.Y)" width="@SvgNumber.Format(bar.Rect.Width)" height="@SvgNumber.Format(bar.Rect.Height)" fill="@bar.Fill" />
+                    }
+                </svg>
+            }
+        </MudTd>
+        <MudTd DataLabel="@Translations.RecordingSize">@RecordingDisplay.FormatSize(context.FileSizeBytes)</MudTd>
+        <MudTd DataLabel="@Translations.File">
+            <MudText Typo="Typo.body2" Style="max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@context.FilePath">
+                @RecordingDisplay.FileName(context.FilePath)
+            </MudText>
+        </MudTd>
+        <MudTd>
+            <MudTooltip Text="@(context.InProgress ? Translations.StillBeingRecorded : Translations.Play)">
+                <MudIconButton Icon="@Icons.Material.Filled.PlayCircle"
+                               aria-label="@Translations.Play"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               Disabled="context.InProgress"
+                               OnClick="@(() => PlayRecordingAsync(context))" />
+            </MudTooltip>
+            <MudTooltip Text="@(context.InProgress ? Translations.StillBeingRecorded : Translations.Download)">
+                <MudIconButton Icon="@Icons.Material.Filled.Download"
+                               aria-label="@Translations.Download"
+                               Size="Size.Small"
+                               Disabled="context.InProgress"
+                               OnClick="@(() => DownloadRecordingAsync(context))" />
+            </MudTooltip>
+            @if (RecordingDisplay.CanAnalyse(context))
+            {
+                <MudTooltip Text="@Translations.AnalyseRecording">
+                    <MudIconButton Icon="@Icons.Material.Filled.Insights"
+                                   aria-label="@Translations.AnalyseRecording"
+                                   Size="Size.Small"
+                                   Disabled="@analysing.Contains(context.FilePath)"
+                                   OnClick="@(() => AnalyseRecordingAsync(context))" />
+                </MudTooltip>
+            }
+            <MudTooltip Text="@(context.InProgress ? Translations.StillBeingRecorded : Translations.DeleteRecording)">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               aria-label="@Translations.DeleteTheRecording"
+                               Disabled="context.InProgress"
+                               OnClick="@(() => DeleteRecordingAsync(context))" />
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Class="pa-4">@(recordings.Length == 0 ? Translations.NoRecordingsYet : Translations.NoRecordingsMatchTheFilters)</MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new[] { 10, 25, 50, 100 }" RowsPerPageString="@Translations.RowsPerPage" InfoFormat="@Translations.PagerInfoFormat" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private readonly RecordingFilter filter = new();
+    private Recording[] recordings = [];
+    private List<Recording> visible = [];
+    private List<(Guid Id, string Name)> cameraChoices = [];
+    private bool isLoading = true;
+    private bool loadFailed;
+    private bool reloadPending;
+    private readonly CancellationTokenSource leaving = new();
+
+    // How often, and how long, the page looks whether the server has finished an analysis.
+    private static readonly TimeSpan AnalysisPoll = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan AnalysisPatience = TimeSpan.FromMinutes(30);
+
+    // The recordings this page has asked the server to analyse and is waiting for.
+    private readonly HashSet<string> analysing = new(StringComparer.Ordinal);
+
+    private string StatusText
+        => visible.Count == recordings.Length
+            ? string.Format(CultureInfo.CurrentCulture, Translations.RecordingCount1, recordings.Length)
+            : string.Format(CultureInfo.CurrentCulture, Translations.RecordingCountOf2, visible.Count, recordings.Length);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecordingsAsync();
+
+        // A recording that starts or stops comes from the server's event
+        // stream (GET /events) until the page is left.
+        _ = EventStream.RunAsync(OnEventAsync, leaving.Token);
+    }
+
+    private Task OnEventAsync(SurveillanceEvent surveillanceEvent)
+    {
+        if (surveillanceEvent.Recording is not null)
+        {
+            OnRecordingStateChanged();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadRecordingsAsync()
+    {
+        isLoading = true;
+
+        // Everything is fetched once and filtered here, so changing a filter is instant.
+        var loaded = await Gateway.GetRecordingsAsync();
+        loadFailed = loaded is null;
+        recordings = loaded ?? [];
+
+        var cameras = await Gateway.GetCamerasAsync() ?? [];
+        cameraChoices =
+        [
+            .. cameras
+                .Select(c => (c.Id, Name: c.DisplayName ?? c.Id.ToString()))
+                .Concat(recordings
+                    .Where(r => r.CameraId != Guid.Empty && !string.IsNullOrEmpty(r.CameraName))
+                    .Select(r => (Id: r.CameraId, Name: r.CameraName!)))
+                .DistinctBy(c => c.Id)
+                .OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase),
+        ];
+
+        ApplyFilter();
+        isLoading = false;
+    }
+
+    private void OnCameraFilterChanged(Guid? cameraId)
+    {
+        filter.CameraId = cameraId;
+        ApplyFilter();
+    }
+
+    private void OnDayFilterChanged(RecordingDayFilter day)
+    {
+        filter.Day = day;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+        => visible = [.. filter.Apply(recordings, DateTimeOffset.Now)];
+
+    private void OnRecordingStateChanged()
+    {
+        // A recording started, stopped or began a new file: the list changed.
+        // Several events arrive together at a segment switch; reload once.
+        if (reloadPending)
+        {
+            return;
+        }
+
+        reloadPending = true;
+        _ = InvokeAsync(async () =>
+        {
+            await Task.Delay(1000);
+            reloadPending = false;
+            await LoadRecordingsAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task PlayRecordingAsync(Recording? recording)
+    {
+        if (recording is null || recording.InProgress)
+        {
+            return;
+        }
+
+        var name = string.IsNullOrEmpty(recording.CameraName) ? Translations.Recording : recording.CameraName;
+        var parameters = new DialogParameters<RecordingPlaybackDialog>
+        {
+            { x => x.VideoUrl, RecordingDisplay.FileUrl(Gateway.ApiBaseUrl, recording.FilePath, Session.MediaToken) ?? string.Empty },
+            { x => x.DownloadUrl, RecordingDisplay.DownloadUrl(Gateway.ApiBaseUrl, recording.FilePath, Session.MediaToken) ?? string.Empty },
+            { x => x.Title, $"{name} - {recording.StartedAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)}" },
+            { x => x.FileName, RecordingDisplay.FileName(recording.FilePath) },
+            { x => x.PlaysInBrowser, RecordingDisplay.PlaysInBrowser(recording.FilePath) },
+            { x => x.FilePath, recording.FilePath },
+            { x => x.DurationSeconds, RecordingDisplay.DurationSeconds(recording.Duration) },
+            { x => x.CameraId, recording.CameraId },
+            { x => x.RecordingStart, recording.StartedAt },
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            CloseButton = true,
+        };
+
+        await DialogService.ShowAsync<RecordingPlaybackDialog>("Playback", parameters, options);
+    }
+
+    private async Task DownloadRecordingAsync(Recording recording)
+    {
+        if (RecordingDisplay.DownloadUrl(Gateway.ApiBaseUrl, recording.FilePath, Session.MediaToken) is { } url)
+        {
+            await JS.InvokeVoidAsync("fileInterop.downloadFromUrl", url, RecordingDisplay.FileName(recording.FilePath));
+        }
+    }
+
+    // The server analyses in the background; the list shows the sparkline once the index is there.
+    private async Task AnalyseRecordingAsync(Recording recording)
+    {
+        if (!analysing.Add(recording.FilePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var started = await Gateway.StartRecordingAnalysisAsync(recording.FilePath, leaving.Token);
+            if (!started.IsSuccess)
+            {
+                Snackbar.Add(started.Problem!, Severity.Warning);
+                return;
+            }
+
+            Snackbar.Add(string.Format(CultureInfo.CurrentCulture, Translations.AnalysingRecording1, RecordingDisplay.FileName(recording.FilePath)), Severity.Info);
+            for (var waited = TimeSpan.Zero; waited < AnalysisPatience; waited += AnalysisPoll)
+            {
+                await Task.Delay(AnalysisPoll, leaving.Token);
+                var activity = await Gateway.GetRecordingActivityAsync(recording.FilePath, 1, 0, leaving.Token);
+                if (activity is { HasIndex: true })
+                {
+                    Snackbar.Add(Translations.RecordingAnalysed, Severity.Success);
+                    await LoadRecordingsAsync();
+                    return;
+                }
+
+                // Neither done nor going on: the analysis failed, or the server forgot it.
+                if (activity is { IsBeingAnalysed: false })
+                {
+                    break;
+                }
+            }
+
+            Snackbar.Add(Translations.RecordingNotAnalysed, Severity.Warning);
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left.
+        }
+        finally
+        {
+            analysing.Remove(recording.FilePath);
+        }
+    }
+
+    private async Task DeleteRecordingAsync(Recording recording)
+    {
+        if (recording.InProgress || string.IsNullOrEmpty(recording.FilePath))
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, RecordingDeletion.Question(recording.CameraName, recording.StartedAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)) },
+            { x => x.ButtonText, Translations.DeleteRecording },
+            { x => x.Color, Color.Error },
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(Translations.DeleteTheRecording, parameters);
+        if (await dialog.Result is not { Canceled: false })
+        {
+            return;
+        }
+
+        var outcome = await Gateway.DeleteRecordingAsync(recording.FilePath);
+        Snackbar.Add(
+            RecordingDeletion.ResultText(outcome),
+            RecordingDeletion.Succeeded(outcome) ? Severity.Success : Severity.Warning);
+
+        if (RecordingDeletion.IsGone(outcome))
+        {
+            recordings = [.. recordings.Where(r => !ReferenceEquals(r, recording))];
+            ApplyFilter();
+        }
+        else
+        {
+            // It may have started recording again, or the server is away:
+            // the list shows what is true now.
+            await LoadRecordingsAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        leaving.Cancel();
+        leaving.Dispose();
+    }
+}
