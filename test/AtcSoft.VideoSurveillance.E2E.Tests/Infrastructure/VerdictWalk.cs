@@ -61,5 +61,5 @@ internal static class VerdictWalk
     /// <returns>The stretches.</returns>
     public static IReadOnlyList<ReviewSpan> SpansUnder(string folder)
         => [.. Directory.GetFiles(folder, "*" + RecordingPathHelper.ReviewExtension, SearchOption.AllDirectories)
-            .SelectMany(review => RecordingReviewFile.Read(review).Spans)];
+            .SelectMany(review => RecordingReviewFile.Read(review).Spans),];
 }

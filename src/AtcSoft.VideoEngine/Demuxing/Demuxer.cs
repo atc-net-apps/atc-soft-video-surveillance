@@ -381,7 +381,7 @@ internal sealed unsafe partial class Demuxer : IDisposable
 
     private static int InterruptCallback(void* opaque)
     {
-        var handle = GCHandle.FromIntPtr((IntPtr)opaque);
+        var handle = GCHandle.FromIntPtr((nint)opaque);
         if (handle.Target is not Demuxer demuxer)
         {
             return 1;

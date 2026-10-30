@@ -186,7 +186,7 @@ public sealed partial class TimelineViewModel : ViewModelBase
                 .Select(c => new AtcSoft.VideoSurveillance.Wpf.Core.Windows.PlayAllSegment(fileUrl(c.FilePath), c.Start, c.RecordingStart))
                 .ToList()))
             .Where(l => l.Segments.Count > 0)
-            .Select(l => new AtcSoft.VideoSurveillance.Wpf.Core.Windows.PlayAllTileViewModel(l.Lane.CameraName, l.Segments))];
+            .Select(l => new AtcSoft.VideoSurveillance.Wpf.Core.Windows.PlayAllTileViewModel(l.Lane.CameraName, l.Segments)),];
     }
 
     // From the place last clicked or played, else from the first recording in the span.

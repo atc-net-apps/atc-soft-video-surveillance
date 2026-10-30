@@ -126,7 +126,7 @@ public sealed class LiveAnalysis
 
         IReadOnlyList<BoundingBox> objects = [.. truth
             .Where(t => !t.IsDistractor && t.State == TruthState.MustBox)
-            .Select(t => new BoundingBox { X = t.Box.X, Y = t.Box.Y, Width = t.Box.Width, Height = t.Box.Height })];
+            .Select(t => new BoundingBox { X = t.Box.X, Y = t.Box.Y, Width = t.Box.Width, Height = t.Box.Height }),];
         return (shown, objects);
     }
 

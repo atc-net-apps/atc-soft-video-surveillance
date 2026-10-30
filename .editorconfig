@@ -588,3 +588,8 @@ dotnet_diagnostic.S6640.severity = none             # Make sure that using "unsa
 
 dotnet_diagnostic.SA1611.severity = none            # The documentation for parameter 'source' is missing
 dotnet_diagnostic.SA1615.severity = none            # Element return value should be documented
+
+# New in StyleCop 1.3; they clash with styles this code base uses on purpose
+dotnet_diagnostic.SA1143.severity = none            # Conditional expressions must be formatted consistently - chained ternaries
+dotnet_diagnostic.SA1504.severity = none            # All accessors should be single-line or multi-line
+dotnet_diagnostic.SA1653.severity = none            # Multiple partial declarations contain <summary> documentation - one summary per partial file

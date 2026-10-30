@@ -40,7 +40,7 @@ public sealed partial class AvailabilityHistoryService : BackgroundServiceBase<A
     public IReadOnlyList<AvailabilityEntry> For(Guid cameraId)
         => [.. AvailabilityLog.Read(CameraFile(cameraId))
             .Concat(AvailabilityLog.Read(Path.Combine(folder, ServerFileName)))
-            .OrderBy(e => e.Time)];
+            .OrderBy(e => e.Time),];
 
     /// <inheritdoc />
     public override Task StartAsync(CancellationToken cancellationToken)

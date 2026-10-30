@@ -241,7 +241,7 @@ public sealed partial class WebhookRegistry : IWebhookRegistry
             : [.. events
                 .Where(e => !string.IsNullOrWhiteSpace(e))
                 .Select(e => e.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)];
+                .Distinct(StringComparer.OrdinalIgnoreCase),];
 
     private static Guid CreateConfiguredId(
         int index,

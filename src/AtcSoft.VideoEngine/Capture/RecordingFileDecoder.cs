@@ -66,7 +66,7 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
     /// <returns>What <paramref name="take"/> made, or <see langword="null"/> at the end of the recording.</returns>
     public T? ReadNext<T>(
         TimeSpan notBefore,
-        Func<IntPtr, TimeSpan, T?> take)
+        Func<nint, TimeSpan, T?> take)
         where T : class
     {
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -78,7 +78,7 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
             {
                 var frame = decoder.CurrentFrame;
                 var position = PositionOf(frame->pts);
-                if (position >= notBefore && take((IntPtr)frame, position) is { } taken)
+                if (position >= notBefore && take((nint)frame, position) is { } taken)
                 {
                     return taken;
                 }

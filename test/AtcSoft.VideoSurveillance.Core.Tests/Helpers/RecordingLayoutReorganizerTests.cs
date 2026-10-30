@@ -312,6 +312,6 @@ public sealed class RecordingLayoutReorganizerTests : IDisposable
         => Directory.Exists(root)
             ? [.. Directory
                 .EnumerateFiles(root, "*", SearchOption.AllDirectories)
-                .Select(f => Path.GetRelativePath(root, f))]
+                .Select(f => Path.GetRelativePath(root, f)),]
             : [];
 }

@@ -55,7 +55,7 @@ internal sealed unsafe class VideoDecoder : IDisposable
     }
 
     public string? CodecName => codec is not null
-        ? Marshal.PtrToStringAnsi((IntPtr)codec->name)
+        ? Marshal.PtrToStringAnsi((nint)codec->name)
         : null;
 
     public bool IsHardwareAccelerated => hwAccelActive;

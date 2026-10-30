@@ -259,7 +259,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         try
         {
             SweepScene[] scenes = [.. Directory.GetFiles(scenesFolder, "*.storybook.json").Order(StringComparer.Ordinal)
-                .Select(f => new SweepScene(Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(f)), StorybookReader.ReadFile(f)))];
+                .Select(f => new SweepScene(Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(f)), StorybookReader.ReadFile(f))),];
             var corpus = CorpusIn(corpusFolder);
             if (corpus.Count > 0 && !EnsureEngine())
             {

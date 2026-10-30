@@ -41,7 +41,7 @@ public sealed record TimelinePlayback(
         return [.. lane.Coverage
             .OrderBy(c => c.Start)
             .SkipWhile(c => !string.Equals(c.FilePath, filePath, StringComparison.Ordinal))
-            .Skip(1)];
+            .Skip(1),];
     }
 
     /// <summary>

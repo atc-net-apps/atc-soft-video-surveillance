@@ -12,9 +12,9 @@ internal static class ChildWindows
     /// </summary>
     /// <param name="parent">The window's handle.</param>
     /// <returns>The handles.</returns>
-    public static IReadOnlyList<IntPtr> Of(IntPtr parent)
+    public static IReadOnlyList<nint> Of(nint parent)
     {
-        var children = new List<IntPtr>();
+        var children = new List<nint>();
         NativeMethods.EnumChildWindows(
             parent,
             (child, _) =>
@@ -22,7 +22,7 @@ internal static class ChildWindows
                 children.Add(child);
                 return true;
             },
-            IntPtr.Zero);
+            nint.Zero);
         return children;
     }
 
@@ -44,7 +44,7 @@ internal static class ChildWindows
         }
 
         var handle = window.Properties.NativeWindowHandle.ValueOrDefault;
-        if (handle == IntPtr.Zero)
+        if (handle == nint.Zero)
         {
             return null;
         }
@@ -69,15 +69,15 @@ internal static class ChildWindows
     private static class NativeMethods
     {
         public delegate bool EnumWindowsProc(
-            IntPtr hwnd,
-            IntPtr parameter);
+            nint hwnd,
+            nint parameter);
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
         [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
         public static extern bool EnumChildWindows(
-            IntPtr parent,
+            nint parent,
             EnumWindowsProc callback,
-            IntPtr parameter);
+            nint parameter);
     }
 }

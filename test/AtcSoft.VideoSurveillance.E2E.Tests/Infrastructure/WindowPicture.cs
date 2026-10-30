@@ -11,7 +11,7 @@ internal static class WindowPicture
     private const uint RenderFullContent = 2;
 
     // Window sizes in the screen's real pixels, whatever this process's DPI awareness.
-    private static readonly IntPtr PerMonitorAwareV2 = new(-4);
+    private static readonly nint PerMonitorAwareV2 = new(-4);
 
     /// <summary>
     /// Saves a picture of a window.
@@ -29,7 +29,7 @@ internal static class WindowPicture
         var previous = NativeMethods.SetThreadDpiAwarenessContext(PerMonitorAwareV2);
         try
         {
-            if (handle == IntPtr.Zero || !NativeMethods.GetWindowRect(handle, out var bounds))
+            if (handle == nint.Zero || !NativeMethods.GetWindowRect(handle, out var bounds))
             {
                 return;
             }
@@ -71,19 +71,19 @@ internal static class WindowPicture
         [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
         [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
         public static extern bool PrintWindow(
-            IntPtr hwnd,
-            IntPtr hdc,
+            nint hwnd,
+            nint hdc,
             uint flags);
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
         [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
         public static extern bool GetWindowRect(
-            IntPtr hwnd,
+            nint hwnd,
             out Rect rect);
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
-        public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr value);
+        public static extern nint SetThreadDpiAwarenessContext(nint value);
     }
 }

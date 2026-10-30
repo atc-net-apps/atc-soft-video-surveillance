@@ -10,7 +10,7 @@ public sealed partial class LiteralTextTests
     private static readonly HashSet<string> Allowed = [.. File
         .ReadAllLines(Path.Combine(AppContext.BaseDirectory, "literal-text-allowed.txt"))
         .Where(line => line.Length > 0 && !line.StartsWith('#'))
-        .Select(line => string.Join('|', line.Split('|').Take(2)))];
+        .Select(line => string.Join('|', line.Split('|').Take(2))),];
 
     [Theory]
     [InlineData("src/AtcSoft.VideoSurveillance.Wpf")]

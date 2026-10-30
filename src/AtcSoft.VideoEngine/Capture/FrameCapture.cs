@@ -270,7 +270,7 @@ internal sealed unsafe class FrameCapture : IDisposable
             }
 
             var result = new byte[pkt->size];
-            Marshal.Copy((IntPtr)pkt->data, result, 0, pkt->size);
+            Marshal.Copy((nint)pkt->data, result, 0, pkt->size);
             return result;
         }
         finally

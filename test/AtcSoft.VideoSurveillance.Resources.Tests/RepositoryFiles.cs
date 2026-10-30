@@ -14,7 +14,7 @@ internal static class RepositoryFiles
         => [.. underFolders
             .SelectMany(folder => Directory.EnumerateFiles(Path.Combine(Root, folder), pattern, SearchOption.AllDirectories))
             .Where(path => !IsBuildOutput(path))
-            .Order(StringComparer.Ordinal)];
+            .Order(StringComparer.Ordinal),];
 
     public static string Relative(string path)
         => Path.GetRelativePath(Root, path).Replace('\\', '/');

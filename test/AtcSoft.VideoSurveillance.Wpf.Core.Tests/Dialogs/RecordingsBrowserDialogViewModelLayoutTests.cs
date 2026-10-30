@@ -81,7 +81,7 @@ public sealed class RecordingsBrowserDialogViewModelLayoutTests : IDisposable
                 r.CameraName,
                 r.FileName,
                 r.RecordingTime.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
-                r.HasThumbnail ? "thumbnail" : "no thumbnail"))];
+                r.HasThumbnail ? "thumbnail" : "no thumbnail")),];
     }
 
     private void Touch(params string[] segments)

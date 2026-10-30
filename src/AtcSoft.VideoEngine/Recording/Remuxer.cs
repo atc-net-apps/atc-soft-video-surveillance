@@ -20,8 +20,8 @@ internal sealed unsafe class Remuxer : IDisposable
     // BlockingCollection (not Channel) because the surrounding class is
     // `unsafe` and cannot host `await`. The writer thread waits for
     // packetQueued instead of an async wait.
-    private readonly BlockingCollection<IntPtr> writeQueue =
-        new(new ConcurrentQueue<IntPtr>(), boundedCapacity: WriteQueueCapacity);
+    private readonly BlockingCollection<nint> writeQueue =
+        new(new ConcurrentQueue<nint>(), boundedCapacity: WriteQueueCapacity);
 
     // Wakes the writer when a packet was queued, and when it has to stop.
     private readonly AutoResetEvent packetQueued = new(initialState: false);
@@ -406,7 +406,7 @@ internal sealed unsafe class Remuxer : IDisposable
                 // hiccup) that backed up the RTSP buffer and dropped
                 // frames upstream. The writer drains under syncLock so
                 // CloseLocked can flush before changing outputCtx.
-                if (TryEnqueueDropOldest((IntPtr)clonedPkt))
+                if (TryEnqueueDropOldest((nint)clonedPkt))
                 {
                     // Ownership transferred to the queue — do NOT free here.
                     clonedPkt = null;
@@ -464,7 +464,7 @@ internal sealed unsafe class Remuxer : IDisposable
 
             lastAudioDts = clonedPkt->dts;
 
-            if (TryEnqueueDropOldest((IntPtr)clonedPkt))
+            if (TryEnqueueDropOldest((nint)clonedPkt))
             {
                 packetQueued.Set();
             }
@@ -478,7 +478,7 @@ internal sealed unsafe class Remuxer : IDisposable
     // BlockingCollection has no native drop-oldest mode; emulate it by
     // attempting a non-blocking add and, on failure, draining the oldest
     // queued packet (freeing it) before retrying once.
-    private bool TryEnqueueDropOldest(IntPtr ptr)
+    private bool TryEnqueueDropOldest(nint ptr)
     {
         if (writeQueue.IsAddingCompleted)
         {
@@ -597,7 +597,7 @@ internal sealed unsafe class Remuxer : IDisposable
         }
     }
 
-    private static void FreeQueuedPacket(IntPtr ptr)
+    private static void FreeQueuedPacket(nint ptr)
     {
         var pkt = (AVPacket*)ptr;
         av_packet_free(ref pkt);

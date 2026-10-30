@@ -55,14 +55,14 @@ internal sealed class MediaFoundationDeviceProbe : IMfDeviceProbe
 
     private static IReadOnlyList<MfDeviceRow> EnumerateInternal()
     {
-        // Keep the attribute COM object as a raw IntPtr — the
+        // Keep the attribute COM object as a raw nint — the
         // [ComImport] RCW path drops the source-type attribute on
         // .NET 10 (SetGUID returns S_OK but a subsequent read returns
         // MF_E_ATTRIBUTENOTFOUND). Direct vtable invocation for
-        // SetGUID and an IntPtr hand-off to MFEnumDeviceSources sidestep
+        // SetGUID and an nint hand-off to MFEnumDeviceSources sidestep
         // the marshaller entirely.
         var hr = MediaFoundationInterop.MFCreateAttributesRaw(out var pAttrs, 1);
-        if (hr < 0 || pAttrs == IntPtr.Zero)
+        if (hr < 0 || pAttrs == nint.Zero)
         {
             throw new InvalidOperationException(
                 $"MFCreateAttributes failed with HRESULT 0x{hr:X8}.");
@@ -86,7 +86,7 @@ internal sealed class MediaFoundationDeviceProbe : IMfDeviceProbe
                     $"MFEnumDeviceSources failed with HRESULT 0x{hr:X8}.");
             }
 
-            if (count == 0 || pActivates == IntPtr.Zero)
+            if (count == 0 || pActivates == nint.Zero)
             {
                 return [];
             }
@@ -113,14 +113,14 @@ internal sealed class MediaFoundationDeviceProbe : IMfDeviceProbe
     /// method — vtable index 24 from the start of the object.
     /// </summary>
     private static unsafe int SetGuidViaVtable(
-        IntPtr pAttrs,
+        nint pAttrs,
         ref Guid guidKey,
         ref Guid guidValue)
     {
         const int SetGuidVtableIndex = 24;
-        var vtable = *(IntPtr**)pAttrs;
+        var vtable = *(nint**)pAttrs;
         var pSetGuid = vtable[SetGuidVtableIndex];
-        var setGuid = (delegate* unmanaged[Stdcall]<IntPtr, Guid*, Guid*, int>)pSetGuid;
+        var setGuid = (delegate* unmanaged[Stdcall]<nint, Guid*, Guid*, int>)pSetGuid;
 
         fixed (Guid* pKey = &guidKey)
         {
@@ -132,15 +132,15 @@ internal sealed class MediaFoundationDeviceProbe : IMfDeviceProbe
     }
 
     private static IReadOnlyList<MfDeviceRow> ReadActivateArray(
-        IntPtr pActivates,
+        nint pActivates,
         uint count)
     {
         var results = new List<MfDeviceRow>(checked((int)count));
 
         for (var i = 0; i < count; i++)
         {
-            var activatePtr = Marshal.ReadIntPtr(pActivates, i * IntPtr.Size);
-            if (activatePtr == IntPtr.Zero)
+            var activatePtr = Marshal.ReadIntPtr(pActivates, i * nint.Size);
+            if (activatePtr == nint.Zero)
             {
                 continue;
             }

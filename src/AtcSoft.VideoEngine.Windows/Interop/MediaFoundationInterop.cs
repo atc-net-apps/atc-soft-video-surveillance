@@ -57,27 +57,27 @@ internal static class MediaFoundationInterop
 
     /// <summary>
     /// Raw-pointer overload used by the device probe — keeping the
-    /// IMFAttributes COM object as an <see cref="IntPtr"/> avoids the
+    /// IMFAttributes COM object as an <see cref="nint"/> avoids the
     /// <c>[ComImport]</c> RCW round-trip that, on .NET 10, has been
     /// observed to drop the <c>MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE</c>
     /// attribute between <c>SetGUID</c> and the subsequent
-    /// <see cref="MFEnumDeviceSources(IntPtr, out IntPtr, out uint)"/>
+    /// <see cref="MFEnumDeviceSources(nint, out nint, out uint)"/>
     /// call (manifests as <c>MF_E_ATTRIBUTENOTFOUND</c> from
     /// <c>MFEnumDeviceSources</c>).
     /// </summary>
     [DllImport("mfplat.dll", EntryPoint = "MFCreateAttributes", ExactSpelling = true)]
     public static extern int MFCreateAttributesRaw(
-        out IntPtr ppMFAttributes,
+        out nint ppMFAttributes,
         uint cInitialSize);
 
     [DllImport("mf.dll", ExactSpelling = true)]
     public static extern int MFEnumDeviceSources(
-        IntPtr pAttributes,
-        out IntPtr pppSourceActivate,
+        nint pAttributes,
+        out nint pppSourceActivate,
         out uint pcSourceActivate);
 
     [DllImport("ole32.dll", ExactSpelling = true)]
-    public static extern void CoTaskMemFree(IntPtr pv);
+    public static extern void CoTaskMemFree(nint pv);
 
     [ComImport]
     [Guid("2cd2d921-c447-44a7-a13c-4adabfc247e3")]
@@ -91,7 +91,7 @@ internal static class MediaFoundationInterop
         [PreserveSig]
         int GetItem(
             ref Guid guidKey,
-            IntPtr pValue);
+            nint pValue);
 
         [PreserveSig]
         int GetItemType(
@@ -101,7 +101,7 @@ internal static class MediaFoundationInterop
         [PreserveSig]
         int CompareItem(
             ref Guid guidKey,
-            IntPtr value,
+            nint value,
             out bool pbResult);
 
         [PreserveSig]
@@ -145,7 +145,7 @@ internal static class MediaFoundationInterop
         [PreserveSig]
         int GetAllocatedString(
             ref Guid guidKey,
-            out IntPtr ppwszValue,
+            out nint ppwszValue,
             out uint pcchLength);
 
         [PreserveSig]
@@ -156,14 +156,14 @@ internal static class MediaFoundationInterop
         [PreserveSig]
         int GetBlob(
             ref Guid guidKey,
-            IntPtr pBuf,
+            nint pBuf,
             uint cbBufSize,
             out uint pcbBlobSize);
 
         [PreserveSig]
         int GetAllocatedBlob(
             ref Guid guidKey,
-            out IntPtr ppBuf,
+            out nint ppBuf,
             out uint pcbSize);
 
         [PreserveSig]
@@ -175,7 +175,7 @@ internal static class MediaFoundationInterop
         [PreserveSig]
         int SetItem(
             ref Guid guidKey,
-            IntPtr value);
+            nint value);
 
         [PreserveSig]
         int DeleteItem(ref Guid guidKey);
@@ -211,7 +211,7 @@ internal static class MediaFoundationInterop
         [PreserveSig]
         int SetBlob(
             ref Guid guidKey,
-            IntPtr pBuf,
+            nint pBuf,
             uint cbBufSize);
 
         [PreserveSig]
@@ -232,7 +232,7 @@ internal static class MediaFoundationInterop
         int GetItemByIndex(
             uint unIndex,
             out Guid pguidKey,
-            IntPtr pValue);
+            nint pValue);
 
         [PreserveSig]
         int CopyAllItems(IMFAttributes pDest);
@@ -247,22 +247,22 @@ internal static class MediaFoundationInterop
         // them directly on the activate; they exist purely so the
         // vtable layout is correct for the IMFActivate slots that
         // follow.
-        [PreserveSig] int GetItem(ref Guid guidKey, IntPtr pValue);
+        [PreserveSig] int GetItem(ref Guid guidKey, nint pValue);
         [PreserveSig] int GetItemType(ref Guid guidKey, out int pType);
-        [PreserveSig] int CompareItem(ref Guid guidKey, IntPtr value, out bool pbResult);
-        [PreserveSig] int Compare(IntPtr theirs, int matchType, out bool pbResult);
+        [PreserveSig] int CompareItem(ref Guid guidKey, nint value, out bool pbResult);
+        [PreserveSig] int Compare(nint theirs, int matchType, out bool pbResult);
         [PreserveSig] int GetUINT32(ref Guid guidKey, out uint punValue);
         [PreserveSig] int GetUINT64(ref Guid guidKey, out ulong punValue);
         [PreserveSig] int GetDouble(ref Guid guidKey, out double pfValue);
         [PreserveSig] int GetGUID(ref Guid guidKey, out Guid pguidValue);
         [PreserveSig] int GetStringLength(ref Guid guidKey, out uint pcchLength);
-        [PreserveSig] int GetString(ref Guid guidKey, IntPtr pwszValue, uint cchBufSize, IntPtr pcchLength);
-        [PreserveSig] int GetAllocatedString(ref Guid guidKey, out IntPtr ppwszValue, out uint pcchLength);
+        [PreserveSig] int GetString(ref Guid guidKey, nint pwszValue, uint cchBufSize, nint pcchLength);
+        [PreserveSig] int GetAllocatedString(ref Guid guidKey, out nint ppwszValue, out uint pcchLength);
         [PreserveSig] int GetBlobSize(ref Guid guidKey, out uint pcbBlobSize);
-        [PreserveSig] int GetBlob(ref Guid guidKey, IntPtr pBuf, uint cbBufSize, IntPtr pcbBlobSize);
-        [PreserveSig] int GetAllocatedBlob(ref Guid guidKey, out IntPtr ppBuf, out uint pcbSize);
+        [PreserveSig] int GetBlob(ref Guid guidKey, nint pBuf, uint cbBufSize, nint pcbBlobSize);
+        [PreserveSig] int GetAllocatedBlob(ref Guid guidKey, out nint ppBuf, out uint pcbSize);
         [PreserveSig] int GetUnknown(ref Guid guidKey, ref Guid riid, [MarshalAs(UnmanagedType.IUnknown)] out object ppv);
-        [PreserveSig] int SetItem(ref Guid guidKey, IntPtr value);
+        [PreserveSig] int SetItem(ref Guid guidKey, nint value);
         [PreserveSig] int DeleteItem(ref Guid guidKey);
         [PreserveSig] int DeleteAllItems();
         [PreserveSig] int SetUINT32(ref Guid guidKey, uint unValue);
@@ -270,13 +270,13 @@ internal static class MediaFoundationInterop
         [PreserveSig] int SetDouble(ref Guid guidKey, double fValue);
         [PreserveSig] int SetGUID(ref Guid guidKey, ref Guid guidValue);
         [PreserveSig] int SetString(ref Guid guidKey, [MarshalAs(UnmanagedType.LPWStr)] string wszValue);
-        [PreserveSig] int SetBlob(ref Guid guidKey, IntPtr pBuf, uint cbBufSize);
+        [PreserveSig] int SetBlob(ref Guid guidKey, nint pBuf, uint cbBufSize);
         [PreserveSig] int SetUnknown(ref Guid guidKey, [MarshalAs(UnmanagedType.IUnknown)] object pUnknown);
         [PreserveSig] int LockStore();
         [PreserveSig] int UnlockStore();
         [PreserveSig] int GetCount(out uint pcItems);
-        [PreserveSig] int GetItemByIndex(uint unIndex, out Guid pguidKey, IntPtr pValue);
-        [PreserveSig] int CopyAllItems(IntPtr pDest);
+        [PreserveSig] int GetItemByIndex(uint unIndex, out Guid pguidKey, nint pValue);
+        [PreserveSig] int CopyAllItems(nint pDest);
 
         [PreserveSig]
         int ActivateObject(
@@ -293,16 +293,16 @@ internal static class MediaFoundationInterop
     public interface IMFMediaSource
     {
         [PreserveSig] int GetEvent(uint dwFlags, [MarshalAs(UnmanagedType.IUnknown)] out object ppEvent);
-        [PreserveSig] int BeginGetEvent(IntPtr pCallback, IntPtr punkState);
-        [PreserveSig] int EndGetEvent(IntPtr pResult, [MarshalAs(UnmanagedType.IUnknown)] out object ppEvent);
-        [PreserveSig] int QueueEvent(uint met, ref Guid extType, int hrStatus, IntPtr pvValue);
+        [PreserveSig] int BeginGetEvent(nint pCallback, nint punkState);
+        [PreserveSig] int EndGetEvent(nint pResult, [MarshalAs(UnmanagedType.IUnknown)] out object ppEvent);
+        [PreserveSig] int QueueEvent(uint met, ref Guid extType, int hrStatus, nint pvValue);
         [PreserveSig] int GetCharacteristics(out uint pdwCharacteristics);
 
         [PreserveSig]
         int CreatePresentationDescriptor(
             [MarshalAs(UnmanagedType.IUnknown)] out object ppPresentationDescriptor);
 
-        [PreserveSig] int Start(IntPtr pPresentationDescriptor, ref Guid pguidTimeFormat, IntPtr pvarStartPosition);
+        [PreserveSig] int Start(nint pPresentationDescriptor, ref Guid pguidTimeFormat, nint pvarStartPosition);
         [PreserveSig] int Stop();
         [PreserveSig] int Pause();
         [PreserveSig] int Shutdown();
@@ -313,22 +313,22 @@ internal static class MediaFoundationInterop
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IMFPresentationDescriptor
     {
-        [PreserveSig] int GetItem(ref Guid guidKey, IntPtr pValue);
+        [PreserveSig] int GetItem(ref Guid guidKey, nint pValue);
         [PreserveSig] int GetItemType(ref Guid guidKey, out int pType);
-        [PreserveSig] int CompareItem(ref Guid guidKey, IntPtr value, out bool pbResult);
-        [PreserveSig] int Compare(IntPtr theirs, int matchType, out bool pbResult);
+        [PreserveSig] int CompareItem(ref Guid guidKey, nint value, out bool pbResult);
+        [PreserveSig] int Compare(nint theirs, int matchType, out bool pbResult);
         [PreserveSig] int GetUINT32(ref Guid guidKey, out uint punValue);
         [PreserveSig] int GetUINT64(ref Guid guidKey, out ulong punValue);
         [PreserveSig] int GetDouble(ref Guid guidKey, out double pfValue);
         [PreserveSig] int GetGUID(ref Guid guidKey, out Guid pguidValue);
         [PreserveSig] int GetStringLength(ref Guid guidKey, out uint pcchLength);
-        [PreserveSig] int GetString(ref Guid guidKey, IntPtr pwszValue, uint cchBufSize, IntPtr pcchLength);
-        [PreserveSig] int GetAllocatedString(ref Guid guidKey, out IntPtr ppwszValue, out uint pcchLength);
+        [PreserveSig] int GetString(ref Guid guidKey, nint pwszValue, uint cchBufSize, nint pcchLength);
+        [PreserveSig] int GetAllocatedString(ref Guid guidKey, out nint ppwszValue, out uint pcchLength);
         [PreserveSig] int GetBlobSize(ref Guid guidKey, out uint pcbBlobSize);
-        [PreserveSig] int GetBlob(ref Guid guidKey, IntPtr pBuf, uint cbBufSize, IntPtr pcbBlobSize);
-        [PreserveSig] int GetAllocatedBlob(ref Guid guidKey, out IntPtr ppBuf, out uint pcbSize);
+        [PreserveSig] int GetBlob(ref Guid guidKey, nint pBuf, uint cbBufSize, nint pcbBlobSize);
+        [PreserveSig] int GetAllocatedBlob(ref Guid guidKey, out nint ppBuf, out uint pcbSize);
         [PreserveSig] int GetUnknown(ref Guid guidKey, ref Guid riid, [MarshalAs(UnmanagedType.IUnknown)] out object ppv);
-        [PreserveSig] int SetItem(ref Guid guidKey, IntPtr value);
+        [PreserveSig] int SetItem(ref Guid guidKey, nint value);
         [PreserveSig] int DeleteItem(ref Guid guidKey);
         [PreserveSig] int DeleteAllItems();
         [PreserveSig] int SetUINT32(ref Guid guidKey, uint unValue);
@@ -336,13 +336,13 @@ internal static class MediaFoundationInterop
         [PreserveSig] int SetDouble(ref Guid guidKey, double fValue);
         [PreserveSig] int SetGUID(ref Guid guidKey, ref Guid guidValue);
         [PreserveSig] int SetString(ref Guid guidKey, [MarshalAs(UnmanagedType.LPWStr)] string wszValue);
-        [PreserveSig] int SetBlob(ref Guid guidKey, IntPtr pBuf, uint cbBufSize);
+        [PreserveSig] int SetBlob(ref Guid guidKey, nint pBuf, uint cbBufSize);
         [PreserveSig] int SetUnknown(ref Guid guidKey, [MarshalAs(UnmanagedType.IUnknown)] object pUnknown);
         [PreserveSig] int LockStore();
         [PreserveSig] int UnlockStore();
         [PreserveSig] int GetCount(out uint pcItems);
-        [PreserveSig] int GetItemByIndex(uint unIndex, out Guid pguidKey, IntPtr pValue);
-        [PreserveSig] int CopyAllItems(IntPtr pDest);
+        [PreserveSig] int GetItemByIndex(uint unIndex, out Guid pguidKey, nint pValue);
+        [PreserveSig] int CopyAllItems(nint pDest);
 
         [PreserveSig] int GetStreamDescriptorCount(out uint pdwDescriptorCount);
 
@@ -362,22 +362,22 @@ internal static class MediaFoundationInterop
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IMFStreamDescriptor
     {
-        [PreserveSig] int GetItem(ref Guid guidKey, IntPtr pValue);
+        [PreserveSig] int GetItem(ref Guid guidKey, nint pValue);
         [PreserveSig] int GetItemType(ref Guid guidKey, out int pType);
-        [PreserveSig] int CompareItem(ref Guid guidKey, IntPtr value, out bool pbResult);
-        [PreserveSig] int Compare(IntPtr theirs, int matchType, out bool pbResult);
+        [PreserveSig] int CompareItem(ref Guid guidKey, nint value, out bool pbResult);
+        [PreserveSig] int Compare(nint theirs, int matchType, out bool pbResult);
         [PreserveSig] int GetUINT32(ref Guid guidKey, out uint punValue);
         [PreserveSig] int GetUINT64(ref Guid guidKey, out ulong punValue);
         [PreserveSig] int GetDouble(ref Guid guidKey, out double pfValue);
         [PreserveSig] int GetGUID(ref Guid guidKey, out Guid pguidValue);
         [PreserveSig] int GetStringLength(ref Guid guidKey, out uint pcchLength);
-        [PreserveSig] int GetString(ref Guid guidKey, IntPtr pwszValue, uint cchBufSize, IntPtr pcchLength);
-        [PreserveSig] int GetAllocatedString(ref Guid guidKey, out IntPtr ppwszValue, out uint pcchLength);
+        [PreserveSig] int GetString(ref Guid guidKey, nint pwszValue, uint cchBufSize, nint pcchLength);
+        [PreserveSig] int GetAllocatedString(ref Guid guidKey, out nint ppwszValue, out uint pcchLength);
         [PreserveSig] int GetBlobSize(ref Guid guidKey, out uint pcbBlobSize);
-        [PreserveSig] int GetBlob(ref Guid guidKey, IntPtr pBuf, uint cbBufSize, IntPtr pcbBlobSize);
-        [PreserveSig] int GetAllocatedBlob(ref Guid guidKey, out IntPtr ppBuf, out uint pcbSize);
+        [PreserveSig] int GetBlob(ref Guid guidKey, nint pBuf, uint cbBufSize, nint pcbBlobSize);
+        [PreserveSig] int GetAllocatedBlob(ref Guid guidKey, out nint ppBuf, out uint pcbSize);
         [PreserveSig] int GetUnknown(ref Guid guidKey, ref Guid riid, [MarshalAs(UnmanagedType.IUnknown)] out object ppv);
-        [PreserveSig] int SetItem(ref Guid guidKey, IntPtr value);
+        [PreserveSig] int SetItem(ref Guid guidKey, nint value);
         [PreserveSig] int DeleteItem(ref Guid guidKey);
         [PreserveSig] int DeleteAllItems();
         [PreserveSig] int SetUINT32(ref Guid guidKey, uint unValue);
@@ -385,13 +385,13 @@ internal static class MediaFoundationInterop
         [PreserveSig] int SetDouble(ref Guid guidKey, double fValue);
         [PreserveSig] int SetGUID(ref Guid guidKey, ref Guid guidValue);
         [PreserveSig] int SetString(ref Guid guidKey, [MarshalAs(UnmanagedType.LPWStr)] string wszValue);
-        [PreserveSig] int SetBlob(ref Guid guidKey, IntPtr pBuf, uint cbBufSize);
+        [PreserveSig] int SetBlob(ref Guid guidKey, nint pBuf, uint cbBufSize);
         [PreserveSig] int SetUnknown(ref Guid guidKey, [MarshalAs(UnmanagedType.IUnknown)] object pUnknown);
         [PreserveSig] int LockStore();
         [PreserveSig] int UnlockStore();
         [PreserveSig] int GetCount(out uint pcItems);
-        [PreserveSig] int GetItemByIndex(uint unIndex, out Guid pguidKey, IntPtr pValue);
-        [PreserveSig] int CopyAllItems(IntPtr pDest);
+        [PreserveSig] int GetItemByIndex(uint unIndex, out Guid pguidKey, nint pValue);
+        [PreserveSig] int CopyAllItems(nint pDest);
 
         [PreserveSig] int GetStreamIdentifier(out uint pdwStreamIdentifier);
 
@@ -405,7 +405,7 @@ internal static class MediaFoundationInterop
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IMFMediaTypeHandler
     {
-        [PreserveSig] int IsMediaTypeSupported(IntPtr pMediaType, IntPtr ppMediaType);
+        [PreserveSig] int IsMediaTypeSupported(nint pMediaType, nint ppMediaType);
         [PreserveSig] int GetMediaTypeCount(out uint pdwTypeCount);
 
         [PreserveSig]
@@ -413,7 +413,7 @@ internal static class MediaFoundationInterop
             uint dwIndex,
             [MarshalAs(UnmanagedType.IUnknown)] out object ppType);
 
-        [PreserveSig] int SetCurrentMediaType(IntPtr pMediaType);
+        [PreserveSig] int SetCurrentMediaType(nint pMediaType);
         [PreserveSig] int GetCurrentMediaType([MarshalAs(UnmanagedType.IUnknown)] out object ppMediaType);
         [PreserveSig] int GetMajorType(out Guid pguidMajorType);
     }

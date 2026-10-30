@@ -9,7 +9,8 @@ public sealed class StorybookWriterTests
     [Theory]
     [InlineData("s05-car-human-cat.storybook.json")]
     [InlineData("s15-strong-wind.storybook.json")]
-    public void The_Defaults_Leave_A_Scene_Without_Settings_As_It_Is(string file)
+    public void The_Defaults_Leave_A_Scene_Without_Settings_As_It_Is(
+        string file)
     {
         var text = File.ReadAllText(ScenePath(file));
 

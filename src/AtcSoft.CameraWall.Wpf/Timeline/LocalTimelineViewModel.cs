@@ -156,7 +156,7 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
                 .Select(c => new PlayAllSegment(new Uri(c.VideoPath), c.Start, c.RecordingStart))
                 .ToList()))
             .Where(l => l.Segments.Count > 0)
-            .Select(l => new PlayAllTileViewModel(l.Lane.CameraName, l.Segments))];
+            .Select(l => new PlayAllTileViewModel(l.Lane.CameraName, l.Segments)),];
     }
 
     /// <summary>

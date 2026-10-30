@@ -37,7 +37,7 @@ public sealed partial class TimelineLaneViewModel : ViewModelBase
             ? []
             : [.. lane.Events.Select(e => new ActivityEvent(
                 Math.Clamp((e.Start - from).TotalSeconds / length, 0, 1),
-                Math.Clamp((e.End - from).TotalSeconds / length, 0, 1)))];
+                Math.Clamp((e.End - from).TotalSeconds / length, 0, 1))),];
         GapBands = length <= 0
             ? []
             : [.. lane.Gaps
@@ -45,7 +45,7 @@ public sealed partial class TimelineLaneViewModel : ViewModelBase
                     Math.Clamp((g.Start - from).TotalSeconds / length, 0, 1),
                     Math.Clamp((g.End - from).TotalSeconds / length, 0, 1),
                     ToGapReason(g.Reason)))
-                .Where(g => g.End > g.Start)];
+                .Where(g => g.End > g.Start),];
         NowFraction = now >= from && now <= to && length > 0 ? (now - from).TotalSeconds / length : -1;
     }
 

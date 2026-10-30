@@ -297,7 +297,7 @@ internal sealed unsafe class FrameEncoder : IDisposable
         var fallback = avcodec_find_encoder(AVCodecID.H264);
         if (fallback is not null)
         {
-            var name = Marshal.PtrToStringAnsi((IntPtr)fallback->name) ?? "h264";
+            var name = Marshal.PtrToStringAnsi((nint)fallback->name) ?? "h264";
             if (TryOpen(fallback, name, AVPixelFormat.Yuv420p, width, height, framesPerSecond))
             {
                 return AVPixelFormat.Yuv420p;

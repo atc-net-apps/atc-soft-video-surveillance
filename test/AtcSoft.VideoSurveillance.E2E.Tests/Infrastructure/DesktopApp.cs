@@ -552,7 +552,7 @@ internal sealed class DesktopApp : IDisposable
         }
     }
 
-    private static IntPtr Handle(Window window)
+    private static nint Handle(Window window)
     {
         try
         {
@@ -560,7 +560,7 @@ internal sealed class DesktopApp : IDisposable
         }
         catch (System.Runtime.InteropServices.COMException)
         {
-            return IntPtr.Zero;
+            return nint.Zero;
         }
     }
 
@@ -639,7 +639,7 @@ internal sealed class DesktopApp : IDisposable
     }
 
     private bool WaitGone(
-        IntPtr handle,
+        nint handle,
         TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

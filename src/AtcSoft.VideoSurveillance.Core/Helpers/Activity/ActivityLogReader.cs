@@ -74,5 +74,5 @@ public static class ActivityLogReader
                     [.. g.SelectMany(s => s.TrackIds).Distinct().Order()])
                 {
                     Zones = [.. g.SelectMany(s => s.Zones).Distinct(StringComparer.Ordinal)],
-                })];
+                }),];
 }

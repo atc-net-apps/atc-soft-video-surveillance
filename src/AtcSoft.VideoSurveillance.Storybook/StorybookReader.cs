@@ -193,7 +193,7 @@ public static class StorybookReader
             yield return $"{where}.kind: '{item.Kind}' is not one of {string.Join(", ", ObjectKinds)}";
         }
 
-        if (item.Size is not [> 0 and <= MaxSize, > 0 and <= MaxSize])
+        if (!IsValidSize(item.Size))
         {
             yield return $"{where}.size: two fractions above 0, at most 3";
         }
@@ -210,7 +210,7 @@ public static class StorybookReader
                 yield return $"{where}.path[{k}].at: two numbers";
             }
 
-            if (item.Path[k].Size is { } size && size is not [> 0 and <= MaxSize, > 0 and <= MaxSize])
+            if (item.Path[k].Size is { } size && !IsValidSize(size))
             {
                 yield return $"{where}.path[{k}].size: two fractions above 0, at most 3";
             }
@@ -221,4 +221,9 @@ public static class StorybookReader
             }
         }
     }
+
+    private static bool IsValidSize(IList<double> size)
+        => size is [var width, var height] &&
+           width is > 0 and <= MaxSize &&
+           height is > 0 and <= MaxSize;
 }

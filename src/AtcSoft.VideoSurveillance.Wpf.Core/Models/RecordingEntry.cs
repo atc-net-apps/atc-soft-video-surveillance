@@ -139,7 +139,7 @@ public class RecordingEntry : INotifyPropertyChanged
         foreach (var name in (string[])[
             nameof(IsBeingRecorded), nameof(FileSizeBytes), nameof(Duration),
             nameof(FormattedFileSize), nameof(FormattedDuration),
-            nameof(ThumbnailPath), nameof(HasThumbnail), nameof(ThumbnailImage)])
+            nameof(ThumbnailPath), nameof(HasThumbnail), nameof(ThumbnailImage),])
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }

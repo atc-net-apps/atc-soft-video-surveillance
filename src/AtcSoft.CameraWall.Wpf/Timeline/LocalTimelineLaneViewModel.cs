@@ -46,7 +46,7 @@ public sealed partial class LocalTimelineLaneViewModel : ViewModelBase
             ? []
             : [.. timeline.Events.Select(e => new ActivityEvent(
                 Math.Clamp((e.Start - from).TotalSeconds / length, 0, 1),
-                Math.Clamp((e.End - from).TotalSeconds / length, 0, 1)))];
+                Math.Clamp((e.End - from).TotalSeconds / length, 0, 1))),];
         NowFraction = now >= from && now <= to && length > 0 ? (now - from).TotalSeconds / length : -1;
     }
 
