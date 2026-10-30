@@ -21,7 +21,7 @@ public sealed class MediaAccessMiddleware(
 
         if (context.User.Identity?.IsAuthenticated == true ||
             (await context.AuthenticateAsync(ApiKeyAuthenticationHandler.SchemeName).ConfigureAwait(false)).Succeeded ||
-            await accounts.Tokens.IsValidMediaTokenAsync(context.Request.Query[MediaTokenParameter].ToString()).ConfigureAwait(false))
+            await accounts.IsValidMediaTokenAsync(context.Request.Query[MediaTokenParameter].ToString()).ConfigureAwait(false))
         {
             await next(context).ConfigureAwait(false);
             return;

@@ -332,6 +332,22 @@ try
         {
             options.MapInboundClaims = false;
             options.TokenValidationParameters = accounts.Tokens.ValidationParameters;
+
+            // A token outlives nothing that ended it: a sign-out, a deleted user,
+            // a new password or a changed role takes effect on the next request,
+            // not when the token runs out.
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = context =>
+                {
+                    if (context.Principal is null || !accounts.IsAccessTokenCurrent(context.Principal))
+                    {
+                        context.Fail("The session has ended or the user's role has changed: renew the session or sign in again.");
+                    }
+
+                    return Task.CompletedTask;
+                },
+            };
         });
 
     // Periodic liveness beacon so a 4-day soak log shows steady process /

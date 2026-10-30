@@ -62,6 +62,33 @@ public sealed class ApiHostUserTests(ApiHostFixture host)
     }
 
     [Fact]
+    public async Task A_Token_Is_Refused_As_Soon_As_Its_Session_Ends_Or_Its_User_Is_Deleted()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var admin = await host.CreateAdminClientAsync();
+        using var anonymous = host.CreateAnonymousClient();
+        var name = "leaver-" + Guid.NewGuid().ToString("N")[..8];
+        var created = await admin.PostAsJsonAsync("/users", new { userName = name, password = "leaver password", role = "operator" }, cancellationToken);
+        var userId = (await created.Content.ReadFromJsonAsync<JsonElement>(cancellationToken)).GetProperty("id").GetGuid();
+        const string missing = "/recordings-files/Nobody/2026-10-15/Nobody_20261015_120000.mp4";
+
+        // Signed out: the access token and the media token stop at once.
+        var (_, first) = await host.SignInAsync(name, "leaver password");
+        (await GetMeAsync(anonymous, first, cancellationToken)).Should().Be(HttpStatusCode.OK);
+        (await anonymous.PostAsJsonAsync("/auth/sign-out", new { refreshToken = first.GetProperty("refreshToken").GetString() }, cancellationToken))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetMeAsync(anonymous, first, cancellationToken)).Should().Be(HttpStatusCode.Unauthorized);
+        (await anonymous.GetAsync(new Uri($"{missing}?media={first.GetProperty("mediaToken").GetString()}", UriKind.Relative), cancellationToken))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        // Deleted: a token of a session that was still alive stops too.
+        var (_, second) = await host.SignInAsync(name, "leaver password");
+        (await GetMeAsync(anonymous, second, cancellationToken)).Should().Be(HttpStatusCode.OK);
+        (await admin.DeleteAsync(new Uri($"/users/{userId}", UriKind.Relative), cancellationToken)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetMeAsync(anonymous, second, cancellationToken)).Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task The_Last_Admin_Stays()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -72,5 +99,16 @@ public sealed class ApiHostUserTests(ApiHostFixture host)
         var demoted = await admin.PutAsJsonAsync($"/users/{adminId}", new { role = "viewer" }, cancellationToken);
 
         demoted.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    private static async Task<HttpStatusCode> GetMeAsync(
+        HttpClient client,
+        JsonElement session,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/auth/me");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", session.GetProperty("accessToken").GetString());
+        using var response = await client.SendAsync(request, cancellationToken);
+        return response.StatusCode;
     }
 }

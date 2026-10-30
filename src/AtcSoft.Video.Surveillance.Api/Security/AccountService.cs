@@ -418,6 +418,48 @@ public sealed partial class AccountService : IAccountService
         }
     }
 
+    /// <summary>
+    /// Gets whether an access token still holds: its session lives (no sign-out,
+    /// no new password, the user not deleted) and the user still has the role it
+    /// names. One that does not is refused; the client renews its session and gets
+    /// a token with the user's role as it is now.
+    /// </summary>
+    /// <param name="principal">The token's claims, its signature and lifetime already checked.</param>
+    /// <returns><see langword="true"/> when the token may be used.</returns>
+    public bool IsAccessTokenCurrent(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        if (principal.Identity is not ClaimsIdentity identity)
+        {
+            return false;
+        }
+
+        lock (sync)
+        {
+            return IsCurrent(identity, checkRole: true);
+        }
+    }
+
+    /// <summary>
+    /// Checks a media token (<c>?media=</c>): valid, and its session still lives.
+    /// </summary>
+    /// <param name="token">The token from the address.</param>
+    /// <returns><see langword="true"/> when the recordings may be served.</returns>
+    public async Task<bool> IsValidMediaTokenAsync(string? token)
+    {
+        var identity = await Tokens.ReadMediaTokenAsync(token).ConfigureAwait(false);
+        if (identity is null)
+        {
+            return false;
+        }
+
+        lock (sync)
+        {
+            return IsCurrent(identity, checkRole: false);
+        }
+    }
+
     private static AccountUser ToUser(StoredUser user)
         => new(user.Id, user.UserName, user.Role, user.CreatedAt);
 
@@ -464,15 +506,16 @@ public sealed partial class AccountService : IAccountService
         file.Sessions.RemoveAll(s => s.ExpiresAt <= now);
 
         var refreshToken = NewRefreshToken();
-        file.Sessions.Add(new StoredSession
+        var session = new StoredSession
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
             TokenHash = HashToken(refreshToken),
             ExpiresAt = now + SessionLifetime,
-        });
+        };
+        file.Sessions.Add(session);
 
-        return CreateSession(user, refreshToken);
+        return CreateSession(user, session.Id, refreshToken);
     }
 
     // Called under the lock: gives a session a new refresh token, and keeps the
@@ -502,7 +545,7 @@ public sealed partial class AccountService : IAccountService
         newestTokens[stored.Id] = refreshToken;
         Save();
 
-        return CreateSession(user, refreshToken);
+        return CreateSession(user, stored.Id, refreshToken);
     }
 
     // Called under the lock: a rotated token within its grace window gets the
@@ -521,7 +564,7 @@ public sealed partial class AccountService : IAccountService
             return null;
         }
 
-        return CreateSession(user, refreshToken);
+        return CreateSession(user, sessionId, refreshToken);
     }
 
     // Called under the lock: the token before the current one, sent again after
@@ -575,14 +618,46 @@ public sealed partial class AccountService : IAccountService
 
     private AccountSession CreateSession(
         StoredUser user,
+        Guid sessionId,
         string refreshToken)
         => new(
-            Tokens.Create(user.Id, user.UserName, user.Role),
+            Tokens.Create(user.Id, sessionId, user.UserName, user.Role),
             Tokens.Lifetime,
             refreshToken,
             user.UserName,
             user.Role,
-            Tokens.CreateMediaToken(user.UserName));
+            Tokens.CreateMediaToken(user.Id, sessionId, user.UserName));
+
+    // Called under the lock: whether what a token was made for still holds.
+    // A token without a session id was made by an older server: it holds while
+    // its user does (it runs out within the hour, a media token within twelve).
+    private bool IsCurrent(
+        ClaimsIdentity identity,
+        bool checkRole)
+    {
+        var user = Guid.TryParse(identity.FindFirst(AccessTokens.UserIdClaim)?.Value, out var userId)
+            ? file.Users.Find(u => u.Id == userId)
+            : FindUser(identity.FindFirst(CallerIdentity.NameClaim)?.Value ?? string.Empty);
+        if (user is null)
+        {
+            return false;
+        }
+
+        if (checkRole &&
+            !string.Equals(identity.FindFirst(CallerIdentity.RoleClaim)?.Value, user.Role.ToApiRoleName(), StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (identity.FindFirst(AccessTokens.SessionClaim)?.Value is not { } sid)
+        {
+            return true;
+        }
+
+        var now = time.GetUtcNow();
+        return Guid.TryParse(sid, out var sessionId) &&
+               file.Sessions.Exists(s => s.Id == sessionId && s.UserId == user.Id && s.ExpiresAt > now);
+    }
 
     private void EnsureSetupCode()
     {
