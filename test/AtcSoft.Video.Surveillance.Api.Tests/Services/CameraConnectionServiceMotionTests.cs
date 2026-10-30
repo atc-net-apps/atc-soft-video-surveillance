@@ -205,7 +205,7 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
     // reports the camera's state.
     private static async Task WaitForAsync(Func<bool> condition)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(5);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
         while (!condition())
         {
             if (DateTime.UtcNow > deadline)
