@@ -3,7 +3,6 @@
 A professional video surveillance platform for live monitoring of multiple RTSP/HTTP camera streams. Includes a WPF desktop application with an intuitive ribbon interface, a headless REST API server edition (live events over Server-Sent Events), and Aspire orchestration.
 
 [![Release](https://img.shields.io/github/v/release/atc-net-apps/atc-soft-video-surveillance?include_prereleases)](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases)
-[![NuGet](https://img.shields.io/nuget/v/AtcSoft.Video.Surveillance.Wpf.Core)](https://www.nuget.org/packages/AtcSoft.Video.Surveillance.Wpf.Core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## ✨ Features

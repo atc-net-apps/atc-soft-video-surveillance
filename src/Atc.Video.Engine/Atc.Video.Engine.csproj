@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <IsPackable>true</IsPackable>
+    <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Description>Cross-platform video engine for RTSP/HTTP surveillance streams. FFmpeg-based demuxing, decoding, recording, and frame capture.</Description>
     <PackageTags>video;engine;ffmpeg;rtsp;surveillance;streaming</PackageTags>

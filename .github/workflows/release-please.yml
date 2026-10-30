@@ -36,7 +36,8 @@ jobs:
     name: Publish NuGet Package
     runs-on: windows-latest
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    # NuGet publishing is off for now: no project is packable. Remove "false &&" to turn it back on.
+    if: false && needs.release-please.outputs.release_created == 'true'
     permissions:
       contents: read
       id-token: write   # required to mint the OIDC token NuGet exchanges for a key

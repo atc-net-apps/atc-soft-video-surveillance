@@ -6,7 +6,7 @@
     <NoWarn>$(NoWarn);CA1716</NoWarn>
     <!-- FreeSpaceReader asks Windows for a folder's free space (network shares too). -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <IsPackable>true</IsPackable>
+    <IsPackable>false</IsPackable>
     <Description>Core domain library for video surveillance — models, enums, events, and service interfaces with zero UI dependencies.</Description>
     <PackageTags>surveillance;video;rtsp;camera;core</PackageTags>
   </PropertyGroup>

@@ -24,7 +24,9 @@ A multi-assembly video surveillance platform with a WPF desktop app and a headle
 - `test/*` - xUnit v3 test projects, one per source project that has tests (Core, VideoEngine, VideoEngine.Windows, Api, Wpf.Core, Wpf, CameraWall.Wpf, Blazor.App, Storybook), plus `AtcSoft.Video.Surveillance.E2E.Tests` (smoke tests of the running apps, see below). The storybook tests keep every detector score in `baseline.json` and fail when one gets worse; `ATCSOFT_BBOX_UPDATE_BASELINE=1` writes new scores after an improvement. A scene with `video.bitrateKbps` is encoded by the FFmpeg tool and scored as the apps read a recording; it skips without FFmpeg
 
 ## NuGet Packages
-Six projects are published to nuget.org so external WPF apps can embed live camera tiles:
+**Publishing is off for now:** every project is `<IsPackable>false</IsPackable>`, and the `publish-nuget` job in `release-please.yml` is disabled with `if: false && ...`. Releases ship only the MSI installers. The rest of this section describes how the packages work when publishing is turned back on; the new package ids then also need a nuget.org Trusted Publishing policy (the old `AtcSoft.VideoSurveillance.*`, `AtcSoft.VideoEngine*` and `AtcSoft.VideoPlayer.Wpf` ids get a deprecation pointing to the new ones).
+
+Six projects are meant to be published to nuget.org so external WPF apps can embed live camera tiles:
 
 | Package | Role |
 |---|---|
@@ -35,7 +37,7 @@ Six projects are published to nuget.org so external WPF apps can embed live came
 | `Atc.Video.Engine` | FFmpeg engine, including `VideoPlayerFactory` |
 | `AtcSoft.Video.Surveillance.Resources` | The texts in four languages, used by `Wpf.Core` |
 
-These are exactly the projects with `<IsPackable>true</IsPackable>`; every other project is `false`. They **must ship together at the same version**: packing turns each `ProjectReference` into a NuGet dependency pinned to that version, so publishing a package without its dependencies leaves it uninstallable. The release workflow packs the whole solution for that reason, then asserts every package actually appears on nuget.org, since `--skip-duplicate` can mask rejected pushes.
+These are the projects to mark `<IsPackable>true</IsPackable>` again; every other project stays `false`. They **must ship together at the same version**: packing turns each `ProjectReference` into a NuGet dependency pinned to that version, so publishing a package without its dependencies leaves it uninstallable. The release workflow packs the whole solution for that reason, then asserts every package actually appears on nuget.org, since `--skip-duplicate` can mask rejected pushes.
 
 Marking another project packable means it joins the lockstep, and its package id must be covered by the nuget.org Trusted Publishing policy's glob patterns.
 

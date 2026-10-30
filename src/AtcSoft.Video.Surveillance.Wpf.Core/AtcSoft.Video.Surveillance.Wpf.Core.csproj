@@ -5,7 +5,7 @@
          depends on WinRT DeviceInformation and MediaCapture). -->
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
-    <IsPackable>true</IsPackable>
+    <IsPackable>false</IsPackable>
     <Description>Shared WPF library for AtcSoft VideoSurveillance applications, providing common models, dialogs, controls, converters, themes, and service interfaces.</Description>
     <PackageTags>wpf;camera;surveillance;video;shared;controls</PackageTags>
   </PropertyGroup>

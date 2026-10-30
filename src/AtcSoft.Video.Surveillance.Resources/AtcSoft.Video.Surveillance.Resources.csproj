@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <IsPackable>true</IsPackable>
+    <IsPackable>false</IsPackable>
     <Description>The texts of the AtcSoft VideoSurveillance and CameraWall applications in US and British English, Danish and German.</Description>
     <PackageTags>surveillance;camera;translations;localization</PackageTags>
   </PropertyGroup>

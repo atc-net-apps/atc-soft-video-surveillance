@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <IsPackable>true</IsPackable>
+    <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Description>Direct3D 11 GPU rendering for Atc.Video.Engine. Hardware-accelerated decoding and rendering for Windows.</Description>
     <PackageTags>video;engine;directx;d3d11;gpu;hardware-acceleration</PackageTags>
