@@ -9,6 +9,11 @@ public static class RecordingCatalog
 {
     private static readonly string[] VideoExtensions = [".mp4", ".mkv", ".avi"];
 
+    // Hidden and system files too, as Directory.EnumerateFiles finds them.
+    private static readonly EnumerationOptions TopLevel = new() { AttributesToSkip = default };
+
+    private static readonly EnumerationOptions Recursive = new() { AttributesToSkip = default, RecurseSubdirectories = true };
+
     /// <summary>
     /// Finds the recordings.
     /// </summary>
@@ -64,21 +69,18 @@ public static class RecordingCatalog
             camerasByFolderName.TryAdd(RecordingPathHelper.GetCameraFolderName(camera.Display.DisplayName, camera.Id), camera);
         }
 
-        var files = Directory.EnumerateFiles(recordingPath, "*.*", SearchOption.AllDirectories)
-            .Where(f => VideoExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
-            .Where(f => !RecordingPathHelper.IsInThumbnailsFolder(f, recordingPath))
-            .Where(f => !activeFilePaths.Contains(f));
+        var files = EnumerateVideos(new DirectoryInfo(recordingPath), cameraId, camerasByFolderName)
+            .Where(f => !activeFilePaths.Contains(f.FullName));
 
-        foreach (var file in files)
+        foreach (var info in files)
         {
+            var file = info.FullName;
             var folderName = RecordingPathHelper.GetCameraFolderFromPath(file, recordingPath) ?? string.Empty;
             var matched = camerasByFolderName.GetValueOrDefault(folderName);
             if (cameraId is not null && matched?.Id != cameraId)
             {
                 continue;
             }
-
-            var info = new FileInfo(file);
 
             // The name carries the start time (in UTC on the server); the file's creation time
             // changes when it is moved or copied.
@@ -98,6 +100,36 @@ public static class RecordingCatalog
         }
 
         return found;
+    }
+
+    // The videos below the root, with their size and times as the walk read them (no second
+    // look at each file). One camera's recordings are all in its own folder, so only that
+    // folder is walked for it; the separate thumbnails folder holds no recording.
+    private static IEnumerable<FileInfo> EnumerateVideos(
+        DirectoryInfo root,
+        Guid? cameraId,
+        Dictionary<string, AtcSoft.Video.Surveillance.Models.CameraConfiguration> camerasByFolderName)
+    {
+        IEnumerable<FileInfo> files;
+        if (cameraId is not null)
+        {
+            var folder = camerasByFolderName.FirstOrDefault(c => c.Value.Id == cameraId).Key;
+            var cameraFolder = folder is null ? null : new DirectoryInfo(Path.Combine(root.FullName, folder));
+            files = cameraFolder is { Exists: true }
+                ? cameraFolder.EnumerateFiles("*", Recursive)
+                : [];
+        }
+        else
+        {
+            files = root
+                .EnumerateFiles("*", TopLevel)
+                .Concat(root
+                    .EnumerateDirectories("*", TopLevel)
+                    .Where(d => !d.Name.Equals(RecordingPathHelper.ThumbnailsFolderName, StringComparison.OrdinalIgnoreCase))
+                    .SelectMany(d => d.EnumerateFiles("*", Recursive)));
+        }
+
+        return files.Where(f => VideoExtensions.Contains(f.Extension, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>

@@ -20,6 +20,7 @@ global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Settings;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Timeline;
 global using AtcSoft.Video.Surveillance.Api.Domain.Events;
 global using AtcSoft.Video.Surveillance.Api.Domain.Mapping;
+global using AtcSoft.Video.Surveillance.Api.Domain.Recordings;
 global using AtcSoft.Video.Surveillance.Api.Domain.Security;
 global using AtcSoft.Video.Surveillance.Api.Domain.Streaming;
 global using AtcSoft.Video.Surveillance.Api.Domain.Webhooks;
