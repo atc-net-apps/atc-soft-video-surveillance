@@ -1,0 +1,7 @@
+{
+    "$schema": "https://raw.githubusercontent.com/atc-net/atc-rest-api-source-generator/main/schemas/atc-rest-api-client.schema.json",
+    "validateSpecificationStrategy": "Strict",
+    "includeDeprecated": false,
+    "generationMode": "EndpointPerOperation",
+    "transportFailure": "result"
+}

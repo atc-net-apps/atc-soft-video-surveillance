@@ -1,0 +1,111 @@
+@* Shown instead of the pages until this browser is signed in; on a new server it creates the first admin. *@
+@inject AuthService Auth
+@inject GatewayService Gateway
+
+<MudPaper Class="pa-6 mx-auto mt-8" Style="max-width: 440px;" Elevation="2">
+    @if (isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (setupRequired is null)
+    {
+        <MudAlert Severity="Severity.Error">@Translations.ServerDidNotAnswer</MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="3">
+            @if (setupRequired == true)
+            {
+                <MudText Typo="Typo.h5">@Translations.CreateTheFirstAdmin</MudText>
+                <MudText Typo="Typo.body2">@Translations.CreateTheFirstAdminHelp</MudText>
+                <MudTextField @bind-Value="setupCode"
+                              Label="@Translations.SetupCode"
+                              HelperText="@Translations.SetupCodeHelp"
+                              Variant="Variant.Outlined" />
+            }
+            else
+            {
+                <MudText Typo="Typo.h5">@Translations.SignInToTheServer</MudText>
+            }
+
+            <MudTextField @bind-Value="userName"
+                          Label="@Translations.Username"
+                          Variant="Variant.Outlined"
+                          AutoFocus="@(setupRequired == false)" />
+            <MudTextField @bind-Value="password"
+                          Label="@Translations.Password"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined"
+                          HelperText="@(setupRequired == true ? Translations.PasswordTooShort : null)"
+                          OnKeyUp="OnPasswordKeyUpAsync" />
+
+            @if (problem is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@problem</MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@busy"
+                       OnClick="SubmitAsync">
+                @ButtonText
+            </MudButton>
+        </MudStack>
+    }
+</MudPaper>
+
+@code {
+    private bool isLoading = true;
+    private bool? setupRequired;
+    private bool busy;
+    private string setupCode = string.Empty;
+    private string userName = string.Empty;
+    private string password = string.Empty;
+    private string? problem;
+
+    private string ButtonText
+    {
+        get
+        {
+            if (busy)
+            {
+                return Translations.SigningIn;
+            }
+
+            return setupRequired == true ? Translations.CreateTheFirstAdmin : Translations.SignIn;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        setupRequired = await Gateway.IsSetupRequiredAsync();
+        isLoading = false;
+    }
+
+    private async Task OnPasswordKeyUpAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SubmitAsync();
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        problem = null;
+        StateHasChanged();
+
+        problem = setupRequired == true
+            ? await Auth.CompleteSetupAsync(setupCode, userName, password)
+            : await Auth.SignInAsync(userName, password);
+
+        password = string.Empty;
+        busy = false;
+    }
+}

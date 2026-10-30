@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AtcSoft.VideoSurveillance</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Core\AtcSoft.VideoSurveillance.Core.csproj" />
+  </ItemGroup>
+
+</Project>

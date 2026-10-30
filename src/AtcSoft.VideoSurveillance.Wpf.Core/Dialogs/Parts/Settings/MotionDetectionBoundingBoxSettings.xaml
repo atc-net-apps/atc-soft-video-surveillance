@@ -1,0 +1,45 @@
+<UserControl
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Core.Dialogs.Parts.Settings.MotionDetectionBoundingBoxSettings"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=dialogs:SettingsDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    d:DesignWidth="600"
+    mc:Ignorable="d">
+
+    <GroupBox Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=BoundingBoxDisplay}">
+        <StackPanel Margin="0,0,0,-20" Orientation="Vertical">
+
+            <atc:LabelToggleSwitch
+                IsOn="{Binding Path=ShowBoundingBoxInGrid, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=ShowBoundingBoxInGrid}" />
+
+            <atc:LabelToggleSwitch
+                IsOn="{Binding Path=ShowBoundingBoxInFullScreen, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=ShowBoundingBoxInFullScreen}" />
+
+            <atc:LabelWellKnownColorSelector
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=BoundingBoxColor}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedBoundingBoxColor, Mode=TwoWay}" />
+
+            <atc:LabelComboBox
+                Items="{Binding Path=BoundingBoxThicknessItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=BoundingBoxThickness}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedBoundingBoxThickness, Mode=TwoWay}" />
+
+        </StackPanel>
+    </GroupBox>
+</UserControl>

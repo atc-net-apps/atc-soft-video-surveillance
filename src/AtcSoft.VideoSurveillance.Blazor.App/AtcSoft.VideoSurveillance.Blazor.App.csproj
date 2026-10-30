@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- The satellite assemblies of the four languages, and their date and number formats -->
+    <SatelliteResourceLanguages>en-GB;da-DK;de-DE</SatelliteResourceLanguages>
+    <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AtcSoft.VideoSurveillance.Resources\AtcSoft.VideoSurveillance.Resources.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Atc" Version="3.0.186" />
+    <PackageReference Include="Atc.Rest.Client" Version="2.7.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.13" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
+    <PackageReference Include="MudBlazor" Version="9.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Atc.Rest.Api.SourceGenerator" Version="3.0.1" OutputItemType="Analyzer" ReferenceOutputAssembly="false">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="..\VideoSurveillance.yaml" />
+    <AdditionalFiles Include=".atc-rest-api-client" />
+  </ItemGroup>
+
+</Project>

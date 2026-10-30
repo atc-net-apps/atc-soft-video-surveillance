@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "name": "S15 strong wind, a walker after a while",
+  "video": {
+    "width": 1280,
+    "height": 720,
+    "fps": 15,
+    "durationSeconds": 40,
+    "noise": 2.0
+  },
+  "background": {
+    "seed": 15,
+    "distractors": [
+      {
+        "id": "tree",
+        "kind": "swayingTree",
+        "at": [
+          0.2,
+          0.75
+        ],
+        "size": 0.45,
+        "amplitude": 0.06,
+        "periodSeconds": 1.7
+      },
+      {
+        "id": "tree2",
+        "kind": "swayingTree",
+        "at": [
+          0.75,
+          0.7
+        ],
+        "size": 0.35,
+        "amplitude": 0.045,
+        "periodSeconds": 2.3
+      }
+    ]
+  },
+  "objects": [
+    {
+      "id": "human",
+      "kind": "human",
+      "size": [
+        0.05,
+        0.2
+      ],
+      "path": [
+        {
+          "t": 28,
+          "at": [
+            0.35,
+            0.45
+          ]
+        },
+        {
+          "t": 38,
+          "at": [
+            0.65,
+            0.45
+          ]
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "maxLatencySeconds": 1.0,
+    "spans": [
+      {
+        "from": 0,
+        "to": 15,
+        "state": "dontCare",
+        "why": "the trees' sway is learnt: a camera that has just started, or a recording read from its start"
+      }
+    ]
+  }
+}

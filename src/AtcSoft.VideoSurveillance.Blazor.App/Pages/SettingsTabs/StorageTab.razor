@@ -1,0 +1,101 @@
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.RecordingSegments</MudText>
+<SettingSwitch @bind-Value="State.EnableHourlySegmentation"
+               Label="@Translations.SplitRecordingsIntoSegments"
+               Help="@Translations.SegmentationHelp" />
+<MudSelect @bind-Value="State.MaxRecordingDurationMinutes"
+           Label="@Translations.LongestSegment"
+           Disabled="!State.EnableHourlySegmentation"
+           Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.MaxRecordingDurations, State.MaxRecordingDurationMinutes, v => string.Format(CultureInfo.CurrentCulture, Translations.Minutes1, v)))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.CleanUp</MudText>
+<MudSelect @bind-Value="State.CleanupSchedule" Label="@Translations.DeleteOldMedia" Class="mt-2">
+    <MudSelectItem Value="AppSettingsCleanupSchedule.Disabled">@Translations.Never</MudSelectItem>
+    <MudSelectItem Value="AppSettingsCleanupSchedule.OnStartup">@Translations.WhenTheServerStarts</MudSelectItem>
+    <MudSelectItem Value="AppSettingsCleanupSchedule.OnStartupAndPeriodically">@Translations.WhenTheServerStartsAndRegularly</MudSelectItem>
+</MudSelect>
+<MudSelect @bind-Value="State.RecordingRetentionDays"
+           Label="@Translations.KeepRecordingsFor"
+           Disabled="@CleanupDisabled"
+           Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.RetentionPeriods, State.RecordingRetentionDays, v => string.Format(CultureInfo.CurrentCulture, Translations.Days1, v)))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+<SettingSwitch @bind-Value="State.CleanupIncludeSnapshots"
+               Label="@Translations.DeleteOldSnapshotsToo"
+               Disabled="@CleanupDisabled"
+               Class="mt-2" />
+<MudSelect @bind-Value="State.SnapshotRetentionDays"
+           Label="@Translations.KeepSnapshotsFor"
+           Disabled="@(CleanupDisabled || !State.CleanupIncludeSnapshots)"
+           Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.RetentionPeriods, State.SnapshotRetentionDays, v => string.Format(CultureInfo.CurrentCulture, Translations.Days1, v)))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+
+<SettingSwitch @bind-Value="State.EnableDiskSpaceGuard"
+               Label="@Translations.DeleteOldestWhenDiskLow"
+               Help="@Translations.DiskSpaceGuardHelp"
+               Class="mt-4" />
+<MudSelect @bind-Value="State.MinFreeSpaceMb"
+           Label="@Translations.FreeSpaceToKeep"
+           Disabled="!State.EnableDiskSpaceGuard"
+           Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.MinFreeSpaces, State.MinFreeSpaceMb, v => $"{v} MB"))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+<MudSelect @bind-Value="State.MaxRecordingStorageGb"
+           Label="@Translations.MaxRecordingStorage"
+           HelperText="@Translations.MaxRecordingStorageHelp"
+           Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.MaxRecordingStorages, State.MaxRecordingStorageGb, v => $"{v} GB"))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.DesktopAppsPlaybackOverlay</MudText>
+<SettingSwitch @bind-Value="State.PlaybackShowFilename" Label="@Translations.ShowTheFileName" />
+<MudSelect @bind-Value="State.PlaybackFilenameColor" Label="@Translations.FileNameColour" Disabled="!State.PlaybackShowFilename" ToStringFunc="ColorChoices.Label" Class="mt-2">
+    @foreach (var name in ColorOptions(State.PlaybackFilenameColor))
+    {
+        <MudSelectItem Value="@name">
+            <span style="display: inline-block; width: 14px; height: 14px; border: 1px solid #888; vertical-align: middle; margin-right: 8px; background: @ColorChoices.ToCss(name);"></span>@ColorChoices.Label(name)
+        </MudSelectItem>
+    }
+</MudSelect>
+<SettingSwitch @bind-Value="State.PlaybackShowTimestamp" Label="@Translations.ShowTheTime" Class="mt-2" />
+<MudSelect @bind-Value="State.PlaybackTimestampColor" Label="@Translations.TimeColour" Disabled="!State.PlaybackShowTimestamp" ToStringFunc="ColorChoices.Label" Class="mt-2">
+    @foreach (var name in ColorOptions(State.PlaybackTimestampColor))
+    {
+        <MudSelectItem Value="@name">
+            <span style="display: inline-block; width: 14px; height: 14px; border: 1px solid #888; vertical-align: middle; margin-right: 8px; background: @ColorChoices.ToCss(name);"></span>@ColorChoices.Label(name)
+        </MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsState State { get; set; } = null!;
+
+    private bool CleanupDisabled => State.CleanupSchedule == AppSettingsCleanupSchedule.Disabled;
+
+    private static IEnumerable<string> ColorOptions(string current)
+        => ColorChoices.Names.Contains(current, StringComparer.Ordinal)
+            ? ColorChoices.Names
+            : [.. ColorChoices.Names, current];
+}

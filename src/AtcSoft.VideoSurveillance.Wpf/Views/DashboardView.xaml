@@ -1,0 +1,152 @@
+<UserControl
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Views.DashboardView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fontIcons="clr-namespace:Atc.Wpf.FontIcons;assembly=Atc.Wpf.FontIcons"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModels="clr-namespace:AtcSoft.VideoSurveillance.Wpf.ViewModels"
+    d:DataContext="{d:DesignInstance Type=viewModels:DashboardViewModel}"
+    Loaded="OnLoaded"
+    mc:Ignorable="d">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!--  Title  -->
+        <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,24"
+            FontSize="24"
+            FontWeight="SemiBold"
+            Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=Dashboard}" />
+
+        <!--  Stat Cards  -->
+        <UniformGrid
+            Grid.Row="1"
+            Columns="4"
+            Rows="1">
+
+            <!--  Total Cameras  -->
+            <Border
+                Margin="8"
+                Padding="20"
+                Background="{DynamicResource AtcApps.Brushes.ThemeBackground2}"
+                BorderBrush="{DynamicResource AtcApps.Brushes.Accent}"
+                BorderThickness="0,3,0,0"
+                CornerRadius="4">
+                <StackPanel HorizontalAlignment="Center">
+                    <fontIcons:ImageAwesomeSolid
+                        Width="32"
+                        Height="32"
+                        HorizontalAlignment="Center"
+                        Foreground="{DynamicResource AtcApps.Brushes.Accent}"
+                        Icon="Camera" />
+                    <TextBlock
+                        Margin="0,12,0,4"
+                        HorizontalAlignment="Center"
+                        FontSize="36"
+                        FontWeight="Bold"
+                        Text="{Binding TotalCameras}" />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="14"
+                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground2}"
+                        Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=TotalCameras}" />
+                </StackPanel>
+            </Border>
+
+            <!--  Connected  -->
+            <Border
+                Margin="8"
+                Padding="20"
+                Background="{DynamicResource AtcApps.Brushes.ThemeBackground2}"
+                BorderBrush="LimeGreen"
+                BorderThickness="0,3,0,0"
+                CornerRadius="4">
+                <StackPanel HorizontalAlignment="Center">
+                    <fontIcons:ImageAwesomeSolid
+                        Width="32"
+                        Height="32"
+                        HorizontalAlignment="Center"
+                        Foreground="LimeGreen"
+                        Icon="Wifi" />
+                    <TextBlock
+                        Margin="0,12,0,4"
+                        HorizontalAlignment="Center"
+                        FontSize="36"
+                        FontWeight="Bold"
+                        Text="{Binding ConnectedCameras}" />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="14"
+                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground2}"
+                        Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=Connected}" />
+                </StackPanel>
+            </Border>
+
+            <!--  Layouts  -->
+            <Border
+                Margin="8"
+                Padding="20"
+                Background="{DynamicResource AtcApps.Brushes.ThemeBackground2}"
+                BorderBrush="DodgerBlue"
+                BorderThickness="0,3,0,0"
+                CornerRadius="4">
+                <StackPanel HorizontalAlignment="Center">
+                    <fontIcons:ImageAwesomeSolid
+                        Width="32"
+                        Height="32"
+                        HorizontalAlignment="Center"
+                        Foreground="DodgerBlue"
+                        Icon="ThLarge" />
+                    <TextBlock
+                        Margin="0,12,0,4"
+                        HorizontalAlignment="Center"
+                        FontSize="36"
+                        FontWeight="Bold"
+                        Text="{Binding TotalLayouts}" />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="14"
+                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground2}"
+                        Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=Layouts}" />
+                </StackPanel>
+            </Border>
+
+            <!--  Active Recordings  -->
+            <Border
+                Margin="8"
+                Padding="20"
+                Background="{DynamicResource AtcApps.Brushes.ThemeBackground2}"
+                BorderBrush="OrangeRed"
+                BorderThickness="0,3,0,0"
+                CornerRadius="4">
+                <StackPanel HorizontalAlignment="Center">
+                    <fontIcons:ImageAwesomeSolid
+                        Width="32"
+                        Height="32"
+                        HorizontalAlignment="Center"
+                        Foreground="OrangeRed"
+                        Icon="Circle" />
+                    <TextBlock
+                        Margin="0,12,0,4"
+                        HorizontalAlignment="Center"
+                        FontSize="36"
+                        FontWeight="Bold"
+                        Text="{Binding ActiveRecordings}" />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="14"
+                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground2}"
+                        Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=ActiveRecordings}" />
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+    </Grid>
+</UserControl>

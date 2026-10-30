@@ -1,0 +1,54 @@
+﻿{
+  "version": 1,
+  "name": "S10 snow, large flakes near the lens, a person walks through it",
+  "video": {
+    "width": 1280,
+    "height": 720,
+    "fps": 15,
+    "durationSeconds": 12,
+    "noise": 2.0
+  },
+  "background": {
+    "seed": 1010,
+    "distractors": [
+      {
+        "id": "snow",
+        "kind": "snow",
+        "count": 400,
+        "size": 0.012,
+        "amplitude": 0.004,
+        "periodSeconds": 3
+      }
+    ]
+  },
+  "objects": [
+    {
+      "id": "human",
+      "kind": "human",
+      "size": [
+        0.05,
+        0.2
+      ],
+      "path": [
+        {
+          "t": 1,
+          "at": [
+            0.2,
+            0.6
+          ]
+        },
+        {
+          "t": 11,
+          "at": [
+            0.6,
+            0.6
+          ]
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "tracks": 1,
+    "knownBad": "Large flakes near the lens move like small objects: 2.8 false boxes a picture at 4/s, 11.9 at 15/s. Smallest object 0.1 % removes them but loses the small far cat (S8); object labels are the answer."
+  }
+}

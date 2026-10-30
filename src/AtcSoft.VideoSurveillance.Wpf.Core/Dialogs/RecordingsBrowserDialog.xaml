@@ -1,0 +1,311 @@
+<atc:NiceWindow
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Core.Dialogs.RecordingsBrowserDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:coreControls="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.UserControls"
+    xmlns:dialogs="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="{Binding Path=DialogTitle}"
+    Width="1000"
+    Height="650"
+    MinWidth="800"
+    MinHeight="500"
+    d:DataContext="{d:DesignInstance Type=dialogs:RecordingsBrowserDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    ResizeMode="CanResize"
+    ShowInTaskbar="False"
+    WindowStartupLocation="CenterOwner"
+    WindowStyle="ToolWindow"
+    mc:Ignorable="d">
+
+    <Grid>
+        <!--  Main Content  -->
+        <atc:GridEx Margin="16" Rows="Auto,*,Auto,Auto">
+
+            <!--  Filter Row  -->
+            <atc:GridEx
+                Grid.Row="0"
+                Margin="0,0,0,16"
+                Columns="Auto,180,Auto,140,Auto,140,*,Auto">
+                <TextBlock
+                    Grid.Column="0"
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
+                    Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                               Key=Camera}" />
+                <ComboBox
+                    Grid.Column="1"
+                    DisplayMemberPath="Value"
+                    ItemsSource="{Binding Path=CameraFilters}"
+                    SelectedValue="{Binding Path=SelectedCameraFilter}"
+                    SelectedValuePath="Key" />
+                <TextBlock
+                    Grid.Column="2"
+                    Margin="16,0,8,0"
+                    VerticalAlignment="Center"
+                    Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                               Key=Day}" />
+                <ComboBox
+                    Grid.Column="3"
+                    DisplayMemberPath="Value"
+                    ItemsSource="{Binding Path=DayFilterItems}"
+                    SelectedValue="{Binding Path=SelectedDayFilter}"
+                    SelectedValuePath="Key" />
+                <TextBlock
+                    Grid.Column="4"
+                    Margin="16,0,8,0"
+                    VerticalAlignment="Center"
+                    Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                               Key=Time}" />
+                <ComboBox
+                    Grid.Column="5"
+                    DisplayMemberPath="Value"
+                    ItemsSource="{Binding Path=TimeFilterItems}"
+                    SelectedValue="{Binding Path=SelectedTimeFilter}"
+                    SelectedValuePath="Key" />
+                <Button
+                    Grid.Column="7"
+                    Padding="16,6"
+                    Command="{Binding Path=RefreshCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                  Key=Refresh}" />
+            </atc:GridEx>
+
+            <!--  Recordings DataGrid  -->
+            <DataGrid
+                x:Name="RecordingsGrid"
+                Grid.Row="1"
+                AutoGenerateColumns="False"
+                CanUserAddRows="False"
+                CanUserDeleteRows="False"
+                IsReadOnly="True"
+                ItemsSource="{Binding Path=FilteredRecordings}"
+                RowHeight="68"
+                SelectedItem="{Binding Path=SelectedRecording}"
+                SelectionMode="Single">
+                <DataGrid.RowStyle>
+                    <!--  A file that is still being recorded cannot be played or deleted: its row says why.  -->
+                    <Style BasedOn="{StaticResource {x:Type DataGridRow}}" TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Path=IsBeingRecorded}" Value="True">
+                                <Setter Property="IsEnabled" Value="False" />
+                                <Setter Property="Opacity" Value="0.55" />
+                                <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+                                <Setter Property="ToolTip" Value="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=RecordingInProgressInfo}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Width="90" Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=Thumbnail}">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button
+                                    Margin="2"
+                                    Padding="0"
+                                    AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=Thumbnail}"
+                                    Command="{Binding Path=DataContext.PreviewThumbnailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}"
+                                    Cursor="Hand"
+                                    IsEnabled="{Binding Path=HasThumbnail}">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border
+                                                            Background="Transparent"
+                                                            BorderBrush="{DynamicResource AtcApps.Brushes.Gray8}"
+                                                            BorderThickness="1">
+                                                            <ContentPresenter />
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border
+                                                                    Background="Transparent"
+                                                                    BorderBrush="{DynamicResource AtcApps.Brushes.Accent}"
+                                                                    BorderThickness="2">
+                                                                    <ContentPresenter />
+                                                                </Border>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Opacity" Value="0.5" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <Image
+                                        Width="80"
+                                        Height="60"
+                                        RenderOptions.BitmapScalingMode="HighQuality"
+                                        Source="{Binding Path=ThumbnailImage}"
+                                        Stretch="Uniform" />
+                                </Button>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn
+                        Width="150"
+                        Binding="{Binding Path=CameraName}"
+                        Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                     Key=RecordingCamera}" />
+                    <DataGridTextColumn
+                        Width="160"
+                        Binding="{Binding Path=FormattedRecordingTime}"
+                        Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                     Key=RecordingDateTime}" />
+                    <DataGridTextColumn
+                        Width="80"
+                        Binding="{Binding Path=FormattedDuration}"
+                        Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                     Key=RecordingDuration}" />
+                    <DataGridTemplateColumn Width="84" Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=ActivityTimeline}">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <coreControls:ActivitySparklineBars
+                                    Height="18"
+                                    Margin="4,2"
+                                    AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=ActivityTimeline}"
+                                    Levels="{Binding Path=Activity}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn
+                        Width="100"
+                        Binding="{Binding Path=FormattedFileSize}"
+                        Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                     Key=RecordingSize}" />
+                    <DataGridTextColumn
+                        Width="*"
+                        Binding="{Binding Path=FileName}"
+                        Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                     Key=FileName}" />
+                </DataGrid.Columns>
+                <DataGrid.InputBindings>
+                    <MouseBinding Command="{Binding Path=PlayCommand}" MouseAction="LeftDoubleClick" />
+                </DataGrid.InputBindings>
+            </DataGrid>
+
+            <!--  Status Message  -->
+            <TextBlock
+                Grid.Row="2"
+                Margin="0,8,0,0"
+                Foreground="{DynamicResource AtcApps.Brushes.Gray5}"
+                Text="{Binding Path=StatusMessage}" />
+
+            <!--  Dialog Buttons  -->
+            <atc:UniformSpacingPanel
+                Grid.Row="3"
+                Margin="0,16,0,0"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal"
+                Spacing="8">
+                <Button
+                    MinWidth="80"
+                    Padding="16,8"
+                    Command="{Binding Path=PlayCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                  Key=PlayRecording}" />
+                <Button
+                    MinWidth="80"
+                    Padding="16,8"
+                    Command="{Binding Path=DeleteCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                  Key=DeleteRecording}" />
+                <Button
+                    MinWidth="80"
+                    Padding="16,8"
+                    Command="{Binding Path=AnalyseCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                  Key=AnalyseRecording}" />
+                <Button
+                    MinWidth="80"
+                    Padding="16,8"
+                    Command="{Binding Path=OpenFolderCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                  Key=OpenRecordingsFolder}" />
+                <Button
+                    MinWidth="80"
+                    Padding="16,8"
+                    Command="{Binding Path=CloseCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                  Key=Close}"
+                    IsCancel="True" />
+            </atc:UniformSpacingPanel>
+        </atc:GridEx>
+
+        <!--  Overlay for dimming when flyout is open  -->
+        <Border
+            x:Name="FlyoutOverlay"
+            Background="#80000000"
+            MouseLeftButtonDown="FlyoutOverlay_MouseLeftButtonDown"
+            Visibility="Collapsed" />
+
+        <!--  Thumbnail Flyout Panel (slides from right)  -->
+        <Border
+            x:Name="ThumbnailFlyoutPanel"
+            Width="550"
+            HorizontalAlignment="Right"
+            Background="{DynamicResource AtcApps.Brushes.ThemeBackground}"
+            BorderBrush="{DynamicResource AtcApps.Brushes.Gray8}"
+            BorderThickness="1,0,0,0"
+            Visibility="Collapsed">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!--  Header  -->
+                <Border
+                    Grid.Row="0"
+                    Padding="16,12"
+                    Background="{DynamicResource AtcApps.Brushes.Gray10}"
+                    BorderBrush="{DynamicResource AtcApps.Brushes.Gray8}"
+                    BorderThickness="0,0,0,1">
+                    <Grid>
+                        <TextBlock
+                            x:Name="ThumbnailFlyoutHeader"
+                            VerticalAlignment="Center"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                       Key=Thumbnail}" />
+                        <Button
+                            Padding="8,4"
+                            HorizontalAlignment="Right"
+                            Click="CloseThumbnailFlyout_Click"
+                            Content="X"
+                            FontSize="14"
+                            FontWeight="Bold" />
+                    </Grid>
+                </Border>
+
+                <!--  Content  -->
+                <Border
+                    Grid.Row="1"
+                    Margin="16"
+                    Background="{DynamicResource AtcApps.Brushes.Gray10}"
+                    BorderBrush="{DynamicResource AtcApps.Brushes.Gray8}"
+                    BorderThickness="1">
+                    <Image
+                        x:Name="ThumbnailImage"
+                        RenderOptions.BitmapScalingMode="HighQuality"
+                        Stretch="Uniform" />
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</atc:NiceWindow>

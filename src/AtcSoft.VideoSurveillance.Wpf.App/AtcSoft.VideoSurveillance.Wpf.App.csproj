@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Description>WPF management application for the AtcSoft VideoSurveillance API server.</Description>
+    <ApplicationIcon>..\AtcSoft.VideoSurveillance.Wpf.Core\Resources\Images\cctv-camera.ico</ApplicationIcon>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AtcSoft.VideoSurveillance.Wpf\AtcSoft.VideoSurveillance.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fluent.Ribbon" Version="11.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\AtcSoft.VideoSurveillance.Wpf.Core\Resources\Images\cctv-camera.ico">
+      <Link>cctv-camera.ico</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

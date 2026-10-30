@@ -1,0 +1,111 @@
+<UserControl
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Core.Dialogs.Parts.CameraConfigurations.LocalUsbDevicePart"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=dialogs:CameraConfigurationDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    d:DesignWidth="700"
+    mc:Ignorable="d">
+
+    <atc:GridEx
+        Columns="*"
+        Rows="Auto,Auto,Auto,Auto,Auto,Auto">
+
+        <!--  Atc.Wpf.Hardware picker. Exposes the selected camera as
+              UsbCameraInfo, runs Media Foundation enumeration in-process,
+              and opens MediaCapture for live preview so SupportedFormats
+              becomes available for the cascading combos below.  -->
+        <atc:LabelUsbCameraPicker
+            x:Name="PartUsbCameraPicker"
+            Grid.Row="0"
+            AutoRebindOnReconnect="True"
+            AutoRefreshOnDeviceChange="True"
+            AutoSelectFirstAvailable="False"
+            ClearValueOnDisconnect="False"
+            LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                            Key=SelectUsbDevice}"
+            PreviewHeight="240"
+            ShowLivePreview="True"
+            ShowRefreshButton="True"
+            Value="{Binding Path=SelectedUsbCamera, Mode=TwoWay}" />
+
+        <!--  Capability-driven dropdowns. Items cascade off
+              SelectedUsbCamera.SupportedFormats which the picker fills
+              in lazily after live preview opens the camera.  -->
+        <StackPanel
+            Grid.Row="1"
+            Margin="0,8,0,0">
+
+            <TextBlock
+                Margin="0,0,0,4"
+                Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                           Key=UsbResolution}" />
+
+            <ComboBox
+                ItemsSource="{Binding Path=UsbResolutionItems}"
+                SelectedItem="{Binding Path=SelectedUsbResolution, Mode=TwoWay}" />
+        </StackPanel>
+
+        <StackPanel
+            Grid.Row="2"
+            Margin="0,8,0,0">
+
+            <TextBlock
+                Margin="0,0,0,4"
+                Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                           Key=UsbFrameRate}" />
+
+            <ComboBox
+                ItemsSource="{Binding Path=UsbFrameRateItems}"
+                SelectedItem="{Binding Path=SelectedUsbFrameRate, Mode=TwoWay}" />
+        </StackPanel>
+
+        <StackPanel
+            Grid.Row="3"
+            Margin="0,8,0,0">
+
+            <TextBlock
+                Margin="0,0,0,4"
+                Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                           Key=UsbPixelFormat}" />
+
+            <ComboBox
+                IsEditable="True"
+                ItemsSource="{Binding Path=UsbPixelFormatItems}"
+                Text="{Binding Path=UsbPixelFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        </StackPanel>
+
+        <CheckBox
+            Grid.Row="4"
+            Margin="0,8,0,0"
+            Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                          Key=UsbCaptureAudio}"
+            IsChecked="{Binding Path=UsbCaptureAudio, Mode=TwoWay}" />
+
+        <!--  Audio capture picker. Greyed out unless the Capture audio
+              checkbox above is ticked. Mirrors LabelUsbCameraPicker —
+              the inner picker enumerates capture endpoints via WinRT
+              DeviceInformation. Edit-mode rebind by FriendlyName lives
+              in the part's code-behind because the inner combo's
+              SelectedItem compares by reference.  -->
+        <atc:LabelAudioInputPicker
+            x:Name="PartAudioInputPicker"
+            Grid.Row="5"
+            Margin="0,8,0,0"
+            AutoRebindOnReconnect="True"
+            AutoRefreshOnDeviceChange="True"
+            AutoSelectFirstAvailable="False"
+            ClearValueOnDisconnect="False"
+            IsEnabled="{Binding Path=UsbCaptureAudio}"
+            LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                            Key=UsbAudioDeviceName}"
+            ShowRefreshButton="True"
+            Value="{Binding Path=SelectedAudioInput, Mode=TwoWay}" />
+
+    </atc:GridEx>
+</UserControl>

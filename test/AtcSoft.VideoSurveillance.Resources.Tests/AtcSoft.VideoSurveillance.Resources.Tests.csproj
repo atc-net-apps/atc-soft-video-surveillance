@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AtcSoft.VideoSurveillance.Resources</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="literal-text-allowed.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Resources\AtcSoft.VideoSurveillance.Resources.csproj" />
+  </ItemGroup>
+
+</Project>

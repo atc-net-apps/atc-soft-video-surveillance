@@ -1,0 +1,2832 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ConnectionTimedOut" xml:space="preserve">
+    <value>Connection timed out</value>
+  </data>
+  <data name="Connected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>Connecting...</value>
+  </data>
+  <data name="Reconnecting" xml:space="preserve">
+    <value>Reconnecting...</value>
+  </data>
+  <data name="Disconnected" xml:space="preserve">
+    <value>Disconnected</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="ConfirmDelete" xml:space="preserve">
+    <value>Confirm Delete</value>
+  </data>
+  <data name="ConfirmDeleteProfile1" xml:space="preserve">
+    <value>Delete profile '{0}'?</value>
+  </data>
+  <data name="CurrentDomainUnhandledException" xml:space="preserve">
+    <value>Unhandled Exception (CurrentDomain)</value>
+  </data>
+  <data name="DeleteProfile" xml:space="preserve">
+    <value>Delete Profile</value>
+  </data>
+  <data name="DispatcherUnhandledException" xml:space="preserve">
+    <value>Unhandled Exception (Dispatcher)</value>
+  </data>
+  <data name="FailedToApplyLayout1" xml:space="preserve">
+    <value>Failed to apply layout: {0}</value>
+  </data>
+  <data name="FailedToCaptureSnapshot1" xml:space="preserve">
+    <value>Failed to capture snapshot: {0}</value>
+  </data>
+  <data name="FailedToCreateCamera1" xml:space="preserve">
+    <value>Failed to create camera: {0}</value>
+  </data>
+  <data name="FailedToCreateLayout1" xml:space="preserve">
+    <value>Failed to create layout: {0}</value>
+  </data>
+  <data name="FailedToDeleteCamera1" xml:space="preserve">
+    <value>Failed to delete camera: {0}</value>
+  </data>
+  <data name="FailedToDeleteLayout1" xml:space="preserve">
+    <value>Failed to delete layout: {0}</value>
+  </data>
+  <data name="FailedToLoadCameraDetails" xml:space="preserve">
+    <value>Failed to load camera details.</value>
+  </data>
+  <data name="FailedToStartRecording1" xml:space="preserve">
+    <value>Failed to start recording: {0}</value>
+  </data>
+  <data name="FailedToStopRecording1" xml:space="preserve">
+    <value>Failed to stop recording: {0}</value>
+  </data>
+  <data name="FailedToUpdateCamera1" xml:space="preserve">
+    <value>Failed to update camera: {0}</value>
+  </data>
+  <data name="FailedToUpdateLayout1" xml:space="preserve">
+    <value>Failed to update layout: {0}</value>
+  </data>
+  <data name="LayoutApplied" xml:space="preserve">
+    <value>Layout Applied</value>
+  </data>
+  <data name="LayoutAppliedSuccessfully1" xml:space="preserve">
+    <value>Layout '{0}' applied successfully.</value>
+  </data>
+  <data name="NoSnapshotData" xml:space="preserve">
+    <value>No snapshot data returned.</value>
+  </data>
+  <data name="Snapshot" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
+  <data name="SnapshotSaved" xml:space="preserve">
+    <value>Snapshot Saved</value>
+  </data>
+  <data name="SnapshotSavedTo1" xml:space="preserve">
+    <value>Snapshot saved to {0}</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="ConnectionSuccessful" xml:space="preserve">
+    <value>Connection successful</value>
+  </data>
+  <data name="StreamOpenFailed" xml:space="preserve">
+    <value>Failed to open stream</value>
+  </data>
+  <data name="FailedWithStatus1" xml:space="preserve">
+    <value>Failed: {0}</value>
+  </data>
+  <data name="EditCamera" xml:space="preserve">
+    <value>Edit Camera...</value>
+  </data>
+  <data name="DeleteCamera" xml:space="preserve">
+    <value>Delete Camera</value>
+  </data>
+  <data name="ShowInFullScreen" xml:space="preserve">
+    <value>Show in Full Screen</value>
+  </data>
+  <data name="SwapLeft" xml:space="preserve">
+    <value>Swap Left</value>
+  </data>
+  <data name="SwapRight" xml:space="preserve">
+    <value>Swap Right</value>
+  </data>
+  <data name="TakeSnapshot" xml:space="preserve">
+    <value>Take Snapshot</value>
+  </data>
+  <data name="Reconnect" xml:space="preserve">
+    <value>Reconnect</value>
+  </data>
+  <data name="ResetZoom" xml:space="preserve">
+    <value>Reset Zoom</value>
+  </data>
+  <data name="Rotate" xml:space="preserve">
+    <value>Rotate</value>
+  </data>
+  <data name="SaveSnapshot" xml:space="preserve">
+    <value>Save Snapshot</value>
+  </data>
+  <data name="AddCamera" xml:space="preserve">
+    <value>Add Camera</value>
+  </data>
+  <data name="AddUsbCamera" xml:space="preserve">
+    <value>Add USB Camera</value>
+  </data>
+  <data name="NewCamera" xml:space="preserve">
+    <value>New Camera</value>
+  </data>
+  <data name="NewLayout" xml:space="preserve">
+    <value>New Layout</value>
+  </data>
+  <data name="DeleteLayout" xml:space="preserve">
+    <value>Delete Layout</value>
+  </data>
+  <data name="RenameLayout" xml:space="preserve">
+    <value>Rename Layout</value>
+  </data>
+  <data name="EnterNewLayoutName" xml:space="preserve">
+    <value>Enter a new name for the layout</value>
+  </data>
+  <data name="RenameLayoutCancelled" xml:space="preserve">
+    <value>Rename layout cancelled</value>
+  </data>
+  <data name="LayoutRenamed2" xml:space="preserve">
+    <value>Layout renamed: {0} → {1}</value>
+  </data>
+  <data name="Information" xml:space="preserve">
+    <value>Information</value>
+  </data>
+  <data name="Ready" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="AddCameraDialog" xml:space="preserve">
+    <value>Add Camera dialog...</value>
+  </data>
+  <data name="AddedCamera1" xml:space="preserve">
+    <value>Added camera: {0}</value>
+  </data>
+  <data name="AddCameraCancelled" xml:space="preserve">
+    <value>Add camera cancelled</value>
+  </data>
+  <data name="EditingCamera1" xml:space="preserve">
+    <value>Editing camera: {0}</value>
+  </data>
+  <data name="UpdatedCamera1" xml:space="preserve">
+    <value>Updated camera: {0}</value>
+  </data>
+  <data name="EditCameraCancelled" xml:space="preserve">
+    <value>Edit camera cancelled</value>
+  </data>
+  <data name="DeletedCamera1" xml:space="preserve">
+    <value>Deleted camera: {0}</value>
+  </data>
+  <data name="FullScreenCamera1" xml:space="preserve">
+    <value>Full screen: {0}</value>
+  </data>
+  <data name="ReconnectingAllCameras" xml:space="preserve">
+    <value>Reconnecting all cameras...</value>
+  </data>
+  <data name="AllCamerasReconnected" xml:space="preserve">
+    <value>All cameras reconnected</value>
+  </data>
+  <data name="NewLayoutCancelled" xml:space="preserve">
+    <value>New layout cancelled</value>
+  </data>
+  <data name="LayoutCreated1" xml:space="preserve">
+    <value>Layout created: {0}</value>
+  </data>
+  <data name="DeletedLayout1" xml:space="preserve">
+    <value>Deleted layout: {0}</value>
+  </data>
+  <data name="SetStartupLayout1" xml:space="preserve">
+    <value>Set startup layout: {0}</value>
+  </data>
+  <data name="CameraStateChanged2" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="CameraDisconnected1" xml:space="preserve">
+    <value>Camera disconnected: {0}</value>
+  </data>
+  <data name="CameraConnected1" xml:space="preserve">
+    <value>Camera connected: {0}</value>
+  </data>
+  <data name="PositionChanged1" xml:space="preserve">
+    <value>Position changed: {0}</value>
+  </data>
+  <data name="LoadedLayout1" xml:space="preserve">
+    <value>Loaded layout: {0}</value>
+  </data>
+  <data name="LoadedCameras1" xml:space="preserve">
+    <value>Loaded {0} camera(s)</value>
+  </data>
+  <data name="ConfirmDeleteCamera1" xml:space="preserve">
+    <value>Are you sure you want to delete camera '{0}'?</value>
+  </data>
+  <data name="ConfirmDeleteLayout1" xml:space="preserve">
+    <value>Are you sure you want to delete layout '{0}'?</value>
+  </data>
+  <data name="EnterLayoutName" xml:space="preserve">
+    <value>Enter a name for the new layout</value>
+  </data>
+  <data name="IpAddressRequired" xml:space="preserve">
+    <value>IP Address is required</value>
+  </data>
+  <data name="IpAddressAlreadyExists" xml:space="preserve">
+    <value>A camera with this IP address and path already exists</value>
+  </data>
+  <data name="PortRangeError" xml:space="preserve">
+    <value>Port must be between 1 and 65535</value>
+  </data>
+  <data name="DisplayNameRequired" xml:space="preserve">
+    <value>Display Name is required</value>
+  </data>
+  <data name="DisplayNameTooLong" xml:space="preserve">
+    <value>Display Name cannot exceed 256 characters</value>
+  </data>
+  <data name="LayoutNameAlreadyExists" xml:space="preserve">
+    <value>A layout with this name already exists</value>
+  </data>
+  <data name="NetworkScannerHeader" xml:space="preserve">
+    <value>Network Scanner - Find Cameras</value>
+  </data>
+  <data name="CameraConfiguration" xml:space="preserve">
+    <value>Camera Configuration</value>
+  </data>
+  <data name="DisplayName" xml:space="preserve">
+    <value>Display Name</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="Protocol" xml:space="preserve">
+    <value>Protocol</value>
+  </data>
+  <data name="IpAddress" xml:space="preserve">
+    <value>IP Address</value>
+  </data>
+  <data name="Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="Path" xml:space="preserve">
+    <value>Path</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="OverlayPosition" xml:space="preserve">
+    <value>Overlay Position</value>
+  </data>
+  <data name="Rotation" xml:space="preserve">
+    <value>Rotation</value>
+  </data>
+  <data name="TestResult" xml:space="preserve">
+    <value>Test Result</value>
+  </data>
+  <data name="NotTested" xml:space="preserve">
+    <value>Not tested</value>
+  </data>
+  <data name="Test" xml:space="preserve">
+    <value>Test</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="NoCamerasConfigured" xml:space="preserve">
+    <value>No cameras configured. Add a camera to get started.</value>
+  </data>
+  <data name="About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="AboutAtcSoftCameraWall" xml:space="preserve">
+    <value>About AtcSoft Camera Wall</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="ApplicationDescription" xml:space="preserve">
+    <value>A professional camera wall application for monitoring multiple RTSP/HTTP camera streams in a dynamic grid layout.</value>
+  </data>
+  <data name="Copyright" xml:space="preserve">
+    <value>Copyright</value>
+  </data>
+  <data name="AllRightsReserved" xml:space="preserve">
+    <value>All rights reserved.</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>Check for Updates</value>
+  </data>
+  <data name="CurrentVersion" xml:space="preserve">
+    <value>Current Version</value>
+  </data>
+  <data name="LatestVersion" xml:space="preserve">
+    <value>Latest Version</value>
+  </data>
+  <data name="CheckingForUpdates" xml:space="preserve">
+    <value>Checking for updates...</value>
+  </data>
+  <data name="NewVersionAvailable" xml:space="preserve">
+    <value>A new version is available!</value>
+  </data>
+  <data name="YouAreUpToDate" xml:space="preserve">
+    <value>You are up to date.</value>
+  </data>
+  <data name="DownloadLatest" xml:space="preserve">
+    <value>Download Latest</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="UnableToCheckForUpdates" xml:space="preserve">
+    <value>Unable to check for updates. Please check your internet connection.</value>
+  </data>
+  <data name="PressEscToExit" xml:space="preserve">
+    <value>Press ESC to exit full screen</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="ApplicationAppearance" xml:space="preserve">
+    <value>Application Appearance</value>
+  </data>
+  <data name="Startup" xml:space="preserve">
+    <value>Start-up</value>
+  </data>
+  <data name="ConnectCamerasOnStartup" xml:space="preserve">
+    <value>Connect cameras on start-up</value>
+  </data>
+  <data name="StartMaximized" xml:space="preserve">
+    <value>Start maximised (fullscreen)</value>
+  </data>
+  <data name="StartRibbonCollapsed" xml:space="preserve">
+    <value>Start with ribbon collapsed</value>
+  </data>
+  <data name="CameraDisplay" xml:space="preserve">
+    <value>Camera Display</value>
+  </data>
+  <data name="OverlaySettings" xml:space="preserve">
+    <value>Overlay Settings</value>
+  </data>
+  <data name="ShowCameraOverlayTitle" xml:space="preserve">
+    <value>Show camera title</value>
+  </data>
+  <data name="ShowCameraOverlayDescription" xml:space="preserve">
+    <value>Show camera description</value>
+  </data>
+  <data name="ShowCameraOverlayTime" xml:space="preserve">
+    <value>Show current time</value>
+  </data>
+  <data name="ShowCameraOverlayConnectionStatus" xml:space="preserve">
+    <value>Show connection status</value>
+  </data>
+  <data name="ShowCameraOverlayQuickActions" xml:space="preserve">
+    <value>Show quick-action buttons</value>
+  </data>
+  <data name="OverlayOpacity" xml:space="preserve">
+    <value>Overlay opacity</value>
+  </data>
+  <data name="GridLayout" xml:space="preserve">
+    <value>Grid Layout</value>
+  </data>
+  <data name="AllowDragAndDropReorder" xml:space="preserve">
+    <value>Allow drag and drop reorder</value>
+  </data>
+  <data name="AutoSaveLayoutChanges" xml:space="preserve">
+    <value>Auto-save layout changes</value>
+  </data>
+  <data name="Connection" xml:space="preserve">
+    <value>Connection</value>
+  </data>
+  <data name="ConnectionSettings" xml:space="preserve">
+    <value>Connection Settings</value>
+  </data>
+  <data name="ConnectionTimeoutSeconds" xml:space="preserve">
+    <value>Connection timeout (seconds)</value>
+  </data>
+  <data name="ReconnectDelaySeconds" xml:space="preserve">
+    <value>Reconnect delay (seconds)</value>
+  </data>
+  <data name="MaxReconnectAttempts" xml:space="preserve">
+    <value>Maximum reconnect attempts</value>
+  </data>
+  <data name="AutoReconnectOnFailure" xml:space="preserve">
+    <value>Automatically reconnect on failure</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="ShowNotificationOnDisconnect" xml:space="preserve">
+    <value>Show notification on disconnect</value>
+  </data>
+  <data name="ShowNotificationOnReconnect" xml:space="preserve">
+    <value>Show notification on reconnect</value>
+  </data>
+  <data name="PlayNotificationSound" xml:space="preserve">
+    <value>Play notification sound</value>
+  </data>
+  <data name="Performance" xml:space="preserve">
+    <value>Performance</value>
+  </data>
+  <data name="VideoSettings" xml:space="preserve">
+    <value>Video Settings</value>
+  </data>
+  <data name="VideoQuality" xml:space="preserve">
+    <value>Video quality</value>
+  </data>
+  <data name="HardwareAcceleration" xml:space="preserve">
+    <value>Enable hardware acceleration</value>
+  </data>
+  <data name="LowLatencyMode" xml:space="preserve">
+    <value>Low latency mode</value>
+  </data>
+  <data name="BufferDurationMs" xml:space="preserve">
+    <value>Buffer duration (ms)</value>
+  </data>
+  <data name="Recording" xml:space="preserve">
+    <value>Recording</value>
+  </data>
+  <data name="RecordingSettings" xml:space="preserve">
+    <value>Recording Settings</value>
+  </data>
+  <data name="RecordingPath" xml:space="preserve">
+    <value>Recording folder</value>
+  </data>
+  <data name="SelectRecordingFolder" xml:space="preserve">
+    <value>Select recording folder...</value>
+  </data>
+  <data name="RecordingFormat" xml:space="preserve">
+    <value>Recording format</value>
+  </data>
+  <data name="TranscodeVideoCodec" xml:space="preserve">
+    <value>Recording video</value>
+  </data>
+  <data name="TranscodeVideoCodecInfo" xml:space="preserve">
+    <value>What the camera sends is recorded untouched, which costs next to nothing. "Always H.264" decodes and encodes a camera that sends anything else (H.265, MJPEG) while it is recorded: the files then play in every player and browser, at the price of processor time for each such camera. Cameras that already send H.264 are not affected. Takes effect the next time a camera connects.</value>
+  </data>
+  <data name="EnableRecordingOnMotion" xml:space="preserve">
+    <value>Enable recording on motion detection</value>
+  </data>
+  <data name="EnableRecordingOnConnect" xml:space="preserve">
+    <value>Start recording on connect</value>
+  </data>
+  <data name="Advanced" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="Logging" xml:space="preserve">
+    <value>Logging</value>
+  </data>
+  <data name="EnableDebugLogging" xml:space="preserve">
+    <value>Enable debug logging</value>
+  </data>
+  <data name="LogPath" xml:space="preserve">
+    <value>Log folder</value>
+  </data>
+  <data name="SelectLogFolder" xml:space="preserve">
+    <value>Select log folder...</value>
+  </data>
+  <data name="Maintenance" xml:space="preserve">
+    <value>Maintenance</value>
+  </data>
+  <data name="RestoreDefaults" xml:space="preserve">
+    <value>Restore Defaults</value>
+  </data>
+  <data name="Layouts" xml:space="preserve">
+    <value>Layouts</value>
+  </data>
+  <data name="CurrentLayoutGroup" xml:space="preserve">
+    <value>Current Layout</value>
+  </data>
+  <data name="Layout" xml:space="preserve">
+    <value>Layout</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="SetAsStartup" xml:space="preserve">
+    <value>Set as Startup</value>
+  </data>
+  <data name="Cameras" xml:space="preserve">
+    <value>Cameras</value>
+  </data>
+  <data name="Camera" xml:space="preserve">
+    <value>Camera</value>
+  </data>
+  <data name="ReconnectAll" xml:space="preserve">
+    <value>Reconnect All</value>
+  </data>
+  <data name="View" xml:space="preserve">
+    <value>View</value>
+  </data>
+  <data name="CamerasLabel" xml:space="preserve">
+    <value>Cameras</value>
+  </data>
+  <data name="ConnectedLabel" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="ApplicationTitle" xml:space="preserve">
+    <value>AtcSoft Camera Wall</value>
+  </data>
+  <data name="InitializePrefix" xml:space="preserve">
+    <value>Initialise:</value>
+  </data>
+  <data name="InitializeLoadConfiguration" xml:space="preserve">
+    <value>Load configuration</value>
+  </data>
+  <data name="InitializeStartHost" xml:space="preserve">
+    <value>Start host</value>
+  </data>
+  <data name="InitializeApplyUISettings" xml:space="preserve">
+    <value>Apply UI settings</value>
+  </data>
+  <data name="InitializeCameraEngine" xml:space="preserve">
+    <value>Camera engine</value>
+  </data>
+  <data name="InitializeLoadMainWindow" xml:space="preserve">
+    <value>Load main window</value>
+  </data>
+  <data name="InitializeComplete" xml:space="preserve">
+    <value>Complete</value>
+  </data>
+  <data name="SnapshotSettings" xml:space="preserve">
+    <value>Snapshot Settings</value>
+  </data>
+  <data name="SnapshotPath" xml:space="preserve">
+    <value>Snapshot folder</value>
+  </data>
+  <data name="SelectSnapshotFolder" xml:space="preserve">
+    <value>Select snapshot folder...</value>
+  </data>
+  <data name="Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="AssignCamera" xml:space="preserve">
+    <value>Assign Camera</value>
+  </data>
+  <data name="AssignCameraToLayout" xml:space="preserve">
+    <value>Assign Camera to Layout</value>
+  </data>
+  <data name="AssignCameraCancelled" xml:space="preserve">
+    <value>Assign camera cancelled</value>
+  </data>
+  <data name="AvailableCameras" xml:space="preserve">
+    <value>Available Cameras</value>
+  </data>
+  <data name="AssignedToLayout" xml:space="preserve">
+    <value>Assigned to Layout</value>
+  </data>
+  <data name="MoveToAssigned" xml:space="preserve">
+    <value>Move selected to assigned</value>
+  </data>
+  <data name="MoveToAvailable" xml:space="preserve">
+    <value>Move selected to available</value>
+  </data>
+  <data name="MoveAllToAssigned" xml:space="preserve">
+    <value>Move all to assigned</value>
+  </data>
+  <data name="MoveAllToAvailable" xml:space="preserve">
+    <value>Move all to available</value>
+  </data>
+  <data name="LayoutCamerasUpdated2" xml:space="preserve">
+    <value>Layout updated: {0} added, {1} removed</value>
+  </data>
+  <data name="MoveUp" xml:space="preserve">
+    <value>Move up</value>
+  </data>
+  <data name="MoveDown" xml:space="preserve">
+    <value>Move down</value>
+  </data>
+  <data name="LayoutOrderUpdated" xml:space="preserve">
+    <value>Layout order updated</value>
+  </data>
+  <data name="AdvancedSettings" xml:space="preserve">
+    <value>Advanced Settings</value>
+  </data>
+  <data name="UseLowLatencyMode" xml:space="preserve">
+    <value>Use low latency mode</value>
+  </data>
+  <data name="MaxLatencyMs" xml:space="preserve">
+    <value>Max latency (ms)</value>
+  </data>
+  <data name="RtspTransport" xml:space="preserve">
+    <value>RTSP transport</value>
+  </data>
+  <data name="UseLowLatencyModeInfo" xml:space="preserve">
+    <value>Enables optimised settings for minimal delay. Reduces buffer size and disables some processing to achieve near real-time video playback.</value>
+  </data>
+  <data name="MaxLatencyMsInfo" xml:space="preserve">
+    <value>Maximum allowed delay in milliseconds before the player skips frames to catch up. Lower values reduce delay but may cause stuttering on slow connections.</value>
+  </data>
+  <data name="RtspTransportInfo" xml:space="preserve">
+    <value>TCP is more reliable but may have higher latency. UDP is faster but packets may be lost on unstable networks.</value>
+  </data>
+  <data name="BufferDurationMsInfo" xml:space="preserve">
+    <value>Amount of video data to buffer before playback. Higher values provide smoother playback but increase delay. Set to 0 for minimal buffering in low latency mode.</value>
+  </data>
+  <data name="DefaultOverlayPosition" xml:space="preserve">
+    <value>Default Overlay Position</value>
+  </data>
+  <data name="DefaultProtocol" xml:space="preserve">
+    <value>Default Protocol</value>
+  </data>
+  <data name="DefaultPort" xml:space="preserve">
+    <value>Default Port</value>
+  </data>
+  <data name="DefaultCameraSettings" xml:space="preserve">
+    <value>Default Camera Settings</value>
+  </data>
+  <data name="StreamingSettings" xml:space="preserve">
+    <value>Streaming Settings</value>
+  </data>
+  <data name="Overrides" xml:space="preserve">
+    <value>Overrides</value>
+  </data>
+  <data name="UseDefaultSetting" xml:space="preserve">
+    <value>Use default</value>
+  </data>
+  <data name="DisplayOverrides" xml:space="preserve">
+    <value>Display Overrides</value>
+  </data>
+  <data name="ConnectionOverrides" xml:space="preserve">
+    <value>Connection Overrides</value>
+  </data>
+  <data name="PerformanceOverrides" xml:space="preserve">
+    <value>Performance Overrides</value>
+  </data>
+  <data name="RecordingOverrides" xml:space="preserve">
+    <value>Recording Overrides</value>
+  </data>
+  <data name="OverrideSettingsInfo" xml:space="preserve">
+    <value>Override application defaults for this camera only. Uncheck "Use default" to set a camera-specific value.</value>
+  </data>
+  <data name="StartRecording" xml:space="preserve">
+    <value>Start Recording</value>
+  </data>
+  <data name="StopRecording" xml:space="preserve">
+    <value>Stop Recording</value>
+  </data>
+  <data name="RecordingStarted1" xml:space="preserve">
+    <value>Recording started: {0}</value>
+  </data>
+  <data name="RecordingStopped1" xml:space="preserve">
+    <value>Recording stopped: {0}</value>
+  </data>
+  <data name="RecordingFailed1" xml:space="preserve">
+    <value>Recording failed: {0}</value>
+  </data>
+  <data name="Motion" xml:space="preserve">
+    <value>Motion</value>
+  </data>
+  <data name="MotionDetected1" xml:space="preserve">
+    <value>Motion detected: {0}</value>
+  </data>
+  <data name="MotionDetection" xml:space="preserve">
+    <value>Motion Detection</value>
+  </data>
+  <data name="MotionDetectionSettings" xml:space="preserve">
+    <value>Motion Detection Settings</value>
+  </data>
+  <data name="MotionSensitivity" xml:space="preserve">
+    <value>Motion sensitivity</value>
+  </data>
+  <data name="PostMotionDuration" xml:space="preserve">
+    <value>Post-motion recording duration (seconds)</value>
+  </data>
+  <data name="AnalysisFrameRate" xml:space="preserve">
+    <value>Analysis frame rate (FPS)</value>
+  </data>
+  <data name="AnalysisResolution" xml:space="preserve">
+    <value>Analysis resolution</value>
+  </data>
+  <data name="MinimumChangePercent" xml:space="preserve">
+    <value>Minimum change percentage</value>
+  </data>
+  <data name="CooldownSeconds" xml:space="preserve">
+    <value>Cooldown period (seconds)</value>
+  </data>
+  <data name="MotionOverrides" xml:space="preserve">
+    <value>Motion Detection Overrides</value>
+  </data>
+  <data name="BoundingBoxDisplay" xml:space="preserve">
+    <value>Bounding Box Display</value>
+  </data>
+  <data name="ShowBoundingBoxInGrid" xml:space="preserve">
+    <value>Show bounding boxes in grid view</value>
+  </data>
+  <data name="ShowBoundingBoxInFullScreen" xml:space="preserve">
+    <value>Show bounding boxes in full screen</value>
+  </data>
+  <data name="BoundingBoxColor" xml:space="preserve">
+    <value>Bounding box colour</value>
+  </data>
+  <data name="BoundingBoxThickness" xml:space="preserve">
+    <value>Bounding box thickness</value>
+  </data>
+  <data name="BoundingBoxMinArea" xml:space="preserve">
+    <value>Min. detection size</value>
+  </data>
+  <data name="BrowseRecordings" xml:space="preserve">
+    <value>Browse Recordings</value>
+  </data>
+  <data name="AllCameras" xml:space="preserve">
+    <value>All Cameras</value>
+  </data>
+  <data name="RecordingCamera" xml:space="preserve">
+    <value>Camera</value>
+  </data>
+  <data name="RecordingDateTime" xml:space="preserve">
+    <value>Date/Time</value>
+  </data>
+  <data name="RecordingSize" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="RecordingDuration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="Thumbnail" xml:space="preserve">
+    <value>Thumbnail</value>
+  </data>
+  <data name="ThumbnailPreviewTitle1" xml:space="preserve">
+    <value>Thumbnail - {0}</value>
+  </data>
+  <data name="FileName" xml:space="preserve">
+    <value>File Name</value>
+  </data>
+  <data name="PlayRecording" xml:space="preserve">
+    <value>Play</value>
+  </data>
+  <data name="DeleteRecording" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="OpenRecordingsFolder" xml:space="preserve">
+    <value>Open Folder</value>
+  </data>
+  <data name="ConfirmDeleteRecording" xml:space="preserve">
+    <value>Delete this recording?</value>
+  </data>
+  <data name="NoRecordingsFound" xml:space="preserve">
+    <value>No recordings found</value>
+  </data>
+  <data name="RecordingsFound1" xml:space="preserve">
+    <value>{0} recording(s) found</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Play" xml:space="preserve">
+    <value>Play</value>
+  </data>
+  <data name="Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="PressEscToClose" xml:space="preserve">
+    <value>Press ESC to close</value>
+  </data>
+  <data name="ClickOutsideToClose" xml:space="preserve">
+    <value>Click outside to close</value>
+  </data>
+  <data name="Recordings" xml:space="preserve">
+    <value>Recordings</value>
+  </data>
+  <data name="MediaCleanup" xml:space="preserve">
+    <value>Media Cleanup</value>
+  </data>
+  <data name="CleanupSchedule" xml:space="preserve">
+    <value>Cleanup schedule</value>
+  </data>
+  <data name="RecordingRetention" xml:space="preserve">
+    <value>Recording retention</value>
+  </data>
+  <data name="SnapshotRetention" xml:space="preserve">
+    <value>Snapshot retention</value>
+  </data>
+  <data name="IncludeSnapshotsInCleanup" xml:space="preserve">
+    <value>Include snapshots in cleanup</value>
+  </data>
+  <data name="CleanupScheduleDisabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="CleanupScheduleOnStartup" xml:space="preserve">
+    <value>On Application Startup</value>
+  </data>
+  <data name="CleanupScheduleOnStartupAndPeriodically" xml:space="preserve">
+    <value>On Startup and Every 6 Hours</value>
+  </data>
+  <data name="RetentionPeriod7Days" xml:space="preserve">
+    <value>7 Days</value>
+  </data>
+  <data name="RetentionPeriod14Days" xml:space="preserve">
+    <value>14 Days</value>
+  </data>
+  <data name="RetentionPeriod30Days" xml:space="preserve">
+    <value>30 Days</value>
+  </data>
+  <data name="RetentionPeriod60Days" xml:space="preserve">
+    <value>60 Days</value>
+  </data>
+  <data name="RetentionPeriod90Days" xml:space="preserve">
+    <value>90 Days</value>
+  </data>
+  <data name="RetentionPeriod6Months" xml:space="preserve">
+    <value>6 Months</value>
+  </data>
+  <data name="RetentionPeriod1Year" xml:space="preserve">
+    <value>1 Year</value>
+  </data>
+  <data name="EnableDiskSpaceGuard" xml:space="preserve">
+    <value>Enable disk space guard</value>
+  </data>
+  <data name="MinFreeSpace" xml:space="preserve">
+    <value>Minimum free disk space</value>
+  </data>
+  <data name="MinFreeSpace500Mb" xml:space="preserve">
+    <value>500 MB</value>
+  </data>
+  <data name="MinFreeSpace1Gb" xml:space="preserve">
+    <value>1 GB</value>
+  </data>
+  <data name="MinFreeSpace2Gb" xml:space="preserve">
+    <value>2 GB (Recommended)</value>
+  </data>
+  <data name="MinFreeSpace5Gb" xml:space="preserve">
+    <value>5 GB</value>
+  </data>
+  <data name="MinFreeSpace10Gb" xml:space="preserve">
+    <value>10 GB</value>
+  </data>
+  <data name="MinFreeSpace20Gb" xml:space="preserve">
+    <value>20 GB</value>
+  </data>
+  <data name="RecordingSegmentation" xml:space="preserve">
+    <value>Recording Segmentation</value>
+  </data>
+  <data name="EnableHourlySegmentation" xml:space="preserve">
+    <value>Enable hourly segmentation</value>
+  </data>
+  <data name="MaxRecordingDuration" xml:space="preserve">
+    <value>Maximum recording duration</value>
+  </data>
+  <data name="PlaybackOverlaySettings" xml:space="preserve">
+    <value>Playback Overlay Settings</value>
+  </data>
+  <data name="ShowPlaybackFilename" xml:space="preserve">
+    <value>Show filename</value>
+  </data>
+  <data name="PlaybackFilenameColor" xml:space="preserve">
+    <value>Filename colour</value>
+  </data>
+  <data name="ShowPlaybackTimestamp" xml:space="preserve">
+    <value>Show timestamp</value>
+  </data>
+  <data name="PlaybackTimestampColor" xml:space="preserve">
+    <value>Timestamp colour</value>
+  </data>
+  <data name="ThumbnailTileCount" xml:space="preserve">
+    <value>Thumbnail tiles</value>
+  </data>
+  <data name="Day" xml:space="preserve">
+    <value>Day</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="FilterAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="FilterToday" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="FilterYesterday" xml:space="preserve">
+    <value>Yesterday</value>
+  </data>
+  <data name="FilterLast7Days" xml:space="preserve">
+    <value>Last 7 Days</value>
+  </data>
+  <data name="FilterLast30Days" xml:space="preserve">
+    <value>Last 30 Days</value>
+  </data>
+  <data name="FilterThisWeek" xml:space="preserve">
+    <value>This Week</value>
+  </data>
+  <data name="FilterThisMonth" xml:space="preserve">
+    <value>This Month</value>
+  </data>
+  <data name="FilterNight" xml:space="preserve">
+    <value>00:00 - 06:00 (Night)</value>
+  </data>
+  <data name="FilterMorning" xml:space="preserve">
+    <value>06:00 - 12:00 (Morning)</value>
+  </data>
+  <data name="FilterAfternoon" xml:space="preserve">
+    <value>12:00 - 18:00 (Afternoon)</value>
+  </data>
+  <data name="FilterEvening" xml:space="preserve">
+    <value>18:00 - 24:00 (Evening)</value>
+  </data>
+  <data name="EnableTimelapse" xml:space="preserve">
+    <value>Enable Timelapse Capture</value>
+  </data>
+  <data name="TimelapseInterval" xml:space="preserve">
+    <value>Capture Interval</value>
+  </data>
+  <data name="TimelapseSettings" xml:space="preserve">
+    <value>Timelapse Settings</value>
+  </data>
+  <data name="Capture" xml:space="preserve">
+    <value>Capture</value>
+  </data>
+  <data name="Storage" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="Timelapse" xml:space="preserve">
+    <value>Timelapse</value>
+  </data>
+  <data name="CaptureOverrides" xml:space="preserve">
+    <value>Capture Overrides</value>
+  </data>
+  <data name="TimelapseOverrides" xml:space="preserve">
+    <value>Timelapse Overrides</value>
+  </data>
+  <data name="OverrideToggleMaster" xml:space="preserve">
+    <value>Master</value>
+  </data>
+  <data name="OverrideToggleLocal" xml:space="preserve">
+    <value>Local</value>
+  </data>
+  <data name="UpdateAvailable" xml:space="preserve">
+    <value>Update Available</value>
+  </data>
+  <data name="UpdateAvailableMessage1" xml:space="preserve">
+    <value>Version {0} is available. Click to download.</value>
+  </data>
+  <data name="MotionSensitivityInfo" xml:space="preserve">
+    <value>Controls how easily motion is detected. Higher values detect smaller movements but may trigger false alerts from noise or lighting changes.</value>
+  </data>
+  <data name="PostMotionDurationInfo" xml:space="preserve">
+    <value>How many seconds to keep recording after motion stops. Ensures the full event is captured even if movement pauses briefly.</value>
+  </data>
+  <data name="AnalysisFrameRateInfo" xml:space="preserve">
+    <value>Number of frames analysed per second for motion. Higher values detect motion faster but use more CPU. Values between 5 and 15 are recommended.</value>
+  </data>
+  <data name="AnalysisResolutionInfo" xml:space="preserve">
+    <value>The longer side of the picture used for motion analysis, in pixels; the other side follows the camera's picture. Smaller is faster and uses less CPU, larger finds smaller objects more accurately.</value>
+  </data>
+  <data name="CooldownSecondsInfo" xml:space="preserve">
+    <value>Minimum wait time in seconds after a recording stops before a new motion-triggered recording can start. Prevents rapid on/off recording cycles.</value>
+  </data>
+  <data name="BoundingBoxMinAreaInfo" xml:space="preserve">
+    <value>Minimum size of a motion region before a bounding box is drawn. Larger values ignore small movements like insects or pixel noise.</value>
+  </data>
+  <data name="VideoQualityInfo" xml:space="preserve">
+    <value>Maximum video resolution for playback. Lower quality reduces bandwidth and CPU usage. 'Auto' uses the best quality available from the camera.</value>
+  </data>
+  <data name="HardwareAccelerationInfo" xml:space="preserve">
+    <value>Uses your graphics card (GPU) to decode video instead of the CPU. Significantly reduces CPU load and improves performance with multiple cameras.</value>
+  </data>
+  <data name="VideoQualityAuto" xml:space="preserve">
+    <value>Auto (Source Quality)</value>
+  </data>
+  <data name="OverlayPositionTopLeft" xml:space="preserve">
+    <value>Top Left</value>
+  </data>
+  <data name="OverlayPositionTopRight" xml:space="preserve">
+    <value>Top Right</value>
+  </data>
+  <data name="OverlayPositionBottomLeft" xml:space="preserve">
+    <value>Bottom Left</value>
+  </data>
+  <data name="OverlayPositionBottomRight" xml:space="preserve">
+    <value>Bottom Right</value>
+  </data>
+  <data name="RotationNone" xml:space="preserve">
+    <value>0° (None)</value>
+  </data>
+  <data name="RotationRotate90Degrees" xml:space="preserve">
+    <value>90°</value>
+  </data>
+  <data name="RotationRotate180Degrees" xml:space="preserve">
+    <value>180°</value>
+  </data>
+  <data name="RotationRotate270Degrees" xml:space="preserve">
+    <value>270°</value>
+  </data>
+  <data name="MotionSensitivityLow" xml:space="preserve">
+    <value>Low (10)</value>
+  </data>
+  <data name="MotionSensitivityMedium" xml:space="preserve">
+    <value>Medium (30)</value>
+  </data>
+  <data name="MotionSensitivityHigh" xml:space="preserve">
+    <value>High (50)</value>
+  </data>
+  <data name="MotionSensitivityVeryHigh" xml:space="preserve">
+    <value>Very High (70)</value>
+  </data>
+  <data name="BoundingBoxMinAreaTiny" xml:space="preserve">
+    <value>10 px² (Tiny)</value>
+  </data>
+  <data name="BoundingBoxMinAreaSmall" xml:space="preserve">
+    <value>25 px² (Small)</value>
+  </data>
+  <data name="BoundingBoxMinAreaMedium" xml:space="preserve">
+    <value>50 px² (Medium)</value>
+  </data>
+  <data name="BoundingBoxMinAreaLarge" xml:space="preserve">
+    <value>100 px² (Large)</value>
+  </data>
+  <data name="BoundingBoxMinAreaVeryLarge" xml:space="preserve">
+    <value>200 px² (Very Large)</value>
+  </data>
+  <data name="MotionResolutionLowCpu" xml:space="preserve">
+    <value>320x240 (Low CPU)</value>
+  </data>
+  <data name="MotionResolutionBalanced" xml:space="preserve">
+    <value>480x360 (Balanced)</value>
+  </data>
+  <data name="MotionResolutionBetterDetection" xml:space="preserve">
+    <value>640x480 (Better Detection)</value>
+  </data>
+  <data name="MotionResolutionHighCpu" xml:space="preserve">
+    <value>800x600 (High CPU)</value>
+  </data>
+  <data name="MotionResolutionVeryHighCpu" xml:space="preserve">
+    <value>960x720 (Very High CPU)</value>
+  </data>
+  <data name="Duration5Seconds" xml:space="preserve">
+    <value>5 seconds</value>
+  </data>
+  <data name="Duration10Seconds" xml:space="preserve">
+    <value>10 seconds</value>
+  </data>
+  <data name="Duration15Seconds" xml:space="preserve">
+    <value>15 seconds</value>
+  </data>
+  <data name="Duration30Seconds" xml:space="preserve">
+    <value>30 seconds</value>
+  </data>
+  <data name="Duration1Minute" xml:space="preserve">
+    <value>1 minute</value>
+  </data>
+  <data name="Duration5Minutes" xml:space="preserve">
+    <value>5 minutes</value>
+  </data>
+  <data name="Duration10Minutes" xml:space="preserve">
+    <value>10 minutes</value>
+  </data>
+  <data name="Duration15Minutes" xml:space="preserve">
+    <value>15 minutes</value>
+  </data>
+  <data name="Duration30Minutes" xml:space="preserve">
+    <value>30 minutes</value>
+  </data>
+  <data name="Duration1Hour" xml:space="preserve">
+    <value>1 hour</value>
+  </data>
+  <data name="Duration2Hours" xml:space="preserve">
+    <value>2 hours</value>
+  </data>
+  <data name="Duration3Hours" xml:space="preserve">
+    <value>3 hours</value>
+  </data>
+  <data name="Duration4Hours" xml:space="preserve">
+    <value>4 hours</value>
+  </data>
+  <data name="Duration6Hours" xml:space="preserve">
+    <value>6 hours</value>
+  </data>
+  <data name="Duration12Hours" xml:space="preserve">
+    <value>12 hours</value>
+  </data>
+  <data name="Duration24Hours" xml:space="preserve">
+    <value>24 hours</value>
+  </data>
+  <data name="ThumbnailTileOne" xml:space="preserve">
+    <value>1 tile (320x240)</value>
+  </data>
+  <data name="ThumbnailTileFour" xml:space="preserve">
+    <value>2x2 grid (640x480)</value>
+  </data>
+  <data name="RecordingFormatMp4Video" xml:space="preserve">
+    <value>MP4 (H.264)</value>
+  </data>
+  <data name="RecordingFormatMkv" xml:space="preserve">
+    <value>MKV (Matroska)</value>
+  </data>
+  <data name="Source" xml:space="preserve">
+    <value>Source:</value>
+  </data>
+  <data name="SourceTypeNetwork" xml:space="preserve">
+    <value>Network camera</value>
+  </data>
+  <data name="SourceTypeUsb" xml:space="preserve">
+    <value>USB / Webcam</value>
+  </data>
+  <data name="SelectUsbDevice" xml:space="preserve">
+    <value>USB Device</value>
+  </data>
+  <data name="UsbWidth" xml:space="preserve">
+    <value>Width</value>
+  </data>
+  <data name="UsbHeight" xml:space="preserve">
+    <value>Height</value>
+  </data>
+  <data name="UsbResolution" xml:space="preserve">
+    <value>Resolution</value>
+  </data>
+  <data name="UsbFrameRate" xml:space="preserve">
+    <value>Frame rate</value>
+  </data>
+  <data name="UsbPixelFormat" xml:space="preserve">
+    <value>Pixel format</value>
+  </data>
+  <data name="UsbCaptureAudio" xml:space="preserve">
+    <value>Capture audio</value>
+  </data>
+  <data name="UsbAudioDeviceName" xml:space="preserve">
+    <value>Audio device</value>
+  </data>
+  <data name="UsbDeviceBusy" xml:space="preserve">
+    <value>Device in use by another app</value>
+  </data>
+  <data name="UsbDeviceUnplugged" xml:space="preserve">
+    <value>Device unplugged</value>
+  </data>
+  <data name="UsbCameraUnpluggedToast1" xml:space="preserve">
+    <value>USB camera '{0}' was unplugged</value>
+  </data>
+  <data name="UsbCameraReconnectedToast1" xml:space="preserve">
+    <value>USB camera '{0}' reconnected</value>
+  </data>
+  <data name="ConnectionType" xml:space="preserve">
+    <value>Connection type</value>
+  </data>
+  <data name="ConnectionTypeNone" xml:space="preserve">
+    <value>Not set</value>
+  </data>
+  <data name="ConnectionTypeLan" xml:space="preserve">
+    <value>Wired (LAN)</value>
+  </data>
+  <data name="ConnectionTypeWifi" xml:space="preserve">
+    <value>Wi-Fi</value>
+  </data>
+  <data name="ConnectionTypeUsb" xml:space="preserve">
+    <value>USB</value>
+  </data>
+  <data name="ShowCameraOverlayConnectionTypeIcon" xml:space="preserve">
+    <value>Show connection-type icon</value>
+  </data>
+  <data name="ConnectionTypeIconPosition" xml:space="preserve">
+    <value>Connection-type icon position</value>
+  </data>
+  <data name="ConnectionTypeIconPositionSameRowFormat1" xml:space="preserve">
+    <value>{0} (same row as info box)</value>
+  </data>
+  <data name="ConnectionTypeIconPositionSameColumnFormat1" xml:space="preserve">
+    <value>{0} (same column as info box)</value>
+  </data>
+  <data name="DetectConnectionType" xml:space="preserve">
+    <value>Detect</value>
+  </data>
+  <data name="ConnectionTypeDetecting" xml:space="preserve">
+    <value>Detecting…</value>
+  </data>
+  <data name="ConnectionTypeDetectFailed" xml:space="preserve">
+    <value>Could not detect the connection type</value>
+  </data>
+  <data name="ConnectionTypeDetectedFormat1" xml:space="preserve">
+    <value>Detected: {0}</value>
+  </data>
+  <data name="UseDailySubfolders" xml:space="preserve">
+    <value>Use a folder per day</value>
+  </data>
+  <data name="SeparateThumbnailFolder" xml:space="preserve">
+    <value>Keep thumbnails in a separate folder</value>
+  </data>
+  <data name="RecordingLayoutOnOffHint2" xml:space="preserve">
+    <value>On:  {0}&#xD;&#xA;Off: {1}</value>
+  </data>
+  <data name="RecordingLayoutExampleSummary2" xml:space="preserve">
+    <value>Video:&#xD;&#xA;  {0}&#xD;&#xA;Thumbnail:&#xD;&#xA;  {1}&#xD;&#xA;Existing recordings are moved when you save.</value>
+  </data>
+  <data name="RecordingLayoutMoving" xml:space="preserve">
+    <value>Moving recordings...</value>
+  </data>
+  <data name="RecordingsBrowserSettings" xml:space="preserve">
+    <value>Recordings Browser</value>
+  </data>
+  <data name="CloseRecordingsBrowserOnPlay" xml:space="preserve">
+    <value>Close the browser when a recording is played</value>
+  </data>
+  <data name="CloseRecordingsBrowserOnPlayHint" xml:space="preserve">
+    <value>Off: the browser stays open behind the player, ready for the next recording.&#xD;&#xA;On:  the browser closes when playback starts.</value>
+  </data>
+  <data name="RememberRecordingsBrowserState" xml:space="preserve">
+    <value>Reopen the browser with the last filters and selection</value>
+  </data>
+  <data name="RememberRecordingsBrowserStateHint" xml:space="preserve">
+    <value>On:  the browser opens with the camera, day and time filters and the recording you last used.&#xD;&#xA;Off: the browser always opens with all recordings.&#xD;&#xA;Remembered until the app is closed.</value>
+  </data>
+  <data name="KeyboardShortcuts" xml:space="preserve">
+    <value>Keyboard Shortcuts</value>
+  </data>
+  <data name="KeyboardShortcutsText" xml:space="preserve">
+    <value>Ctrl+1 to Ctrl+9	Switch to that layout in the list&#xD;&#xA;Ctrl+Alt+0	Grid: automatic, all cameras&#xD;&#xA;Ctrl+Alt+1 to Ctrl+Alt+4	Grid: 1 x 1, 2 x 2, 3 x 3 or 4 x 4&#xD;&#xA;Page Down / Page Up	Next or previous page of cameras&#xD;&#xA;Ctrl+N	Add a camera&#xD;&#xA;Ctrl+Shift+N	New layout&#xD;&#xA;Ctrl+R	Browse recordings&#xD;&#xA;Ctrl+,	Settings&#xD;&#xA;F5	Reconnect all cameras&#xD;&#xA;F1	This list&#xD;&#xA;&#xD;&#xA;In the recordings browser:&#xD;&#xA;Enter	Play the selected recording&#xD;&#xA;Esc	Close the player or the browser</value>
+  </data>
+  <data name="GridSizeGroup" xml:space="preserve">
+    <value>Grid</value>
+  </data>
+  <data name="GridSize" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="GridSizeAuto" xml:space="preserve">
+    <value>Automatic (all cameras)</value>
+  </data>
+  <data name="GridSizeInfo" xml:space="preserve">
+    <value>Automatic shows every camera and grows with their number. A fixed size shows that many cameras at a time; the others are on the next pages and stay connected and recorded.</value>
+  </data>
+  <data name="PreviousPage" xml:space="preserve">
+    <value>Previous page</value>
+  </data>
+  <data name="NextPage" xml:space="preserve">
+    <value>Next page</value>
+  </data>
+  <data name="PageLabel" xml:space="preserve">
+    <value>Page:</value>
+  </data>
+  <data name="DiskSpaceLabel" xml:space="preserve">
+    <value>Disk:</value>
+  </data>
+  <data name="DiskSpaceInfo" xml:space="preserve">
+    <value>The disk with the recordings. Shown in red when less is free than the recordings need (Settings, Storage); new recordings are then refused.</value>
+  </data>
+  <data name="RecordingInProgress" xml:space="preserve">
+    <value>Recording…</value>
+  </data>
+  <data name="RecordingInProgressInfo" xml:space="preserve">
+    <value>This file is still being recorded. It can be played and deleted when the recording has ended.</value>
+  </data>
+  <data name="FailedToSaveSettings1" xml:space="preserve">
+    <value>The settings could not be saved: {0}</value>
+  </data>
+  <data name="RotationClockwise" xml:space="preserve">
+    <value>Rotation (clockwise)</value>
+  </data>
+  <data name="Authentication" xml:space="preserve">
+    <value>Authentication</value>
+  </data>
+  <data name="StreamSettings" xml:space="preserve">
+    <value>Stream Settings</value>
+  </data>
+  <data name="LayoutName" xml:space="preserve">
+    <value>Layout Name</value>
+  </data>
+  <data name="Rows" xml:space="preserve">
+    <value>Rows</value>
+  </data>
+  <data name="Columns" xml:space="preserve">
+    <value>Columns</value>
+  </data>
+  <data name="MotionBadge" xml:space="preserve">
+    <value>MOTION</value>
+  </data>
+  <data name="Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="FilterCamerasToolTip" xml:space="preserve">
+    <value>Show the cameras that contain this text</value>
+  </data>
+  <data name="ClearFilter" xml:space="preserve">
+    <value>Clear the filter</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="CaptureSnapshot" xml:space="preserve">
+    <value>Capture Snapshot</value>
+  </data>
+  <data name="LoadingCameras" xml:space="preserve">
+    <value>Loading cameras...</value>
+  </data>
+  <data name="Dashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="TotalCameras" xml:space="preserve">
+    <value>Total Cameras</value>
+  </data>
+  <data name="ActiveRecordings" xml:space="preserve">
+    <value>Active Recordings</value>
+  </data>
+  <data name="AddLayout" xml:space="preserve">
+    <value>Add Layout</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="GridSizeHeader" xml:space="preserve">
+    <value>Grid Size</value>
+  </data>
+  <data name="CameraCount" xml:space="preserve">
+    <value>Camera Count</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="LoadingLayouts" xml:space="preserve">
+    <value>Loading layouts...</value>
+  </data>
+  <data name="FilterCamerasByNameToolTip" xml:space="preserve">
+    <value>Show the cameras whose name or description contains this text</value>
+  </data>
+  <data name="GridSizeToolTip" xml:space="preserve">
+    <value>Automatic shows every camera. A fixed size shows that many at a time; the others are on the next pages.</value>
+  </data>
+  <data name="NoCameraMatchesFilter" xml:space="preserve">
+    <value>No camera matches the filter.</value>
+  </data>
+  <data name="NotificationHistory" xml:space="preserve">
+    <value>Notification History</value>
+  </data>
+  <data name="Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="Title" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="NoNotificationsYet" xml:space="preserve">
+    <value>No notifications yet.</value>
+  </data>
+  <data name="LoadingRecordings" xml:space="preserve">
+    <value>Loading recordings...</value>
+  </data>
+  <data name="EditCameraTitle" xml:space="preserve">
+    <value>Edit Camera</value>
+  </data>
+  <data name="EditLayout" xml:space="preserve">
+    <value>Edit Layout</value>
+  </data>
+  <data name="ServerAnswered2" xml:space="preserve">
+    <value>The server answered {0} ({1}).</value>
+  </data>
+  <data name="ServerConnectionLost" xml:space="preserve">
+    <value>Server Connection Lost</value>
+  </data>
+  <data name="ServerConnectionLostMessage" xml:space="preserve">
+    <value>The connection to the surveillance server has been lost.</value>
+  </data>
+  <data name="ServerConnected" xml:space="preserve">
+    <value>Server Connected</value>
+  </data>
+  <data name="ServerConnectionRestoredMessage" xml:space="preserve">
+    <value>The connection to the surveillance server has been restored.</value>
+  </data>
+  <data name="CameraDisconnectedNotification" xml:space="preserve">
+    <value>Camera disconnected</value>
+  </data>
+  <data name="CameraConnectedNotification" xml:space="preserve">
+    <value>Camera connected</value>
+  </data>
+  <data name="RecordingStartedNotification" xml:space="preserve">
+    <value>Recording started</value>
+  </data>
+  <data name="RecordingStoppedNotification" xml:space="preserve">
+    <value>Recording stopped</value>
+  </data>
+  <data name="MotionDetectedPercent1" xml:space="preserve">
+    <value>Motion detected ({0:F1}%)</value>
+  </data>
+  <data name="CameraShortId1" xml:space="preserve">
+    <value>Camera {0}</value>
+  </data>
+  <data name="ProbeConnected1" xml:space="preserve">
+    <value>Connected ({0})</value>
+  </data>
+  <data name="ProbeFailedStatus2" xml:space="preserve">
+    <value>Failed: {0} {1}</value>
+  </data>
+  <data name="ProbeTimedOut" xml:space="preserve">
+    <value>Failed: Connection timed out</value>
+  </data>
+  <data name="ProbeFailed1" xml:space="preserve">
+    <value>Failed: {0}</value>
+  </data>
+  <data name="PngImageFileFilter" xml:space="preserve">
+    <value>PNG Image|*.png</value>
+  </data>
+  <data name="NoStream" xml:space="preserve">
+    <value>No Stream</value>
+  </data>
+  <data name="AllDays" xml:space="preserve">
+    <value>All Days</value>
+  </data>
+  <data name="AllTimes" xml:space="preserve">
+    <value>All Times</value>
+  </data>
+  <data name="FailedToLoadRecordings1" xml:space="preserve">
+    <value>Failed to load recordings: {0}</value>
+  </data>
+  <data name="ConnectToServer" xml:space="preserve">
+    <value>Connect to Server</value>
+  </data>
+  <data name="ServerProfiles" xml:space="preserve">
+    <value>Server Profiles</value>
+  </data>
+  <data name="Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="ServerUrl" xml:space="preserve">
+    <value>Server URL</value>
+  </data>
+  <data name="TestConnection" xml:space="preserve">
+    <value>Test Connection</value>
+  </data>
+  <data name="ExitApplication" xml:space="preserve">
+    <value>Exit Application</value>
+  </data>
+  <data name="Connect" xml:space="preserve">
+    <value>Connect</value>
+  </data>
+  <data name="ServerProfile" xml:space="preserve">
+    <value>Server Profile</value>
+  </data>
+  <data name="OptionalDescription" xml:space="preserve">
+    <value>Optional description</value>
+  </data>
+  <data name="LiveView" xml:space="preserve">
+    <value>Live View</value>
+  </data>
+  <data name="ChangeServer" xml:space="preserve">
+    <value>Change Server</value>
+  </data>
+  <data name="StartWithWindows" xml:space="preserve">
+    <value>Start with Windows</value>
+  </data>
+  <data name="StartWithWindowsInfo" xml:space="preserve">
+    <value>Run this app automatically when you sign in to Windows. Stored under HKCU so no admin rights are required.</value>
+  </data>
+  <data name="ExportDiagnostics" xml:space="preserve">
+    <value>Export Diagnostics</value>
+  </data>
+  <data name="ExportDiagnosticsInfo" xml:space="preserve">
+    <value>Save a JSON snapshot of client state, server URL, hub status, and camera list — for support / issue triage.</value>
+  </data>
+  <data name="Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="ServerStatusLabel" xml:space="preserve">
+    <value>Server: </value>
+  </data>
+  <data name="CamerasStatusLabel" xml:space="preserve">
+    <value>Cameras: </value>
+  </data>
+  <data name="RecordingsStatusLabel" xml:space="preserve">
+    <value>Recordings: </value>
+  </data>
+  <data name="DiskStatusInfo" xml:space="preserve">
+    <value>The server's disk with the recordings. Shown in red when less is free than the recordings need; new recordings are then refused.</value>
+  </data>
+  <data name="DiskStatusLabel" xml:space="preserve">
+    <value>Disk: </value>
+  </data>
+  <data name="LatencyStatusLabel" xml:space="preserve">
+    <value>Latency: </value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="VersionNumber1" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="LoadingConfiguration" xml:space="preserve">
+    <value>Loading configuration...</value>
+  </data>
+  <data name="InitializingVideoEngine" xml:space="preserve">
+    <value>Initialising video engine...</value>
+  </data>
+  <data name="StartingServices" xml:space="preserve">
+    <value>Starting services...</value>
+  </data>
+  <data name="ApplyingSettings" xml:space="preserve">
+    <value>Applying settings...</value>
+  </data>
+  <data name="ConnectingToServer" xml:space="preserve">
+    <value>Connecting to server...</value>
+  </data>
+  <data name="LoadingMainWindow" xml:space="preserve">
+    <value>Loading main window...</value>
+  </data>
+  <data name="ViewCameras" xml:space="preserve">
+    <value>View Cameras</value>
+  </data>
+  <data name="RefreshCurrentView" xml:space="preserve">
+    <value>Refresh Current View</value>
+  </data>
+  <data name="ToggleFullScreen" xml:space="preserve">
+    <value>Toggle Full Screen</value>
+  </data>
+  <data name="Testing" xml:space="preserve">
+    <value>Testing...</value>
+  </data>
+  <data name="JsonFileFilter" xml:space="preserve">
+    <value>JSON file (*.json)|*.json|All files (*.*)|*.*</value>
+  </data>
+  <data name="DiagnosticsExportedTo1" xml:space="preserve">
+    <value>Diagnostics exported to {0}</value>
+  </data>
+  <data name="DiagnosticsExportFailed1" xml:space="preserve">
+    <value>Diagnostics export failed: {0}</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="AFolderOnTheServer" xml:space="preserve">
+    <value>A folder on the server.</value>
+  </data>
+  <data name="ConfiguredReceiverInfo" xml:space="preserve">
+    <value>A receiver from the server's configuration is changed there, not here.</value>
+  </data>
+  <data name="AccentColour" xml:space="preserve">
+    <value>Accent colour</value>
+  </data>
+  <data name="AddReceiver" xml:space="preserve">
+    <value>Add receiver</value>
+  </data>
+  <data name="AddTheFirstCamera" xml:space="preserve">
+    <value>Add the first camera</value>
+  </data>
+  <data name="Address" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Analysis" xml:space="preserve">
+    <value>Analysis</value>
+  </data>
+  <data name="AnalysisFramesPerSecond" xml:space="preserve">
+    <value>Analysis frame rate (per second)</value>
+  </data>
+  <data name="DesktopAppsAppearance" xml:space="preserve">
+    <value>Appearance of the desktop apps</value>
+  </data>
+  <data name="BoundingBox" xml:space="preserve">
+    <value>Bounding box</value>
+  </data>
+  <data name="CameraOverlay" xml:space="preserve">
+    <value>Camera overlay</value>
+  </data>
+  <data name="CleanUp" xml:space="preserve">
+    <value>Clean-up</value>
+  </data>
+  <data name="Colour" xml:space="preserve">
+    <value>Colour</value>
+  </data>
+  <data name="Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="CreateLayout" xml:space="preserve">
+    <value>Create Layout</value>
+  </data>
+  <data name="CreateALayout" xml:space="preserve">
+    <value>Create a layout</value>
+  </data>
+  <data name="ThemeDark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="NewCameraDefaults" xml:space="preserve">
+    <value>Defaults for a new camera</value>
+  </data>
+  <data name="DeleteOldMedia" xml:space="preserve">
+    <value>Delete old media</value>
+  </data>
+  <data name="DeleteOldSnapshotsToo" xml:space="preserve">
+    <value>Delete old snapshots too</value>
+  </data>
+  <data name="DeleteOldestWhenDiskLow" xml:space="preserve">
+    <value>Delete the oldest recordings when disk space runs low</value>
+  </data>
+  <data name="DiscardChanges" xml:space="preserve">
+    <value>Discard changes</value>
+  </data>
+  <data name="Display" xml:space="preserve">
+    <value>Display</value>
+  </data>
+  <data name="Download" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="DownloadASnapshot" xml:space="preserve">
+    <value>Download a snapshot</value>
+  </data>
+  <data name="Empty" xml:space="preserve">
+    <value>Empty</value>
+  </data>
+  <data name="Events" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="FileNameColour" xml:space="preserve">
+    <value>File name colour</value>
+  </data>
+  <data name="FolderLayout" xml:space="preserve">
+    <value>Folder layout</value>
+  </data>
+  <data name="FreeSpaceToKeep" xml:space="preserve">
+    <value>Free space to keep</value>
+  </data>
+  <data name="MotionSensitivityHelp" xml:space="preserve">
+    <value>How much of the picture has to change before it counts as motion.</value>
+  </data>
+  <data name="Interval" xml:space="preserve">
+    <value>Interval</value>
+  </data>
+  <data name="KeepRecordingAfterMotion" xml:space="preserve">
+    <value>Keep recording after motion</value>
+  </data>
+  <data name="KeepRecordingsFor" xml:space="preserve">
+    <value>Keep recordings for</value>
+  </data>
+  <data name="KeepSnapshotsFor" xml:space="preserve">
+    <value>Keep snapshots for</value>
+  </data>
+  <data name="PictureSizeCostHelp" xml:space="preserve">
+    <value>Larger pictures cost more processor time to record and to watch.</value>
+  </data>
+  <data name="Length" xml:space="preserve">
+    <value>Length</value>
+  </data>
+  <data name="DiskLowRecordingsRefused" xml:space="preserve">
+    <value>Less is free than the recordings need. New recordings are refused until space is freed.</value>
+  </data>
+  <data name="ThemeLight" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="ListCameras" xml:space="preserve">
+    <value>List Cameras</value>
+  </data>
+  <data name="ListLayouts" xml:space="preserve">
+    <value>List Layouts</value>
+  </data>
+  <data name="LongestSegment" xml:space="preserve">
+    <value>Longest segment</value>
+  </data>
+  <data name="RecordingFormatHelp" xml:space="preserve">
+    <value>MP4 plays in a browser and in most players. MKV keeps more of an unfinished file after a crash, but a browser usually cannot play it.</value>
+  </data>
+  <data name="StartUpLayoutHelp" xml:space="preserve">
+    <value>Makes this the layout the server's clients start with</value>
+  </data>
+  <data name="Microphone" xml:space="preserve">
+    <value>Microphone</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="NoCamerasYet" xml:space="preserve">
+    <value>No cameras yet.</value>
+  </data>
+  <data name="NoLayoutsConfigured" xml:space="preserve">
+    <value>No layouts configured. Create one above.</value>
+  </data>
+  <data name="NoReceiversYet" xml:space="preserve">
+    <value>No receivers yet. Click "Add receiver" to send the server's events somewhere.</value>
+  </data>
+  <data name="DesktopAppsNotifications" xml:space="preserve">
+    <value>Notifications in the desktop apps</value>
+  </data>
+  <data name="NotifyOnDisconnect" xml:space="preserve">
+    <value>Notify when a camera disconnects</value>
+  </data>
+  <data name="NotifyOnReconnect" xml:space="preserve">
+    <value>Notify when a camera reconnects</value>
+  </data>
+  <data name="PaddingPixels" xml:space="preserve">
+    <value>Padding (pixels)</value>
+  </data>
+  <data name="PictureSize" xml:space="preserve">
+    <value>Picture size</value>
+  </data>
+  <data name="PicturesASecond" xml:space="preserve">
+    <value>Pictures a second</value>
+  </data>
+  <data name="PlayASound" xml:space="preserve">
+    <value>Play a sound</value>
+  </data>
+  <data name="DesktopAppsPlaybackOverlay" xml:space="preserve">
+    <value>Playback overlay in the desktop apps</value>
+  </data>
+  <data name="ReconnectAutomatically" xml:space="preserve">
+    <value>Reconnect automatically</value>
+  </data>
+  <data name="RecordSound" xml:space="preserve">
+    <value>Record sound</value>
+  </data>
+  <data name="RecordWhenCameraConnects" xml:space="preserve">
+    <value>Record when a camera connects</value>
+  </data>
+  <data name="RecordWhenMotionDetected" xml:space="preserve">
+    <value>Record when motion is detected</value>
+  </data>
+  <data name="RecordingNow" xml:space="preserve">
+    <value>Recording now</value>
+  </data>
+  <data name="RecordingSegments" xml:space="preserve">
+    <value>Recording segments</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="RemoveSecret" xml:space="preserve">
+    <value>Remove the secret (send unsigned requests)</value>
+  </data>
+  <data name="SaveLayoutChangesAutomatically" xml:space="preserve">
+    <value>Save layout changes automatically</value>
+  </data>
+  <data name="Secret" xml:space="preserve">
+    <value>Secret</value>
+  </data>
+  <data name="SendATestEvent" xml:space="preserve">
+    <value>Send a test event</value>
+  </data>
+  <data name="Sensitivity" xml:space="preserve">
+    <value>Sensitivity</value>
+  </data>
+  <data name="SetAsStartUpLayout" xml:space="preserve">
+    <value>Set as start-up layout</value>
+  </data>
+  <data name="SetIn" xml:space="preserve">
+    <value>Set in</value>
+  </data>
+  <data name="ShowDescription" xml:space="preserve">
+    <value>Show description</value>
+  </data>
+  <data name="ShowInTheCameraGrid" xml:space="preserve">
+    <value>Show in the camera grid</value>
+  </data>
+  <data name="ShowQuickActions" xml:space="preserve">
+    <value>Show quick actions</value>
+  </data>
+  <data name="ShowTheFileName" xml:space="preserve">
+    <value>Show the file name</value>
+  </data>
+  <data name="ShowTheTime" xml:space="preserve">
+    <value>Show the time</value>
+  </data>
+  <data name="ShowTime" xml:space="preserve">
+    <value>Show time</value>
+  </data>
+  <data name="ShowTitle" xml:space="preserve">
+    <value>Show title</value>
+  </data>
+  <data name="Signed" xml:space="preserve">
+    <value>Signed</value>
+  </data>
+  <data name="SmallestBoxArea" xml:space="preserve">
+    <value>Smallest area that gets a box</value>
+  </data>
+  <data name="Snapshots" xml:space="preserve">
+    <value>Snapshots</value>
+  </data>
+  <data name="SplitRecordingsIntoSegments" xml:space="preserve">
+    <value>Split recordings into segments</value>
+  </data>
+  <data name="StartAll" xml:space="preserve">
+    <value>Start all</value>
+  </data>
+  <data name="StartMaximizedShort" xml:space="preserve">
+    <value>Start maximised</value>
+  </data>
+  <data name="Started" xml:space="preserve">
+    <value>Started</value>
+  </data>
+  <data name="StartingTheStream" xml:space="preserve">
+    <value>Starting the stream...</value>
+  </data>
+  <data name="State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="StopAll" xml:space="preserve">
+    <value>Stop all</value>
+  </data>
+  <data name="Streaming" xml:space="preserve">
+    <value>Streaming</value>
+  </data>
+  <data name="TakeTimelapseSnapshots" xml:space="preserve">
+    <value>Take timelapse snapshots</value>
+  </data>
+  <data name="DecodeResolutionHelp" xml:space="preserve">
+    <value>The highest resolution the desktop apps decode at.</value>
+  </data>
+  <data name="MicrophoneNameHelp" xml:space="preserve">
+    <value>The microphone's name as Windows shows it on the server.</value>
+  </data>
+  <data name="MotionCooldownHelp" xml:space="preserve">
+    <value>The pause before the same camera can report motion again.</value>
+  </data>
+  <data name="RecordingsCouldNotBeLoaded" xml:space="preserve">
+    <value>The recordings could not be loaded. Check that the server is running, then refresh.</value>
+  </data>
+  <data name="UsbCamerasCouldNotBeListed" xml:space="preserve">
+    <value>The server could not list its USB cameras.</value>
+  </data>
+  <data name="ServerDidNotAnswer" xml:space="preserve">
+    <value>The server did not answer. Check that it is running, then reload the page.</value>
+  </data>
+  <data name="WebhookAddressHelp" xml:space="preserve">
+    <value>The server posts each event to this http or https address.</value>
+  </data>
+  <data name="ServerSettingsInfo" xml:space="preserve">
+    <value>The server's settings. The desktop apps that connect to this server use the same ones.</value>
+  </data>
+  <data name="SettingsCouldNotBeLoaded" xml:space="preserve">
+    <value>The settings could not be loaded. Check that the server is running, then try again.</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="NoLayoutYet" xml:space="preserve">
+    <value>There is no layout yet. A layout says which cameras are shown, and where.</value>
+  </data>
+  <data name="Thickness" xml:space="preserve">
+    <value>Thickness</value>
+  </data>
+  <data name="BrowserCannotPlayRecording" xml:space="preserve">
+    <value>This browser cannot play the recording. Download it and open it in a video player such as VLC.</value>
+  </data>
+  <data name="WebhookEventsHelp" xml:space="preserve">
+    <value>Tick what the receiver should get. None ticked means everything.</value>
+  </data>
+  <data name="TimeColour" xml:space="preserve">
+    <value>Time colour</value>
+  </data>
+  <data name="TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="UsbCameraOnTheServer" xml:space="preserve">
+    <value>USB camera on the server</value>
+  </data>
+  <data name="Video" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="Webhooks" xml:space="preserve">
+    <value>Webhooks</value>
+  </data>
+  <data name="WhenTheServerStarts" xml:space="preserve">
+    <value>When the server starts</value>
+  </data>
+  <data name="WhenTheServerStartsAndRegularly" xml:space="preserve">
+    <value>When the server starts, and regularly</value>
+  </data>
+  <data name="WriteADebugLog" xml:space="preserve">
+    <value>Write a debug log</value>
+  </data>
+  <data name="CameraSource" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="AreaTiny" xml:space="preserve">
+    <value>Tiny</value>
+  </data>
+  <data name="AreaSmall" xml:space="preserve">
+    <value>Small</value>
+  </data>
+  <data name="AreaMedium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="AreaLarge" xml:space="preserve">
+    <value>Large</value>
+  </data>
+  <data name="AreaVeryLarge" xml:space="preserve">
+    <value>Very large</value>
+  </data>
+  <data name="RecommendedChoice1" xml:space="preserve">
+    <value>{0} (recommended)</value>
+  </data>
+  <data name="DeleteRecordingQuestion1" xml:space="preserve">
+    <value>Delete the recording from {0}? The file is removed from the server and cannot be brought back.</value>
+  </data>
+  <data name="DeleteCameraRecordingQuestion2" xml:space="preserve">
+    <value>Delete the recording of {0} from {1}? The file is removed from the server and cannot be brought back.</value>
+  </data>
+  <data name="RecordingDeleted" xml:space="preserve">
+    <value>Recording deleted.</value>
+  </data>
+  <data name="RecordingStillBeingMade" xml:space="preserve">
+    <value>The recording is still being made. Delete it when it has ended.</value>
+  </data>
+  <data name="RecordingAlreadyGone" xml:space="preserve">
+    <value>The recording was already gone.</value>
+  </data>
+  <data name="RecordingCouldNotBeDeleted" xml:space="preserve">
+    <value>The recording could not be deleted.</value>
+  </data>
+  <data name="StreamCouldNotBeStarted" xml:space="preserve">
+    <value>The stream could not be started.</value>
+  </data>
+  <data name="CameraConnection" xml:space="preserve">
+    <value>Camera connection</value>
+  </data>
+  <data name="AllEvents" xml:space="preserve">
+    <value>All events</value>
+  </data>
+  <data name="UsbSource1" xml:space="preserve">
+    <value>USB: {0}</value>
+  </data>
+  <data name="AlwaysRecordAsH264Video" xml:space="preserve">
+    <value>Always record as H.264</value>
+  </data>
+  <data name="DisplayNameIsRequired" xml:space="preserve">
+    <value>Display name is required</value>
+  </data>
+  <data name="CameraKindCannotBeChanged" xml:space="preserve">
+    <value>The kind of camera cannot be changed afterwards.</value>
+  </data>
+  <data name="CameraKindHelp" xml:space="preserve">
+    <value>A network camera, or a USB camera plugged into the server.</value>
+  </data>
+  <data name="ChooseACamera" xml:space="preserve">
+    <value>Choose a camera</value>
+  </data>
+  <data name="UsbCameraCannotBeChanged" xml:space="preserve">
+    <value>The camera cannot be changed afterwards.</value>
+  </data>
+  <data name="UsbCameraChoiceHelp" xml:space="preserve">
+    <value>The cameras plugged into the server right now.</value>
+  </data>
+  <data name="IpAddressIsRequired" xml:space="preserve">
+    <value>IP address is required</value>
+  </data>
+  <data name="Saving" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="NotPluggedIn1" xml:space="preserve">
+    <value>{0} (not plugged in)</value>
+  </data>
+  <data name="CameraUpdated" xml:space="preserve">
+    <value>Camera updated.</value>
+  </data>
+  <data name="FailedToUpdateCamera" xml:space="preserve">
+    <value>Failed to update camera.</value>
+  </data>
+  <data name="CameraCreated" xml:space="preserve">
+    <value>Camera created.</value>
+  </data>
+  <data name="FailedToCreateCamera" xml:space="preserve">
+    <value>Failed to create camera.</value>
+  </data>
+  <data name="DeleteCameraQuestion1" xml:space="preserve">
+    <value>Delete camera '{0}'? This cannot be undone.</value>
+  </data>
+  <data name="DeleteCameraTitle" xml:space="preserve">
+    <value>Delete Camera</value>
+  </data>
+  <data name="CameraDeleted1" xml:space="preserve">
+    <value>Camera '{0}' deleted.</value>
+  </data>
+  <data name="CameraCouldNotBeDeleted1" xml:space="preserve">
+    <value>Camera '{0}' could not be deleted.</value>
+  </data>
+  <data name="RecordingStartedMessage" xml:space="preserve">
+    <value>Recording started.</value>
+  </data>
+  <data name="RecordingCouldNotBeStarted" xml:space="preserve">
+    <value>The recording could not be started.</value>
+  </data>
+  <data name="RecordingStoppedMessage" xml:space="preserve">
+    <value>Recording stopped.</value>
+  </data>
+  <data name="RecordingCouldNotBeStopped" xml:space="preserve">
+    <value>The recording could not be stopped.</value>
+  </data>
+  <data name="CapturingSnapshotFrom1" xml:space="preserve">
+    <value>Capturing snapshot from '{0}'...</value>
+  </data>
+  <data name="SnapshotDownloaded" xml:space="preserve">
+    <value>Snapshot downloaded.</value>
+  </data>
+  <data name="FailedToCaptureSnapshot" xml:space="preserve">
+    <value>Failed to capture snapshot.</value>
+  </data>
+  <data name="RecordingDisk1" xml:space="preserve">
+    <value>Recording disk: {0}</value>
+  </data>
+  <data name="PercentUsed1" xml:space="preserve">
+    <value>{0} % used</value>
+  </data>
+  <data name="RecordingDiskShareInUse" xml:space="preserve">
+    <value>Share of the recording disk in use</value>
+  </data>
+  <data name="NotConnected" xml:space="preserve">
+    <value>Not connected</value>
+  </data>
+  <data name="LiveUpdates1" xml:space="preserve">
+    <value>Live updates: {0}</value>
+  </data>
+  <data name="LiveUpdatesOn" xml:space="preserve">
+    <value>on</value>
+  </data>
+  <data name="LiveUpdatesConnecting" xml:space="preserve">
+    <value>connecting...</value>
+  </data>
+  <data name="FailedToCreateLayout" xml:space="preserve">
+    <value>Failed to create layout.</value>
+  </data>
+  <data name="LayoutApplied1" xml:space="preserve">
+    <value>Layout '{0}' applied.</value>
+  </data>
+  <data name="FailedToApplyLayout" xml:space="preserve">
+    <value>Failed to apply layout.</value>
+  </data>
+  <data name="DeleteLayoutQuestion1" xml:space="preserve">
+    <value>Delete layout '{0}'? This cannot be undone.</value>
+  </data>
+  <data name="DeleteLayoutTitle" xml:space="preserve">
+    <value>Delete Layout</value>
+  </data>
+  <data name="LayoutCouldNotBeDeleted1" xml:space="preserve">
+    <value>Layout '{0}' could not be deleted.</value>
+  </data>
+  <data name="LayoutDeleted1" xml:space="preserve">
+    <value>Layout '{0}' deleted.</value>
+  </data>
+  <data name="LayoutSaved1" xml:space="preserve">
+    <value>Layout '{0}' saved.</value>
+  </data>
+  <data name="FailedToSaveLayout" xml:space="preserve">
+    <value>Failed to save layout.</value>
+  </data>
+  <data name="ConnectedToTheServer" xml:space="preserve">
+    <value>Connected to the server</value>
+  </data>
+  <data name="Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="StartUpLayoutCouldNotBeSet" xml:space="preserve">
+    <value>The layout could not be set as the start-up layout.</value>
+  </data>
+  <data name="IsNowTheStartUpLayout1" xml:space="preserve">
+    <value>'{0}' is now the start-up layout.</value>
+  </data>
+  <data name="TheCameraDisconnected" xml:space="preserve">
+    <value>The camera disconnected.</value>
+  </data>
+  <data name="ThumbnailOf1" xml:space="preserve">
+    <value>Thumbnail of {0}</value>
+  </data>
+  <data name="UnknownCamera" xml:space="preserve">
+    <value>Unknown camera</value>
+  </data>
+  <data name="StillBeingRecorded" xml:space="preserve">
+    <value>Still being recorded</value>
+  </data>
+  <data name="DeleteTheRecording" xml:space="preserve">
+    <value>Delete recording</value>
+  </data>
+  <data name="NoRecordingsYet" xml:space="preserve">
+    <value>No recordings yet.</value>
+  </data>
+  <data name="NoRecordingsMatchTheFilters" xml:space="preserve">
+    <value>No recordings match the filters.</value>
+  </data>
+  <data name="RecordingCount1" xml:space="preserve">
+    <value>{0} recording(s)</value>
+  </data>
+  <data name="RecordingCountOf2" xml:space="preserve">
+    <value>{0} of {1} recording(s)</value>
+  </data>
+  <data name="SavingAndMovingRecordings" xml:space="preserve">
+    <value>Saving and moving recordings...</value>
+  </data>
+  <data name="SettingsSaved" xml:space="preserve">
+    <value>Settings saved.</value>
+  </data>
+  <data name="SettingsCouldNotBeSaved" xml:space="preserve">
+    <value>The settings could not be saved.</value>
+  </data>
+  <data name="SettingsMayNotBeSaved" xml:space="preserve">
+    <value>The server did not answer; the settings may not have been saved.</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="ThisPage" xml:space="preserve">
+    <value>This page</value>
+  </data>
+  <data name="ServerConfiguration" xml:space="preserve">
+    <value>Server configuration</value>
+  </data>
+  <data name="ReceiverAdded" xml:space="preserve">
+    <value>Receiver added.</value>
+  </data>
+  <data name="ReceiverCouldNotBeAdded" xml:space="preserve">
+    <value>The receiver could not be added.</value>
+  </data>
+  <data name="ReceiverSaved" xml:space="preserve">
+    <value>Receiver saved.</value>
+  </data>
+  <data name="ReceiverCouldNotBeSaved" xml:space="preserve">
+    <value>The receiver could not be saved.</value>
+  </data>
+  <data name="RemoveReceiverQuestion1" xml:space="preserve">
+    <value>Remove the receiver '{0}'? It gets no more events.</value>
+  </data>
+  <data name="RemoveReceiver" xml:space="preserve">
+    <value>Remove receiver</value>
+  </data>
+  <data name="ReceiverRemoved" xml:space="preserve">
+    <value>Receiver removed.</value>
+  </data>
+  <data name="ReceiverCouldNotBeRemoved" xml:space="preserve">
+    <value>The receiver could not be removed.</value>
+  </data>
+  <data name="TestEventTaken" xml:space="preserve">
+    <value>The receiver took the test event.</value>
+  </data>
+  <data name="TestEventNotTaken" xml:space="preserve">
+    <value>The receiver did not take the test event. Check the address, and that it answers with a success status.</value>
+  </data>
+  <data name="TestEventCouldNotBeSent" xml:space="preserve">
+    <value>The server could not be asked to send the test event.</value>
+  </data>
+  <data name="TakesEffectWhenServerStarts" xml:space="preserve">
+    <value>Takes effect the next time the server starts.</value>
+  </data>
+  <data name="ConnectionTypeIconHelp" xml:space="preserve">
+    <value>A LAN, Wi-Fi or USB icon in a free corner of the camera tile.</value>
+  </data>
+  <data name="RecordAsH264Help" xml:space="preserve">
+    <value>Off: what a camera sends is recorded untouched, which costs next to nothing. On: a camera that sends anything else (H.265, MJPEG) is decoded and encoded again while it is recorded, so its files play in every player and browser, at the price of processor time on the server. Takes effect the next time a camera is opened.</value>
+  </data>
+  <data name="RecordingLayoutExampleVideoAndThumbnail2" xml:space="preserve">
+    <value>Video:&#xA;  {0}&#xA;Thumbnail:&#xA;  {1}</value>
+  </data>
+  <data name="RecordingsMovedWhenYouSave" xml:space="preserve">
+    <value>Existing recordings are moved to this layout when you save. That can take a while; recordings in progress start a new file.</value>
+  </data>
+  <data name="RecordingsMovedWhenLayoutChanges" xml:space="preserve">
+    <value>Existing recordings are moved when you change the layout and save.</value>
+  </data>
+  <data name="Seconds1" xml:space="preserve">
+    <value>{0} seconds</value>
+  </data>
+  <data name="Pixels1" xml:space="preserve">
+    <value>{0} pixels</value>
+  </data>
+  <data name="Smoothing1" xml:space="preserve">
+    <value>Smoothing: {0}</value>
+  </data>
+  <data name="SegmentationHelp" xml:space="preserve">
+    <value>A recording starts a new file on the clock, so no single file grows for days.</value>
+  </data>
+  <data name="Minutes1" xml:space="preserve">
+    <value>{0} minutes</value>
+  </data>
+  <data name="Days1" xml:space="preserve">
+    <value>{0} days</value>
+  </data>
+  <data name="DiskSpaceGuardHelp" xml:space="preserve">
+    <value>Works whether or not old media is deleted on a schedule. When nothing is left to delete, recording stops instead of filling the disk.</value>
+  </data>
+  <data name="TimelapseHelp" xml:space="preserve">
+    <value>A snapshot of every camera at a fixed interval, saved in the snapshot folder.</value>
+  </data>
+  <data name="WebhooksIntro" xml:space="preserve">
+    <value>The server posts camera, recording and motion events to these receivers as they happen. A change here takes effect at once.</value>
+  </data>
+  <data name="BrowserPlaybackHelp" xml:space="preserve">
+    <value>Browsers often cannot play this format, and do not turn a rotated picture upright. If it does not play, download it and open it in a video player. Recording as MP4 (Settings, Capture) avoids both.</value>
+  </data>
+  <data name="RecordingPlayback" xml:space="preserve">
+    <value>Recording Playback</value>
+  </data>
+  <data name="AreYouSure" xml:space="preserve">
+    <value>Are you sure?</value>
+  </data>
+  <data name="PositionWithCamera2" xml:space="preserve">
+    <value>Pos {0} — {1}</value>
+  </data>
+  <data name="Position1" xml:space="preserve">
+    <value>Pos {0}</value>
+  </data>
+  <data name="SwitchToLightMode" xml:space="preserve">
+    <value>Switch to Light Mode</value>
+  </data>
+  <data name="SwitchToDarkMode" xml:space="preserve">
+    <value>Switch to Dark Mode</value>
+  </data>
+  <data name="EditReceiver" xml:space="preserve">
+    <value>Edit receiver</value>
+  </data>
+  <data name="EnterAnHttpAddress" xml:space="preserve">
+    <value>Enter an http or https address.</value>
+  </data>
+  <data name="AlsoSetAndKept1" xml:space="preserve">
+    <value>Also set, and kept as they are: {0}</value>
+  </data>
+  <data name="WebhookSecretHelp" xml:space="preserve">
+    <value>Optional. With a secret, every request is signed so the receiver can check it comes from this server.</value>
+  </data>
+  <data name="WebhookSecretIsSet" xml:space="preserve">
+    <value>A secret is set. Leave empty to keep it, or type a new one to replace it.</value>
+  </data>
+  <data name="WebhookSecretIsNotSet" xml:space="preserve">
+    <value>No secret is set. Type one to have the requests signed.</value>
+  </data>
+  <data name="ServerCouldNotBeReached" xml:space="preserve">
+    <value>The server could not be reached</value>
+  </data>
+  <data name="EditLayoutTitle1" xml:space="preserve">
+    <value>Edit Layout: {0}</value>
+  </data>
+  <data name="GridSize2" xml:space="preserve">
+    <value>Grid ({0}x{1})</value>
+  </data>
+  <data name="Increase" xml:space="preserve">
+    <value>Increase</value>
+  </data>
+  <data name="Decrease" xml:space="preserve">
+    <value>Decrease</value>
+  </data>
+  <data name="Required" xml:space="preserve">
+    <value>Required</value>
+  </data>
+  <data name="ToggleGroup1" xml:space="preserve">
+    <value>Toggle {0}</value>
+  </data>
+  <data name="FirstPage" xml:space="preserve">
+    <value>First page</value>
+  </data>
+  <data name="LastPage" xml:space="preserve">
+    <value>Last page</value>
+  </data>
+  <data name="ScrollLeft" xml:space="preserve">
+    <value>Scroll left</value>
+  </data>
+  <data name="ScrollRight" xml:space="preserve">
+    <value>Scroll right</value>
+  </data>
+  <data name="ScrollUp" xml:space="preserve">
+    <value>Scroll up</value>
+  </data>
+  <data name="ScrollDown" xml:space="preserve">
+    <value>Scroll down</value>
+  </data>
+  <data name="RowsPerPage" xml:space="preserve">
+    <value>Rows per page:</value>
+  </data>
+  <data name="PagerInfoFormat" xml:space="preserve">
+    <value>{first_item}-{last_item} of {all_items}</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="ColourAqua" xml:space="preserve">
+    <value>Aqua</value>
+  </data>
+  <data name="ColourBlack" xml:space="preserve">
+    <value>Black</value>
+  </data>
+  <data name="ColourBlue" xml:space="preserve">
+    <value>Blue</value>
+  </data>
+  <data name="ColourFuchsia" xml:space="preserve">
+    <value>Fuchsia</value>
+  </data>
+  <data name="ColourGray" xml:space="preserve">
+    <value>Grey</value>
+  </data>
+  <data name="ColourGreen" xml:space="preserve">
+    <value>Green</value>
+  </data>
+  <data name="ColourLime" xml:space="preserve">
+    <value>Lime</value>
+  </data>
+  <data name="ColourMaroon" xml:space="preserve">
+    <value>Maroon</value>
+  </data>
+  <data name="ColourNavy" xml:space="preserve">
+    <value>Navy</value>
+  </data>
+  <data name="ColourOlive" xml:space="preserve">
+    <value>Olive</value>
+  </data>
+  <data name="ColourPurple" xml:space="preserve">
+    <value>Purple</value>
+  </data>
+  <data name="ColourRed" xml:space="preserve">
+    <value>Red</value>
+  </data>
+  <data name="ColourSilver" xml:space="preserve">
+    <value>Silver</value>
+  </data>
+  <data name="ColourTeal" xml:space="preserve">
+    <value>Teal</value>
+  </data>
+  <data name="ColourWhite" xml:space="preserve">
+    <value>White</value>
+  </data>
+  <data name="ColourYellow" xml:space="preserve">
+    <value>Yellow</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignOut" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="SignInToTheServer" xml:space="preserve">
+    <value>Sign in to the server</value>
+  </data>
+  <data name="SigningIn" xml:space="preserve">
+    <value>Signing in...</value>
+  </data>
+  <data name="CreateTheFirstAdmin" xml:space="preserve">
+    <value>Create the first admin</value>
+  </data>
+  <data name="CreateTheFirstAdminHelp" xml:space="preserve">
+    <value>The server has no users yet. Create its first admin with the setup code.</value>
+  </data>
+  <data name="SetupCode" xml:space="preserve">
+    <value>Setup code</value>
+  </data>
+  <data name="SetupCodeHelp" xml:space="preserve">
+    <value>The code is in the file setup-code.txt in the server's data folder.</value>
+  </data>
+  <data name="SignedInAs1" xml:space="preserve">
+    <value>Signed in as {0}</value>
+  </data>
+  <data name="SessionEnded" xml:space="preserve">
+    <value>Your session has ended; sign in again.</value>
+  </data>
+  <data name="ChangePassword" xml:space="preserve">
+    <value>Change password</value>
+  </data>
+  <data name="CurrentPassword" xml:space="preserve">
+    <value>Current password</value>
+  </data>
+  <data name="NewPassword" xml:space="preserve">
+    <value>New password</value>
+  </data>
+  <data name="PasswordChanged" xml:space="preserve">
+    <value>The password is changed. Sign in again on your other devices.</value>
+  </data>
+  <data name="PasswordTooShort" xml:space="preserve">
+    <value>The password needs at least 8 characters.</value>
+  </data>
+  <data name="LeaveEmptyToKeepIt" xml:space="preserve">
+    <value>Leave empty to keep it</value>
+  </data>
+  <data name="Users" xml:space="preserve">
+    <value>Users</value>
+  </data>
+  <data name="AddUser" xml:space="preserve">
+    <value>Add user</value>
+  </data>
+  <data name="EditUser1" xml:space="preserve">
+    <value>Edit the user '{0}'</value>
+  </data>
+  <data name="RemoveUser1" xml:space="preserve">
+    <value>Remove the user '{0}'?</value>
+  </data>
+  <data name="Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="RoleViewer" xml:space="preserve">
+    <value>Viewer</value>
+  </data>
+  <data name="RoleOperator" xml:space="preserve">
+    <value>Operator</value>
+  </data>
+  <data name="RoleAdmin" xml:space="preserve">
+    <value>Admin</value>
+  </data>
+  <data name="Created" xml:space="preserve">
+    <value>Created</value>
+  </data>
+  <data name="ApiKeys" xml:space="preserve">
+    <value>API keys</value>
+  </data>
+  <data name="AddApiKey" xml:space="preserve">
+    <value>Make API key</value>
+  </data>
+  <data name="ApiKeyShownOnce" xml:space="preserve">
+    <value>Copy the key now: it is not shown again.</value>
+  </data>
+  <data name="RemoveApiKey1" xml:space="preserve">
+    <value>Remove the API key '{0}'?</value>
+  </data>
+  <data name="AuditLog" xml:space="preserve">
+    <value>Audit log</value>
+  </data>
+  <data name="AuditUser" xml:space="preserve">
+    <value>User</value>
+  </data>
+  <data name="AuditAction" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="AuditTarget" xml:space="preserve">
+    <value>Target</value>
+  </data>
+  <data name="NoUsersAccess" xml:space="preserve">
+    <value>Only an admin can manage users, API keys and the audit log.</value>
+  </data>
+  <data name="UserSaved" xml:space="preserve">
+    <value>The user is saved.</value>
+  </data>
+  <data name="UserRemoved" xml:space="preserve">
+    <value>The user is removed.</value>
+  </data>
+  <data name="UserCouldNotBeSaved" xml:space="preserve">
+    <value>The user could not be saved.</value>
+  </data>
+  <data name="UserCouldNotBeRemoved" xml:space="preserve">
+    <value>The user could not be removed.</value>
+  </data>
+  <data name="ApiKeyMade" xml:space="preserve">
+    <value>The API key is made.</value>
+  </data>
+  <data name="ApiKeyRemoved" xml:space="preserve">
+    <value>The API key is removed.</value>
+  </data>
+  <data name="ApiKeyCouldNotBeMade" xml:space="preserve">
+    <value>The API key could not be made.</value>
+  </data>
+  <data name="ApiKeyCouldNotBeRemoved" xml:space="preserve">
+    <value>The API key could not be removed.</value>
+  </data>
+  <data name="ApiKey" xml:space="preserve">
+    <value>API key</value>
+  </data>
+  <data name="FFmpegSetup" xml:space="preserve">
+    <value>FFmpeg Set-up</value>
+  </data>
+  <data name="FFmpegNotInstalled1" xml:space="preserve">
+    <value>The video engine needs FFmpeg {0}, which is not installed on this computer.</value>
+  </data>
+  <data name="FFmpegOtherVersion1" xml:space="preserve">
+    <value>The video engine needs FFmpeg {0}. The FFmpeg found on this computer is another version.</value>
+  </data>
+  <data name="FFmpegFoundOnThisComputer" xml:space="preserve">
+    <value>Found on this computer:</value>
+  </data>
+  <data name="FFmpegFoundIn2" xml:space="preserve">
+    <value>FFmpeg {0} in {1}</value>
+  </data>
+  <data name="FFmpegInstallHint2" xml:space="preserve">
+    <value>Install FFmpeg downloads FFmpeg {0} (about 100 MB) from GitHub and puts it in {1}, where every AtcSoft app on this computer finds it.</value>
+  </data>
+  <data name="FFmpegChooseFolder1" xml:space="preserve">
+    <value>Or choose a folder that holds FFmpeg {0}</value>
+  </data>
+  <data name="FFmpegFolder" xml:space="preserve">
+    <value>FFmpeg folder</value>
+  </data>
+  <data name="FFmpegInstall" xml:space="preserve">
+    <value>Install FFmpeg</value>
+  </data>
+  <data name="FFmpegUseFolder" xml:space="preserve">
+    <value>Use this folder</value>
+  </data>
+  <data name="FFmpegDownloadPage" xml:space="preserve">
+    <value>Download page</value>
+  </data>
+  <data name="FFmpegDownloading2" xml:space="preserve">
+    <value>Downloading: {0} of {1} MB</value>
+  </data>
+  <data name="FFmpegVerifying" xml:space="preserve">
+    <value>Checking the download</value>
+  </data>
+  <data name="FFmpegExtracting" xml:space="preserve">
+    <value>Unpacking</value>
+  </data>
+  <data name="FFmpegInstallFailed1" xml:space="preserve">
+    <value>FFmpeg could not be installed. {0}</value>
+  </data>
+  <data name="FFmpegInstallCancelled" xml:space="preserve">
+    <value>The install was cancelled.</value>
+  </data>
+  <data name="FFmpegFolderNotReady1" xml:space="preserve">
+    <value>This folder does not hold FFmpeg {0}.</value>
+  </data>
+  <data name="NoLimit" xml:space="preserve">
+    <value>No limit</value>
+  </data>
+  <data name="MaxRecordingStorage" xml:space="preserve">
+    <value>Most space for recordings</value>
+  </data>
+  <data name="MaxRecordingStorageHelp" xml:space="preserve">
+    <value>When the recordings take more, the oldest are deleted first.</value>
+  </data>
+  <data name="ActivityTimeline" xml:space="preserve">
+    <value>Activity</value>
+  </data>
+  <data name="ActivityTimelineHint" xml:space="preserve">
+    <value>What moved when. Orange marks where something went somewhere. Click to jump there; scroll to zoom.</value>
+  </data>
+  <data name="PreviousEvent" xml:space="preserve">
+    <value>Previous event</value>
+  </data>
+  <data name="NextEvent" xml:space="preserve">
+    <value>Next event</value>
+  </data>
+  <data name="Timeline" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="TimelineHelp" xml:space="preserve">
+    <value>Every camera over the day. Grey: nothing recorded. Bars: how much changed. Orange: something went somewhere. Click a lane to play from there.</value>
+  </data>
+  <data name="Last24Hours" xml:space="preserve">
+    <value>Last 24 hours</value>
+  </data>
+  <data name="NothingRecordedThen" xml:space="preserve">
+    <value>Nothing was recorded then.</value>
+  </data>
+  <data name="NoEventWithinAWeek" xml:space="preserve">
+    <value>No event within a week of there.</value>
+  </data>
+  <data name="ZoomIn" xml:space="preserve">
+    <value>Zoom in</value>
+  </data>
+  <data name="ZoomOut" xml:space="preserve">
+    <value>Zoom out</value>
+  </data>
+  <data name="Earlier" xml:space="preserve">
+    <value>Earlier</value>
+  </data>
+  <data name="Later" xml:space="preserve">
+    <value>Later</value>
+  </data>
+  <data name="GapOffline" xml:space="preserve">
+    <value>Camera offline</value>
+  </data>
+  <data name="GapNotRecording" xml:space="preserve">
+    <value>Not recording</value>
+  </data>
+  <data name="GapDiskFull" xml:space="preserve">
+    <value>Disk full</value>
+  </data>
+  <data name="GapServerDown" xml:space="preserve">
+    <value>Server not running</value>
+  </data>
+  <data name="GapUnknown" xml:space="preserve">
+    <value>Nothing recorded</value>
+  </data>
+  <data name="PlayAllFromHere" xml:space="preserve">
+    <value>Play all from here</value>
+  </data>
+  <data name="PlayAllFrom1" xml:space="preserve">
+    <value>All cameras from {0}</value>
+  </data>
+  <data name="NextRecordingAt1" xml:space="preserve">
+    <value>Next recording at {0}</value>
+  </data>
+  <data name="CouldNotBePlayed" xml:space="preserve">
+    <value>Could not be played</value>
+  </data>
+  <data name="NoMoreRecordings" xml:space="preserve">
+    <value>No more recordings</value>
+  </data>
+  <data name="PlayAllShowsFirst1" xml:space="preserve">
+    <value>Shows the first {0} cameras</value>
+  </data>
+  <data name="EnableActivityIndex" xml:space="preserve">
+    <value>Keep an activity timeline of every recording</value>
+  </data>
+  <data name="PlayEventsOnly" xml:space="preserve">
+    <value>Play events only</value>
+  </data>
+  <data name="AnalyseRecording" xml:space="preserve">
+    <value>Analyse recording</value>
+  </data>
+  <data name="AnalysingRecording1" xml:space="preserve">
+    <value>Analysing {0}...</value>
+  </data>
+  <data name="RecordingAnalysed" xml:space="preserve">
+    <value>The recording has its activity timeline now.</value>
+  </data>
+  <data name="RecordingNotAnalysed" xml:space="preserve">
+    <value>The recording could not be analysed.</value>
+  </data>
+  <data name="MotionZones" xml:space="preserve">
+    <value>Motion zones</value>
+  </data>
+  <data name="AddZone" xml:space="preserve">
+    <value>Add zone</value>
+  </data>
+  <data name="RemoveZone" xml:space="preserve">
+    <value>Remove zone</value>
+  </data>
+  <data name="AddCorner" xml:space="preserve">
+    <value>Add corner</value>
+  </data>
+  <data name="RemoveCorner" xml:space="preserve">
+    <value>Remove corner</value>
+  </data>
+  <data name="Zone1" xml:space="preserve">
+    <value>Zone {0}</value>
+  </data>
+  <data name="MotionZonesHelp" xml:space="preserve">
+    <value>An ignore zone hides the movement in it; a watch zone has its own sensitivity and smallest object, which left empty are the camera's. Drag a zone or its corners; double-click an edge to add a corner, or a corner to remove it.</value>
+  </data>
+  <data name="MotionZonesNoPicture" xml:space="preserve">
+    <value>No picture yet: take a snapshot to draw on the camera's picture.</value>
+  </data>
+  <data name="ZoneKindIgnore" xml:space="preserve">
+    <value>Ignore movement</value>
+  </data>
+  <data name="ZoneKindWatch" xml:space="preserve">
+    <value>Watch with its own values</value>
+  </data>
+  <data name="SmallestObjectPercent" xml:space="preserve">
+    <value>Smallest object (% of the picture)</value>
+  </data>
+  <data name="CamerasOwn" xml:space="preserve">
+    <value>Camera's own</value>
+  </data>
+  <data name="TimelineColour" xml:space="preserve">
+    <value>Colour on the timeline</value>
+  </data>
+  <data name="ActivityHoverNotAnalysed" xml:space="preserve">
+    <value>Not analysed</value>
+  </data>
+  <data name="ActivityHoverNothingMoving" xml:space="preserve">
+    <value>Nothing moving</value>
+  </data>
+  <data name="ActivityHoverMoving1" xml:space="preserve">
+    <value>Moving: {0}</value>
+  </data>
+  <data name="ActivityHoverZone1" xml:space="preserve">
+    <value>Zone: {0}</value>
+  </data>
+  <data name="SmallestObjectInfo" xml:space="preserve">
+    <value>Anything smaller than this share of the picture is left out: raise it to ignore birds and leaves, lower it to see a cat far away. A watch zone can have its own.</value>
+  </data>
+  <data name="StoppedObjectSeconds" xml:space="preserve">
+    <value>Something that stops becomes background after (seconds)</value>
+  </data>
+  <data name="StoppedObjectSecondsInfo" xml:space="preserve">
+    <value>How long something that stops moving, such as a parked car, is seen at most before it becomes part of the picture; something that differs little from the picture goes sooner.</value>
+  </data>
+  <data name="IgnoreLightingChanges" xml:space="preserve">
+    <value>Ignore lighting changes</value>
+  </data>
+  <data name="IgnoreLightingChangesInfo" xml:space="preserve">
+    <value>A change over most of the picture at once, such as a cloud or a lamp switched on, is not motion. Turn it off for a camera at a door, where a person can fill most of the picture; then, after a change of light, motion is not seen for a while.</value>
+  </data>
+  <data name="VerdictCorrect" xml:space="preserve">
+    <value>Boxed correctly</value>
+  </data>
+  <data name="VerdictFalseAlarm" xml:space="preserve">
+    <value>False alarm</value>
+  </data>
+  <data name="VerdictMissed" xml:space="preserve">
+    <value>Missed something here</value>
+  </data>
+  <data name="VerdictSaved" xml:space="preserve">
+    <value>Saved in the recording's review.</value>
+  </data>
+  <data name="VerdictNotSaved1" xml:space="preserve">
+    <value>The verdict was not saved: {0}</value>
+  </data>
+</root>

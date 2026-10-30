@@ -1,0 +1,75 @@
+@* A new user, or a user's role and password (left empty, the password stays). *@
+@inject GatewayService Gateway
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: 340px;">
+            @if (User is null)
+            {
+                <MudTextField @bind-Value="userName" Label="@Translations.Username" Variant="Variant.Outlined" AutoFocus="true" />
+            }
+            <MudSelect T="UserRole" @bind-Value="role" Label="@Translations.Role" Variant="Variant.Outlined">
+                @foreach (var choice in RoleText.Choices)
+                {
+                    <MudSelectItem Value="@choice">@RoleText.For(choice)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="password"
+                          Label="@(User is null ? Translations.Password : Translations.NewPassword)"
+                          HelperText="@(User is null ? Translations.PasswordTooShort : Translations.LeaveEmptyToKeepIt)"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined" />
+            @if (problem is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@problem</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Translations.Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@busy" OnClick="SaveAsync">@Translations.Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string userName = string.Empty;
+    private string password = string.Empty;
+    private UserRole role = UserRole.Viewer;
+    private string? problem;
+    private bool busy;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>
+    /// Gets or sets the user to change; <see langword="null"/> adds one.
+    /// </summary>
+    [Parameter]
+    public UserAccount? User { get; set; }
+
+    protected override void OnParametersSet()
+        => role = User?.Role ?? UserRole.Viewer;
+
+    private void Cancel()
+        => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        busy = true;
+        problem = null;
+
+        var newPassword = string.IsNullOrEmpty(password) ? null : password;
+        var saved = User is null
+            ? await Gateway.CreateUserAsync(userName, password, role)
+            : await Gateway.UpdateUserAsync(User.Id, role, newPassword);
+
+        busy = false;
+        if (saved.IsSuccess)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+            return;
+        }
+
+        problem = ProblemText.WithReason(Translations.UserCouldNotBeSaved, saved.Problem);
+    }
+}

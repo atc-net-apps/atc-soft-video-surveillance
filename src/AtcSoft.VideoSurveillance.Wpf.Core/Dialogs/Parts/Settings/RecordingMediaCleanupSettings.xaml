@@ -1,0 +1,75 @@
+<UserControl
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Core.Dialogs.Parts.Settings.RecordingMediaCleanupSettings"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=dialogs:SettingsDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    d:DesignWidth="600"
+    mc:Ignorable="d">
+
+    <GroupBox Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=MediaCleanup}">
+        <StackPanel Margin="0,0,0,-20" Orientation="Vertical">
+
+            <atc:LabelComboBox
+                Items="{Binding Path=CleanupScheduleItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=CleanupSchedule}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedCleanupSchedule, Mode=TwoWay}" />
+
+            <atc:LabelComboBox
+                IsEnabled="{Binding Path=IsCleanupEnabled}"
+                Items="{Binding Path=RecordingRetentionItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=RecordingRetention}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedRecordingRetention, Mode=TwoWay}" />
+
+            <atc:LabelToggleSwitch
+                Margin="0,0,0,10"
+                HideAreas="Validation"
+                IsEnabled="{Binding Path=IsCleanupEnabled}"
+                IsOn="{Binding Path=IncludeSnapshotsInCleanup, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=IncludeSnapshotsInCleanup}" />
+
+            <atc:LabelComboBox
+                IsEnabled="{Binding Path=IsSnapshotRetentionEnabled}"
+                Items="{Binding Path=SnapshotRetentionItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=SnapshotRetention}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedSnapshotRetention, Mode=TwoWay}" />
+
+            <atc:LabelToggleSwitch
+                Margin="0,0,0,10"
+                HideAreas="Validation"
+                IsOn="{Binding Path=IsDiskSpaceGuardEnabled, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=EnableDiskSpaceGuard}" />
+
+            <atc:LabelComboBox
+                IsEnabled="{Binding Path=IsDiskSpaceGuardControlEnabled}"
+                Items="{Binding Path=MinFreeSpaceItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=MinFreeSpace}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedMinFreeSpace, Mode=TwoWay}" />
+
+            <atc:LabelComboBox
+                Items="{Binding Path=MaxRecordingStorageItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=MaxRecordingStorage}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedMaxRecordingStorage, Mode=TwoWay}" />
+
+        </StackPanel>
+    </GroupBox>
+</UserControl>

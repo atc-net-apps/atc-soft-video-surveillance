@@ -1,0 +1,99 @@
+<UserControl
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Core.Dialogs.Parts.Settings.CaptureRecordingSettings"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcDataDisplay="clr-namespace:Atc.Wpf.Controls.DataDisplay;assembly=Atc.Wpf.Controls"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=dialogs:SettingsDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    d:DesignWidth="600"
+    mc:Ignorable="d">
+
+    <GroupBox Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=RecordingSettings}">
+        <StackPanel Margin="0,0,0,-20" Orientation="Vertical">
+
+            <atc:LabelDirectoryPicker
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=RecordingPath}"
+                Orientation="Vertical"
+                WatermarkText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                    Key=SelectRecordingFolder}"
+                Value="{Binding Path=RecordingPath, Mode=TwoWay}" />
+
+            <atc:LabelComboBox
+                Items="{Binding Path=RecordingFormatItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=RecordingFormat}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedRecordingFormat, Mode=TwoWay}" />
+
+            <atc:LabelComboBox
+                InformationText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                      Key=TranscodeVideoCodecInfo}"
+                Items="{Binding Path=TranscodeVideoCodecItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=TranscodeVideoCodec}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedTranscodeVideoCodec, Mode=TwoWay}" />
+
+            <atc:LabelComboBox
+                Items="{Binding Path=ThumbnailTileCountItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=ThumbnailTileCount}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedThumbnailTileCount, Mode=TwoWay}" />
+
+            <!--  Folder layout. Each switch has a hover help (the info icon) showing its path when on and off; the text below shows the result of the current choice.  -->
+            <atc:LabelToggleSwitch
+                InformationText="{Binding Path=UseDailySubfoldersHint}"
+                IsOn="{Binding Path=UseDailySubfolders, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=UseDailySubfolders}" />
+
+            <atc:LabelToggleSwitch
+                InformationText="{Binding Path=SeparateThumbnailFolderHint}"
+                IsOn="{Binding Path=SeparateThumbnailFolder, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=SeparateThumbnailFolder}" />
+
+            <atcDataDisplay:Alert
+                Margin="0,0,0,16"
+                IsDense="True"
+                Severity="Info"
+                Variant="Outlined">
+                <!--  MaxWidth makes a long path wrap instead of widening the whole tab  -->
+                <TextBlock
+                    MaxWidth="450"
+                    HorizontalAlignment="Left"
+                    FontFamily="Consolas"
+                    Text="{Binding Path=RecordingLayoutExampleSummary}"
+                    TextWrapping="Wrap" />
+            </atcDataDisplay:Alert>
+
+            <atc:LabelToggleSwitch
+                IsOn="{Binding Path=EnableRecordingOnMotion, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=EnableRecordingOnMotion}" />
+
+            <atc:LabelToggleSwitch
+                IsOn="{Binding Path=EnableRecordingOnConnect, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=EnableRecordingOnConnect}" />
+
+            <atc:LabelToggleSwitch
+                IsOn="{Binding Path=EnableActivityIndex, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=EnableActivityIndex}" />
+
+        </StackPanel>
+    </GroupBox>
+</UserControl>

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AtcSoft.VideoSurveillance.Storybook</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Storybook\AtcSoft.VideoSurveillance.Storybook.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Scenes\*.storybook.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="baseline.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('baseline.json')" />
+  </ItemGroup>
+
+</Project>

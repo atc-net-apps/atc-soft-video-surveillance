@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "name": "S9 a person stops for 4 s, then walks on",
+  "video": {
+    "width": 1280,
+    "height": 720,
+    "fps": 15,
+    "durationSeconds": 12,
+    "noise": 2.0
+  },
+  "background": {
+    "seed": 9,
+    "distractors": []
+  },
+  "objects": [
+    {
+      "id": "human",
+      "kind": "human",
+      "size": [
+        0.05,
+        0.2
+      ],
+      "path": [
+        {
+          "t": 1,
+          "at": [
+            0.2,
+            0.6
+          ]
+        },
+        {
+          "t": 4,
+          "at": [
+            0.4,
+            0.6
+          ]
+        },
+        {
+          "t": 8,
+          "at": [
+            0.4,
+            0.6
+          ]
+        },
+        {
+          "t": 11,
+          "at": [
+            0.6,
+            0.6
+          ]
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "maxIdSwitchesPerObject": 1
+  }
+}

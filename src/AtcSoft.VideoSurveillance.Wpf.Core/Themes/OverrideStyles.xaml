@@ -1,0 +1,25 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas">
+
+    <!--  Override toggle switch: fixed width (OnContent/OffContent use atcTranslation:Resx inline, which cannot be used in sealed Setters)  -->
+    <Style BasedOn="{StaticResource {x:Type atc:ToggleSwitch}}" TargetType="{x:Type atc:ToggleSwitch}">
+        <Setter Property="Width" Value="160" />
+    </Style>
+
+    <!--  Label controls: shared label width and hidden areas  -->
+    <Style x:Key="OverrideLabelBaseStyle" TargetType="{x:Type atc:LabelControlBase}">
+        <Setter Property="LabelWidthNumber" Value="225" />
+        <Setter Property="Width" Value="420" />
+        <Setter Property="HideAreas" Value="All" />
+    </Style>
+
+    <Style BasedOn="{StaticResource OverrideLabelBaseStyle}" TargetType="{x:Type atc:LabelIntegerBox}" />
+    <Style BasedOn="{StaticResource OverrideLabelBaseStyle}" TargetType="{x:Type atc:LabelDecimalBox}" />
+    <Style BasedOn="{StaticResource OverrideLabelBaseStyle}" TargetType="{x:Type atc:LabelComboBox}" />
+    <Style BasedOn="{StaticResource OverrideLabelBaseStyle}" TargetType="{x:Type atc:LabelToggleSwitch}" />
+    <Style BasedOn="{StaticResource OverrideLabelBaseStyle}" TargetType="{x:Type atc:LabelDirectoryPicker}" />
+    <Style BasedOn="{StaticResource OverrideLabelBaseStyle}" TargetType="{x:Type atc:LabelWellKnownColorSelector}" />
+
+</ResourceDictionary>

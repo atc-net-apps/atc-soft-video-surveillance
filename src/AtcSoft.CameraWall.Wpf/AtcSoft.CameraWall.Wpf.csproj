@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Description>A reusable WPF library for camera wall functionality, supporting multiple RTSP/HTTP camera streams in a dynamic grid layout.</Description>
+    <PackageTags>wpf;camera;surveillance;video;rtsp;camerawall</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup Label="NuGet Package Metadata">
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/davidkallesen/AtcSoft.VideoSurveillance</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/davidkallesen/AtcSoft.VideoSurveillance.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AtcSoft.VideoSurveillance.Wpf.Core\AtcSoft.VideoSurveillance.Wpf.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AtcSoft.CameraWall.Wpf.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Atc.Hosting" Version="2.0.2" />
+    <PackageReference Include="Atc.SourceGenerators" Version="0.1.66">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

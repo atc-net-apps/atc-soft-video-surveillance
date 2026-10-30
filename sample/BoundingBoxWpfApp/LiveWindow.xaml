@@ -1,0 +1,71 @@
+<atc:NiceWindow
+    x:Class="BoundingBoxWpfApp.LiveWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:app="clr-namespace:BoundingBoxWpfApp"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:cw="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.UserControls;assembly=AtcSoft.VideoSurveillance.Wpf.Core"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:lve="clr-namespace:AtcSoft.VideoPlayer.Wpf;assembly=AtcSoft.VideoPlayer.Wpf"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="{Binding Path=Title}"
+    Width="1100"
+    Height="720"
+    d:DataContext="{d:DesignInstance Type=app:LiveWindowViewModel}"
+    Icon="pack://application:,,,/AtcSoft.VideoSurveillance.Wpf.Core;component/Resources/Images/cctv-camera.ico"
+    WindowStartupLocation="CenterOwner"
+    mc:Ignorable="d">
+
+    <DockPanel Margin="8">
+        <DockPanel Margin="0,0,0,8" DockPanel.Dock="Top">
+            <Button
+                Margin="0,0,12,0"
+                Padding="10,4"
+                AutomationProperties.AutomationId="StopLiveButton"
+                Command="{Binding Path=StopCommand}"
+                Content="Stop"
+                DockPanel.Dock="Left" />
+            <TextBlock
+                AutomationProperties.AutomationId="LiveStatus"
+                DockPanel.Dock="Right"
+                Text="{Binding Path=Status}" />
+            <TextBlock
+                VerticalAlignment="Center"
+                AutomationProperties.AutomationId="LiveScore"
+                Text="{Binding Path=LiveScore}"
+                TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+        <TextBlock
+            Margin="0,8,0,0"
+            DockPanel.Dock="Bottom"
+            Text="The engine's player plays the video as a camera stream (FFmpeg -re over UDP); the detector gets the player's grey pictures, as in CameraWall. Red: the detector's boxes. Green: objects to box. Two runs differ a little, as the pictures taken depend on timing."
+            TextWrapping="Wrap" />
+
+        <lve:VideoHost Player="{Binding Path=Player}">
+            <!--  This content goes into VideoHost's overlay window  -->
+            <Grid Background="Transparent">
+                <cw:MotionBoundingBoxOverlay
+                    AnalysisHeight="{Binding Path=HostDataContext.DisplayHeight}"
+                    AnalysisWidth="{Binding Path=HostDataContext.DisplayWidth}"
+                    AutomationProperties.AutomationId="LiveTruthBoxes"
+                    BoxColor="LimeGreen"
+                    BoxThickness="1"
+                    IsHitTestVisible="False"
+                    MotionBoxes="{Binding Path=HostDataContext.TruthBoxes}"
+                    SmoothingFactor="0"
+                    VideoHeight="{Binding Path=HostDataContext.DisplayHeight}"
+                    VideoWidth="{Binding Path=HostDataContext.DisplayWidth}" />
+                <cw:MotionBoundingBoxOverlay
+                    AnalysisHeight="{Binding Path=HostDataContext.AnalysisHeight}"
+                    AnalysisWidth="{Binding Path=HostDataContext.AnalysisWidth}"
+                    AutomationProperties.AutomationId="LiveDetectorBoxes"
+                    BoxColor="Red"
+                    BoxThickness="2"
+                    IsHitTestVisible="False"
+                    MotionBoxes="{Binding Path=HostDataContext.DetectedBoxes}"
+                    VideoHeight="{Binding Path=HostDataContext.DisplayHeight}"
+                    VideoWidth="{Binding Path=HostDataContext.DisplayWidth}" />
+            </Grid>
+        </lve:VideoHost>
+    </DockPanel>
+</atc:NiceWindow>

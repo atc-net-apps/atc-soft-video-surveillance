@@ -1,0 +1,155 @@
+@page "/settings"
+@using AtcSoft.VideoSurveillance.Blazor.App.Pages.SettingsTabs
+@inject GatewayService Gateway
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-1">@Translations.Settings</MudText>
+<MudText Typo="Typo.body2" Class="mb-4 mud-text-secondary">
+    @Translations.ServerSettingsInfo
+</MudText>
+
+<style>
+    /* The panel area beside vertical tabs is a row; each tab is one block in it. */
+    .settings-pane {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 640px;
+    }
+</style>
+
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (loadFailed)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" Style="max-width: 800px;">
+        @Translations.SettingsCouldNotBeLoaded
+    </MudAlert>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadAsync">@Translations.TryAgain</MudButton>
+}
+else
+{
+    <MudPaper Class="pa-4" Style="max-width: 1000px; position: relative;">
+        <MudOverlay Visible="isSaving" Absolute="true" DarkBackground="true">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                <MudText Style="color: white;">@savingText</MudText>
+            </MudStack>
+        </MudOverlay>
+
+        @* Same tabs, in the same order and down the left side, as the desktop apps' settings dialog *@
+        <MudTabs Elevation="0" Rounded="true" Position="Position.Left" ApplyEffectsToContainer="true" TabPanelsClass="pa-4" MinimumTabWidth="170px">
+            <MudTabPanel Text="@Translations.General">
+                <div class="settings-pane"><GeneralTab State="state" /></div>
+            </MudTabPanel>
+            <MudTabPanel Text="@Translations.CameraDisplay">
+                <div class="settings-pane"><CameraDisplayTab State="state" /></div>
+            </MudTabPanel>
+            <MudTabPanel Text="@Translations.Connection">
+                <div class="settings-pane"><ConnectionTab State="state" /></div>
+            </MudTabPanel>
+            <MudTabPanel Text="@Translations.Performance">
+                <div class="settings-pane"><PerformanceTab State="state" /></div>
+            </MudTabPanel>
+            <MudTabPanel Text="@Translations.MotionDetection">
+                <div class="settings-pane"><MotionDetectionTab State="state" /></div>
+            </MudTabPanel>
+            <MudTabPanel Text="@Translations.Capture">
+                <div class="settings-pane"><CaptureTab State="state" /></div>
+            </MudTabPanel>
+            <MudTabPanel Text="@Translations.Timelapse">
+                <div class="settings-pane"><TimelapseTab State="state" /></div>
+            </MudTabPanel>
+            <MudTabPanel Text="@Translations.Storage">
+                <div class="settings-pane"><StorageTab State="state" /></div>
+            </MudTabPanel>
+            <MudTabPanel Text="@Translations.Advanced">
+                <div class="settings-pane"><AdvancedTab State="state" /></div>
+            </MudTabPanel>
+        </MudTabs>
+
+        <MudStack Row="true" Spacing="2" Class="mt-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="SaveSettingsAsync"
+                       Disabled="isSaving">
+                @Translations.Save
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.Undo"
+                       OnClick="LoadAsync"
+                       Disabled="isSaving">
+                @Translations.DiscardChanges
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    private SettingsState state = new();
+    private bool isLoading = true;
+    private bool loadFailed;
+    private bool isSaving;
+    private string savingText = string.Empty;
+
+    protected override Task OnInitializedAsync()
+        => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        loadFailed = false;
+
+        var settings = await Gateway.GetSettingsAsync();
+        if (settings is not null)
+        {
+            // A fresh state, so nothing of a discarded edit is left behind.
+            var loaded = new SettingsState();
+            loaded.LoadFrom(settings);
+            state = loaded;
+        }
+        else
+        {
+            loadFailed = true;
+        }
+
+        isLoading = false;
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        // A changed folder layout moves the recordings before the call returns.
+        savingText = state.HasRecordingLayoutChanged
+            ? Translations.SavingAndMovingRecordings
+            : Translations.Saving;
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Gateway.UpdateSettingsAsync(state.ToApiModel());
+            if (result.IsSuccess)
+            {
+                // Show what the server kept, which is not always what was sent.
+                var saved = new SettingsState();
+                saved.LoadFrom(result.Value!);
+                state = saved;
+                Snackbar.Add(Translations.SettingsSaved, Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(ProblemText.WithReason(Translations.SettingsCouldNotBeSaved, result.Problem), Severity.Error);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Snackbar.Add(Translations.SettingsMayNotBeSaved, Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

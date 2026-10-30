@@ -1,0 +1,96 @@
+<atc:NiceWindow
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Core.Dialogs.CheckForUpdatesDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:atcValueConverters="https://github.com/atc-net/atc-wpf/tree/main/schemas/value-converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                Key=CheckForUpdates}"
+    Width="400"
+    Height="280"
+    d:DataContext="{d:DesignInstance Type=dialogs:CheckForUpdatesDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    ResizeMode="NoResize"
+    ShowInTaskbar="False"
+    WindowStartupLocation="CenterOwner"
+    WindowStyle="ToolWindow"
+    mc:Ignorable="d">
+
+    <atc:BusyOverlay IsBusy="{Binding Path=IsChecking}">
+        <atc:GridEx Margin="20" Rows="Auto,Auto,Auto,*,Auto">
+
+            <!--  Current Version  -->
+            <atc:GridEx
+                Grid.Row="0"
+                Margin="0,0,0,12"
+                Columns="Auto,*">
+                <TextBlock
+                    Grid.Column="0"
+                    FontWeight="SemiBold"
+                    Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                               Key=CurrentVersion}" />
+                <TextBlock
+                    Grid.Column="1"
+                    Margin="8,0,0,0"
+                    Text="{Binding Path=CurrentVersion}" />
+            </atc:GridEx>
+
+            <!--  Latest Version  -->
+            <atc:GridEx
+                Grid.Row="1"
+                Margin="0,0,0,12"
+                Columns="Auto,*">
+                <TextBlock
+                    Grid.Column="0"
+                    FontWeight="SemiBold"
+                    Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                               Key=LatestVersion}" />
+                <TextBlock
+                    Grid.Column="1"
+                    Margin="8,0,0,0"
+                    Text="{Binding Path=LatestVersion}" />
+            </atc:GridEx>
+
+            <!--  Status Message  -->
+            <Border
+                Grid.Row="2"
+                Margin="0,8,0,0"
+                Padding="12"
+                Background="{DynamicResource MahApps.Brushes.Gray10}"
+                CornerRadius="4">
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontSize="14"
+                    Text="{Binding Path=StatusMessage}"
+                    TextWrapping="Wrap" />
+            </Border>
+
+            <!--  Buttons  -->
+            <StackPanel
+                Grid.Row="4"
+                Margin="0,20,0,0"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal">
+                <Button
+                    MinWidth="120"
+                    Margin="0,0,8,0"
+                    Padding="16,8"
+                    Command="{Binding Path=DownloadLatestCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                  Key=DownloadLatest}"
+                    Visibility="{Binding Path=HasNewVersion, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
+                <Button
+                    MinWidth="80"
+                    Padding="16,8"
+                    Command="{Binding Path=CloseCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                  Key=Close}"
+                    IsDefault="True" />
+            </StackPanel>
+        </atc:GridEx>
+    </atc:BusyOverlay>
+</atc:NiceWindow>

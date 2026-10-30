@@ -426,3 +426,12 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# Local working files
+.claude/settings.local.json
+nul
+tmpclaude-*-cwd
+
+# Superpowers design specs and implementation plans are local working
+# artifacts, not repository content.
+docs/superpowers/

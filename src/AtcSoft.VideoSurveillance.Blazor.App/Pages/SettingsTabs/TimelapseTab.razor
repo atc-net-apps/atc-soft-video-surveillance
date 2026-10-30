@@ -1,0 +1,18 @@
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.Timelapse</MudText>
+<SettingSwitch @bind-Value="State.EnableTimelapse"
+               Label="@Translations.TakeTimelapseSnapshots"
+               Help="@Translations.TimelapseHelp" />
+<MudSelect @bind-Value="State.TimelapseInterval"
+           Label="@Translations.Interval"
+           Disabled="!State.EnableTimelapse"
+           Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.TimelapseIntervals, State.TimelapseInterval, v => v))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsState State { get; set; } = null!;
+}

@@ -1,0 +1,78 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  CONFIGURATION: Release
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
+
+      - name: Test
+        run: dotnet test --no-build --configuration ${{ env.CONFIGURATION }}
+
+  build-installer:
+    name: Build Installer (Validation)
+    runs-on: windows-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Application
+        run: dotnet publish src/AtcSoft.CameraWall.Wpf.App/AtcSoft.CameraWall.Wpf.App.csproj --configuration ${{ env.CONFIGURATION }} --output ./publish
+
+      - name: Build Installer
+        run: dotnet build setup/AtcSoft.CameraWall.Installer/AtcSoft.CameraWall.Installer.wixproj --configuration ${{ env.CONFIGURATION }}
+
+  build-installer-videosurveillance:
+    name: Build VideoSurveillance Installer (Validation)
+    runs-on: windows-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Application
+        run: dotnet publish src/AtcSoft.VideoSurveillance.Wpf.App/AtcSoft.VideoSurveillance.Wpf.App.csproj --configuration ${{ env.CONFIGURATION }} --output ./publish-vs
+
+      - name: Build Installer
+        run: dotnet build setup/AtcSoft.VideoSurveillance.Installer/AtcSoft.VideoSurveillance.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-vs

@@ -1,0 +1,147 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsNew ? Translations.AddReceiver : Translations.EditReceiver)</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: min(480px, 80vw);">
+            <MudTextField @bind-Value="url"
+                          Label="@Translations.Address"
+                          Placeholder="https://example.com/hooks/surveillance"
+                          HelperText="@Translations.WebhookAddressHelp"
+                          Immediate="true"
+                          Error="@(showErrors && !WebhookEventChoices.IsUsableAddress(url))"
+                          ErrorText="@Translations.EnterAnHttpAddress"
+                          Variant="Variant.Outlined"
+                          autocomplete="off" />
+
+            <MudTextField @bind-Value="secret"
+                          Label="@Translations.Secret"
+                          InputType="InputType.Password"
+                          HelperText="@SecretHint"
+                          Variant="Variant.Outlined"
+                          autocomplete="new-password" />
+
+            @if (!IsNew && HasSecret)
+            {
+                <MudCheckBox @bind-Value="removeSecret"
+                             Label="@Translations.RemoveSecret"
+                             Dense="true" />
+            }
+
+            <div>
+                <MudText Typo="Typo.subtitle2">@Translations.Events</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    @Translations.WebhookEventsHelp
+                </MudText>
+                @foreach (var group in WebhookEventChoices.Groups)
+                {
+                    <MudCheckBox T="bool"
+                                 Value="@ticked.Contains(group.Pattern)"
+                                 ValueChanged="@(value => Tick(group.Pattern, value))"
+                                 Label="@group.Label"
+                                 Dense="true" />
+                }
+
+                @if (kept.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        @(string.Format(CultureInfo.CurrentCulture, Translations.AlsoSetAndKept1, string.Join(", ", kept)))
+                    </MudText>
+                }
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Translations.Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">@(IsNew ? Translations.Add : Translations.Save)</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly HashSet<string> ticked = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<string> kept = [];
+    private string url = string.Empty;
+    private string secret = string.Empty;
+    private bool removeSecret;
+    private bool showErrors;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    /// <summary>
+    /// The receiver to edit; none for a new one.
+    /// </summary>
+    [Parameter]
+    public Webhook? Webhook { get; set; }
+
+    private bool IsNew => Webhook is null;
+
+    private bool HasSecret => Webhook?.HasSecret == true;
+
+    private string SecretHint
+    {
+        get
+        {
+            if (IsNew)
+            {
+                return Translations.WebhookSecretHelp;
+            }
+
+            return HasSecret
+                ? Translations.WebhookSecretIsSet
+                : Translations.WebhookSecretIsNotSet;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Webhook is null)
+        {
+            return;
+        }
+
+        url = Webhook.Url;
+        var (groups, others) = WebhookEventChoices.Split(Webhook.Events);
+        ticked.UnionWith(groups);
+        kept = others;
+    }
+
+    private void Tick(
+        string pattern,
+        bool value)
+    {
+        if (value)
+        {
+            ticked.Add(pattern);
+        }
+        else
+        {
+            ticked.Remove(pattern);
+        }
+    }
+
+    private void Submit()
+    {
+        if (!WebhookEventChoices.IsUsableAddress(url))
+        {
+            showErrors = true;
+            return;
+        }
+
+        // Null keeps the secret the receiver has; an empty text removes it.
+        var secretToSend = string.IsNullOrEmpty(secret) ? null : secret;
+        if (removeSecret)
+        {
+            secretToSend = string.Empty;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new WebhookDialogResult(
+            url.Trim(),
+            secretToSend,
+            WebhookEventChoices.ToEvents(ticked, kept))));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

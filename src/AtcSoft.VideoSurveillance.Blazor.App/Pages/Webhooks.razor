@@ -1,0 +1,201 @@
+@page "/webhooks"
+@inject GatewayService Gateway
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-1">@Translations.Webhooks</MudText>
+<MudText Typo="Typo.body2" Class="mud-text-secondary mb-4" Style="max-width: 760px;">
+    @Translations.WebhooksIntro
+</MudText>
+
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           StartIcon="@Icons.Material.Filled.Add"
+           Class="mb-4"
+           Disabled="@(loadFailed || isLoading)"
+           OnClick="AddAsync">
+    @Translations.AddReceiver
+</MudButton>
+
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (loadFailed)
+{
+    <MudAlert Severity="Severity.Error" Style="max-width: 700px;">
+        @Translations.ServerDidNotAnswer
+    </MudAlert>
+}
+else
+{
+    <MudTable Items="@webhooks" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>@Translations.Address</MudTh>
+            <MudTh>@Translations.Events</MudTh>
+            <MudTh>@Translations.Signed</MudTh>
+            <MudTh>@Translations.SetIn</MudTh>
+            <MudTh>@Translations.Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="@Translations.Address" Style="word-break: break-all;">@context.Url</MudTd>
+            <MudTd DataLabel="@Translations.Events">@WebhookEventChoices.Describe(context.Events)</MudTd>
+            <MudTd DataLabel="@Translations.Signed">@(context.HasSecret ? Translations.Yes : Translations.No)</MudTd>
+            <MudTd DataLabel="@Translations.SetIn">@(context.IsEditable ? Translations.ThisPage : Translations.ServerConfiguration)</MudTd>
+            <MudTd>
+                <MudTooltip Text="@Translations.SendATestEvent">
+                    <MudIconButton Icon="@Icons.Material.Filled.Send"
+                                   Size="Size.Small"
+                                   aria-label="@Translations.SendATestEvent"
+                                   Disabled="@testing.Contains(context.Id)"
+                                   OnClick="@(() => TestAsync(context))" />
+                </MudTooltip>
+                @if (context.IsEditable)
+                {
+                    <MudTooltip Text="@Translations.Edit">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       aria-label="@Translations.Edit"
+                                       OnClick="@(() => EditAsync(context))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@Translations.Remove">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       aria-label="@Translations.Remove"
+                                       OnClick="@(() => DeleteAsync(context))" />
+                    </MudTooltip>
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>@Translations.NoReceiversYet</MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    @if (webhooks.Any(w => !w.IsEditable))
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
+            @Translations.ConfiguredReceiverInfo
+        </MudText>
+    }
+}
+
+@code {
+    private readonly HashSet<Guid> testing = new();
+    private Webhook[] webhooks = [];
+    private bool isLoading = true;
+    private bool loadFailed;
+
+    protected override Task OnInitializedAsync()
+        => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var loaded = await Gateway.GetWebhooksAsync();
+        loadFailed = loaded is null;
+        webhooks = loaded ?? [];
+        isLoading = false;
+    }
+
+    private async Task AddAsync()
+    {
+        if (await AskAsync(webhook: null) is not { } entered)
+        {
+            return;
+        }
+
+        var created = await Gateway.CreateWebhookAsync(new CreateWebhookRequest(
+            Url: entered.Url,
+            Secret: string.IsNullOrEmpty(entered.Secret) ? null : entered.Secret,
+            Events: [.. entered.Events]));
+
+        Snackbar.Add(
+            created.IsSuccess ? Translations.ReceiverAdded : ProblemText.WithReason(Translations.ReceiverCouldNotBeAdded, created.Problem),
+            created.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadAsync();
+    }
+
+    private async Task EditAsync(Webhook webhook)
+    {
+        if (await AskAsync(webhook) is not { } entered)
+        {
+            return;
+        }
+
+        var updated = await Gateway.UpdateWebhookAsync(
+            webhook.Id,
+            new UpdateWebhookRequest(
+                Url: entered.Url,
+                Secret: entered.Secret,
+                Events: [.. entered.Events]));
+
+        Snackbar.Add(
+            updated.IsSuccess ? Translations.ReceiverSaved : ProblemText.WithReason(Translations.ReceiverCouldNotBeSaved, updated.Problem),
+            updated.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(Webhook webhook)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, string.Format(CultureInfo.CurrentCulture, Translations.RemoveReceiverQuestion1, webhook.Url) },
+            { x => x.ButtonText, Translations.Remove },
+            { x => x.Color, Color.Error },
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(Translations.RemoveReceiver, parameters);
+        if (await dialog.Result is not { Canceled: false })
+        {
+            return;
+        }
+
+        var removed = await Gateway.DeleteWebhookAsync(webhook.Id);
+        Snackbar.Add(
+            removed.IsSuccess ? Translations.ReceiverRemoved : ProblemText.WithReason(Translations.ReceiverCouldNotBeRemoved, removed.Problem),
+            removed.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadAsync();
+    }
+
+    private async Task TestAsync(Webhook webhook)
+    {
+        if (!testing.Add(webhook.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            // The server tries a few times before it gives up, so this can take a while.
+            var delivered = await Gateway.TestWebhookAsync(webhook.Id);
+            Snackbar.Add(
+                delivered switch
+                {
+                    true => Translations.TestEventTaken,
+                    false => Translations.TestEventNotTaken,
+                    null => Translations.TestEventCouldNotBeSent,
+                },
+                delivered == true ? Severity.Success : Severity.Error);
+        }
+        finally
+        {
+            testing.Remove(webhook.Id);
+        }
+    }
+
+    private async Task<WebhookDialogResult?> AskAsync(Webhook? webhook)
+    {
+        var parameters = new DialogParameters<WebhookDialog>
+        {
+            { x => x.Webhook, webhook },
+        };
+
+        var dialog = await DialogService.ShowAsync<WebhookDialog>(title: null, parameters);
+        var result = await dialog.Result;
+
+        return result is { Canceled: false, Data: WebhookDialogResult entered }
+            ? entered
+            : null;
+    }
+}

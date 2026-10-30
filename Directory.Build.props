@@ -6,6 +6,17 @@
     <RepositoryName>atc-soft-video-surveillance</RepositoryName>
   </PropertyGroup>
 
+  <!--
+    The version is owned by release-please. It rewrites the value between the
+    x-release-please markers when a release pull request is merged. Do not edit
+    it by hand.
+  -->
+  <PropertyGroup Label="Versioning">
+    <!-- x-release-please-start-version -->
+    <Version>1.2.3</Version>
+    <!-- x-release-please-end -->
+  </PropertyGroup>
+
   <!-- Solution wide properties -->
   <PropertyGroup Label="Assembly Naming">
     <Company>$(OrganizationName)</Company>
@@ -20,7 +31,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>1573,1591,1712,CA1014</NoWarn>
+    <NoWarn>1573,1591,1712,CA1014,CS0436</NoWarn>
 
     <!-- Used by code coverage -->
     <DebugType>full</DebugType>
@@ -38,6 +49,11 @@
   </PropertyGroup>
 
   <!-- Shared code analyzers used for all projects in the solution -->
+  <!-- Nothing is published to NuGet for now -->
+  <PropertyGroup Label="Packaging">
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
   <ItemGroup Label="Code Analyzers">
     <PackageReference Include="Atc.Analyzer" Version="0.1.23" PrivateAssets="All" />
     <PackageReference Include="AsyncFixer" Version="2.1.0" PrivateAssets="All" />

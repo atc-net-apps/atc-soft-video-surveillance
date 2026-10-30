@@ -1,0 +1,9 @@
+{
+    "$schema": "https://raw.githubusercontent.com/atc-net/atc-rest-api-source-generator/main/schemas/atc-rest-api-server-handlers.schema.json",
+    "validateSpecificationStrategy": "Strict",
+    "includeDeprecated": false,
+    "generateHandlersOutput": "ApiHandlers",
+    "subFolderStrategy": "first-path-segment",
+    "handlerSuffix": "Handler",
+    "stubImplementation": "throw-not-implemented"
+}

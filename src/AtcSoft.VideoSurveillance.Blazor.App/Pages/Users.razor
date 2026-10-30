@@ -1,0 +1,189 @@
+@page "/users"
+@inject GatewayService Gateway
+@inject BrowserSession Session
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@Translations.Users</MudText>
+
+@if (!Session.IsAdmin)
+{
+    <MudAlert Severity="Severity.Info" Style="max-width: 700px;">@Translations.NoUsersAccess</MudAlert>
+}
+else
+{
+    <MudTabs Elevation="1" Rounded="true" TabPanelsClass="pa-4">
+        <MudTabPanel Text="@Translations.Users">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.PersonAdd"
+                       Class="mb-4"
+                       OnClick="AddUserAsync">
+                @Translations.AddUser
+            </MudButton>
+            <MudTable Items="@users" Hover="true" Striped="true" Dense="true" Loading="@(users is null)">
+                <HeaderContent>
+                    <MudTh>@Translations.Username</MudTh>
+                    <MudTh>@Translations.Role</MudTh>
+                    <MudTh>@Translations.Created</MudTh>
+                    <MudTh>@Translations.Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="@Translations.Username">@context.UserName</MudTd>
+                    <MudTd DataLabel="@Translations.Role">@RoleText.For(context.Role)</MudTd>
+                    <MudTd DataLabel="@Translations.Created">@context.CreatedAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)</MudTd>
+                    <MudTd>
+                        <MudTooltip Text="@Translations.Edit">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@Translations.Edit" OnClick="@(() => EditUserAsync(context))" />
+                        </MudTooltip>
+                        <MudTooltip Text="@Translations.Remove">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="@Translations.Remove" OnClick="@(() => RemoveUserAsync(context))" />
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudTabPanel>
+
+        <MudTabPanel Text="@Translations.ApiKeys">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Key"
+                       Class="mb-4"
+                       OnClick="AddApiKeyAsync">
+                @Translations.AddApiKey
+            </MudButton>
+            <MudTable Items="@apiKeys" Hover="true" Striped="true" Dense="true" Loading="@(apiKeys is null)">
+                <HeaderContent>
+                    <MudTh>@Translations.Name</MudTh>
+                    <MudTh>@Translations.Role</MudTh>
+                    <MudTh>@Translations.Created</MudTh>
+                    <MudTh>@Translations.Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="@Translations.Name">@context.Name</MudTd>
+                    <MudTd DataLabel="@Translations.Role">@RoleText.For(context.Role)</MudTd>
+                    <MudTd DataLabel="@Translations.Created">@context.CreatedAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)</MudTd>
+                    <MudTd>
+                        <MudTooltip Text="@Translations.Remove">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="@Translations.Remove" OnClick="@(() => RemoveApiKeyAsync(context))" />
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudTabPanel>
+
+        <MudTabPanel Text="@Translations.AuditLog">
+            <MudTable Items="@audit" Hover="true" Striped="true" Dense="true" Loading="@(audit is null)">
+                <HeaderContent>
+                    <MudTh>@Translations.Time</MudTh>
+                    <MudTh>@Translations.AuditUser</MudTh>
+                    <MudTh>@Translations.AuditAction</MudTh>
+                    <MudTh>@Translations.AuditTarget</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="@Translations.Time">@context.Timestamp.LocalDateTime.ToString("G", CultureInfo.CurrentCulture)</MudTd>
+                    <MudTd DataLabel="@Translations.AuditUser">@context.UserName</MudTd>
+                    <MudTd DataLabel="@Translations.AuditAction">@context.Action</MudTd>
+                    <MudTd DataLabel="@Translations.AuditTarget" Style="word-break: break-all;">@context.Target</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    private const int AuditEntriesShown = 200;
+
+    private UserAccount[]? users;
+    private ApiKey[]? apiKeys;
+    private AuditEntry[]? audit;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.IsAdmin)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        users = await Gateway.GetUsersAsync() ?? [];
+        apiKeys = await Gateway.GetApiKeysAsync() ?? [];
+        audit = await Gateway.GetAuditEntriesAsync(AuditEntriesShown) ?? [];
+    }
+
+    private async Task AddUserAsync()
+    {
+        var dialog = await DialogService.ShowAsync<UserDialog>(Translations.AddUser);
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add(Translations.UserSaved, Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private async Task EditUserAsync(UserAccount user)
+    {
+        var parameters = new DialogParameters<UserDialog> { { x => x.User, user } };
+        var dialog = await DialogService.ShowAsync<UserDialog>(string.Format(CultureInfo.CurrentCulture, Translations.EditUser1, user.UserName), parameters);
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add(Translations.UserSaved, Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private async Task RemoveUserAsync(UserAccount user)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, string.Format(CultureInfo.CurrentCulture, Translations.RemoveUser1, user.UserName) },
+            { x => x.ButtonText, Translations.Remove },
+            { x => x.Color, Color.Error },
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(Translations.Remove, parameters);
+        if (await dialog.Result is not { Canceled: false })
+        {
+            return;
+        }
+
+        var removed = await Gateway.DeleteUserAsync(user.Id);
+        Snackbar.Add(
+            removed.IsSuccess ? Translations.UserRemoved : ProblemText.WithReason(Translations.UserCouldNotBeRemoved, removed.Problem),
+            removed.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadAsync();
+    }
+
+    private async Task AddApiKeyAsync()
+    {
+        var dialog = await DialogService.ShowAsync<ApiKeyDialog>(Translations.AddApiKey);
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task RemoveApiKeyAsync(ApiKey key)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, string.Format(CultureInfo.CurrentCulture, Translations.RemoveApiKey1, key.Name) },
+            { x => x.ButtonText, Translations.Remove },
+            { x => x.Color, Color.Error },
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(Translations.Remove, parameters);
+        if (await dialog.Result is not { Canceled: false })
+        {
+            return;
+        }
+
+        var removed = await Gateway.DeleteApiKeyAsync(key.Id);
+        Snackbar.Add(
+            removed.IsSuccess ? Translations.ApiKeyRemoved : ProblemText.WithReason(Translations.ApiKeyCouldNotBeRemoved, removed.Problem),
+            removed.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadAsync();
+    }
+}

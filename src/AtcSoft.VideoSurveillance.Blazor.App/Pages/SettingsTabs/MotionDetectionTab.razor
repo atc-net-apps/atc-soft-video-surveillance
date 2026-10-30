@@ -1,0 +1,73 @@
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.Analysis</MudText>
+<MudSelect @bind-Value="State.MotionSensitivity" Label="@Translations.Sensitivity" Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.MotionSensitivities, State.MotionSensitivity, v => v.ToString(CultureInfo.InvariantCulture)))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+<MudNumericField @bind-Value="State.SmallestObjectPercent"
+                 Label="@Translations.SmallestObjectPercent"
+                 HelperText="@Translations.SmallestObjectInfo"
+                 Min="0.0" Max="100.0" Step="0.01"
+                 Class="mt-2" />
+<MudNumericField @bind-Value="State.StoppedObjectSeconds"
+                 Label="@Translations.StoppedObjectSeconds"
+                 HelperText="@Translations.StoppedObjectSecondsInfo"
+                 Min="10" Max="600" Step="10"
+                 Class="mt-2" />
+<SettingSwitch @bind-Value="State.IgnoreLightingChanges" Label="@Translations.IgnoreLightingChanges" />
+<MudText Typo="Typo.caption" Class="mb-2">@Translations.IgnoreLightingChangesInfo</MudText>
+<MudSelect @bind-Value="State.AnalysisWidth" Label="@Translations.AnalysisResolution" HelperText="@Translations.AnalysisResolutionInfo" Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.AnalysisWidths, State.AnalysisWidth, v => string.Format(CultureInfo.CurrentCulture, Translations.Pixels1, v)))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+<MudNumericField @bind-Value="State.AnalysisFrameRate" Label="@Translations.AnalysisFramesPerSecond" Min="1" Max="30" Class="mt-2" />
+<MudSelect @bind-Value="State.PostMotionDurationSeconds"
+           Label="@Translations.KeepRecordingAfterMotion"
+           Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.PostMotionDurations, State.PostMotionDurationSeconds, v => string.Format(CultureInfo.CurrentCulture, Translations.Seconds1, v)))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+<MudNumericField @bind-Value="State.CooldownSeconds"
+                 Label="@Translations.CooldownSeconds"
+                 HelperText="@Translations.MotionCooldownHelp"
+                 Min="1" Max="60"
+                 Class="mt-2" />
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.BoundingBox</MudText>
+<SettingSwitch @bind-Value="State.BoundingBoxShowInGrid" Label="@Translations.ShowInTheCameraGrid" />
+<SettingSwitch @bind-Value="State.BoundingBoxShowInFullScreen" Label="@Translations.ShowInFullScreen" />
+<MudSelect @bind-Value="State.BoundingBoxColor" Label="@Translations.Colour" ToStringFunc="ColorChoices.Label" Class="mt-2">
+    @foreach (var name in ColorOptions(State.BoundingBoxColor))
+    {
+        <MudSelectItem Value="@name">
+            <span style="display: inline-block; width: 14px; height: 14px; border: 1px solid #888; vertical-align: middle; margin-right: 8px; background: @ColorChoices.ToCss(name);"></span>@ColorChoices.Label(name)
+        </MudSelectItem>
+    }
+</MudSelect>
+<MudSelect @bind-Value="State.BoundingBoxThickness" Label="@Translations.Thickness" Class="mt-2">
+    @foreach (var (value, label) in SettingsOptions.WithCurrent(SettingsOptions.BoundingBoxThicknesses, State.BoundingBoxThickness, v => $"{v} px"))
+    {
+        <MudSelectItem Value="@value">@label</MudSelectItem>
+    }
+</MudSelect>
+<MudNumericField @bind-Value="State.BoundingBoxPadding" Label="@Translations.PaddingPixels" Min="0" Max="100" Class="mt-2" />
+
+<MudText Class="mt-4 mb-1">@(string.Format(CultureInfo.CurrentCulture, Translations.Smoothing1, State.BoundingBoxSmoothing.ToString("F2", CultureInfo.CurrentCulture)))</MudText>
+<MudSlider @bind-Value="State.BoundingBoxSmoothing" Min="0.0" Max="1.0" Step="0.05" />
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsState State { get; set; } = null!;
+
+    private static IEnumerable<string> ColorOptions(string current)
+        => ColorChoices.Names.Contains(current, StringComparer.Ordinal)
+            ? ColorChoices.Names
+            : [.. ColorChoices.Names, current];
+}

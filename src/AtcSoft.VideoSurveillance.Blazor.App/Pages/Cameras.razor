@@ -1,0 +1,295 @@
+@page "/cameras"
+@inject GatewayService Gateway
+@inject EventStreamService EventStream
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
+
+<MudText Typo="Typo.h4" Class="mb-4">@Translations.Cameras</MudText>
+
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           StartIcon="@Icons.Material.Filled.Add"
+           Class="mb-4"
+           Href="/cameras/create">
+    @Translations.AddCamera
+</MudButton>
+
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="@cameras" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>@Translations.Name</MudTh>
+            <MudTh>@Translations.CameraSource</MudTh>
+            <MudTh>@Translations.State</MudTh>
+            <MudTh>@Translations.Recording</MudTh>
+            <MudTh>@Translations.Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="@Translations.Name">@context.DisplayName</MudTd>
+            <MudTd DataLabel="@Translations.CameraSource">@UsbFormatChoices.DescribeSource(
+                context.Source == CameraSource.Usb,
+                context.UsbFriendlyName,
+                context.Protocol.ToString(),
+                context.IpAddress,
+                context.Port,
+                context.Path)</MudTd>
+            <MudTd DataLabel="@Translations.State">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="@GetConnectionColor(context.ConnectionState)">
+                    @ConnectionStateText.ForCamera(context.ConnectionState)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="@Translations.Recording">
+                @if (context.IsRecording)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error">@Translations.Recording</MudChip>
+                }
+            </MudTd>
+            <MudTd>
+                <MudTooltip Text="@Translations.Edit">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@(() => Navigation.NavigateTo($"/cameras/{context.Id}/edit"))" />
+                </MudTooltip>
+                <MudTooltip Text="@Translations.DownloadASnapshot">
+                    <MudIconButton Icon="@Icons.Material.Filled.CameraAlt"
+                                   Size="Size.Small"
+                                   OnClick="@(() => CaptureSnapshotAsync(context))" />
+                </MudTooltip>
+                @if (context.IsRecording)
+                {
+                    <MudTooltip Text="@Translations.StopRecording">
+                        <MudIconButton Icon="@Icons.Material.Filled.Stop"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       Disabled="@busy.Contains(context.Id)"
+                                       OnClick="@(() => StopRecordingAsync(context.Id))" />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudTooltip Text="@Translations.StartRecording">
+                        <MudIconButton Icon="@Icons.Material.Filled.FiberManualRecord"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       Disabled="@busy.Contains(context.Id)"
+                                       OnClick="@(() => StartRecordingAsync(context.Id))" />
+                    </MudTooltip>
+                }
+                <MudTooltip Text="@Translations.DeleteRecording">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteCameraAsync(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>@Translations.NoCamerasConfigured</MudText>
+        </NoRecordsContent>
+    </MudTable>
+}
+
+@code {
+    // Cameras with a start or stop under way: starting waits for the camera
+    // to connect, and a second click meanwhile would start it twice.
+    private readonly HashSet<Guid> busy = new();
+    private readonly CancellationTokenSource leaving = new();
+    private Camera[]? cameras;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCamerasAsync();
+
+        // The states come from the server's event stream (GET /events) until
+        // the page is left; it resumes by itself after a drop.
+        _ = EventStream.RunAsync(OnEventAsync, leaving.Token);
+    }
+
+    private Task OnEventAsync(SurveillanceEvent surveillanceEvent)
+    {
+        if (surveillanceEvent.Connection is { } connection)
+        {
+            OnConnectionStateChanged(connection);
+        }
+
+        if (surveillanceEvent.Recording is { } recording)
+        {
+            OnRecordingStateChanged(recording);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadCamerasAsync()
+    {
+        isLoading = true;
+        cameras = await Gateway.GetCamerasAsync();
+        isLoading = false;
+    }
+
+    private void OnConnectionStateChanged(ConnectionStateChangedEvent e)
+    {
+        InvokeAsync(() =>
+        {
+            if (cameras is null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < cameras.Length; i++)
+            {
+                if (cameras[i].Id == e.CameraId)
+                {
+                    cameras[i] = cameras[i] with
+                    {
+                        ConnectionState = e.NewState,
+                    };
+                    break;
+                }
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private void OnRecordingStateChanged(RecordingStateChangedEvent e)
+    {
+        InvokeAsync(() =>
+        {
+            if (cameras is null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < cameras.Length; i++)
+            {
+                if (cameras[i].Id == e.CameraId)
+                {
+                    var isRecording = CameraStatusBoard.IsRecordingState(e.NewState);
+                    cameras[i] = cameras[i] with { IsRecording = isRecording };
+                    break;
+                }
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private async Task DeleteCameraAsync(Camera camera)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, string.Format(CultureInfo.CurrentCulture, Translations.DeleteCameraQuestion1, camera.DisplayName) },
+            { x => x.ButtonText, Translations.DeleteRecording },
+            { x => x.Color, Color.Error },
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(Translations.DeleteCameraTitle, parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var deleted = await Gateway.DeleteCameraAsync(camera.Id);
+            Snackbar.Add(
+                deleted.IsSuccess
+                    ? string.Format(CultureInfo.CurrentCulture, Translations.CameraDeleted1, camera.DisplayName)
+                    : ProblemText.WithReason(string.Format(CultureInfo.CurrentCulture, Translations.CameraCouldNotBeDeleted1, camera.DisplayName), deleted.Problem),
+                deleted.IsSuccess ? Severity.Success : Severity.Error);
+
+            await LoadCamerasAsync();
+        }
+    }
+
+    private async Task StartRecordingAsync(Guid cameraId)
+    {
+        if (!busy.Add(cameraId))
+        {
+            return;
+        }
+
+        try
+        {
+            var status = await Gateway.StartRecordingAsync(cameraId);
+            if (status.IsSuccess)
+            {
+                Snackbar.Add(Translations.RecordingStartedMessage, Severity.Success);
+                await LoadCamerasAsync();
+            }
+            else
+            {
+                Snackbar.Add(ProblemText.WithReason(Translations.RecordingCouldNotBeStarted, status.Problem), Severity.Error);
+            }
+        }
+        finally
+        {
+            busy.Remove(cameraId);
+        }
+    }
+
+    private async Task StopRecordingAsync(Guid cameraId)
+    {
+        if (!busy.Add(cameraId))
+        {
+            return;
+        }
+
+        try
+        {
+            var status = await Gateway.StopRecordingAsync(cameraId);
+            if (status.IsSuccess)
+            {
+                Snackbar.Add(Translations.RecordingStoppedMessage, Severity.Success);
+                await LoadCamerasAsync();
+            }
+            else
+            {
+                Snackbar.Add(ProblemText.WithReason(Translations.RecordingCouldNotBeStopped, status.Problem), Severity.Error);
+            }
+        }
+        finally
+        {
+            busy.Remove(cameraId);
+        }
+    }
+
+    private async Task CaptureSnapshotAsync(Camera camera)
+    {
+        Snackbar.Add(string.Format(CultureInfo.CurrentCulture, Translations.CapturingSnapshotFrom1, camera.DisplayName), Severity.Info);
+        var picture = await Gateway.CaptureSnapshotAsync(camera.Id);
+        if (picture is { Length: > 0 })
+        {
+            var fileName = $"{camera.DisplayName}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+            await JS.InvokeVoidAsync("fileInterop.downloadBlob", Convert.ToBase64String(picture), fileName, "image/png");
+            Snackbar.Add(Translations.SnapshotDownloaded, Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(Translations.FailedToCaptureSnapshot, Severity.Error);
+        }
+    }
+
+    private static Color GetConnectionColor(CameraConnectionState? state)
+        => state?.Value switch
+        {
+            CameraConnectionState.Names.Connected => Color.Success,
+            CameraConnectionState.Names.Connecting or CameraConnectionState.Names.Reconnecting => Color.Warning,
+            CameraConnectionState.Names.Error => Color.Error,
+            _ => Color.Default,
+        };
+
+    public void Dispose()
+    {
+        leaving.Cancel();
+        leaving.Dispose();
+    }
+}

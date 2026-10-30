@@ -1,0 +1,211 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  CONFIGURATION: Release
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          # A PAT is used rather than GITHUB_TOKEN so the release pull request
+          # triggers pr-validation.yml — events raised by GITHUB_TOKEN do not
+          # trigger workflows. The fallback keeps releases working if the
+          # secret is missing; the release PR then simply gets no CI run.
+          token: ${{ secrets.RELEASE_PLEASE_PAT || secrets.GITHUB_TOKEN }}
+
+  publish-nuget:
+    name: Publish NuGet Package
+    runs-on: windows-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      id-token: write   # required to mint the OIDC token NuGet exchanges for a key
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore AtcSoft.VideoSurveillance.slnx
+
+      # Packs every project marked <IsPackable>true</IsPackable>. They must ship
+      # together: each ProjectReference becomes a NuGet dependency pinned to the
+      # same version, so publishing only the top package leaves it uninstallable.
+      #
+      # No -p:Version here: the version comes from Directory.Build.props, which
+      # release-please stamped in the release commit. No -p:IsPackable=true
+      # either: on a solution that would force the apps and tests to pack too.
+      - name: Pack NuGet
+        run: dotnet pack AtcSoft.VideoSurveillance.slnx --configuration ${{ env.CONFIGURATION }} --no-restore --output ./nuget
+
+      # Trusted Publishing: GitHub mints an OIDC token, NuGet.org validates it
+      # against the publishing policy for this repository and workflow, and
+      # returns a short-lived API key. No long-lived secret is stored here.
+      - name: NuGet login (OIDC to short-lived key)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: davidkallesen   # nuget.org username; not a secret
+
+      - name: Push to NuGet.org
+        run: |
+          $packages = Get-ChildItem ./nuget -Filter *.nupkg
+          if ($packages.Count -eq 0) { throw "No .nupkg files found in ./nuget" }
+          foreach ($pkg in $packages) {
+            Write-Host "Pushing $($pkg.Name)"
+            dotnet nuget push $pkg.FullName --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          }
+
+      # --skip-duplicate turns every 409 into a warning and exit 0, including
+      # rejections that are not duplicates at all. Two releases were published
+      # this way with a green job and nothing on NuGet.org, because the old
+      # LinkSoft.* id was blocked by another organisation's reserved prefix.
+      # Assert the version really landed rather than trusting the push.
+      #
+      # Every package is checked, not just one: a single missing dependency
+      # makes the whole set uninstallable just as surely as a missing top package.
+      - name: Verify the packages are actually on NuGet.org
+        run: |
+          $version = "${{ needs.release-please.outputs.version }}"
+          $ids = Get-ChildItem ./nuget -Filter *.nupkg |
+            ForEach-Object { $_.Name -replace "\.$([regex]::Escape($version))\.nupkg$", '' }
+          if ($ids.Count -eq 0) { throw "No packages to verify" }
+
+          # 30 attempts x 30s = 15 minutes. The v1.2.2 release needed more than
+          # the original 5 minutes: three packages appeared between attempts 7
+          # and 9, and the last two arrived after the window had already closed,
+          # failing a release that had in fact published everything.
+          $pending = [System.Collections.Generic.List[string]]::new([string[]]$ids)
+          for ($i = 1; $i -le 30 -and $pending.Count -gt 0; $i++) {
+            foreach ($id in @($pending)) {
+              $url = "https://api.nuget.org/v3-flatcontainer/$($id.ToLowerInvariant())/index.json"
+              try {
+                if ((Invoke-RestMethod -Uri $url).versions -contains $version) {
+                  Write-Host "Confirmed $id $version"
+                  [void]$pending.Remove($id)
+                }
+              } catch {
+                # Not indexed yet (a brand-new package id returns 404 until it is).
+              }
+            }
+            if ($pending.Count -gt 0) {
+              Write-Host "Attempt ${i}: waiting on $($pending -join ', ')"
+              Start-Sleep -Seconds 30
+            }
+          }
+          if ($pending.Count -gt 0) {
+            throw "Never appeared on NuGet.org: $($pending -join ', ') - the push reported success but did not publish them"
+          }
+
+  build-installers:
+    name: Build MSI (${{ matrix.name }})
+    runs-on: windows-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: CameraWall
+            app: src/AtcSoft.CameraWall.Wpf.App/AtcSoft.CameraWall.Wpf.App.csproj
+            publish_dir: publish-camerawall
+            installer: setup/AtcSoft.CameraWall.Installer/AtcSoft.CameraWall.Installer.wixproj
+            installer_bin: setup/AtcSoft.CameraWall.Installer/bin
+            artifact: msi-installer-camerawall
+          - name: VideoSurveillance
+            app: src/AtcSoft.VideoSurveillance.Wpf.App/AtcSoft.VideoSurveillance.Wpf.App.csproj
+            publish_dir: publish-videosurveillance
+            installer: setup/AtcSoft.VideoSurveillance.Installer/AtcSoft.VideoSurveillance.Installer.wixproj
+            installer_bin: setup/AtcSoft.VideoSurveillance.Installer/bin
+            artifact: msi-installer-videosurveillance
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Application
+        run: dotnet publish ${{ matrix.app }} --configuration ${{ env.CONFIGURATION }} --output ./${{ matrix.publish_dir }}
+
+      - name: Download FFmpeg
+        run: |
+          # The FFmpeg the engine needs (FFmpegRuntime.ReleaseVersion): bindings 9.0.2
+          # load only FFmpeg 9 (avutil-61). The GitHub mirror of gyan.dev keeps every
+          # release (gyan.dev itself deletes old ones), and the checksum is the one
+          # FFmpegInstaller.Package checks. Keep the three in step.
+          $ffmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-full_build-shared.zip"
+          $ffmpegSha256 = "8d31e162f1616e37aab3fa2db991b97e1b8dbeb1c8465fd81a81be16ff91b328"
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile ffmpeg.zip
+          $actual = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $ffmpegSha256) { throw "FFmpeg download checksum $actual, expected $ffmpegSha256" }
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-temp
+          $binDir = Get-ChildItem -Path ffmpeg-temp -Recurse -Directory -Filter "bin" | Select-Object -First 1
+          New-Item -ItemType Directory -Path "./${{ matrix.publish_dir }}/ffmpeg" -Force
+          # The DLLs for the engine, ffmpeg.exe for the server's live streams.
+          Copy-Item "$($binDir.FullName)\*.dll" -Destination "./${{ matrix.publish_dir }}/ffmpeg/"
+          Copy-Item "$($binDir.FullName)\ffmpeg.exe" -Destination "./${{ matrix.publish_dir }}/ffmpeg/"
+
+      # No -p:ProductVersion here: it comes from setup/Directory.Build.props.
+      - name: Build Installer
+        run: dotnet build ${{ matrix.installer }} --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/${{ matrix.publish_dir }}
+
+      - name: Upload MSI Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.installer_bin }}/${{ env.CONFIGURATION }}/*.msi
+          retention-days: 5
+
+  upload-assets:
+    name: Upload Release Assets
+    runs-on: ubuntu-latest
+    needs: [release-please, build-installers]
+    if: needs.release-please.outputs.release_created == 'true'
+
+    steps:
+      - name: Download MSI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: msi-installer-*
+          merge-multiple: true
+          path: ./msi
+
+      - name: Attach MSIs to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ needs.release-please.outputs.tag_name }}" ./msi/*.msi --clobber --repo "${{ github.repository }}"

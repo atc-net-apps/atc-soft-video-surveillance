@@ -1,0 +1,2835 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ConnectionTimedOut" xml:space="preserve">
+    <value>Forbindelsen fik timeout</value>
+  </data>
+  <data name="Connected" xml:space="preserve">
+    <value>Forbundet</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>Forbinder...</value>
+  </data>
+  <data name="Reconnecting" xml:space="preserve">
+    <value>Genopretter forbindelse...</value>
+  </data>
+  <data name="Disconnected" xml:space="preserve">
+    <value>Afbrudt</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Fejl</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>Advarsel</value>
+  </data>
+  <data name="ConfirmDelete" xml:space="preserve">
+    <value>Bekræft sletning</value>
+  </data>
+  <data name="ConfirmDeleteProfile1" xml:space="preserve">
+    <value>Slet profilen '{0}'?</value>
+  </data>
+  <data name="CurrentDomainUnhandledException" xml:space="preserve">
+    <value>Uhåndteret undtagelse (CurrentDomain)</value>
+  </data>
+  <data name="DeleteProfile" xml:space="preserve">
+    <value>Slet profil</value>
+  </data>
+  <data name="DispatcherUnhandledException" xml:space="preserve">
+    <value>Uhåndteret undtagelse (Dispatcher)</value>
+  </data>
+  <data name="FailedToApplyLayout1" xml:space="preserve">
+    <value>Kunne ikke anvende layout: {0}</value>
+  </data>
+  <data name="FailedToCaptureSnapshot1" xml:space="preserve">
+    <value>Kunne ikke tage snapshot: {0}</value>
+  </data>
+  <data name="FailedToCreateCamera1" xml:space="preserve">
+    <value>Kunne ikke oprette kamera: {0}</value>
+  </data>
+  <data name="FailedToCreateLayout1" xml:space="preserve">
+    <value>Kunne ikke oprette layout: {0}</value>
+  </data>
+  <data name="FailedToDeleteCamera1" xml:space="preserve">
+    <value>Kunne ikke slette kamera: {0}</value>
+  </data>
+  <data name="FailedToDeleteLayout1" xml:space="preserve">
+    <value>Kunne ikke slette layout: {0}</value>
+  </data>
+  <data name="FailedToLoadCameraDetails" xml:space="preserve">
+    <value>Kunne ikke indlæse kameradetaljer.</value>
+  </data>
+  <data name="FailedToStartRecording1" xml:space="preserve">
+    <value>Kunne ikke starte optagelse: {0}</value>
+  </data>
+  <data name="FailedToStopRecording1" xml:space="preserve">
+    <value>Kunne ikke stoppe optagelse: {0}</value>
+  </data>
+  <data name="FailedToUpdateCamera1" xml:space="preserve">
+    <value>Kunne ikke opdatere kamera: {0}</value>
+  </data>
+  <data name="FailedToUpdateLayout1" xml:space="preserve">
+    <value>Kunne ikke opdatere layout: {0}</value>
+  </data>
+  <data name="LayoutApplied" xml:space="preserve">
+    <value>Layout anvendt</value>
+  </data>
+  <data name="LayoutAppliedSuccessfully1" xml:space="preserve">
+    <value>Layout '{0}' anvendt.</value>
+  </data>
+  <data name="NoSnapshotData" xml:space="preserve">
+    <value>Intet snapshot-data returneret.</value>
+  </data>
+  <data name="Snapshot" xml:space="preserve">
+    <value>Snapshot</value>
+  </data>
+  <data name="SnapshotSaved" xml:space="preserve">
+    <value>Snapshot gemt</value>
+  </data>
+  <data name="SnapshotSavedTo1" xml:space="preserve">
+    <value>Snapshot gemt til {0}</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>Ukendt</value>
+  </data>
+  <data name="ConnectionSuccessful" xml:space="preserve">
+    <value>Forbindelse lykkedes</value>
+  </data>
+  <data name="StreamOpenFailed" xml:space="preserve">
+    <value>Kunne ikke åbne stream</value>
+  </data>
+  <data name="FailedWithStatus1" xml:space="preserve">
+    <value>Fejlet: {0}</value>
+  </data>
+  <data name="EditCamera" xml:space="preserve">
+    <value>Rediger kamera...</value>
+  </data>
+  <data name="DeleteCamera" xml:space="preserve">
+    <value>Slet kamera</value>
+  </data>
+  <data name="ShowInFullScreen" xml:space="preserve">
+    <value>Vis i fuldskærm</value>
+  </data>
+  <data name="SwapLeft" xml:space="preserve">
+    <value>Byt til venstre</value>
+  </data>
+  <data name="SwapRight" xml:space="preserve">
+    <value>Byt til højre</value>
+  </data>
+  <data name="TakeSnapshot" xml:space="preserve">
+    <value>Tag skærmbillede</value>
+  </data>
+  <data name="Reconnect" xml:space="preserve">
+    <value>Genopret forbindelse</value>
+  </data>
+  <data name="ResetZoom" xml:space="preserve">
+    <value>Nulstil zoom</value>
+  </data>
+  <data name="Rotate" xml:space="preserve">
+    <value>Roter</value>
+  </data>
+  <data name="SaveSnapshot" xml:space="preserve">
+    <value>Gem skærmbillede</value>
+  </data>
+  <data name="AddCamera" xml:space="preserve">
+    <value>Tilføj kamera</value>
+  </data>
+  <data name="NewCamera" xml:space="preserve">
+    <value>Nyt kamera</value>
+  </data>
+  <data name="NewLayout" xml:space="preserve">
+    <value>Nyt layout</value>
+  </data>
+  <data name="DeleteLayout" xml:space="preserve">
+    <value>Slet layout</value>
+  </data>
+  <data name="RenameLayout" xml:space="preserve">
+    <value>Omdøb layout</value>
+  </data>
+  <data name="EnterNewLayoutName" xml:space="preserve">
+    <value>Indtast et nyt navn til layoutet</value>
+  </data>
+  <data name="RenameLayoutCancelled" xml:space="preserve">
+    <value>Omdøb layout annulleret</value>
+  </data>
+  <data name="LayoutRenamed2" xml:space="preserve">
+    <value>Layout omdøbt: {0} → {1}</value>
+  </data>
+  <data name="Information" xml:space="preserve">
+    <value>Information</value>
+  </data>
+  <data name="Ready" xml:space="preserve">
+    <value>Klar</value>
+  </data>
+  <data name="AddCameraDialog" xml:space="preserve">
+    <value>Tilføj kamera dialog...</value>
+  </data>
+  <data name="AddedCamera1" xml:space="preserve">
+    <value>Tilføjet kamera: {0}</value>
+  </data>
+  <data name="AddCameraCancelled" xml:space="preserve">
+    <value>Tilføj kamera annulleret</value>
+  </data>
+  <data name="EditingCamera1" xml:space="preserve">
+    <value>Redigerer kamera: {0}</value>
+  </data>
+  <data name="UpdatedCamera1" xml:space="preserve">
+    <value>Opdateret kamera: {0}</value>
+  </data>
+  <data name="EditCameraCancelled" xml:space="preserve">
+    <value>Rediger kamera annulleret</value>
+  </data>
+  <data name="DeletedCamera1" xml:space="preserve">
+    <value>Slettet kamera: {0}</value>
+  </data>
+  <data name="FullScreenCamera1" xml:space="preserve">
+    <value>Fuldskærm: {0}</value>
+  </data>
+  <data name="ReconnectingAllCameras" xml:space="preserve">
+    <value>Gentilslutter alle kameraer...</value>
+  </data>
+  <data name="AllCamerasReconnected" xml:space="preserve">
+    <value>Alle kameraer gentilsluttet</value>
+  </data>
+  <data name="NewLayoutCancelled" xml:space="preserve">
+    <value>Nyt layout annulleret</value>
+  </data>
+  <data name="LayoutCreated1" xml:space="preserve">
+    <value>Layout oprettet: {0}</value>
+  </data>
+  <data name="DeletedLayout1" xml:space="preserve">
+    <value>Slettet layout: {0}</value>
+  </data>
+  <data name="SetStartupLayout1" xml:space="preserve">
+    <value>Startlayout indstillet: {0}</value>
+  </data>
+  <data name="CameraStateChanged2" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="CameraDisconnected1" xml:space="preserve">
+    <value>Kamera afbrudt: {0}</value>
+  </data>
+  <data name="CameraConnected1" xml:space="preserve">
+    <value>Kamera forbundet: {0}</value>
+  </data>
+  <data name="PositionChanged1" xml:space="preserve">
+    <value>Position ændret: {0}</value>
+  </data>
+  <data name="LoadedLayout1" xml:space="preserve">
+    <value>Indlæst layout: {0}</value>
+  </data>
+  <data name="LoadedCameras1" xml:space="preserve">
+    <value>Indlæst {0} kamera(er)</value>
+  </data>
+  <data name="ConfirmDeleteCamera1" xml:space="preserve">
+    <value>Er du sikker på, at du vil slette kameraet '{0}'?</value>
+  </data>
+  <data name="ConfirmDeleteLayout1" xml:space="preserve">
+    <value>Er du sikker på, at du vil slette layoutet '{0}'?</value>
+  </data>
+  <data name="EnterLayoutName" xml:space="preserve">
+    <value>Indtast et navn til det nye layout</value>
+  </data>
+  <data name="IpAddressRequired" xml:space="preserve">
+    <value>IP-adresse er påkrævet</value>
+  </data>
+  <data name="IpAddressAlreadyExists" xml:space="preserve">
+    <value>Et kamera med denne IP-adresse og sti findes allerede</value>
+  </data>
+  <data name="PortRangeError" xml:space="preserve">
+    <value>Port skal være mellem 1 og 65535</value>
+  </data>
+  <data name="DisplayNameRequired" xml:space="preserve">
+    <value>Visningsnavn er påkrævet</value>
+  </data>
+  <data name="DisplayNameTooLong" xml:space="preserve">
+    <value>Visningsnavn må ikke overstige 256 tegn</value>
+  </data>
+  <data name="LayoutNameAlreadyExists" xml:space="preserve">
+    <value>Et layout med dette navn findes allerede</value>
+  </data>
+  <data name="NetworkScannerHeader" xml:space="preserve">
+    <value>Netværksscanner - Find kameraer</value>
+  </data>
+  <data name="CameraConfiguration" xml:space="preserve">
+    <value>Kamerakonfiguration</value>
+  </data>
+  <data name="DisplayName" xml:space="preserve">
+    <value>Visningsnavn</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>Beskrivelse</value>
+  </data>
+  <data name="Protocol" xml:space="preserve">
+    <value>Protokol</value>
+  </data>
+  <data name="IpAddress" xml:space="preserve">
+    <value>IP-adresse</value>
+  </data>
+  <data name="Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="Path" xml:space="preserve">
+    <value>Sti</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>Brugernavn</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Adgangskode</value>
+  </data>
+  <data name="OverlayPosition" xml:space="preserve">
+    <value>Overlay-position</value>
+  </data>
+  <data name="Rotation" xml:space="preserve">
+    <value>Rotation</value>
+  </data>
+  <data name="TestResult" xml:space="preserve">
+    <value>Testresultat</value>
+  </data>
+  <data name="NotTested" xml:space="preserve">
+    <value>Ikke testet</value>
+  </data>
+  <data name="Test" xml:space="preserve">
+    <value>Test</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Gem</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Annuller</value>
+  </data>
+  <data name="Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="NoCamerasConfigured" xml:space="preserve">
+    <value>Ingen kameraer konfigureret. Tilføj et kamera for at komme i gang.</value>
+  </data>
+  <data name="About" xml:space="preserve">
+    <value>Om</value>
+  </data>
+  <data name="AboutAtcSoftCameraWall" xml:space="preserve">
+    <value>Om AtcSoft Camera Wall</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="ApplicationDescription" xml:space="preserve">
+    <value>En professionel kameravæg-applikation til overvågning af flere RTSP/HTTP kamerastrømme i et dynamisk gitter-layout.</value>
+  </data>
+  <data name="Copyright" xml:space="preserve">
+    <value>Ophavsret</value>
+  </data>
+  <data name="AllRightsReserved" xml:space="preserve">
+    <value>Alle rettigheder forbeholdes.</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>Søg efter opdateringer</value>
+  </data>
+  <data name="CurrentVersion" xml:space="preserve">
+    <value>Nuværende version</value>
+  </data>
+  <data name="LatestVersion" xml:space="preserve">
+    <value>Seneste version</value>
+  </data>
+  <data name="CheckingForUpdates" xml:space="preserve">
+    <value>Søger efter opdateringer...</value>
+  </data>
+  <data name="NewVersionAvailable" xml:space="preserve">
+    <value>En ny version er tilgængelig!</value>
+  </data>
+  <data name="YouAreUpToDate" xml:space="preserve">
+    <value>Du er opdateret.</value>
+  </data>
+  <data name="DownloadLatest" xml:space="preserve">
+    <value>Hent seneste</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Luk</value>
+  </data>
+  <data name="UnableToCheckForUpdates" xml:space="preserve">
+    <value>Kan ikke søge efter opdateringer. Tjek venligst din internetforbindelse.</value>
+  </data>
+  <data name="PressEscToExit" xml:space="preserve">
+    <value>Tryk ESC for at afslutte fuldskærm</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Indstillinger</value>
+  </data>
+  <data name="General" xml:space="preserve">
+    <value>Generelt</value>
+  </data>
+  <data name="ApplicationAppearance" xml:space="preserve">
+    <value>Programudseende</value>
+  </data>
+  <data name="Startup" xml:space="preserve">
+    <value>Opstart</value>
+  </data>
+  <data name="ConnectCamerasOnStartup" xml:space="preserve">
+    <value>Tilslut kameraer ved opstart</value>
+  </data>
+  <data name="StartMaximized" xml:space="preserve">
+    <value>Start maksimeret (fuldskærm)</value>
+  </data>
+  <data name="StartRibbonCollapsed" xml:space="preserve">
+    <value>Start med bånd sammenfoldet</value>
+  </data>
+  <data name="CameraDisplay" xml:space="preserve">
+    <value>Kameravisning</value>
+  </data>
+  <data name="OverlaySettings" xml:space="preserve">
+    <value>Overlay-indstillinger</value>
+  </data>
+  <data name="ShowCameraOverlayTitle" xml:space="preserve">
+    <value>Vis kameratitel</value>
+  </data>
+  <data name="ShowCameraOverlayDescription" xml:space="preserve">
+    <value>Vis kamerabeskrivelse</value>
+  </data>
+  <data name="ShowCameraOverlayTime" xml:space="preserve">
+    <value>Vis aktuel tid</value>
+  </data>
+  <data name="ShowCameraOverlayConnectionStatus" xml:space="preserve">
+    <value>Vis forbindelsesstatus</value>
+  </data>
+  <data name="ShowCameraOverlayQuickActions" xml:space="preserve">
+    <value>Vis hurtigknapper</value>
+  </data>
+  <data name="OverlayOpacity" xml:space="preserve">
+    <value>Overlay-gennemsigtighed</value>
+  </data>
+  <data name="GridLayout" xml:space="preserve">
+    <value>Gitter-layout</value>
+  </data>
+  <data name="AllowDragAndDropReorder" xml:space="preserve">
+    <value>Tillad træk og slip omorganisering</value>
+  </data>
+  <data name="AutoSaveLayoutChanges" xml:space="preserve">
+    <value>Gem layout-ændringer automatisk</value>
+  </data>
+  <data name="Connection" xml:space="preserve">
+    <value>Forbindelse</value>
+  </data>
+  <data name="ConnectionSettings" xml:space="preserve">
+    <value>Forbindelsesindstillinger</value>
+  </data>
+  <data name="ConnectionTimeoutSeconds" xml:space="preserve">
+    <value>Forbindelsestimeout (sekunder)</value>
+  </data>
+  <data name="ReconnectDelaySeconds" xml:space="preserve">
+    <value>Genoprettelsesforsinkelse (sekunder)</value>
+  </data>
+  <data name="MaxReconnectAttempts" xml:space="preserve">
+    <value>Maksimale genoprettelsesforsøg</value>
+  </data>
+  <data name="AutoReconnectOnFailure" xml:space="preserve">
+    <value>Genopret automatisk forbindelse ved fejl</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>Notifikationer</value>
+  </data>
+  <data name="ShowNotificationOnDisconnect" xml:space="preserve">
+    <value>Vis notifikation ved afbrydelse</value>
+  </data>
+  <data name="ShowNotificationOnReconnect" xml:space="preserve">
+    <value>Vis notifikation ved genoprettelse</value>
+  </data>
+  <data name="PlayNotificationSound" xml:space="preserve">
+    <value>Afspil notifikationslyd</value>
+  </data>
+  <data name="Performance" xml:space="preserve">
+    <value>Ydeevne</value>
+  </data>
+  <data name="VideoSettings" xml:space="preserve">
+    <value>Videoindstillinger</value>
+  </data>
+  <data name="VideoQuality" xml:space="preserve">
+    <value>Videokvalitet</value>
+  </data>
+  <data name="HardwareAcceleration" xml:space="preserve">
+    <value>Aktiver hardwareacceleration</value>
+  </data>
+  <data name="LowLatencyMode" xml:space="preserve">
+    <value>Lav forsinkelsestilstand</value>
+  </data>
+  <data name="BufferDurationMs" xml:space="preserve">
+    <value>Buffervarighed (ms)</value>
+  </data>
+  <data name="Recording" xml:space="preserve">
+    <value>Optagelse</value>
+  </data>
+  <data name="RecordingSettings" xml:space="preserve">
+    <value>Optagelsesindstillinger</value>
+  </data>
+  <data name="RecordingPath" xml:space="preserve">
+    <value>Optagelsesmappe</value>
+  </data>
+  <data name="SelectRecordingFolder" xml:space="preserve">
+    <value>Vælg optagelsesmappe...</value>
+  </data>
+  <data name="RecordingFormat" xml:space="preserve">
+    <value>Optagelsesformat</value>
+  </data>
+  <data name="TranscodeVideoCodec" xml:space="preserve">
+    <value>Video i optagelser</value>
+  </data>
+  <data name="TranscodeVideoCodecInfo" xml:space="preserve">
+    <value>Det kameraet sender, optages uændret, hvilket næsten intet koster. &quot;Altid H.264&quot; afkoder og koder et kamera, der sender andet (H.265, MJPEG), mens det optages: filerne kan så afspilles i alle afspillere og browsere, mod processortid for hvert af de kameraer. Kameraer, der allerede sender H.264, påvirkes ikke. Træder i kraft næste gang et kamera forbinder.</value>
+  </data>
+  <data name="EnableRecordingOnMotion" xml:space="preserve">
+    <value>Aktiver optagelse ved bevægelsesregistrering</value>
+  </data>
+  <data name="EnableRecordingOnConnect" xml:space="preserve">
+    <value>Start optagelse ved forbindelse</value>
+  </data>
+  <data name="Advanced" xml:space="preserve">
+    <value>Avanceret</value>
+  </data>
+  <data name="Logging" xml:space="preserve">
+    <value>Logning</value>
+  </data>
+  <data name="EnableDebugLogging" xml:space="preserve">
+    <value>Aktiver fejlfindingslogning</value>
+  </data>
+  <data name="LogPath" xml:space="preserve">
+    <value>Logmappe</value>
+  </data>
+  <data name="SelectLogFolder" xml:space="preserve">
+    <value>Vælg logmappe...</value>
+  </data>
+  <data name="Maintenance" xml:space="preserve">
+    <value>Vedligeholdelse</value>
+  </data>
+  <data name="RestoreDefaults" xml:space="preserve">
+    <value>Gendan standardindstillinger</value>
+  </data>
+  <data name="Layouts" xml:space="preserve">
+    <value>Layouts</value>
+  </data>
+  <data name="CurrentLayoutGroup" xml:space="preserve">
+    <value>Nuværende layout</value>
+  </data>
+  <data name="Layout" xml:space="preserve">
+    <value>Layout</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>Handlinger</value>
+  </data>
+  <data name="SetAsStartup" xml:space="preserve">
+    <value>Sæt som opstart</value>
+  </data>
+  <data name="Cameras" xml:space="preserve">
+    <value>Kameraer</value>
+  </data>
+  <data name="Camera" xml:space="preserve">
+    <value>Kamera</value>
+  </data>
+  <data name="ReconnectAll" xml:space="preserve">
+    <value>Gentilslut alle</value>
+  </data>
+  <data name="View" xml:space="preserve">
+    <value>Visning</value>
+  </data>
+  <data name="CamerasLabel" xml:space="preserve">
+    <value>Kameraer</value>
+  </data>
+  <data name="ConnectedLabel" xml:space="preserve">
+    <value>Forbundet</value>
+  </data>
+  <data name="ApplicationTitle" xml:space="preserve">
+    <value>AtcSoft Camera Wall</value>
+  </data>
+  <data name="InitializePrefix" xml:space="preserve">
+    <value>Initialiserer:</value>
+  </data>
+  <data name="InitializeLoadConfiguration" xml:space="preserve">
+    <value>Indlæs konfiguration</value>
+  </data>
+  <data name="InitializeStartHost" xml:space="preserve">
+    <value>Start host</value>
+  </data>
+  <data name="InitializeApplyUISettings" xml:space="preserve">
+    <value>Anvend UI-indstillinger</value>
+  </data>
+  <data name="InitializeCameraEngine" xml:space="preserve">
+    <value>Kameramotor</value>
+  </data>
+  <data name="InitializeLoadMainWindow" xml:space="preserve">
+    <value>Indlæs hovedvindue</value>
+  </data>
+  <data name="InitializeComplete" xml:space="preserve">
+    <value>Færdig</value>
+  </data>
+  <data name="SnapshotSettings" xml:space="preserve">
+    <value>Skærmbillede indstillinger</value>
+  </data>
+  <data name="SnapshotPath" xml:space="preserve">
+    <value>Skærmbillede mappe</value>
+  </data>
+  <data name="SelectSnapshotFolder" xml:space="preserve">
+    <value>Vælg skærmbillede mappe...</value>
+  </data>
+  <data name="Exit" xml:space="preserve">
+    <value>Afslut</value>
+  </data>
+  <data name="AssignCamera" xml:space="preserve">
+    <value>Tildel kamera</value>
+  </data>
+  <data name="AssignCameraToLayout" xml:space="preserve">
+    <value>Tildel kamera til layout</value>
+  </data>
+  <data name="AssignCameraCancelled" xml:space="preserve">
+    <value>Tildel kamera annulleret</value>
+  </data>
+  <data name="AvailableCameras" xml:space="preserve">
+    <value>Tilgængelige kameraer</value>
+  </data>
+  <data name="AssignedToLayout" xml:space="preserve">
+    <value>Tildelt til layout</value>
+  </data>
+  <data name="MoveToAssigned" xml:space="preserve">
+    <value>Flyt valgte til tildelt</value>
+  </data>
+  <data name="MoveToAvailable" xml:space="preserve">
+    <value>Flyt valgte til tilgængelige</value>
+  </data>
+  <data name="MoveAllToAssigned" xml:space="preserve">
+    <value>Flyt alle til tildelt</value>
+  </data>
+  <data name="MoveAllToAvailable" xml:space="preserve">
+    <value>Flyt alle til tilgængelige</value>
+  </data>
+  <data name="LayoutCamerasUpdated2" xml:space="preserve">
+    <value>Layout opdateret: {0} tilføjet, {1} fjernet</value>
+  </data>
+  <data name="MoveUp" xml:space="preserve">
+    <value>Flyt op</value>
+  </data>
+  <data name="MoveDown" xml:space="preserve">
+    <value>Flyt ned</value>
+  </data>
+  <data name="LayoutOrderUpdated" xml:space="preserve">
+    <value>Layoutrækkefølge opdateret</value>
+  </data>
+  <data name="AdvancedSettings" xml:space="preserve">
+    <value>Avancerede indstillinger</value>
+  </data>
+  <data name="UseLowLatencyMode" xml:space="preserve">
+    <value>Brug lav latenstilstand</value>
+  </data>
+  <data name="MaxLatencyMs" xml:space="preserve">
+    <value>Maks. latens (ms)</value>
+  </data>
+  <data name="RtspTransport" xml:space="preserve">
+    <value>RTSP transport</value>
+  </data>
+  <data name="UseLowLatencyModeInfo" xml:space="preserve">
+    <value>Aktiverer optimerede indstillinger for minimal forsinkelse. Reducerer bufferstørrelse og deaktiverer noget behandling for at opnå næsten realtids videoafspilning.</value>
+  </data>
+  <data name="MaxLatencyMsInfo" xml:space="preserve">
+    <value>Maksimal tilladt forsinkelse i millisekunder, før afspilleren springer billeder over for at indhente. Lavere værdier reducerer forsinkelse, men kan forårsage hakken på langsomme forbindelser.</value>
+  </data>
+  <data name="RtspTransportInfo" xml:space="preserve">
+    <value>TCP er mere pålidelig, men kan have højere latens. UDP er hurtigere, men pakker kan gå tabt på ustabile netværk.</value>
+  </data>
+  <data name="BufferDurationMsInfo" xml:space="preserve">
+    <value>Mængden af videodata, der skal bufferes før afspilning. Højere værdier giver jævnere afspilning, men øger forsinkelsen. Sæt til 0 for minimal buffering i lav latenstilstand.</value>
+  </data>
+  <data name="DefaultOverlayPosition" xml:space="preserve">
+    <value>Standard overlay-position</value>
+  </data>
+  <data name="DefaultProtocol" xml:space="preserve">
+    <value>Standard protokol</value>
+  </data>
+  <data name="DefaultPort" xml:space="preserve">
+    <value>Standard port</value>
+  </data>
+  <data name="DefaultCameraSettings" xml:space="preserve">
+    <value>Standard kameraindstillinger</value>
+  </data>
+  <data name="StreamingSettings" xml:space="preserve">
+    <value>Streaming indstillinger</value>
+  </data>
+  <data name="Overrides" xml:space="preserve">
+    <value>Tilsidesættelser</value>
+  </data>
+  <data name="UseDefaultSetting" xml:space="preserve">
+    <value>Brug standard</value>
+  </data>
+  <data name="DisplayOverrides" xml:space="preserve">
+    <value>Visnings tilsidesættelser</value>
+  </data>
+  <data name="ConnectionOverrides" xml:space="preserve">
+    <value>Forbindelses tilsidesættelser</value>
+  </data>
+  <data name="PerformanceOverrides" xml:space="preserve">
+    <value>Ydelses tilsidesættelser</value>
+  </data>
+  <data name="RecordingOverrides" xml:space="preserve">
+    <value>Optagelses tilsidesættelser</value>
+  </data>
+  <data name="OverrideSettingsInfo" xml:space="preserve">
+    <value>Tilsidesæt applikationsstandarder kun for dette kamera. Fjern markeringen "Brug standard" for at angive en kameraspecifik værdi.</value>
+  </data>
+  <data name="StartRecording" xml:space="preserve">
+    <value>Start optagelse</value>
+  </data>
+  <data name="StopRecording" xml:space="preserve">
+    <value>Stop optagelse</value>
+  </data>
+  <data name="RecordingStarted1" xml:space="preserve">
+    <value>Optagelse startet: {0}</value>
+  </data>
+  <data name="RecordingStopped1" xml:space="preserve">
+    <value>Optagelse stoppet: {0}</value>
+  </data>
+  <data name="RecordingFailed1" xml:space="preserve">
+    <value>Optagelse fejlede: {0}</value>
+  </data>
+  <data name="Motion" xml:space="preserve">
+    <value>Bevægelse</value>
+  </data>
+  <data name="MotionDetected1" xml:space="preserve">
+    <value>Bevægelse registreret: {0}</value>
+  </data>
+  <data name="MotionDetection" xml:space="preserve">
+    <value>Bevægelsesregistrering</value>
+  </data>
+  <data name="MotionDetectionSettings" xml:space="preserve">
+    <value>Bevægelsesregistrering indstillinger</value>
+  </data>
+  <data name="MotionSensitivity" xml:space="preserve">
+    <value>Bevægelsesfølsomhed</value>
+  </data>
+  <data name="PostMotionDuration" xml:space="preserve">
+    <value>Optagelse efter bevægelse (sekunder)</value>
+  </data>
+  <data name="AnalysisFrameRate" xml:space="preserve">
+    <value>Analyse billedfrekvens (FPS)</value>
+  </data>
+  <data name="MinimumChangePercent" xml:space="preserve">
+    <value>Minimum ændringsprocent</value>
+  </data>
+  <data name="CooldownSeconds" xml:space="preserve">
+    <value>Afkølingsperiode (sekunder)</value>
+  </data>
+  <data name="MotionOverrides" xml:space="preserve">
+    <value>Bevægelsesregistrering tilsidesættelser</value>
+  </data>
+  <data name="BrowseRecordings" xml:space="preserve">
+    <value>Gennemse optagelser</value>
+  </data>
+  <data name="AllCameras" xml:space="preserve">
+    <value>Alle kameraer</value>
+  </data>
+  <data name="RecordingCamera" xml:space="preserve">
+    <value>Kamera</value>
+  </data>
+  <data name="RecordingDateTime" xml:space="preserve">
+    <value>Dato/tid</value>
+  </data>
+  <data name="RecordingSize" xml:space="preserve">
+    <value>Størrelse</value>
+  </data>
+  <data name="RecordingDuration" xml:space="preserve">
+    <value>Varighed</value>
+  </data>
+  <data name="Thumbnail" xml:space="preserve">
+    <value>Miniature</value>
+  </data>
+  <data name="ThumbnailPreviewTitle1" xml:space="preserve">
+    <value>Miniature - {0}</value>
+  </data>
+  <data name="FileName" xml:space="preserve">
+    <value>Filnavn</value>
+  </data>
+  <data name="PlayRecording" xml:space="preserve">
+    <value>Afspil</value>
+  </data>
+  <data name="DeleteRecording" xml:space="preserve">
+    <value>Slet</value>
+  </data>
+  <data name="OpenRecordingsFolder" xml:space="preserve">
+    <value>Åbn mappe</value>
+  </data>
+  <data name="ConfirmDeleteRecording" xml:space="preserve">
+    <value>Slet denne optagelse?</value>
+  </data>
+  <data name="NoRecordingsFound" xml:space="preserve">
+    <value>Ingen optagelser fundet</value>
+  </data>
+  <data name="RecordingsFound1" xml:space="preserve">
+    <value>{0} optagelse(r) fundet</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Opdater</value>
+  </data>
+  <data name="Play" xml:space="preserve">
+    <value>Afspil</value>
+  </data>
+  <data name="Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="PressEscToClose" xml:space="preserve">
+    <value>Tryk ESC for at lukke</value>
+  </data>
+  <data name="Recordings" xml:space="preserve">
+    <value>Optagelser</value>
+  </data>
+  <data name="MediaCleanup" xml:space="preserve">
+    <value>Medieoprydning</value>
+  </data>
+  <data name="CleanupSchedule" xml:space="preserve">
+    <value>Oprydningsplan</value>
+  </data>
+  <data name="RecordingRetention" xml:space="preserve">
+    <value>Optagelsesopbevaring</value>
+  </data>
+  <data name="SnapshotRetention" xml:space="preserve">
+    <value>Snapshotopbevaring</value>
+  </data>
+  <data name="IncludeSnapshotsInCleanup" xml:space="preserve">
+    <value>Inkluder snapshots i oprydning</value>
+  </data>
+  <data name="CleanupScheduleDisabled" xml:space="preserve">
+    <value>Deaktiveret</value>
+  </data>
+  <data name="CleanupScheduleOnStartup" xml:space="preserve">
+    <value>Ved programstart</value>
+  </data>
+  <data name="CleanupScheduleOnStartupAndPeriodically" xml:space="preserve">
+    <value>Ved start og hver 6. time</value>
+  </data>
+  <data name="RetentionPeriod7Days" xml:space="preserve">
+    <value>7 dage</value>
+  </data>
+  <data name="RetentionPeriod14Days" xml:space="preserve">
+    <value>14 dage</value>
+  </data>
+  <data name="RetentionPeriod30Days" xml:space="preserve">
+    <value>30 dage</value>
+  </data>
+  <data name="RetentionPeriod60Days" xml:space="preserve">
+    <value>60 dage</value>
+  </data>
+  <data name="RetentionPeriod90Days" xml:space="preserve">
+    <value>90 dage</value>
+  </data>
+  <data name="RetentionPeriod6Months" xml:space="preserve">
+    <value>6 måneder</value>
+  </data>
+  <data name="RetentionPeriod1Year" xml:space="preserve">
+    <value>1 år</value>
+  </data>
+  <data name="EnableDiskSpaceGuard" xml:space="preserve">
+    <value>Aktiver diskpladsvagt</value>
+  </data>
+  <data name="MinFreeSpace" xml:space="preserve">
+    <value>Minimum fri diskplads</value>
+  </data>
+  <data name="MinFreeSpace500Mb" xml:space="preserve">
+    <value>500 MB</value>
+  </data>
+  <data name="MinFreeSpace1Gb" xml:space="preserve">
+    <value>1 GB</value>
+  </data>
+  <data name="MinFreeSpace2Gb" xml:space="preserve">
+    <value>2 GB (Anbefalet)</value>
+  </data>
+  <data name="MinFreeSpace5Gb" xml:space="preserve">
+    <value>5 GB</value>
+  </data>
+  <data name="MinFreeSpace10Gb" xml:space="preserve">
+    <value>10 GB</value>
+  </data>
+  <data name="MinFreeSpace20Gb" xml:space="preserve">
+    <value>20 GB</value>
+  </data>
+  <data name="RecordingSegmentation" xml:space="preserve">
+    <value>Optagelsessegmentering</value>
+  </data>
+  <data name="EnableHourlySegmentation" xml:space="preserve">
+    <value>Aktiver segmentering pr. time</value>
+  </data>
+  <data name="MaxRecordingDuration" xml:space="preserve">
+    <value>Maksimal optagelsesvarighed</value>
+  </data>
+  <data name="ThumbnailTileCount" xml:space="preserve">
+    <value>Miniature fliser</value>
+  </data>
+  <data name="OverrideToggleMaster" xml:space="preserve">
+    <value>Master</value>
+  </data>
+  <data name="OverrideToggleLocal" xml:space="preserve">
+    <value>Lokal</value>
+  </data>
+  <data name="AnalysisResolution" xml:space="preserve">
+    <value>Analyseopløsning</value>
+  </data>
+  <data name="BoundingBoxDisplay" xml:space="preserve">
+    <value>Afgrænsningsboks visning</value>
+  </data>
+  <data name="ShowBoundingBoxInGrid" xml:space="preserve">
+    <value>Vis afgrænsningsbokse i gittervisning</value>
+  </data>
+  <data name="ShowBoundingBoxInFullScreen" xml:space="preserve">
+    <value>Vis afgrænsningsbokse i fuldskærm</value>
+  </data>
+  <data name="BoundingBoxColor" xml:space="preserve">
+    <value>Afgrænsningsboks farve</value>
+  </data>
+  <data name="BoundingBoxThickness" xml:space="preserve">
+    <value>Afgrænsningsboks tykkelse</value>
+  </data>
+  <data name="BoundingBoxMinArea" xml:space="preserve">
+    <value>Min. detektionsstørrelse</value>
+  </data>
+  <data name="ClickOutsideToClose" xml:space="preserve">
+    <value>Klik udenfor for at lukke</value>
+  </data>
+  <data name="PlaybackOverlaySettings" xml:space="preserve">
+    <value>Afspilning overlay indstillinger</value>
+  </data>
+  <data name="ShowPlaybackFilename" xml:space="preserve">
+    <value>Vis filnavn</value>
+  </data>
+  <data name="PlaybackFilenameColor" xml:space="preserve">
+    <value>Filnavn farve</value>
+  </data>
+  <data name="ShowPlaybackTimestamp" xml:space="preserve">
+    <value>Vis tidsstempel</value>
+  </data>
+  <data name="PlaybackTimestampColor" xml:space="preserve">
+    <value>Tidsstempel farve</value>
+  </data>
+  <data name="Day" xml:space="preserve">
+    <value>Dag</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>Tid</value>
+  </data>
+  <data name="FilterAll" xml:space="preserve">
+    <value>Alle</value>
+  </data>
+  <data name="FilterToday" xml:space="preserve">
+    <value>I dag</value>
+  </data>
+  <data name="FilterYesterday" xml:space="preserve">
+    <value>I går</value>
+  </data>
+  <data name="FilterLast7Days" xml:space="preserve">
+    <value>Sidste 7 dage</value>
+  </data>
+  <data name="FilterLast30Days" xml:space="preserve">
+    <value>Sidste 30 dage</value>
+  </data>
+  <data name="FilterThisWeek" xml:space="preserve">
+    <value>Denne uge</value>
+  </data>
+  <data name="FilterThisMonth" xml:space="preserve">
+    <value>Denne måned</value>
+  </data>
+  <data name="FilterNight" xml:space="preserve">
+    <value>00:00 - 06:00 (Nat)</value>
+  </data>
+  <data name="FilterMorning" xml:space="preserve">
+    <value>06:00 - 12:00 (Morgen)</value>
+  </data>
+  <data name="FilterAfternoon" xml:space="preserve">
+    <value>12:00 - 18:00 (Eftermiddag)</value>
+  </data>
+  <data name="FilterEvening" xml:space="preserve">
+    <value>18:00 - 24:00 (Aften)</value>
+  </data>
+  <data name="EnableTimelapse" xml:space="preserve">
+    <value>Aktivér timelapse-optagelse</value>
+  </data>
+  <data name="TimelapseInterval" xml:space="preserve">
+    <value>Optagelsesinterval</value>
+  </data>
+  <data name="TimelapseSettings" xml:space="preserve">
+    <value>Timelapse indstillinger</value>
+  </data>
+  <data name="Capture" xml:space="preserve">
+    <value>Optagelse</value>
+  </data>
+  <data name="Storage" xml:space="preserve">
+    <value>Lagring</value>
+  </data>
+  <data name="Timelapse" xml:space="preserve">
+    <value>Timelapse</value>
+  </data>
+  <data name="CaptureOverrides" xml:space="preserve">
+    <value>Optagelsestilsidesættelser</value>
+  </data>
+  <data name="TimelapseOverrides" xml:space="preserve">
+    <value>Timelapse tilsidesættelser</value>
+  </data>
+  <data name="UpdateAvailable" xml:space="preserve">
+    <value>Opdatering tilgængelig</value>
+  </data>
+  <data name="UpdateAvailableMessage1" xml:space="preserve">
+    <value>Version {0} er tilgængelig. Klik for at downloade.</value>
+  </data>
+  <data name="MotionSensitivityInfo" xml:space="preserve">
+    <value>Styrer hvor nemt bevægelse registreres. Højere værdier registrerer mindre bevægelser, men kan udløse falske alarmer fra støj eller lysændringer.</value>
+  </data>
+  <data name="PostMotionDurationInfo" xml:space="preserve">
+    <value>Hvor mange sekunder optagelsen fortsætter efter bevægelse stopper. Sikrer at hele hændelsen optages, selv hvis bevægelsen pauser kortvarigt.</value>
+  </data>
+  <data name="AnalysisFrameRateInfo" xml:space="preserve">
+    <value>Antal billeder der analyseres per sekund for bevægelse. Højere værdier registrerer bevægelse hurtigere, men bruger mere CPU. Værdier mellem 5 og 15 anbefales.</value>
+  </data>
+  <data name="AnalysisResolutionInfo" xml:space="preserve">
+    <value>Den længste side af billedet brugt til bevægelsesanalyse, i pixels; den anden side følger kameraets billede. Mindre er hurtigere og bruger mindre CPU, større finder mindre objekter mere præcist.</value>
+  </data>
+  <data name="CooldownSecondsInfo" xml:space="preserve">
+    <value>Minimum ventetid i sekunder efter en optagelse stopper, før en ny bevægelsesudløst optagelse kan starte. Forhindrer hurtige til/fra optagelsescyklusser.</value>
+  </data>
+  <data name="BoundingBoxMinAreaInfo" xml:space="preserve">
+    <value>Minimumsstørrelse for et bevægelsesområde, før en afgrænsningsramme tegnes. Større værdier ignorerer små bevægelser som insekter eller pixelstøj.</value>
+  </data>
+  <data name="VideoQualityInfo" xml:space="preserve">
+    <value>Maksimal videoopløsning til afspilning. Lavere kvalitet reducerer båndbredde og CPU-forbrug. 'Auto' bruger den bedste kvalitet tilgængelig fra kameraet.</value>
+  </data>
+  <data name="HardwareAccelerationInfo" xml:space="preserve">
+    <value>Bruger dit grafikkort (GPU) til at afkode video i stedet for CPU'en. Reducerer CPU-belastningen markant og forbedrer ydeevnen med flere kameraer.</value>
+  </data>
+  <data name="VideoQualityAuto" xml:space="preserve">
+    <value>Auto (Kildekvalitet)</value>
+  </data>
+  <data name="OverlayPositionTopLeft" xml:space="preserve">
+    <value>Øverst til venstre</value>
+  </data>
+  <data name="OverlayPositionTopRight" xml:space="preserve">
+    <value>Øverst til højre</value>
+  </data>
+  <data name="OverlayPositionBottomLeft" xml:space="preserve">
+    <value>Nederst til venstre</value>
+  </data>
+  <data name="OverlayPositionBottomRight" xml:space="preserve">
+    <value>Nederst til højre</value>
+  </data>
+  <data name="RotationNone" xml:space="preserve">
+    <value>0° (Ingen)</value>
+  </data>
+  <data name="RotationRotate90Degrees" xml:space="preserve">
+    <value>90°</value>
+  </data>
+  <data name="RotationRotate180Degrees" xml:space="preserve">
+    <value>180°</value>
+  </data>
+  <data name="RotationRotate270Degrees" xml:space="preserve">
+    <value>270°</value>
+  </data>
+  <data name="MotionSensitivityLow" xml:space="preserve">
+    <value>Lav (10)</value>
+  </data>
+  <data name="MotionSensitivityMedium" xml:space="preserve">
+    <value>Medium (30)</value>
+  </data>
+  <data name="MotionSensitivityHigh" xml:space="preserve">
+    <value>Høj (50)</value>
+  </data>
+  <data name="MotionSensitivityVeryHigh" xml:space="preserve">
+    <value>Meget høj (70)</value>
+  </data>
+  <data name="BoundingBoxMinAreaTiny" xml:space="preserve">
+    <value>10 px² (Meget lille)</value>
+  </data>
+  <data name="BoundingBoxMinAreaSmall" xml:space="preserve">
+    <value>25 px² (Lille)</value>
+  </data>
+  <data name="BoundingBoxMinAreaMedium" xml:space="preserve">
+    <value>50 px² (Medium)</value>
+  </data>
+  <data name="BoundingBoxMinAreaLarge" xml:space="preserve">
+    <value>100 px² (Stor)</value>
+  </data>
+  <data name="BoundingBoxMinAreaVeryLarge" xml:space="preserve">
+    <value>200 px² (Meget stor)</value>
+  </data>
+  <data name="MotionResolutionLowCpu" xml:space="preserve">
+    <value>320x240 (Lav CPU)</value>
+  </data>
+  <data name="MotionResolutionBalanced" xml:space="preserve">
+    <value>480x360 (Balanceret)</value>
+  </data>
+  <data name="MotionResolutionBetterDetection" xml:space="preserve">
+    <value>640x480 (Bedre registrering)</value>
+  </data>
+  <data name="MotionResolutionHighCpu" xml:space="preserve">
+    <value>800x600 (Høj CPU)</value>
+  </data>
+  <data name="MotionResolutionVeryHighCpu" xml:space="preserve">
+    <value>960x720 (Meget høj CPU)</value>
+  </data>
+  <data name="Duration5Seconds" xml:space="preserve">
+    <value>5 sekunder</value>
+  </data>
+  <data name="Duration10Seconds" xml:space="preserve">
+    <value>10 sekunder</value>
+  </data>
+  <data name="Duration15Seconds" xml:space="preserve">
+    <value>15 sekunder</value>
+  </data>
+  <data name="Duration30Seconds" xml:space="preserve">
+    <value>30 sekunder</value>
+  </data>
+  <data name="Duration1Minute" xml:space="preserve">
+    <value>1 minut</value>
+  </data>
+  <data name="Duration5Minutes" xml:space="preserve">
+    <value>5 minutter</value>
+  </data>
+  <data name="Duration10Minutes" xml:space="preserve">
+    <value>10 minutter</value>
+  </data>
+  <data name="Duration15Minutes" xml:space="preserve">
+    <value>15 minutter</value>
+  </data>
+  <data name="Duration30Minutes" xml:space="preserve">
+    <value>30 minutter</value>
+  </data>
+  <data name="Duration1Hour" xml:space="preserve">
+    <value>1 time</value>
+  </data>
+  <data name="Duration2Hours" xml:space="preserve">
+    <value>2 timer</value>
+  </data>
+  <data name="Duration3Hours" xml:space="preserve">
+    <value>3 timer</value>
+  </data>
+  <data name="Duration4Hours" xml:space="preserve">
+    <value>4 timer</value>
+  </data>
+  <data name="Duration6Hours" xml:space="preserve">
+    <value>6 timer</value>
+  </data>
+  <data name="Duration12Hours" xml:space="preserve">
+    <value>12 timer</value>
+  </data>
+  <data name="Duration24Hours" xml:space="preserve">
+    <value>24 timer</value>
+  </data>
+  <data name="ThumbnailTileOne" xml:space="preserve">
+    <value>1 flise (320x240)</value>
+  </data>
+  <data name="ThumbnailTileFour" xml:space="preserve">
+    <value>2x2 gitter (640x480)</value>
+  </data>
+  <data name="RecordingFormatMp4Video" xml:space="preserve">
+    <value>MP4 (H.264)</value>
+  </data>
+  <data name="RecordingFormatMkv" xml:space="preserve">
+    <value>MKV (Matroska)</value>
+  </data>
+  <data name="AddUsbCamera" xml:space="preserve">
+    <value>Tilføj USB-kamera</value>
+  </data>
+  <data name="Source" xml:space="preserve">
+    <value>Kilde</value>
+  </data>
+  <data name="SourceTypeNetwork" xml:space="preserve">
+    <value>Netværkskamera</value>
+  </data>
+  <data name="SourceTypeUsb" xml:space="preserve">
+    <value>USB / Webcam</value>
+  </data>
+  <data name="SelectUsbDevice" xml:space="preserve">
+    <value>USB-enhed</value>
+  </data>
+  <data name="UsbWidth" xml:space="preserve">
+    <value>Bredde</value>
+  </data>
+  <data name="UsbHeight" xml:space="preserve">
+    <value>Højde</value>
+  </data>
+  <data name="UsbResolution" xml:space="preserve">
+    <value>Opløsning</value>
+  </data>
+  <data name="UsbFrameRate" xml:space="preserve">
+    <value>Billedhastighed</value>
+  </data>
+  <data name="UsbPixelFormat" xml:space="preserve">
+    <value>Pixelformat</value>
+  </data>
+  <data name="UsbCaptureAudio" xml:space="preserve">
+    <value>Optag lyd</value>
+  </data>
+  <data name="UsbAudioDeviceName" xml:space="preserve">
+    <value>Lydenhed</value>
+  </data>
+  <data name="UsbDeviceBusy" xml:space="preserve">
+    <value>Enhed bruges af en anden app</value>
+  </data>
+  <data name="UsbDeviceUnplugged" xml:space="preserve">
+    <value>Enhed frakoblet</value>
+  </data>
+  <data name="UsbCameraUnpluggedToast1" xml:space="preserve">
+    <value>USB-kamera '{0}' blev frakoblet</value>
+  </data>
+  <data name="UsbCameraReconnectedToast1" xml:space="preserve">
+    <value>USB-kamera '{0}' er tilsluttet igen</value>
+  </data>
+  <data name="ConnectionType" xml:space="preserve">
+    <value>Forbindelsestype</value>
+  </data>
+  <data name="ConnectionTypeNone" xml:space="preserve">
+    <value>Ikke angivet</value>
+  </data>
+  <data name="ConnectionTypeLan" xml:space="preserve">
+    <value>Kablet (LAN)</value>
+  </data>
+  <data name="ConnectionTypeWifi" xml:space="preserve">
+    <value>Wi-Fi</value>
+  </data>
+  <data name="ConnectionTypeUsb" xml:space="preserve">
+    <value>USB</value>
+  </data>
+  <data name="ShowCameraOverlayConnectionTypeIcon" xml:space="preserve">
+    <value>Vis ikon for forbindelsestype</value>
+  </data>
+  <data name="ConnectionTypeIconPosition" xml:space="preserve">
+    <value>Placering af forbindelsesikon</value>
+  </data>
+  <data name="ConnectionTypeIconPositionSameRowFormat1" xml:space="preserve">
+    <value>{0} (samme række som infoboks)</value>
+  </data>
+  <data name="ConnectionTypeIconPositionSameColumnFormat1" xml:space="preserve">
+    <value>{0} (samme kolonne som infoboks)</value>
+  </data>
+  <data name="DetectConnectionType" xml:space="preserve">
+    <value>Registrer</value>
+  </data>
+  <data name="ConnectionTypeDetecting" xml:space="preserve">
+    <value>Registrerer…</value>
+  </data>
+  <data name="ConnectionTypeDetectFailed" xml:space="preserve">
+    <value>Forbindelsestypen kunne ikke registreres</value>
+  </data>
+  <data name="ConnectionTypeDetectedFormat1" xml:space="preserve">
+    <value>Registreret: {0}</value>
+  </data>
+  <data name="UseDailySubfolders" xml:space="preserve">
+    <value>Brug en mappe pr. dag</value>
+  </data>
+  <data name="SeparateThumbnailFolder" xml:space="preserve">
+    <value>Gem miniaturer i en separat mappe</value>
+  </data>
+  <data name="RecordingLayoutOnOffHint2" xml:space="preserve">
+    <value>Til: {0}&#xD;&#xA;Fra: {1}</value>
+  </data>
+  <data name="RecordingLayoutExampleSummary2" xml:space="preserve">
+    <value>Video:&#xD;&#xA;  {0}&#xD;&#xA;Miniature:&#xD;&#xA;  {1}&#xD;&#xA;Eksisterende optagelser flyttes, når du gemmer.</value>
+  </data>
+  <data name="RecordingLayoutMoving" xml:space="preserve">
+    <value>Flytter optagelser...</value>
+  </data>
+  <data name="RecordingsBrowserSettings" xml:space="preserve">
+    <value>Optagelsesbrowser</value>
+  </data>
+  <data name="CloseRecordingsBrowserOnPlay" xml:space="preserve">
+    <value>Luk browseren, når en optagelse afspilles</value>
+  </data>
+  <data name="CloseRecordingsBrowserOnPlayHint" xml:space="preserve">
+    <value>Fra: browseren bliver åben bag afspilleren, klar til den næste optagelse.&#xD;&#xA;Til: browseren lukker, når afspilningen starter.</value>
+  </data>
+  <data name="RememberRecordingsBrowserState" xml:space="preserve">
+    <value>Genåbn browseren med de seneste filtre og det seneste valg</value>
+  </data>
+  <data name="RememberRecordingsBrowserStateHint" xml:space="preserve">
+    <value>Til: browseren åbner med de kamera-, dag- og tidsfiltre og den optagelse, du sidst brugte.&#xD;&#xA;Fra: browseren åbner altid med alle optagelser.&#xD;&#xA;Huskes, indtil appen lukkes.</value>
+  </data>
+  <data name="KeyboardShortcuts" xml:space="preserve">
+    <value>Tastaturgenveje</value>
+  </data>
+  <data name="KeyboardShortcutsText" xml:space="preserve">
+    <value>Ctrl+1 til Ctrl+9&#x9;Skift til det layout i listen&#xD;&#xA;Ctrl+Alt+0&#x9;Gitter: automatisk, alle kameraer&#xD;&#xA;Ctrl+Alt+1 til Ctrl+Alt+4&#x9;Gitter: 1 x 1, 2 x 2, 3 x 3 eller 4 x 4&#xD;&#xA;Page Down / Page Up&#x9;Næste eller forrige side med kameraer&#xD;&#xA;Ctrl+N&#x9;Tilføj et kamera&#xD;&#xA;Ctrl+Shift+N&#x9;Nyt layout&#xD;&#xA;Ctrl+R&#x9;Gennemse optagelser&#xD;&#xA;Ctrl+,&#x9;Indstillinger&#xD;&#xA;F5&#x9;Gentilslut alle kameraer&#xD;&#xA;F1&#x9;Denne liste&#xD;&#xA;&#xD;&#xA;I optagelsesbrowseren:&#xD;&#xA;Enter&#x9;Afspil den valgte optagelse&#xD;&#xA;Esc&#x9;Luk afspilleren eller browseren</value>
+  </data>
+  <data name="GridSizeGroup" xml:space="preserve">
+    <value>Gitter</value>
+  </data>
+  <data name="GridSize" xml:space="preserve">
+    <value>Størrelse</value>
+  </data>
+  <data name="GridSizeAuto" xml:space="preserve">
+    <value>Automatisk (alle kameraer)</value>
+  </data>
+  <data name="GridSizeInfo" xml:space="preserve">
+    <value>Automatisk viser alle kameraer og vokser med antallet. En fast størrelse viser så mange kameraer ad gangen; de øvrige er på de næste sider og forbliver forbundet og optaget.</value>
+  </data>
+  <data name="PreviousPage" xml:space="preserve">
+    <value>Forrige side</value>
+  </data>
+  <data name="NextPage" xml:space="preserve">
+    <value>Næste side</value>
+  </data>
+  <data name="PageLabel" xml:space="preserve">
+    <value>Side:</value>
+  </data>
+  <data name="DiskSpaceLabel" xml:space="preserve">
+    <value>Disk:</value>
+  </data>
+  <data name="DiskSpaceInfo" xml:space="preserve">
+    <value>Disken med optagelserne. Vises med rødt, når der er mindre ledig plads, end optagelserne kræver (Indstillinger, Lager); nye optagelser afvises da.</value>
+  </data>
+  <data name="RecordingInProgress" xml:space="preserve">
+    <value>Optager…</value>
+  </data>
+  <data name="RecordingInProgressInfo" xml:space="preserve">
+    <value>Denne fil bliver stadig optaget. Den kan afspilles og slettes, når optagelsen er afsluttet.</value>
+  </data>
+  <data name="FailedToSaveSettings1" xml:space="preserve">
+    <value>Indstillingerne kunne ikke gemmes: {0}</value>
+  </data>
+  <data name="RotationClockwise" xml:space="preserve">
+    <value>Rotation (med uret)</value>
+  </data>
+  <data name="Authentication" xml:space="preserve">
+    <value>Godkendelse</value>
+  </data>
+  <data name="StreamSettings" xml:space="preserve">
+    <value>Streamindstillinger</value>
+  </data>
+  <data name="LayoutName" xml:space="preserve">
+    <value>Layoutnavn</value>
+  </data>
+  <data name="Rows" xml:space="preserve">
+    <value>Rækker</value>
+  </data>
+  <data name="Columns" xml:space="preserve">
+    <value>Kolonner</value>
+  </data>
+  <data name="MotionBadge" xml:space="preserve">
+    <value>BEVÆGELSE</value>
+  </data>
+  <data name="Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="FilterCamerasToolTip" xml:space="preserve">
+    <value>Vis de kameraer, der indeholder denne tekst</value>
+  </data>
+  <data name="ClearFilter" xml:space="preserve">
+    <value>Ryd filteret</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Rediger</value>
+  </data>
+  <data name="CaptureSnapshot" xml:space="preserve">
+    <value>Tag snapshot</value>
+  </data>
+  <data name="LoadingCameras" xml:space="preserve">
+    <value>Indlæser kameraer...</value>
+  </data>
+  <data name="Dashboard" xml:space="preserve">
+    <value>Oversigt</value>
+  </data>
+  <data name="TotalCameras" xml:space="preserve">
+    <value>Kameraer i alt</value>
+  </data>
+  <data name="ActiveRecordings" xml:space="preserve">
+    <value>Aktive optagelser</value>
+  </data>
+  <data name="AddLayout" xml:space="preserve">
+    <value>Tilføj layout</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Navn</value>
+  </data>
+  <data name="GridSizeHeader" xml:space="preserve">
+    <value>Gitterstørrelse</value>
+  </data>
+  <data name="CameraCount" xml:space="preserve">
+    <value>Antal kameraer</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>Anvend</value>
+  </data>
+  <data name="LoadingLayouts" xml:space="preserve">
+    <value>Indlæser layouts...</value>
+  </data>
+  <data name="FilterCamerasByNameToolTip" xml:space="preserve">
+    <value>Vis de kameraer, hvis navn eller beskrivelse indeholder denne tekst</value>
+  </data>
+  <data name="GridSizeToolTip" xml:space="preserve">
+    <value>Automatisk viser alle kameraer. En fast størrelse viser så mange ad gangen; de øvrige er på de næste sider.</value>
+  </data>
+  <data name="NoCameraMatchesFilter" xml:space="preserve">
+    <value>Intet kamera passer til filteret.</value>
+  </data>
+  <data name="NotificationHistory" xml:space="preserve">
+    <value>Notifikationshistorik</value>
+  </data>
+  <data name="Clear" xml:space="preserve">
+    <value>Ryd</value>
+  </data>
+  <data name="Title" xml:space="preserve">
+    <value>Titel</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>Besked</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="NoNotificationsYet" xml:space="preserve">
+    <value>Ingen notifikationer endnu.</value>
+  </data>
+  <data name="LoadingRecordings" xml:space="preserve">
+    <value>Indlæser optagelser...</value>
+  </data>
+  <data name="EditCameraTitle" xml:space="preserve">
+    <value>Rediger kamera</value>
+  </data>
+  <data name="EditLayout" xml:space="preserve">
+    <value>Rediger layout</value>
+  </data>
+  <data name="ServerAnswered2" xml:space="preserve">
+    <value>Serveren svarede {0} ({1}).</value>
+  </data>
+  <data name="ServerConnectionLost" xml:space="preserve">
+    <value>Forbindelsen til serveren er tabt</value>
+  </data>
+  <data name="ServerConnectionLostMessage" xml:space="preserve">
+    <value>Forbindelsen til overvågningsserveren er tabt.</value>
+  </data>
+  <data name="ServerConnected" xml:space="preserve">
+    <value>Forbundet til serveren</value>
+  </data>
+  <data name="ServerConnectionRestoredMessage" xml:space="preserve">
+    <value>Forbindelsen til overvågningsserveren er genoprettet.</value>
+  </data>
+  <data name="CameraDisconnectedNotification" xml:space="preserve">
+    <value>Kameraet er afbrudt</value>
+  </data>
+  <data name="CameraConnectedNotification" xml:space="preserve">
+    <value>Kameraet er forbundet</value>
+  </data>
+  <data name="RecordingStartedNotification" xml:space="preserve">
+    <value>Optagelsen er startet</value>
+  </data>
+  <data name="RecordingStoppedNotification" xml:space="preserve">
+    <value>Optagelsen er stoppet</value>
+  </data>
+  <data name="MotionDetectedPercent1" xml:space="preserve">
+    <value>Bevægelse registreret ({0:F1} %)</value>
+  </data>
+  <data name="CameraShortId1" xml:space="preserve">
+    <value>Kamera {0}</value>
+  </data>
+  <data name="ProbeConnected1" xml:space="preserve">
+    <value>Forbundet ({0})</value>
+  </data>
+  <data name="ProbeFailedStatus2" xml:space="preserve">
+    <value>Fejlede: {0} {1}</value>
+  </data>
+  <data name="ProbeTimedOut" xml:space="preserve">
+    <value>Fejlede: Forbindelsen fik timeout</value>
+  </data>
+  <data name="ProbeFailed1" xml:space="preserve">
+    <value>Fejlede: {0}</value>
+  </data>
+  <data name="PngImageFileFilter" xml:space="preserve">
+    <value>PNG-billede|*.png</value>
+  </data>
+  <data name="NoStream" xml:space="preserve">
+    <value>Ingen stream</value>
+  </data>
+  <data name="AllDays" xml:space="preserve">
+    <value>Alle dage</value>
+  </data>
+  <data name="AllTimes" xml:space="preserve">
+    <value>Alle tidspunkter</value>
+  </data>
+  <data name="FailedToLoadRecordings1" xml:space="preserve">
+    <value>Kunne ikke indlæse optagelser: {0}</value>
+  </data>
+  <data name="ConnectToServer" xml:space="preserve">
+    <value>Forbind til server</value>
+  </data>
+  <data name="ServerProfiles" xml:space="preserve">
+    <value>Serverprofiler</value>
+  </data>
+  <data name="Add" xml:space="preserve">
+    <value>Tilføj</value>
+  </data>
+  <data name="ServerUrl" xml:space="preserve">
+    <value>Server-URL</value>
+  </data>
+  <data name="TestConnection" xml:space="preserve">
+    <value>Test forbindelse</value>
+  </data>
+  <data name="ExitApplication" xml:space="preserve">
+    <value>Afslut programmet</value>
+  </data>
+  <data name="Connect" xml:space="preserve">
+    <value>Forbind</value>
+  </data>
+  <data name="ServerProfile" xml:space="preserve">
+    <value>Serverprofil</value>
+  </data>
+  <data name="OptionalDescription" xml:space="preserve">
+    <value>Valgfri beskrivelse</value>
+  </data>
+  <data name="LiveView" xml:space="preserve">
+    <value>Livevisning</value>
+  </data>
+  <data name="ChangeServer" xml:space="preserve">
+    <value>Skift server</value>
+  </data>
+  <data name="StartWithWindows" xml:space="preserve">
+    <value>Start med Windows</value>
+  </data>
+  <data name="StartWithWindowsInfo" xml:space="preserve">
+    <value>Start programmet automatisk, når du logger på Windows. Gemmes under HKCU, så der kræves ingen administratorrettigheder.</value>
+  </data>
+  <data name="ExportDiagnostics" xml:space="preserve">
+    <value>Eksportér diagnostik</value>
+  </data>
+  <data name="ExportDiagnosticsInfo" xml:space="preserve">
+    <value>Gem et JSON-øjebliksbillede af klientens tilstand, server-URL, hub-status og kameraliste — til support og fejlsøgning.</value>
+  </data>
+  <data name="Home" xml:space="preserve">
+    <value>Hjem</value>
+  </data>
+  <data name="ServerStatusLabel" xml:space="preserve">
+    <value>Server: </value>
+  </data>
+  <data name="CamerasStatusLabel" xml:space="preserve">
+    <value>Kameraer: </value>
+  </data>
+  <data name="RecordingsStatusLabel" xml:space="preserve">
+    <value>Optagelser: </value>
+  </data>
+  <data name="DiskStatusInfo" xml:space="preserve">
+    <value>Serverens disk med optagelserne. Vises med rødt, når der er mindre ledig plads, end optagelserne kræver; nye optagelser afvises så.</value>
+  </data>
+  <data name="DiskStatusLabel" xml:space="preserve">
+    <value>Disk: </value>
+  </data>
+  <data name="LatencyStatusLabel" xml:space="preserve">
+    <value>Forsinkelse: </value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Indlæser...</value>
+  </data>
+  <data name="VersionNumber1" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="LoadingConfiguration" xml:space="preserve">
+    <value>Indlæser konfiguration...</value>
+  </data>
+  <data name="InitializingVideoEngine" xml:space="preserve">
+    <value>Starter videomotoren...</value>
+  </data>
+  <data name="StartingServices" xml:space="preserve">
+    <value>Starter tjenester...</value>
+  </data>
+  <data name="ApplyingSettings" xml:space="preserve">
+    <value>Anvender indstillinger...</value>
+  </data>
+  <data name="ConnectingToServer" xml:space="preserve">
+    <value>Forbinder til serveren...</value>
+  </data>
+  <data name="LoadingMainWindow" xml:space="preserve">
+    <value>Indlæser hovedvinduet...</value>
+  </data>
+  <data name="ViewCameras" xml:space="preserve">
+    <value>Vis kameraer</value>
+  </data>
+  <data name="RefreshCurrentView" xml:space="preserve">
+    <value>Opdater den aktuelle visning</value>
+  </data>
+  <data name="ToggleFullScreen" xml:space="preserve">
+    <value>Skift fuld skærm</value>
+  </data>
+  <data name="Testing" xml:space="preserve">
+    <value>Tester...</value>
+  </data>
+  <data name="JsonFileFilter" xml:space="preserve">
+    <value>JSON-fil (*.json)|*.json|Alle filer (*.*)|*.*</value>
+  </data>
+  <data name="DiagnosticsExportedTo1" xml:space="preserve">
+    <value>Diagnostik eksporteret til {0}</value>
+  </data>
+  <data name="DiagnosticsExportFailed1" xml:space="preserve">
+    <value>Eksport af diagnostik fejlede: {0}</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Sprog</value>
+  </data>
+  <data name="AFolderOnTheServer" xml:space="preserve">
+    <value>En mappe på serveren.</value>
+  </data>
+  <data name="ConfiguredReceiverInfo" xml:space="preserve">
+    <value>En modtager fra serverens konfiguration ændres dér, ikke her.</value>
+  </data>
+  <data name="AccentColour" xml:space="preserve">
+    <value>Accentfarve</value>
+  </data>
+  <data name="AddReceiver" xml:space="preserve">
+    <value>Tilføj modtager</value>
+  </data>
+  <data name="AddTheFirstCamera" xml:space="preserve">
+    <value>Tilføj det første kamera</value>
+  </data>
+  <data name="Address" xml:space="preserve">
+    <value>Adresse</value>
+  </data>
+  <data name="Analysis" xml:space="preserve">
+    <value>Analyse</value>
+  </data>
+  <data name="AnalysisFramesPerSecond" xml:space="preserve">
+    <value>Analysebilleder pr. sekund</value>
+  </data>
+  <data name="DesktopAppsAppearance" xml:space="preserve">
+    <value>Desktopprogrammernes udseende</value>
+  </data>
+  <data name="BoundingBox" xml:space="preserve">
+    <value>Markeringsboks</value>
+  </data>
+  <data name="CameraOverlay" xml:space="preserve">
+    <value>Kameraoverlay</value>
+  </data>
+  <data name="CleanUp" xml:space="preserve">
+    <value>Oprydning</value>
+  </data>
+  <data name="Colour" xml:space="preserve">
+    <value>Farve</value>
+  </data>
+  <data name="Create" xml:space="preserve">
+    <value>Opret</value>
+  </data>
+  <data name="CreateLayout" xml:space="preserve">
+    <value>Opret layout</value>
+  </data>
+  <data name="CreateALayout" xml:space="preserve">
+    <value>Opret et layout</value>
+  </data>
+  <data name="ThemeDark" xml:space="preserve">
+    <value>Mørk</value>
+  </data>
+  <data name="NewCameraDefaults" xml:space="preserve">
+    <value>Standarder for et nyt kamera</value>
+  </data>
+  <data name="DeleteOldMedia" xml:space="preserve">
+    <value>Slet gamle medier</value>
+  </data>
+  <data name="DeleteOldSnapshotsToo" xml:space="preserve">
+    <value>Slet også gamle snapshots</value>
+  </data>
+  <data name="DeleteOldestWhenDiskLow" xml:space="preserve">
+    <value>Slet de ældste optagelser, når diskpladsen er ved at slippe op</value>
+  </data>
+  <data name="DiscardChanges" xml:space="preserve">
+    <value>Kassér ændringer</value>
+  </data>
+  <data name="Display" xml:space="preserve">
+    <value>Visning</value>
+  </data>
+  <data name="Download" xml:space="preserve">
+    <value>Hent</value>
+  </data>
+  <data name="DownloadASnapshot" xml:space="preserve">
+    <value>Hent et snapshot</value>
+  </data>
+  <data name="Empty" xml:space="preserve">
+    <value>Tom</value>
+  </data>
+  <data name="Events" xml:space="preserve">
+    <value>Hændelser</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>Fil</value>
+  </data>
+  <data name="FileNameColour" xml:space="preserve">
+    <value>Farve på filnavn</value>
+  </data>
+  <data name="FolderLayout" xml:space="preserve">
+    <value>Mappestruktur</value>
+  </data>
+  <data name="FreeSpaceToKeep" xml:space="preserve">
+    <value>Ledig plads, der skal bevares</value>
+  </data>
+  <data name="MotionSensitivityHelp" xml:space="preserve">
+    <value>Hvor meget af billedet der skal ændre sig, før det tæller som bevægelse.</value>
+  </data>
+  <data name="Interval" xml:space="preserve">
+    <value>Interval</value>
+  </data>
+  <data name="KeepRecordingAfterMotion" xml:space="preserve">
+    <value>Fortsæt optagelsen efter bevægelse</value>
+  </data>
+  <data name="KeepRecordingsFor" xml:space="preserve">
+    <value>Behold optagelser i</value>
+  </data>
+  <data name="KeepSnapshotsFor" xml:space="preserve">
+    <value>Behold snapshots i</value>
+  </data>
+  <data name="PictureSizeCostHelp" xml:space="preserve">
+    <value>Større billeder koster mere processortid at optage og se.</value>
+  </data>
+  <data name="Length" xml:space="preserve">
+    <value>Længde</value>
+  </data>
+  <data name="DiskLowRecordingsRefused" xml:space="preserve">
+    <value>Der er mindre ledig plads, end optagelserne kræver. Nye optagelser afvises, indtil der er frigjort plads.</value>
+  </data>
+  <data name="ThemeLight" xml:space="preserve">
+    <value>Lys</value>
+  </data>
+  <data name="ListCameras" xml:space="preserve">
+    <value>Vis kameraer</value>
+  </data>
+  <data name="ListLayouts" xml:space="preserve">
+    <value>Vis layouts</value>
+  </data>
+  <data name="LongestSegment" xml:space="preserve">
+    <value>Længste segment</value>
+  </data>
+  <data name="RecordingFormatHelp" xml:space="preserve">
+    <value>MP4 kan afspilles i en browser og i de fleste afspillere. MKV bevarer mere af en ufærdig fil efter et nedbrud, men en browser kan som regel ikke afspille den.</value>
+  </data>
+  <data name="StartUpLayoutHelp" xml:space="preserve">
+    <value>Gør dette til det layout, serverens klienter starter med</value>
+  </data>
+  <data name="Microphone" xml:space="preserve">
+    <value>Mikrofon</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>Aldrig</value>
+  </data>
+  <data name="NoCamerasYet" xml:space="preserve">
+    <value>Ingen kameraer endnu.</value>
+  </data>
+  <data name="NoLayoutsConfigured" xml:space="preserve">
+    <value>Ingen layouts er sat op. Opret et ovenfor.</value>
+  </data>
+  <data name="NoReceiversYet" xml:space="preserve">
+    <value>Ingen modtagere endnu. Klik på "Tilføj modtager" for at sende serverens hændelser et sted hen.</value>
+  </data>
+  <data name="DesktopAppsNotifications" xml:space="preserve">
+    <value>Notifikationer i desktopprogrammerne</value>
+  </data>
+  <data name="NotifyOnDisconnect" xml:space="preserve">
+    <value>Giv besked, når et kamera afbrydes</value>
+  </data>
+  <data name="NotifyOnReconnect" xml:space="preserve">
+    <value>Giv besked, når et kamera forbindes igen</value>
+  </data>
+  <data name="PaddingPixels" xml:space="preserve">
+    <value>Margen (pixel)</value>
+  </data>
+  <data name="PictureSize" xml:space="preserve">
+    <value>Billedstørrelse</value>
+  </data>
+  <data name="PicturesASecond" xml:space="preserve">
+    <value>Billeder pr. sekund</value>
+  </data>
+  <data name="PlayASound" xml:space="preserve">
+    <value>Afspil en lyd</value>
+  </data>
+  <data name="DesktopAppsPlaybackOverlay" xml:space="preserve">
+    <value>Afspilningsoverlay i desktopprogrammerne</value>
+  </data>
+  <data name="ReconnectAutomatically" xml:space="preserve">
+    <value>Forbind automatisk igen</value>
+  </data>
+  <data name="RecordSound" xml:space="preserve">
+    <value>Optag lyd</value>
+  </data>
+  <data name="RecordWhenCameraConnects" xml:space="preserve">
+    <value>Optag, når et kamera forbindes</value>
+  </data>
+  <data name="RecordWhenMotionDetected" xml:space="preserve">
+    <value>Optag, når der registreres bevægelse</value>
+  </data>
+  <data name="RecordingNow" xml:space="preserve">
+    <value>Optager nu</value>
+  </data>
+  <data name="RecordingSegments" xml:space="preserve">
+    <value>Optagelsessegmenter</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Fjern</value>
+  </data>
+  <data name="RemoveSecret" xml:space="preserve">
+    <value>Fjern hemmeligheden (send usignerede anmodninger)</value>
+  </data>
+  <data name="SaveLayoutChangesAutomatically" xml:space="preserve">
+    <value>Gem ændringer i layout automatisk</value>
+  </data>
+  <data name="Secret" xml:space="preserve">
+    <value>Hemmelighed</value>
+  </data>
+  <data name="SendATestEvent" xml:space="preserve">
+    <value>Send en testhændelse</value>
+  </data>
+  <data name="Sensitivity" xml:space="preserve">
+    <value>Følsomhed</value>
+  </data>
+  <data name="SetAsStartUpLayout" xml:space="preserve">
+    <value>Brug som opstartslayout</value>
+  </data>
+  <data name="SetIn" xml:space="preserve">
+    <value>Angivet i</value>
+  </data>
+  <data name="ShowDescription" xml:space="preserve">
+    <value>Vis beskrivelse</value>
+  </data>
+  <data name="ShowInTheCameraGrid" xml:space="preserve">
+    <value>Vis i kameragitteret</value>
+  </data>
+  <data name="ShowQuickActions" xml:space="preserve">
+    <value>Vis hurtighandlinger</value>
+  </data>
+  <data name="ShowTheFileName" xml:space="preserve">
+    <value>Vis filnavnet</value>
+  </data>
+  <data name="ShowTheTime" xml:space="preserve">
+    <value>Vis tidspunktet</value>
+  </data>
+  <data name="ShowTime" xml:space="preserve">
+    <value>Vis tid</value>
+  </data>
+  <data name="ShowTitle" xml:space="preserve">
+    <value>Vis titel</value>
+  </data>
+  <data name="Signed" xml:space="preserve">
+    <value>Signeret</value>
+  </data>
+  <data name="SmallestBoxArea" xml:space="preserve">
+    <value>Mindste område, der får en boks</value>
+  </data>
+  <data name="Snapshots" xml:space="preserve">
+    <value>Snapshots</value>
+  </data>
+  <data name="SplitRecordingsIntoSegments" xml:space="preserve">
+    <value>Del optagelser op i segmenter</value>
+  </data>
+  <data name="StartAll" xml:space="preserve">
+    <value>Start alle</value>
+  </data>
+  <data name="StartMaximizedShort" xml:space="preserve">
+    <value>Start maksimeret</value>
+  </data>
+  <data name="Started" xml:space="preserve">
+    <value>Startet</value>
+  </data>
+  <data name="StartingTheStream" xml:space="preserve">
+    <value>Starter streamen...</value>
+  </data>
+  <data name="State" xml:space="preserve">
+    <value>Tilstand</value>
+  </data>
+  <data name="StopAll" xml:space="preserve">
+    <value>Stop alle</value>
+  </data>
+  <data name="Streaming" xml:space="preserve">
+    <value>Streaming</value>
+  </data>
+  <data name="TakeTimelapseSnapshots" xml:space="preserve">
+    <value>Tag timelapse-snapshots</value>
+  </data>
+  <data name="DecodeResolutionHelp" xml:space="preserve">
+    <value>Den højeste opløsning, desktopprogrammerne afkoder i.</value>
+  </data>
+  <data name="MicrophoneNameHelp" xml:space="preserve">
+    <value>Mikrofonens navn, som Windows viser det på serveren.</value>
+  </data>
+  <data name="MotionCooldownHelp" xml:space="preserve">
+    <value>Pausen, før det samme kamera kan melde bevægelse igen.</value>
+  </data>
+  <data name="RecordingsCouldNotBeLoaded" xml:space="preserve">
+    <value>Optagelserne kunne ikke indlæses. Kontrollér, at serveren kører, og opdater derefter.</value>
+  </data>
+  <data name="UsbCamerasCouldNotBeListed" xml:space="preserve">
+    <value>Serveren kunne ikke vise sine USB-kameraer.</value>
+  </data>
+  <data name="ServerDidNotAnswer" xml:space="preserve">
+    <value>Serveren svarede ikke. Kontrollér, at den kører, og genindlæs derefter siden.</value>
+  </data>
+  <data name="WebhookAddressHelp" xml:space="preserve">
+    <value>Serveren sender hver hændelse til denne http- eller https-adresse.</value>
+  </data>
+  <data name="ServerSettingsInfo" xml:space="preserve">
+    <value>Serverens indstillinger. Desktopprogrammerne, der forbinder til denne server, bruger de samme.</value>
+  </data>
+  <data name="SettingsCouldNotBeLoaded" xml:space="preserve">
+    <value>Indstillingerne kunne ikke indlæses. Kontrollér, at serveren kører, og prøv igen.</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Tema</value>
+  </data>
+  <data name="NoLayoutYet" xml:space="preserve">
+    <value>Der er endnu intet layout. Et layout angiver, hvilke kameraer der vises, og hvor.</value>
+  </data>
+  <data name="Thickness" xml:space="preserve">
+    <value>Tykkelse</value>
+  </data>
+  <data name="BrowserCannotPlayRecording" xml:space="preserve">
+    <value>Denne browser kan ikke afspille optagelsen. Hent den, og åbn den i en videoafspiller som VLC.</value>
+  </data>
+  <data name="WebhookEventsHelp" xml:space="preserve">
+    <value>Sæt flueben ved det, modtageren skal have. Intet flueben betyder alt.</value>
+  </data>
+  <data name="TimeColour" xml:space="preserve">
+    <value>Farve på tid</value>
+  </data>
+  <data name="TryAgain" xml:space="preserve">
+    <value>Prøv igen</value>
+  </data>
+  <data name="UsbCameraOnTheServer" xml:space="preserve">
+    <value>USB-kamera på serveren</value>
+  </data>
+  <data name="Video" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="Webhooks" xml:space="preserve">
+    <value>Webhooks</value>
+  </data>
+  <data name="WhenTheServerStarts" xml:space="preserve">
+    <value>Når serveren starter</value>
+  </data>
+  <data name="WhenTheServerStartsAndRegularly" xml:space="preserve">
+    <value>Når serveren starter, og jævnligt</value>
+  </data>
+  <data name="WriteADebugLog" xml:space="preserve">
+    <value>Skriv en fejlsøgningslog</value>
+  </data>
+  <data name="CameraSource" xml:space="preserve">
+    <value>Kilde</value>
+  </data>
+  <data name="AreaTiny" xml:space="preserve">
+    <value>Meget lille</value>
+  </data>
+  <data name="AreaSmall" xml:space="preserve">
+    <value>Lille</value>
+  </data>
+  <data name="AreaMedium" xml:space="preserve">
+    <value>Mellem</value>
+  </data>
+  <data name="AreaLarge" xml:space="preserve">
+    <value>Stor</value>
+  </data>
+  <data name="AreaVeryLarge" xml:space="preserve">
+    <value>Meget stor</value>
+  </data>
+  <data name="RecommendedChoice1" xml:space="preserve">
+    <value>{0} (anbefalet)</value>
+  </data>
+  <data name="DeleteRecordingQuestion1" xml:space="preserve">
+    <value>Slet optagelsen fra {0}? Filen fjernes fra serveren og kan ikke hentes tilbage.</value>
+  </data>
+  <data name="DeleteCameraRecordingQuestion2" xml:space="preserve">
+    <value>Slet optagelsen af {0} fra {1}? Filen fjernes fra serveren og kan ikke hentes tilbage.</value>
+  </data>
+  <data name="RecordingDeleted" xml:space="preserve">
+    <value>Optagelsen er slettet.</value>
+  </data>
+  <data name="RecordingStillBeingMade" xml:space="preserve">
+    <value>Optagelsen er stadig i gang. Slet den, når den er slut.</value>
+  </data>
+  <data name="RecordingAlreadyGone" xml:space="preserve">
+    <value>Optagelsen var der ikke længere.</value>
+  </data>
+  <data name="RecordingCouldNotBeDeleted" xml:space="preserve">
+    <value>Optagelsen kunne ikke slettes.</value>
+  </data>
+  <data name="StreamCouldNotBeStarted" xml:space="preserve">
+    <value>Streamen kunne ikke startes.</value>
+  </data>
+  <data name="CameraConnection" xml:space="preserve">
+    <value>Kameraforbindelse</value>
+  </data>
+  <data name="AllEvents" xml:space="preserve">
+    <value>Alle hændelser</value>
+  </data>
+  <data name="UsbSource1" xml:space="preserve">
+    <value>USB: {0}</value>
+  </data>
+  <data name="AlwaysRecordAsH264Video" xml:space="preserve">
+    <value>Optag altid som H.264</value>
+  </data>
+  <data name="DisplayNameIsRequired" xml:space="preserve">
+    <value>Visningsnavn skal udfyldes</value>
+  </data>
+  <data name="CameraKindCannotBeChanged" xml:space="preserve">
+    <value>Kameratypen kan ikke ændres bagefter.</value>
+  </data>
+  <data name="CameraKindHelp" xml:space="preserve">
+    <value>Et netværkskamera eller et USB-kamera, der er sat i serveren.</value>
+  </data>
+  <data name="ChooseACamera" xml:space="preserve">
+    <value>Vælg et kamera</value>
+  </data>
+  <data name="UsbCameraCannotBeChanged" xml:space="preserve">
+    <value>Kameraet kan ikke ændres bagefter.</value>
+  </data>
+  <data name="UsbCameraChoiceHelp" xml:space="preserve">
+    <value>De kameraer, der lige nu er sat i serveren.</value>
+  </data>
+  <data name="IpAddressIsRequired" xml:space="preserve">
+    <value>IP-adresse skal udfyldes</value>
+  </data>
+  <data name="Saving" xml:space="preserve">
+    <value>Gemmer...</value>
+  </data>
+  <data name="NotPluggedIn1" xml:space="preserve">
+    <value>{0} (ikke tilsluttet)</value>
+  </data>
+  <data name="CameraUpdated" xml:space="preserve">
+    <value>Kameraet er opdateret.</value>
+  </data>
+  <data name="FailedToUpdateCamera" xml:space="preserve">
+    <value>Kameraet kunne ikke opdateres.</value>
+  </data>
+  <data name="CameraCreated" xml:space="preserve">
+    <value>Kameraet er oprettet.</value>
+  </data>
+  <data name="FailedToCreateCamera" xml:space="preserve">
+    <value>Kameraet kunne ikke oprettes.</value>
+  </data>
+  <data name="DeleteCameraQuestion1" xml:space="preserve">
+    <value>Slet kameraet '{0}'? Det kan ikke fortrydes.</value>
+  </data>
+  <data name="DeleteCameraTitle" xml:space="preserve">
+    <value>Slet kamera</value>
+  </data>
+  <data name="CameraDeleted1" xml:space="preserve">
+    <value>Kameraet '{0}' er slettet.</value>
+  </data>
+  <data name="CameraCouldNotBeDeleted1" xml:space="preserve">
+    <value>Kameraet '{0}' kunne ikke slettes.</value>
+  </data>
+  <data name="RecordingStartedMessage" xml:space="preserve">
+    <value>Optagelsen er startet.</value>
+  </data>
+  <data name="RecordingCouldNotBeStarted" xml:space="preserve">
+    <value>Optagelsen kunne ikke startes.</value>
+  </data>
+  <data name="RecordingStoppedMessage" xml:space="preserve">
+    <value>Optagelsen er stoppet.</value>
+  </data>
+  <data name="RecordingCouldNotBeStopped" xml:space="preserve">
+    <value>Optagelsen kunne ikke stoppes.</value>
+  </data>
+  <data name="CapturingSnapshotFrom1" xml:space="preserve">
+    <value>Tager snapshot fra '{0}'...</value>
+  </data>
+  <data name="SnapshotDownloaded" xml:space="preserve">
+    <value>Snapshot er hentet.</value>
+  </data>
+  <data name="FailedToCaptureSnapshot" xml:space="preserve">
+    <value>Snapshot kunne ikke tages.</value>
+  </data>
+  <data name="RecordingDisk1" xml:space="preserve">
+    <value>Optagelsesdisk: {0}</value>
+  </data>
+  <data name="PercentUsed1" xml:space="preserve">
+    <value>{0} % brugt</value>
+  </data>
+  <data name="RecordingDiskShareInUse" xml:space="preserve">
+    <value>Andel af optagelsesdisken i brug</value>
+  </data>
+  <data name="NotConnected" xml:space="preserve">
+    <value>Ikke forbundet</value>
+  </data>
+  <data name="LiveUpdates1" xml:space="preserve">
+    <value>Live opdateringer: {0}</value>
+  </data>
+  <data name="LiveUpdatesOn" xml:space="preserve">
+    <value>til</value>
+  </data>
+  <data name="LiveUpdatesConnecting" xml:space="preserve">
+    <value>forbinder...</value>
+  </data>
+  <data name="FailedToCreateLayout" xml:space="preserve">
+    <value>Layoutet kunne ikke oprettes.</value>
+  </data>
+  <data name="LayoutApplied1" xml:space="preserve">
+    <value>Layoutet '{0}' er anvendt.</value>
+  </data>
+  <data name="FailedToApplyLayout" xml:space="preserve">
+    <value>Layoutet kunne ikke anvendes.</value>
+  </data>
+  <data name="DeleteLayoutQuestion1" xml:space="preserve">
+    <value>Slet layoutet '{0}'? Det kan ikke fortrydes.</value>
+  </data>
+  <data name="DeleteLayoutTitle" xml:space="preserve">
+    <value>Slet layout</value>
+  </data>
+  <data name="LayoutCouldNotBeDeleted1" xml:space="preserve">
+    <value>Layoutet '{0}' kunne ikke slettes.</value>
+  </data>
+  <data name="LayoutDeleted1" xml:space="preserve">
+    <value>Layoutet '{0}' er slettet.</value>
+  </data>
+  <data name="LayoutSaved1" xml:space="preserve">
+    <value>Layoutet '{0}' er gemt.</value>
+  </data>
+  <data name="FailedToSaveLayout" xml:space="preserve">
+    <value>Layoutet kunne ikke gemmes.</value>
+  </data>
+  <data name="ConnectedToTheServer" xml:space="preserve">
+    <value>Forbundet til serveren</value>
+  </data>
+  <data name="Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="StartUpLayoutCouldNotBeSet" xml:space="preserve">
+    <value>Layoutet kunne ikke bruges som opstartslayout.</value>
+  </data>
+  <data name="IsNowTheStartUpLayout1" xml:space="preserve">
+    <value>'{0}' er nu opstartslayoutet.</value>
+  </data>
+  <data name="TheCameraDisconnected" xml:space="preserve">
+    <value>Kameraet blev afbrudt.</value>
+  </data>
+  <data name="ThumbnailOf1" xml:space="preserve">
+    <value>Miniature af {0}</value>
+  </data>
+  <data name="UnknownCamera" xml:space="preserve">
+    <value>Ukendt kamera</value>
+  </data>
+  <data name="StillBeingRecorded" xml:space="preserve">
+    <value>Optages stadig</value>
+  </data>
+  <data name="DeleteTheRecording" xml:space="preserve">
+    <value>Slet optagelse</value>
+  </data>
+  <data name="NoRecordingsYet" xml:space="preserve">
+    <value>Ingen optagelser endnu.</value>
+  </data>
+  <data name="NoRecordingsMatchTheFilters" xml:space="preserve">
+    <value>Ingen optagelser passer til filtrene.</value>
+  </data>
+  <data name="RecordingCount1" xml:space="preserve">
+    <value>{0} optagelse(r)</value>
+  </data>
+  <data name="RecordingCountOf2" xml:space="preserve">
+    <value>{0} af {1} optagelse(r)</value>
+  </data>
+  <data name="SavingAndMovingRecordings" xml:space="preserve">
+    <value>Gemmer og flytter optagelser...</value>
+  </data>
+  <data name="SettingsSaved" xml:space="preserve">
+    <value>Indstillingerne er gemt.</value>
+  </data>
+  <data name="SettingsCouldNotBeSaved" xml:space="preserve">
+    <value>Indstillingerne kunne ikke gemmes.</value>
+  </data>
+  <data name="SettingsMayNotBeSaved" xml:space="preserve">
+    <value>Serveren svarede ikke; indstillingerne er måske ikke gemt.</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Ja</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>Nej</value>
+  </data>
+  <data name="ThisPage" xml:space="preserve">
+    <value>Denne side</value>
+  </data>
+  <data name="ServerConfiguration" xml:space="preserve">
+    <value>Serverens konfiguration</value>
+  </data>
+  <data name="ReceiverAdded" xml:space="preserve">
+    <value>Modtageren er tilføjet.</value>
+  </data>
+  <data name="ReceiverCouldNotBeAdded" xml:space="preserve">
+    <value>Modtageren kunne ikke tilføjes.</value>
+  </data>
+  <data name="ReceiverSaved" xml:space="preserve">
+    <value>Modtageren er gemt.</value>
+  </data>
+  <data name="ReceiverCouldNotBeSaved" xml:space="preserve">
+    <value>Modtageren kunne ikke gemmes.</value>
+  </data>
+  <data name="RemoveReceiverQuestion1" xml:space="preserve">
+    <value>Fjern modtageren '{0}'? Den får ikke flere hændelser.</value>
+  </data>
+  <data name="RemoveReceiver" xml:space="preserve">
+    <value>Fjern modtager</value>
+  </data>
+  <data name="ReceiverRemoved" xml:space="preserve">
+    <value>Modtageren er fjernet.</value>
+  </data>
+  <data name="ReceiverCouldNotBeRemoved" xml:space="preserve">
+    <value>Modtageren kunne ikke fjernes.</value>
+  </data>
+  <data name="TestEventTaken" xml:space="preserve">
+    <value>Modtageren modtog testhændelsen.</value>
+  </data>
+  <data name="TestEventNotTaken" xml:space="preserve">
+    <value>Modtageren modtog ikke testhændelsen. Kontrollér adressen, og at den svarer med en successtatus.</value>
+  </data>
+  <data name="TestEventCouldNotBeSent" xml:space="preserve">
+    <value>Serveren kunne ikke bedes om at sende testhændelsen.</value>
+  </data>
+  <data name="TakesEffectWhenServerStarts" xml:space="preserve">
+    <value>Træder i kraft, næste gang serveren starter.</value>
+  </data>
+  <data name="ConnectionTypeIconHelp" xml:space="preserve">
+    <value>Et LAN-, Wi-Fi- eller USB-ikon i et ledigt hjørne af kameraflisen.</value>
+  </data>
+  <data name="RecordAsH264Help" xml:space="preserve">
+    <value>Fra: det, et kamera sender, optages uændret, hvilket næsten intet koster. Til: et kamera, der sender noget andet (H.265, MJPEG), afkodes og kodes igen under optagelsen, så filerne kan afspilles i alle afspillere og browsere, mod at serveren bruger processortid. Træder i kraft, næste gang et kamera åbnes.</value>
+  </data>
+  <data name="RecordingLayoutExampleVideoAndThumbnail2" xml:space="preserve">
+    <value>Video:
+  {0}
+Miniature:
+  {1}</value>
+  </data>
+  <data name="RecordingsMovedWhenYouSave" xml:space="preserve">
+    <value>Eksisterende optagelser flyttes til denne struktur, når du gemmer. Det kan tage et stykke tid; igangværende optagelser starter en ny fil.</value>
+  </data>
+  <data name="RecordingsMovedWhenLayoutChanges" xml:space="preserve">
+    <value>Eksisterende optagelser flyttes, når du ændrer strukturen og gemmer.</value>
+  </data>
+  <data name="Seconds1" xml:space="preserve">
+    <value>{0} sekunder</value>
+  </data>
+  <data name="Pixels1" xml:space="preserve">
+    <value>{0} pixel</value>
+  </data>
+  <data name="Smoothing1" xml:space="preserve">
+    <value>Udjævning: {0}</value>
+  </data>
+  <data name="SegmentationHelp" xml:space="preserve">
+    <value>En optagelse starter en ny fil efter uret, så ingen enkelt fil vokser i flere dage.</value>
+  </data>
+  <data name="Minutes1" xml:space="preserve">
+    <value>{0} minutter</value>
+  </data>
+  <data name="Days1" xml:space="preserve">
+    <value>{0} dage</value>
+  </data>
+  <data name="DiskSpaceGuardHelp" xml:space="preserve">
+    <value>Virker, uanset om gamle medier slettes efter en plan. Når der ikke er mere at slette, stopper optagelsen i stedet for at fylde disken.</value>
+  </data>
+  <data name="TimelapseHelp" xml:space="preserve">
+    <value>Et snapshot af hvert kamera med et fast interval, gemt i snapshotmappen.</value>
+  </data>
+  <data name="WebhooksIntro" xml:space="preserve">
+    <value>Serveren sender kamera-, optagelses- og bevægelseshændelser til disse modtagere, efterhånden som de sker. En ændring her træder i kraft med det samme.</value>
+  </data>
+  <data name="BrowserPlaybackHelp" xml:space="preserve">
+    <value>Browsere kan ofte ikke afspille dette format og vender ikke et roteret billede rigtigt. Hvis det ikke afspilles, så hent det, og åbn det i en videoafspiller. Optagelse som MP4 (Indstillinger, Optagelse) undgår begge dele.</value>
+  </data>
+  <data name="RecordingPlayback" xml:space="preserve">
+    <value>Afspilning af optagelse</value>
+  </data>
+  <data name="AreYouSure" xml:space="preserve">
+    <value>Er du sikker?</value>
+  </data>
+  <data name="PositionWithCamera2" xml:space="preserve">
+    <value>Pos. {0} — {1}</value>
+  </data>
+  <data name="Position1" xml:space="preserve">
+    <value>Pos. {0}</value>
+  </data>
+  <data name="SwitchToLightMode" xml:space="preserve">
+    <value>Skift til lyst tema</value>
+  </data>
+  <data name="SwitchToDarkMode" xml:space="preserve">
+    <value>Skift til mørkt tema</value>
+  </data>
+  <data name="EditReceiver" xml:space="preserve">
+    <value>Rediger modtager</value>
+  </data>
+  <data name="EnterAnHttpAddress" xml:space="preserve">
+    <value>Angiv en http- eller https-adresse.</value>
+  </data>
+  <data name="AlsoSetAndKept1" xml:space="preserve">
+    <value>Også angivet og bevaret, som de er: {0}</value>
+  </data>
+  <data name="WebhookSecretHelp" xml:space="preserve">
+    <value>Valgfri. Med en hemmelighed signeres hver anmodning, så modtageren kan kontrollere, at den kommer fra denne server.</value>
+  </data>
+  <data name="WebhookSecretIsSet" xml:space="preserve">
+    <value>Der er angivet en hemmelighed. Lad feltet være tomt for at beholde den, eller skriv en ny for at erstatte den.</value>
+  </data>
+  <data name="WebhookSecretIsNotSet" xml:space="preserve">
+    <value>Der er ingen hemmelighed. Skriv en for at få anmodningerne signeret.</value>
+  </data>
+  <data name="ServerCouldNotBeReached" xml:space="preserve">
+    <value>Serveren kunne ikke nås</value>
+  </data>
+  <data name="EditLayoutTitle1" xml:space="preserve">
+    <value>Rediger layout: {0}</value>
+  </data>
+  <data name="GridSize2" xml:space="preserve">
+    <value>Gitter ({0}x{1})</value>
+  </data>
+  <data name="Increase" xml:space="preserve">
+    <value>Forøg</value>
+  </data>
+  <data name="Decrease" xml:space="preserve">
+    <value>Formindsk</value>
+  </data>
+  <data name="Required" xml:space="preserve">
+    <value>Påkrævet</value>
+  </data>
+  <data name="ToggleGroup1" xml:space="preserve">
+    <value>Fold {0} ud eller ind</value>
+  </data>
+  <data name="FirstPage" xml:space="preserve">
+    <value>Første side</value>
+  </data>
+  <data name="LastPage" xml:space="preserve">
+    <value>Sidste side</value>
+  </data>
+  <data name="ScrollLeft" xml:space="preserve">
+    <value>Rul til venstre</value>
+  </data>
+  <data name="ScrollRight" xml:space="preserve">
+    <value>Rul til højre</value>
+  </data>
+  <data name="ScrollUp" xml:space="preserve">
+    <value>Rul op</value>
+  </data>
+  <data name="ScrollDown" xml:space="preserve">
+    <value>Rul ned</value>
+  </data>
+  <data name="RowsPerPage" xml:space="preserve">
+    <value>Rækker pr. side:</value>
+  </data>
+  <data name="PagerInfoFormat" xml:space="preserve">
+    <value>{first_item}-{last_item} af {all_items}</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Bekræft</value>
+  </data>
+  <data name="ColourAqua" xml:space="preserve">
+    <value>Akvamarin</value>
+  </data>
+  <data name="ColourBlack" xml:space="preserve">
+    <value>Sort</value>
+  </data>
+  <data name="ColourBlue" xml:space="preserve">
+    <value>Blå</value>
+  </data>
+  <data name="ColourFuchsia" xml:space="preserve">
+    <value>Fuchsia</value>
+  </data>
+  <data name="ColourGray" xml:space="preserve">
+    <value>Grå</value>
+  </data>
+  <data name="ColourGreen" xml:space="preserve">
+    <value>Grøn</value>
+  </data>
+  <data name="ColourLime" xml:space="preserve">
+    <value>Limegrøn</value>
+  </data>
+  <data name="ColourMaroon" xml:space="preserve">
+    <value>Rødbrun</value>
+  </data>
+  <data name="ColourNavy" xml:space="preserve">
+    <value>Marineblå</value>
+  </data>
+  <data name="ColourOlive" xml:space="preserve">
+    <value>Oliven</value>
+  </data>
+  <data name="ColourPurple" xml:space="preserve">
+    <value>Lilla</value>
+  </data>
+  <data name="ColourRed" xml:space="preserve">
+    <value>Rød</value>
+  </data>
+  <data name="ColourSilver" xml:space="preserve">
+    <value>Sølv</value>
+  </data>
+  <data name="ColourTeal" xml:space="preserve">
+    <value>Blågrøn</value>
+  </data>
+  <data name="ColourWhite" xml:space="preserve">
+    <value>Hvid</value>
+  </data>
+  <data name="ColourYellow" xml:space="preserve">
+    <value>Gul</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Log ind</value>
+  </data>
+  <data name="SignOut" xml:space="preserve">
+    <value>Log ud</value>
+  </data>
+  <data name="SignInToTheServer" xml:space="preserve">
+    <value>Log ind på serveren</value>
+  </data>
+  <data name="SigningIn" xml:space="preserve">
+    <value>Logger ind...</value>
+  </data>
+  <data name="CreateTheFirstAdmin" xml:space="preserve">
+    <value>Opret den første administrator</value>
+  </data>
+  <data name="CreateTheFirstAdminHelp" xml:space="preserve">
+    <value>Serveren har ingen brugere endnu. Opret den første administrator med opsætningskoden.</value>
+  </data>
+  <data name="SetupCode" xml:space="preserve">
+    <value>Opsætningskode</value>
+  </data>
+  <data name="SetupCodeHelp" xml:space="preserve">
+    <value>Koden står i filen setup-code.txt i serverens datamappe.</value>
+  </data>
+  <data name="SignedInAs1" xml:space="preserve">
+    <value>Logget ind som {0}</value>
+  </data>
+  <data name="SessionEnded" xml:space="preserve">
+    <value>Din session er udløbet; log ind igen.</value>
+  </data>
+  <data name="ChangePassword" xml:space="preserve">
+    <value>Skift adgangskode</value>
+  </data>
+  <data name="CurrentPassword" xml:space="preserve">
+    <value>Nuværende adgangskode</value>
+  </data>
+  <data name="NewPassword" xml:space="preserve">
+    <value>Ny adgangskode</value>
+  </data>
+  <data name="PasswordChanged" xml:space="preserve">
+    <value>Adgangskoden er skiftet. Log ind igen på dine andre enheder.</value>
+  </data>
+  <data name="PasswordTooShort" xml:space="preserve">
+    <value>Adgangskoden skal have mindst 8 tegn.</value>
+  </data>
+  <data name="LeaveEmptyToKeepIt" xml:space="preserve">
+    <value>Lad stå tomt for at beholde den</value>
+  </data>
+  <data name="Users" xml:space="preserve">
+    <value>Brugere</value>
+  </data>
+  <data name="AddUser" xml:space="preserve">
+    <value>Tilføj bruger</value>
+  </data>
+  <data name="EditUser1" xml:space="preserve">
+    <value>Redigér brugeren '{0}'</value>
+  </data>
+  <data name="RemoveUser1" xml:space="preserve">
+    <value>Fjern brugeren '{0}'?</value>
+  </data>
+  <data name="Role" xml:space="preserve">
+    <value>Rolle</value>
+  </data>
+  <data name="RoleViewer" xml:space="preserve">
+    <value>Seer</value>
+  </data>
+  <data name="RoleOperator" xml:space="preserve">
+    <value>Operatør</value>
+  </data>
+  <data name="RoleAdmin" xml:space="preserve">
+    <value>Administrator</value>
+  </data>
+  <data name="Created" xml:space="preserve">
+    <value>Oprettet</value>
+  </data>
+  <data name="ApiKeys" xml:space="preserve">
+    <value>API-nøgler</value>
+  </data>
+  <data name="AddApiKey" xml:space="preserve">
+    <value>Opret API-nøgle</value>
+  </data>
+  <data name="ApiKeyShownOnce" xml:space="preserve">
+    <value>Kopiér nøglen nu: den vises ikke igen.</value>
+  </data>
+  <data name="RemoveApiKey1" xml:space="preserve">
+    <value>Fjern API-nøglen '{0}'?</value>
+  </data>
+  <data name="AuditLog" xml:space="preserve">
+    <value>Revisionslog</value>
+  </data>
+  <data name="AuditUser" xml:space="preserve">
+    <value>Bruger</value>
+  </data>
+  <data name="AuditAction" xml:space="preserve">
+    <value>Handling</value>
+  </data>
+  <data name="AuditTarget" xml:space="preserve">
+    <value>Mål</value>
+  </data>
+  <data name="NoUsersAccess" xml:space="preserve">
+    <value>Kun en administrator kan styre brugere, API-nøgler og revisionsloggen.</value>
+  </data>
+  <data name="UserSaved" xml:space="preserve">
+    <value>Brugeren er gemt.</value>
+  </data>
+  <data name="UserRemoved" xml:space="preserve">
+    <value>Brugeren er fjernet.</value>
+  </data>
+  <data name="UserCouldNotBeSaved" xml:space="preserve">
+    <value>Brugeren kunne ikke gemmes.</value>
+  </data>
+  <data name="UserCouldNotBeRemoved" xml:space="preserve">
+    <value>Brugeren kunne ikke fjernes.</value>
+  </data>
+  <data name="ApiKeyMade" xml:space="preserve">
+    <value>API-nøglen er oprettet.</value>
+  </data>
+  <data name="ApiKeyRemoved" xml:space="preserve">
+    <value>API-nøglen er fjernet.</value>
+  </data>
+  <data name="ApiKeyCouldNotBeMade" xml:space="preserve">
+    <value>API-nøglen kunne ikke oprettes.</value>
+  </data>
+  <data name="ApiKeyCouldNotBeRemoved" xml:space="preserve">
+    <value>API-nøglen kunne ikke fjernes.</value>
+  </data>
+  <data name="ApiKey" xml:space="preserve">
+    <value>API-nøgle</value>
+  </data>
+  <data name="FFmpegSetup" xml:space="preserve">
+    <value>Opsætning af FFmpeg</value>
+  </data>
+  <data name="FFmpegNotInstalled1" xml:space="preserve">
+    <value>Videomotoren skal bruge FFmpeg {0}, som ikke er installeret på denne computer.</value>
+  </data>
+  <data name="FFmpegOtherVersion1" xml:space="preserve">
+    <value>Videomotoren skal bruge FFmpeg {0}. Den FFmpeg, der blev fundet på denne computer, er en anden version.</value>
+  </data>
+  <data name="FFmpegFoundOnThisComputer" xml:space="preserve">
+    <value>Fundet på denne computer:</value>
+  </data>
+  <data name="FFmpegFoundIn2" xml:space="preserve">
+    <value>FFmpeg {0} i {1}</value>
+  </data>
+  <data name="FFmpegInstallHint2" xml:space="preserve">
+    <value>Installér FFmpeg henter FFmpeg {0} (cirka 100 MB) fra GitHub og lægger den i {1}, hvor alle AtcSoft-programmer på denne computer finder den.</value>
+  </data>
+  <data name="FFmpegChooseFolder1" xml:space="preserve">
+    <value>Eller vælg en mappe, der indeholder FFmpeg {0}</value>
+  </data>
+  <data name="FFmpegFolder" xml:space="preserve">
+    <value>FFmpeg-mappe</value>
+  </data>
+  <data name="FFmpegInstall" xml:space="preserve">
+    <value>Installér FFmpeg</value>
+  </data>
+  <data name="FFmpegUseFolder" xml:space="preserve">
+    <value>Brug denne mappe</value>
+  </data>
+  <data name="FFmpegDownloadPage" xml:space="preserve">
+    <value>Downloadside</value>
+  </data>
+  <data name="FFmpegDownloading2" xml:space="preserve">
+    <value>Henter: {0} af {1} MB</value>
+  </data>
+  <data name="FFmpegVerifying" xml:space="preserve">
+    <value>Kontrollerer downloaden</value>
+  </data>
+  <data name="FFmpegExtracting" xml:space="preserve">
+    <value>Pakker ud</value>
+  </data>
+  <data name="FFmpegInstallFailed1" xml:space="preserve">
+    <value>FFmpeg kunne ikke installeres. {0}</value>
+  </data>
+  <data name="FFmpegInstallCancelled" xml:space="preserve">
+    <value>Installationen blev annulleret.</value>
+  </data>
+  <data name="FFmpegFolderNotReady1" xml:space="preserve">
+    <value>Denne mappe indeholder ikke FFmpeg {0}.</value>
+  </data>
+  <data name="NoLimit" xml:space="preserve">
+    <value>Ingen grænse</value>
+  </data>
+  <data name="MaxRecordingStorage" xml:space="preserve">
+    <value>Mest plads til optagelser</value>
+  </data>
+  <data name="MaxRecordingStorageHelp" xml:space="preserve">
+    <value>Når optagelserne fylder mere, slettes de ældste først.</value>
+  </data>
+  <data name="ActivityTimeline" xml:space="preserve">
+    <value>Aktivitet</value>
+  </data>
+  <data name="ActivityTimelineHint" xml:space="preserve">
+    <value>Hvad bevægede sig hvornår. Orange viser, hvor noget flyttede sig. Klik for at springe dertil; rul for at zoome.</value>
+  </data>
+  <data name="PreviousEvent" xml:space="preserve">
+    <value>Forrige hændelse</value>
+  </data>
+  <data name="NextEvent" xml:space="preserve">
+    <value>Næste hændelse</value>
+  </data>
+  <data name="Timeline" xml:space="preserve">
+    <value>Tidslinje</value>
+  </data>
+  <data name="TimelineHelp" xml:space="preserve">
+    <value>Alle kameraer over dagen. Gråt: intet optaget. Søjler: hvor meget der ændrede sig. Orange: noget flyttede sig. Klik på en bane for at afspille derfra.</value>
+  </data>
+  <data name="Last24Hours" xml:space="preserve">
+    <value>Seneste 24 timer</value>
+  </data>
+  <data name="NothingRecordedThen" xml:space="preserve">
+    <value>Der blev ikke optaget noget på det tidspunkt.</value>
+  </data>
+  <data name="NoEventWithinAWeek" xml:space="preserve">
+    <value>Ingen hændelse inden for en uge derfra.</value>
+  </data>
+  <data name="ZoomIn" xml:space="preserve">
+    <value>Zoom ind</value>
+  </data>
+  <data name="ZoomOut" xml:space="preserve">
+    <value>Zoom ud</value>
+  </data>
+  <data name="Earlier" xml:space="preserve">
+    <value>Tidligere</value>
+  </data>
+  <data name="Later" xml:space="preserve">
+    <value>Senere</value>
+  </data>
+  <data name="GapOffline" xml:space="preserve">
+    <value>Kamera offline</value>
+  </data>
+  <data name="GapNotRecording" xml:space="preserve">
+    <value>Optager ikke</value>
+  </data>
+  <data name="GapDiskFull" xml:space="preserve">
+    <value>Disken er fuld</value>
+  </data>
+  <data name="GapServerDown" xml:space="preserve">
+    <value>Serveren kørte ikke</value>
+  </data>
+  <data name="GapUnknown" xml:space="preserve">
+    <value>Intet optaget</value>
+  </data>
+  <data name="PlayAllFromHere" xml:space="preserve">
+    <value>Afspil alle herfra</value>
+  </data>
+  <data name="PlayAllFrom1" xml:space="preserve">
+    <value>Alle kameraer fra {0}</value>
+  </data>
+  <data name="NextRecordingAt1" xml:space="preserve">
+    <value>Næste optagelse kl. {0}</value>
+  </data>
+  <data name="CouldNotBePlayed" xml:space="preserve">
+    <value>Kunne ikke afspilles</value>
+  </data>
+  <data name="NoMoreRecordings" xml:space="preserve">
+    <value>Ikke flere optagelser</value>
+  </data>
+  <data name="PlayAllShowsFirst1" xml:space="preserve">
+    <value>Viser de første {0} kameraer</value>
+  </data>
+  <data name="EnableActivityIndex" xml:space="preserve">
+    <value>Gem en aktivitetstidslinje for hver optagelse</value>
+  </data>
+  <data name="PlayEventsOnly" xml:space="preserve">
+    <value>Afspil kun hændelser</value>
+  </data>
+  <data name="AnalyseRecording" xml:space="preserve">
+    <value>Analysér optagelse</value>
+  </data>
+  <data name="AnalysingRecording1" xml:space="preserve">
+    <value>Analyserer {0}...</value>
+  </data>
+  <data name="RecordingAnalysed" xml:space="preserve">
+    <value>Optagelsen har nu sin aktivitetstidslinje.</value>
+  </data>
+  <data name="RecordingNotAnalysed" xml:space="preserve">
+    <value>Optagelsen kunne ikke analyseres.</value>
+  </data>
+  <data name="MotionZones" xml:space="preserve">
+    <value>Bevægelseszoner</value>
+  </data>
+  <data name="AddZone" xml:space="preserve">
+    <value>Tilføj zone</value>
+  </data>
+  <data name="RemoveZone" xml:space="preserve">
+    <value>Fjern zone</value>
+  </data>
+  <data name="AddCorner" xml:space="preserve">
+    <value>Tilføj hjørne</value>
+  </data>
+  <data name="RemoveCorner" xml:space="preserve">
+    <value>Fjern hjørne</value>
+  </data>
+  <data name="Zone1" xml:space="preserve">
+    <value>Zone {0}</value>
+  </data>
+  <data name="MotionZonesHelp" xml:space="preserve">
+    <value>En ignoreret zone skjuler bevægelsen i den; en overvåget zone har sin egen følsomhed og mindste objekt, som tomme er kameraets. Træk en zone eller dens hjørner; dobbeltklik på en kant for at tilføje et hjørne, eller på et hjørne for at fjerne det.</value>
+  </data>
+  <data name="MotionZonesNoPicture" xml:space="preserve">
+    <value>Intet billede endnu: tag et skærmbillede for at tegne på kameraets billede.</value>
+  </data>
+  <data name="ZoneKindIgnore" xml:space="preserve">
+    <value>Ignorér bevægelse</value>
+  </data>
+  <data name="ZoneKindWatch" xml:space="preserve">
+    <value>Overvåg med egne værdier</value>
+  </data>
+  <data name="SmallestObjectPercent" xml:space="preserve">
+    <value>Mindste objekt (% af billedet)</value>
+  </data>
+  <data name="CamerasOwn" xml:space="preserve">
+    <value>Kameraets egen</value>
+  </data>
+  <data name="TimelineColour" xml:space="preserve">
+    <value>Farve på tidslinjen</value>
+  </data>
+  <data name="ActivityHoverNotAnalysed" xml:space="preserve">
+    <value>Ikke analyseret</value>
+  </data>
+  <data name="ActivityHoverNothingMoving" xml:space="preserve">
+    <value>Intet i bevægelse</value>
+  </data>
+  <data name="ActivityHoverMoving1" xml:space="preserve">
+    <value>I bevægelse: {0}</value>
+  </data>
+  <data name="ActivityHoverZone1" xml:space="preserve">
+    <value>Zone: {0}</value>
+  </data>
+  <data name="SmallestObjectInfo" xml:space="preserve">
+    <value>Alt mindre end denne del af billedet ignoreres: hæv den for at ignorere fugle og blade, sænk den for at se en kat langt væk. En overvåget zone kan have sin egen.</value>
+  </data>
+  <data name="StoppedObjectSeconds" xml:space="preserve">
+    <value>Noget, der står stille, bliver baggrund efter (sekunder)</value>
+  </data>
+  <data name="StoppedObjectSecondsInfo" xml:space="preserve">
+    <value>Hvor længe noget, der holder op med at bevæge sig, fx en parkeret bil, højst ses, før det bliver en del af billedet; noget, der kun adskiller sig lidt fra billedet, forsvinder før.</value>
+  </data>
+  <data name="IgnoreLightingChanges" xml:space="preserve">
+    <value>Ignorer lysændringer</value>
+  </data>
+  <data name="IgnoreLightingChangesInfo" xml:space="preserve">
+    <value>En ændring af det meste af billedet på én gang, fx en sky eller en lampe, der tændes, er ikke bevægelse. Slå det fra for et kamera ved en dør, hvor en person kan fylde det meste af billedet; så ses bevægelse ikke et stykke tid efter en ændring af lyset.</value>
+  </data>
+  <data name="VerdictCorrect" xml:space="preserve">
+    <value>Korrekt markeret</value>
+  </data>
+  <data name="VerdictFalseAlarm" xml:space="preserve">
+    <value>Falsk alarm</value>
+  </data>
+  <data name="VerdictMissed" xml:space="preserve">
+    <value>Her blev noget overset</value>
+  </data>
+  <data name="VerdictSaved" xml:space="preserve">
+    <value>Gemt i optagelsens gennemgang.</value>
+  </data>
+  <data name="VerdictNotSaved1" xml:space="preserve">
+    <value>Vurderingen blev ikke gemt: {0}</value>
+  </data>
+</root>

@@ -1,0 +1,39 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Collections.ObjectModel;
+global using System.Diagnostics.CodeAnalysis;
+global using System.Globalization;
+global using System.IO;
+global using System.Linq;
+global using System.Security.Cryptography;
+global using System.Text.Json;
+global using System.Text.Json.Serialization;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using System.Windows;
+global using System.Windows.Input;
+global using System.Windows.Media;
+global using System.Windows.Media.Imaging;
+global using System.Windows.Threading;
+
+global using Atc.XamlToolkit.Mvvm;
+
+global using AtcSoft.VideoEngine;
+global using AtcSoft.VideoEngine.Capture;
+global using AtcSoft.VideoEngine.DirectX;
+global using AtcSoft.VideoSurveillance.Enums;
+global using AtcSoft.VideoSurveillance.Helpers;
+global using AtcSoft.VideoSurveillance.Helpers.Activity;
+global using AtcSoft.VideoSurveillance.Helpers.MotionDetection;
+global using AtcSoft.VideoSurveillance.Helpers.Review;
+global using AtcSoft.VideoSurveillance.Models;
+global using AtcSoft.VideoSurveillance.Models.Settings;
+global using AtcSoft.VideoSurveillance.Storybook;
+global using AtcSoft.VideoSurveillance.Storybook.Encoding;
+global using AtcSoft.VideoSurveillance.Storybook.Model;
+global using AtcSoft.VideoSurveillance.Storybook.Scoring;
+global using AtcSoft.VideoSurveillance.Storybook.Truth;
+global using AtcSoft.VideoSurveillance.Wpf.Core.Diagnostics;
+global using AtcSoft.VideoSurveillance.Wpf.Core.Dialogs;
+
+global using Serilog;

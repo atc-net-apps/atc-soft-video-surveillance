@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "name": "S8 a small cat far away",
+  "video": {
+    "width": 1280,
+    "height": 720,
+    "fps": 15,
+    "durationSeconds": 12,
+    "noise": 2.0
+  },
+  "background": {
+    "seed": 8,
+    "distractors": []
+  },
+  "objects": [
+    {
+      "id": "cat",
+      "kind": "cat",
+      "size": [
+        0.025,
+        0.022
+      ],
+      "path": [
+        {
+          "t": 1,
+          "at": [
+            0.3,
+            0.45
+          ]
+        },
+        {
+          "t": 11,
+          "at": [
+            0.7,
+            0.45
+          ]
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "tracks": 1
+  }
+}

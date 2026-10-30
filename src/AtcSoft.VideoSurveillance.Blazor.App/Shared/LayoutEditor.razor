@@ -1,0 +1,185 @@
+@using MudBlazor
+
+<MudText Typo="Typo.h6" Class="mb-2">@(string.Format(CultureInfo.CurrentCulture, Translations.EditLayoutTitle1, Layout.Name))</MudText>
+
+<MudDropContainer T="CameraDropItem"
+                  Items="dropItems"
+                  ItemsSelector="@((item, zone) => item.Zone == zone)"
+                  ItemDropped="OnItemDropped"
+                  CanDropClass="mud-border-success"
+                  NoDropClass="mud-border-error">
+    <ChildContent>
+        <MudGrid>
+            <MudItem xs="3">
+                <MudPaper Class="pa-3" Elevation="1" Style="min-height: 300px;">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@Translations.AvailableCameras</MudText>
+                    <MudDropZone T="CameraDropItem"
+                                 Identifier="available"
+                                 AllowReorder="true"
+                                 Style="min-height: 200px;" />
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="9">
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@(string.Format(CultureInfo.CurrentCulture, Translations.GridSize2, Layout.Rows, Layout.Columns))</MudText>
+                    <div style="display: grid; grid-template-columns: repeat(@Layout.Columns, 1fr); gap: 8px;">
+                        @for (var i = 0; i < Layout.Rows * Layout.Columns; i++)
+                        {
+                            var pos = i;
+                            var assigned = dropItems.FirstOrDefault(d => d.Zone == $"pos-{pos}");
+                            <MudPaper Class="pa-2" Elevation="0"
+                                      Style="aspect-ratio: 16/9; background: var(--mud-palette-background-grey); border: 1px dashed var(--mud-palette-lines-default);">
+                                <MudText Typo="Typo.caption" Color="@(assigned is not null ? Color.Default : Color.Secondary)" Class="mb-1">
+                                    @if (assigned is not null)
+                                    {
+                                        @(string.Format(CultureInfo.CurrentCulture, Translations.PositionWithCamera2, pos, assigned.DisplayName))
+                                    }
+                                    else
+                                    {
+                                        @(string.Format(CultureInfo.CurrentCulture, Translations.Position1, pos))
+                                    }
+                                </MudText>
+                                <MudDropZone T="CameraDropItem"
+                                             Identifier="@($"pos-{pos}")"
+                                             Style="min-height: 40px;" />
+                            </MudPaper>
+                        }
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </ChildContent>
+    <ItemRenderer>
+        <MudPaper Class="pa-2 ma-1" Elevation="2" Style="cursor: grab;">
+            <MudText Typo="Typo.body2">@context.DisplayName</MudText>
+        </MudPaper>
+    </ItemRenderer>
+</MudDropContainer>
+
+<MudStack Row="true" Spacing="2" Class="mt-4">
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="SaveAsync">
+        @Translations.Save
+    </MudButton>
+    <MudButton Variant="Variant.Outlined"
+               OnClick="@(() => OnCancel.InvokeAsync())">
+        @Translations.Cancel
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public Layout Layout { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Camera[] AllCameras { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    /// <summary>
+    /// The built UpdateLayoutRequest from the last save operation.
+    /// Read by the parent via @ref after OnSave fires.
+    /// </summary>
+    public UpdateLayoutRequest? LastSaveRequest { get; private set; }
+
+    private List<CameraDropItem> dropItems = [];
+
+    protected override void OnParametersSet()
+    {
+        BuildDropItems();
+    }
+
+    private void BuildDropItems()
+    {
+        dropItems = [];
+
+        var assignedCameraIds = new HashSet<Guid>();
+
+        if (Layout.Cameras is not null)
+        {
+            foreach (var lc in Layout.Cameras)
+            {
+                var camera = AllCameras.FirstOrDefault(c => c.Id == lc.CameraId);
+                if (camera is not null)
+                {
+                    dropItems.Add(new CameraDropItem
+                    {
+                        CameraId = camera.Id,
+                        DisplayName = camera.DisplayName,
+                        Zone = $"pos-{lc.Position}",
+                    });
+                    assignedCameraIds.Add(camera.Id);
+                }
+            }
+        }
+
+        foreach (var camera in AllCameras.Where(c => !assignedCameraIds.Contains(c.Id)))
+        {
+            dropItems.Add(new CameraDropItem
+            {
+                CameraId = camera.Id,
+                DisplayName = camera.DisplayName,
+                Zone = "available",
+            });
+        }
+    }
+
+    private void OnItemDropped(MudItemDropInfo<CameraDropItem> info)
+    {
+        if (info.Item is null)
+        {
+            return;
+        }
+
+        var targetZone = info.DropzoneIdentifier;
+
+        if (targetZone.StartsWith("pos-", StringComparison.Ordinal))
+        {
+            var existing = dropItems.FirstOrDefault(d => d != info.Item && d.Zone == targetZone);
+            if (existing is not null)
+            {
+                existing.Zone = "available";
+            }
+        }
+
+        info.Item.Zone = targetZone;
+    }
+
+    private async Task SaveAsync()
+    {
+        var cameras = new List<LayoutItem>();
+
+        foreach (var item in dropItems)
+        {
+            if (item.Zone.StartsWith("pos-", StringComparison.Ordinal)
+                && int.TryParse(item.Zone["pos-".Length..], out var position))
+            {
+                cameras.Add(new LayoutItem(
+                    CameraId: item.CameraId,
+                    Position: position));
+            }
+        }
+
+        LastSaveRequest = new UpdateLayoutRequest(
+            Name: Layout.Name,
+            Rows: Layout.Rows,
+            Columns: Layout.Columns,
+            Cameras: cameras);
+
+        await OnSave.InvokeAsync();
+    }
+
+    internal sealed class CameraDropItem
+    {
+        public Guid CameraId { get; init; }
+
+        public string DisplayName { get; init; } = string.Empty;
+
+        public string Zone { get; set; } = "available";
+    }
+}

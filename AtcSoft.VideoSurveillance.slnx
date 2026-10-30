@@ -1,0 +1,66 @@
+<Solution>
+  <Folder Name="/docs/">
+    <File Path="docs/architecture.md" />
+    <File Path="docs/motion-detection.md" />
+    <File Path="docs/motion-detection-storybook.md" />
+    <File Path="docs/server.md" />
+    <File Path="docs/settings.md" />
+    <File Path="docs/disk-space-guard.md" />
+    <File Path="docs/usb-cameras.md" />
+    <File Path="docs/e2e-smoke-tests.md" />
+    <File Path="docs/soak-test.md" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/plans/">
+    <File Path="plans/roadmap.md" />
+    <File Path="plans/roadmap-boundingbox.md" />
+  </Folder>
+  <Folder Name="/sample/">
+    <Project Path="sample/BoundingBoxWpfApp/BoundingBoxWpfApp.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/AtcSoft.VideoSurveillance.Aspire/AtcSoft.VideoSurveillance.Aspire.csproj" />
+  </Folder>
+  <Folder Name="/src/Application-Web/">
+    <Project Path="src/AtcSoft.VideoSurveillance.Blazor.App/AtcSoft.VideoSurveillance.Blazor.App.csproj" />
+  </Folder>
+  <Folder Name="/src/Application-WPF/">
+    <Project Path="src/AtcSoft.CameraWall.Wpf.App/AtcSoft.CameraWall.Wpf.App.csproj" />
+    <Project Path="src/AtcSoft.VideoSurveillance.Wpf.App/AtcSoft.VideoSurveillance.Wpf.App.csproj" />
+  </Folder>
+  <Folder Name="/src/Libraries/">
+    <Project Path="src/AtcSoft.CameraWall.Wpf/AtcSoft.CameraWall.Wpf.csproj" />
+    <Project Path="src/AtcSoft.VideoEngine.DirectX/AtcSoft.VideoEngine.DirectX.csproj" />
+    <Project Path="src/AtcSoft.VideoEngine.Windows/AtcSoft.VideoEngine.Windows.csproj" />
+    <Project Path="src/AtcSoft.VideoEngine/AtcSoft.VideoEngine.csproj" />
+    <Project Path="src/AtcSoft.VideoPlayer.Wpf/AtcSoft.VideoPlayer.Wpf.csproj" />
+    <Project Path="src/AtcSoft.VideoSurveillance.Core/AtcSoft.VideoSurveillance.Core.csproj" />
+    <Project Path="src/AtcSoft.VideoSurveillance.Resources/AtcSoft.VideoSurveillance.Resources.csproj" />
+    <Project Path="src/AtcSoft.VideoSurveillance.Wpf.Core/AtcSoft.VideoSurveillance.Wpf.Core.csproj" />
+    <Project Path="src/AtcSoft.VideoSurveillance.Wpf/AtcSoft.VideoSurveillance.Wpf.csproj" />
+  </Folder>
+  <Folder Name="/src/Testing/">
+    <Project Path="src/AtcSoft.VideoSurveillance.Storybook/AtcSoft.VideoSurveillance.Storybook.csproj" />
+  </Folder>
+  <Folder Name="/src/Services-API/">
+    <Project Path="src/AtcSoft.VideoSurveillance.Api.Contracts/AtcSoft.VideoSurveillance.Api.Contracts.csproj" />
+    <Project Path="src/AtcSoft.VideoSurveillance.Api.Domain/AtcSoft.VideoSurveillance.Api.Domain.csproj" />
+    <Project Path="src/AtcSoft.VideoSurveillance.Api/AtcSoft.VideoSurveillance.Api.csproj" />
+  </Folder>
+  <!-- WiX installer excluded from VS solution due to SDK compatibility issues.
+       Build via command line: dotnet build setup/AtcSoft.CameraWall.Installer/AtcSoft.CameraWall.Installer.wixproj
+       GitHub Actions builds the installer automatically on release. -->
+  <Folder Name="/test/">
+    <Project Path="test/AtcSoft.VideoEngine.Tests/AtcSoft.VideoEngine.Tests.csproj" />
+    <Project Path="test/AtcSoft.VideoEngine.Windows.Tests/AtcSoft.VideoEngine.Windows.Tests.csproj" />
+    <Project Path="test/AtcSoft.VideoSurveillance.Api.Tests/AtcSoft.VideoSurveillance.Api.Tests.csproj" />
+    <Project Path="test/AtcSoft.VideoSurveillance.Blazor.App.Tests/AtcSoft.VideoSurveillance.Blazor.App.Tests.csproj" />
+    <Project Path="test/AtcSoft.VideoSurveillance.Core.Tests/AtcSoft.VideoSurveillance.Core.Tests.csproj" />
+    <Project Path="test/AtcSoft.VideoSurveillance.E2E.Tests/AtcSoft.VideoSurveillance.E2E.Tests.csproj" />
+    <Project Path="test/AtcSoft.VideoSurveillance.Resources.Tests/AtcSoft.VideoSurveillance.Resources.Tests.csproj" />
+    <Project Path="test/AtcSoft.VideoSurveillance.Storybook.Tests/AtcSoft.VideoSurveillance.Storybook.Tests.csproj" />
+    <Project Path="test/AtcSoft.CameraWall.Wpf.Tests/AtcSoft.CameraWall.Wpf.Tests.csproj" />
+    <Project Path="test/AtcSoft.VideoSurveillance.Wpf.Core.Tests/AtcSoft.VideoSurveillance.Wpf.Core.Tests.csproj" />
+    <Project Path="test/AtcSoft.VideoSurveillance.Wpf.Tests/AtcSoft.VideoSurveillance.Wpf.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,175 @@
+@page "/"
+@inject GatewayService Gateway
+@inject EventStreamService EventStream
+@implements IDisposable
+
+<MudText Typo="Typo.h4" Class="mb-4">@Translations.Dashboard</MudText>
+
+@if (loadFailed)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">
+        @Translations.ServerDidNotAnswer
+    </MudAlert>
+}
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Large" Color="Color.Primary" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5">@board.CameraCount</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@Translations.Cameras</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.Wifi" Size="Size.Large" Color="Color.Success" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5">@board.ConnectedCount</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@Translations.Connected</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.FiberManualRecord" Size="Size.Large" Color="Color.Error" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5">@board.RecordingCount</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@Translations.RecordingNow</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.GridView" Size="Size.Large" Color="Color.Info" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5">@layoutCount</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@Translations.Layouts</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (storage is not null)
+{
+    @* Recordings stop when the disk runs out, so it is shown before it does. *@
+    <MudPaper Class="pa-3 mt-4" Elevation="1" Style="max-width: 560px;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Storage" Color="@(storage.IsLow ? Color.Error : Color.Default)" />
+            <MudText Typo="Typo.body2">@(string.Format(CultureInfo.CurrentCulture, Translations.RecordingDisk1, storage.Text))</MudText>
+            <MudSpacer />
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">@(string.Format(CultureInfo.CurrentCulture, Translations.PercentUsed1, storage.UsedPercent))</MudText>
+        </MudStack>
+        <MudProgressLinear Value="@(storage.UsedPercent)"
+                           Color="@(storage.IsLow ? Color.Error : Color.Primary)"
+                           Class="mt-2"
+                           aria-label="@Translations.RecordingDiskShareInUse" />
+        @if (storage.IsLow)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">
+                @Translations.DiskLowRecordingsRefused
+            </MudText>
+        }
+    </MudPaper>
+}
+
+<MudStack Row="true" Spacing="2" Class="mt-4" Wrap="Wrap.Wrap">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/live" StartIcon="@Icons.Material.Filled.LiveTv">@Translations.LiveView</MudButton>
+    <MudButton Variant="Variant.Outlined" Href="/recordings" StartIcon="@Icons.Material.Filled.VideoLibrary">@Translations.Recordings</MudButton>
+    <MudButton Variant="Variant.Outlined" Href="/cameras" StartIcon="@Icons.Material.Filled.Videocam">@Translations.Cameras</MudButton>
+</MudStack>
+
+@if (cameras.Length > 0)
+{
+    <MudText Typo="Typo.h6" Class="mt-6 mb-2">@Translations.Cameras</MudText>
+    <MudPaper Elevation="1">
+        <MudList T="string" Dense="true">
+            @foreach (var camera in cameras)
+            {
+                <MudListItem T="string" Href="@($"/cameras/{camera.Id}/edit")">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Circle"
+                                 Size="Size.Small"
+                                 Color="@(board.IsConnected(camera.Id) ? Color.Success : Color.Default)" />
+                        <MudText>@camera.DisplayName</MudText>
+                        <MudSpacer />
+                        @if (board.IsRecording(camera.Id))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error">@Translations.Recording</MudChip>
+                        }
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            @(board.IsConnected(camera.Id) ? Translations.Connected : Translations.NotConnected)
+                        </MudText>
+                    </MudStack>
+                </MudListItem>
+            }
+        </MudList>
+    </MudPaper>
+}
+else if (!isLoading && !loadFailed)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-6" Style="max-width: 700px;">
+        @Translations.NoCamerasYet
+        <MudLink Href="/cameras/create" Class="ml-1">@Translations.AddTheFirstCamera</MudLink>
+    </MudAlert>
+}
+
+<MudText Typo="Typo.caption" Class="mt-4 mud-text-secondary">
+    @(string.Format(CultureInfo.CurrentCulture, Translations.LiveUpdates1, EventStream.IsReading ? Translations.LiveUpdatesOn : Translations.LiveUpdatesConnecting))
+</MudText>
+
+@code {
+    private StorageStatus? storage;
+    private readonly CameraStatusBoard board = new();
+    private Camera[] cameras = [];
+    private int layoutCount;
+    private bool isLoading = true;
+    private bool loadFailed;
+    private readonly CancellationTokenSource leaving = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var loaded = await Gateway.GetCamerasAsync();
+        loadFailed = loaded is null;
+        cameras = [.. (loaded ?? []).OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase)];
+
+        // The counts come from the cameras' own states, so they are right
+        // from the start and cannot drift as events arrive.
+        board.Load(cameras.Select(c => (c.Id, c.ConnectionState == CameraConnectionState.Connected, c.IsRecording)));
+
+        layoutCount = (await Gateway.GetLayoutsAsync())?.Length ?? 0;
+        storage = await Gateway.GetStorageStatusAsync();
+        isLoading = false;
+
+        // The live counts come from the server's event stream (GET /events)
+        // until the page is left; it resumes by itself after a drop.
+        EventStream.ReadingChanged += OnReadingChanged;
+        _ = EventStream.RunAsync(OnEventAsync, leaving.Token);
+    }
+
+    private Task OnEventAsync(SurveillanceEvent surveillanceEvent)
+        => InvokeAsync(() =>
+        {
+            board.Apply(surveillanceEvent);
+            StateHasChanged();
+        });
+
+    private void OnReadingChanged()
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        EventStream.ReadingChanged -= OnReadingChanged;
+        leaving.Cancel();
+        leaving.Dispose();
+    }
+}

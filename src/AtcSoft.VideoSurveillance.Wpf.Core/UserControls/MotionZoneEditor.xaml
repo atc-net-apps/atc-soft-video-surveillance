@@ -1,0 +1,130 @@
+<UserControl
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Core.UserControls.MotionZoneEditor"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:userControls="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.UserControls"
+    x:Name="Root"
+    d:DesignHeight="480"
+    d:DesignWidth="800"
+    mc:Ignorable="d">
+
+    <!--  The zones are edited in code-behind with Core's MotionZoneEditing; the canvas draws them and reports the pointer's changes.  -->
+    <DockPanel>
+        <atc:UniformSpacingPanel
+            Margin="0,0,0,10"
+            DockPanel.Dock="Top"
+            Orientation="Horizontal"
+            Spacing="8">
+            <Button
+                Padding="12,6"
+                Command="{Binding Path=TakePictureCommand, ElementName=Root}"
+                Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                              Key=TakeSnapshot}" />
+            <Button
+                x:Name="AddZoneButton"
+                Padding="12,6"
+                Click="OnAddZone"
+                Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                              Key=AddZone}" />
+            <Button
+                x:Name="RemoveZoneButton"
+                Padding="12,6"
+                Click="OnRemoveZone"
+                Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                              Key=RemoveZone}"
+                IsEnabled="False" />
+            <Button
+                x:Name="AddCornerButton"
+                Padding="12,6"
+                Click="OnAddCorner"
+                Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                              Key=AddCorner}"
+                IsEnabled="False" />
+            <Button
+                x:Name="RemoveCornerButton"
+                Padding="12,6"
+                Click="OnRemoveCorner"
+                Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                              Key=RemoveCorner}"
+                IsEnabled="False" />
+        </atc:UniformSpacingPanel>
+
+        <atc:LabelTextBox
+            x:Name="NameBox"
+            Margin="0,0,0,10"
+            DockPanel.Dock="Top"
+            IsEnabled="False"
+            LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                            Key=Name}"
+            Text="{Binding Path=ZoneName, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <!--  The picked zone's kind; a watch zone's own values, empty for the camera's (the hint shows it when known)  -->
+        <atc:GridEx
+            Margin="0,0,0,10"
+            Columns="*,10,*,10,*,10,*"
+            DockPanel.Dock="Top">
+            <atc:LabelComboBox
+                x:Name="KindBox"
+                Grid.Column="0"
+                IsEnabled="False"
+                Items="{x:Static userControls:MotionZoneEditor.KindItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=Type}"
+                SelectedKey="{Binding Path=ZoneKindKey, ElementName=Root, Mode=TwoWay}" />
+            <atc:LabelTextBox
+                x:Name="SensitivityBox"
+                Grid.Column="2"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=Sensitivity}"
+                Text="{Binding Path=ZoneSensitivityText, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                Visibility="Collapsed"
+                WatermarkText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                    Key=CamerasOwn}" />
+            <atc:LabelTextBox
+                x:Name="SmallestObjectBox"
+                Grid.Column="4"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=SmallestObjectPercent}"
+                Text="{Binding Path=ZoneSmallestObjectText, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                Visibility="Collapsed" />
+            <atc:LabelWellKnownColorSelector
+                x:Name="ColorBox"
+                Grid.Column="6"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=TimelineColour}"
+                SelectedKey="{Binding Path=ZoneColorKey, ElementName=Root, Mode=TwoWay}"
+                Visibility="Collapsed" />
+        </atc:GridEx>
+
+        <TextBlock
+            Margin="0,0,0,6"
+            DockPanel.Dock="Top"
+            Text="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                       Key=MotionZonesHelp}"
+            TextWrapping="Wrap" />
+
+        <TextBlock
+            x:Name="StatusText"
+            Margin="0,0,0,6"
+            DockPanel.Dock="Top"
+            FontStyle="Italic"
+            Text="{Binding Path=Status, ElementName=Root}"
+            TextWrapping="Wrap"
+            Visibility="Collapsed" />
+
+        <userControls:MotionZoneCanvas
+            x:Name="ZoneCanvas"
+            MinHeight="240"
+            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                            Key=MotionZones}"
+            Picture="{Binding Path=Picture, ElementName=Root}"
+            SelectedCorner="{Binding Path=SelectedCorner, ElementName=Root, Mode=TwoWay}"
+            SelectedZone="{Binding Path=SelectedZone, ElementName=Root, Mode=TwoWay}"
+            Zones="{Binding Path=Zones, ElementName=Root}"
+            ZonesEdited="OnZonesEdited" />
+    </DockPanel>
+</UserControl>

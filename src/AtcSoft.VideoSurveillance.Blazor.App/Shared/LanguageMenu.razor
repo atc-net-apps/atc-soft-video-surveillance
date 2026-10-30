@@ -1,0 +1,18 @@
+@* The language of this browser: Blazor WebAssembly fixes the culture at startup, so a choice reloads the page. *@
+@inject IJSRuntime Js
+@inject NavigationManager Navigation
+
+<MudMenu Icon="@Icons.Material.Filled.Translate" Color="Color.Inherit" AriaLabel="@Translations.Language">
+    @foreach (var (culture, label) in LanguageChoice.Supported)
+    {
+        <MudMenuItem OnClick="@(() => ChooseAsync(culture))" Disabled="@(culture == CultureInfo.CurrentUICulture.Name)">@label</MudMenuItem>
+    }
+</MudMenu>
+
+@code {
+    private async Task ChooseAsync(string culture)
+    {
+        await Js.InvokeVoidAsync("atcLanguage.set", culture);
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
+}

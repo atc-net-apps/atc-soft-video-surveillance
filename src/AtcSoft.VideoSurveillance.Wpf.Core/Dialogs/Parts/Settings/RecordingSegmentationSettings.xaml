@@ -1,0 +1,36 @@
+<UserControl
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Core.Dialogs.Parts.Settings.RecordingSegmentationSettings"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=dialogs:SettingsDialogViewModel,
+                                     IsDesignTimeCreatable=False}"
+    d:DesignWidth="600"
+    mc:Ignorable="d">
+
+    <GroupBox Header="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=RecordingSegmentation}">
+        <StackPanel Margin="0,5,0,-20" Orientation="Vertical">
+
+            <atc:LabelToggleSwitch
+                Margin="0,0,0,10"
+                HideAreas="Validation"
+                IsOn="{Binding Path=EnableHourlySegmentation, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=EnableHourlySegmentation}" />
+
+            <atc:LabelComboBox
+                IsEnabled="{Binding Path=EnableHourlySegmentation}"
+                Items="{Binding Path=MaxRecordingDurationItems}"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations,
+                                                Key=MaxRecordingDuration}"
+                Orientation="Vertical"
+                SelectedKey="{Binding Path=SelectedMaxRecordingDuration, Mode=TwoWay}" />
+
+        </StackPanel>
+    </GroupBox>
+</UserControl>

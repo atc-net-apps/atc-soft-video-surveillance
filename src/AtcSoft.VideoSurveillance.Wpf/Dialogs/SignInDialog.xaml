@@ -1,0 +1,68 @@
+<atc:NiceWindow
+    x:Class="AtcSoft.VideoSurveillance.Wpf.Dialogs.SignInDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.VideoSurveillance.Wpf.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="{Binding Title}"
+    Width="420"
+    ResizeMode="NoResize"
+    SizeToContent="Height"
+    WindowStartupLocation="CenterScreen"
+    d:DataContext="{d:DesignInstance Type=dialogs:SignInDialogViewModel}"
+    mc:Ignorable="d">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </Window.Resources>
+
+    <StackPanel Margin="16">
+        <TextBlock
+            Margin="0,0,0,8"
+            Text="{Binding Help}"
+            TextWrapping="Wrap"
+            Visibility="{Binding IsSetup, Converter={StaticResource BoolToVisibility}}" />
+        <atc:LabelTextBox
+            Margin="0,4"
+            InformationText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=SetupCodeHelp}"
+            IsMandatory="True"
+            LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=SetupCode}"
+            Text="{Binding SetupCode, UpdateSourceTrigger=PropertyChanged}"
+            Visibility="{Binding IsSetup, Converter={StaticResource BoolToVisibility}}" />
+        <atc:LabelTextBox
+            Margin="0,4"
+            IsMandatory="True"
+            LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=Username}"
+            Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}" />
+        <atc:LabelPasswordBox
+            Margin="0,4"
+            IsMandatory="True"
+            LabelText="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=Password}"
+            Text="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock
+            Margin="0,8,0,0"
+            Foreground="IndianRed"
+            Text="{Binding Problem}"
+            TextWrapping="Wrap" />
+
+        <StackPanel
+            Margin="0,16,0,0"
+            HorizontalAlignment="Right"
+            Orientation="Horizontal">
+            <Button
+                MinWidth="100"
+                Margin="0,0,8,0"
+                Command="{Binding SignInCommand}"
+                Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=SignIn}"
+                IsDefault="True" />
+            <Button
+                MinWidth="80"
+                Command="{Binding CancelCommand}"
+                Content="{atcTranslation:Resx ResxName=AtcSoft.VideoSurveillance.Resources.Translations, Key=Cancel}"
+                IsCancel="True" />
+        </StackPanel>
+    </StackPanel>
+</atc:NiceWindow>

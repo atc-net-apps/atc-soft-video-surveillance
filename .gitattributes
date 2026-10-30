@@ -1,0 +1,9 @@
+# Images are binary: never convert line endings or diff them as text.
+# Without this, a tool that rewrites text files can strip the CR from a
+# PNG signature and corrupt the file.
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.bmp binary

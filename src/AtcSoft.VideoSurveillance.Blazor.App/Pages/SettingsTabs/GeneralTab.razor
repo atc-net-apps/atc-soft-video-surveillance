@@ -1,0 +1,18 @@
+@* The look of the desktop apps is kept on the server; the web client follows the browser's light or dark mode. *@
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.DesktopAppsAppearance</MudText>
+<MudSelect @bind-Value="State.ThemeBase" Label="@Translations.Theme" Class="mt-2">
+    <MudSelectItem Value="AppSettingsThemeBase.Dark">@Translations.ThemeDark</MudSelectItem>
+    <MudSelectItem Value="AppSettingsThemeBase.Light">@Translations.ThemeLight</MudSelectItem>
+</MudSelect>
+<MudTextField @bind-Value="State.ThemeAccent" Label="@Translations.AccentColour" Class="mt-2" />
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.subtitle1" Class="mb-1">@Translations.Startup</MudText>
+<SettingSwitch @bind-Value="State.ConnectOnStartup" Label="@Translations.ConnectCamerasOnStartup" />
+<SettingSwitch @bind-Value="State.StartMaximized" Label="@Translations.StartMaximizedShort" />
+
+@code {
+    [Parameter, EditorRequired]
+    public SettingsState State { get; set; } = null!;
+}

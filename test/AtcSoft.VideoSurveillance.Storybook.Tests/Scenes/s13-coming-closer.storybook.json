@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "name": "S13 a person walks up to the camera",
+  "video": {
+    "width": 1280,
+    "height": 720,
+    "fps": 15,
+    "durationSeconds": 12,
+    "noise": 2.0
+  },
+  "background": {
+    "seed": 13,
+    "distractors": []
+  },
+  "objects": [
+    {
+      "id": "human",
+      "kind": "human",
+      "size": [
+        0.04,
+        0.15
+      ],
+      "path": [
+        {
+          "t": 1,
+          "at": [
+            0.5,
+            0.5
+          ],
+          "size": [
+            0.04,
+            0.15
+          ]
+        },
+        {
+          "t": 9,
+          "at": [
+            0.52,
+            0.6
+          ],
+          "size": [
+            0.18,
+            0.75
+          ]
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "tracks": 1
+  }
+}

@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Windows 10 SDK TFM is required by Atc.Wpf.Hardware (LabelUsbCameraPicker
+         depends on WinRT DeviceInformation and MediaCapture). -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>true</IsPackable>
+    <Description>Shared WPF library for AtcSoft VideoSurveillance applications, providing common models, dialogs, controls, converters, themes, and service interfaces.</Description>
+    <PackageTags>wpf;camera;surveillance;video;shared;controls</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup Label="NuGet Package Metadata">
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/davidkallesen/AtcSoft.VideoSurveillance</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/davidkallesen/AtcSoft.VideoSurveillance.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\images\icon.png" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AtcSoft.VideoSurveillance.Core\AtcSoft.VideoSurveillance.Core.csproj" />
+    <ProjectReference Include="..\AtcSoft.VideoSurveillance.Resources\AtcSoft.VideoSurveillance.Resources.csproj" />
+    <ProjectReference Include="..\AtcSoft.VideoPlayer.Wpf\AtcSoft.VideoPlayer.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Atc" Version="3.0.186" />
+    <PackageReference Include="Atc.SourceGenerators" Version="0.1.66">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Atc.Network" Version="1.0.236" />
+    <PackageReference Include="Atc.Wpf" Version="4.2.1" />
+    <PackageReference Include="Atc.Wpf.Components" Version="4.2.1" />
+    <PackageReference Include="Atc.Wpf.Controls" Version="4.2.1" />
+    <PackageReference Include="Atc.Wpf.FontIcons" Version="4.2.1" />
+    <PackageReference Include="Atc.Wpf.Forms" Version="4.2.1" />
+    <PackageReference Include="Atc.Wpf.Hardware" Version="4.2.1" />
+    <PackageReference Include="Atc.Wpf.Network" Version="4.2.1" />
+    <PackageReference Include="Atc.Wpf.Theming" Version="4.2.1" />
+    <PackageReference Include="Atc.XamlToolkit" Version="3.2.1" />
+    <PackageReference Include="Atc.XamlToolkit.Wpf" Version="3.2.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Images\cctv-camera.ico" />
+    <Resource Include="Resources\Images\cctv-camera.png" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    End-to-end smoke tests: they start the real server, both WPF apps and the web client,
+    open their windows and dialogs and fail on binding errors and unhandled exceptions in
+    the logs. They need a desktop session, so they skip unless ATCSOFT_E2E=1 (CI runs every
+    test project). Run them with:  $env:ATCSOFT_E2E=1; dotnet test test/AtcSoft.VideoSurveillance.E2E.Tests
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>AtcSoft.VideoSurveillance.E2E</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Seeds CameraWall's scratch folder with the app's own storage types. -->
+    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Wpf.Core\AtcSoft.VideoSurveillance.Wpf.Core.csproj" />
+    <!-- Runs the storybook the bounding box sample opens, to compare with what it shows. -->
+    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Storybook\AtcSoft.VideoSurveillance.Storybook.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Built before the tests run; the tests start their executables. -->
+    <ProjectReference Include="..\..\src\AtcSoft.CameraWall.Wpf.App\AtcSoft.CameraWall.Wpf.App.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Wpf.App\AtcSoft.VideoSurveillance.Wpf.App.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Api\AtcSoft.VideoSurveillance.Api.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="..\..\sample\BoundingBoxWpfApp\BoundingBoxWpfApp.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="..\..\src\AtcSoft.VideoSurveillance.Blazor.App\AtcSoft.VideoSurveillance.Blazor.App.csproj" ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.63.0" />
+  </ItemGroup>
+
+</Project>

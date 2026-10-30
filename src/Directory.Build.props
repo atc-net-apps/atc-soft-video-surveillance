@@ -8,10 +8,14 @@
 
   <PropertyGroup Label="Build instructions">
     <OutputType>Library</OutputType>
-    <!-- Creates a regular package and a symbols package -->
-    <IncludeSymbols>true</IncludeSymbols>
-    <!-- Creates symbol package in the new .snupkg format -->
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!--
+      No separate symbols package. DebugType=embedded (below) puts the PDB inside
+      the DLL, so a .snupkg would contain no .pdb files, and nuget.org rejects
+      such a package with 400 "The package does not contain any symbol (.pdb)
+      files". Consumers still get full debugging information, because it ships
+      inside the DLL in the main package.
+    -->
+    <IncludeSymbols>false</IncludeSymbols>
     <!--
       Instruct the build system to embed project source files that are not tracked by the source control
       or imported from a source package to the generated PDB.
