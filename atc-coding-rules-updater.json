@@ -20,5 +20,11 @@
         "test"
       ]
     }
-  }
+  },
+  "projectFrameworkMappings": [
+    {
+      "name": "AtcSoft.Video.Surveillance.E2E.Tests",
+      "type": "None"
+    }
+  ]
 }
