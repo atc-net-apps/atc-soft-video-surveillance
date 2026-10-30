@@ -463,16 +463,22 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         var psi = new ProcessStartInfo
         {
             FileName = HlsStreamCommand.FindTool(VideoEngineBootstrap.FFmpegFolder ?? VideoEngineBootstrap.FindFFmpegPath()),
-            Arguments = args,
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardInput = true,
             RedirectStandardError = true,
         };
 
+        // One value per argument: a quote in the camera's path or password
+        // cannot end the address and start an option of its own.
+        foreach (var arg in args)
+        {
+            psi.ArgumentList.Add(arg);
+        }
+
         // The command line and FFmpeg's own output both hold the camera's
         // password; neither goes into the log, or to a client, as it is.
-        LogStartingFfmpeg(cameraId, HlsStreamCommand.Redact(args, camera));
+        LogStartingFfmpeg(cameraId, HlsStreamCommand.Redact(HlsStreamCommand.ToCommandLine(args), camera));
 
         var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start FFmpeg HLS process.");
