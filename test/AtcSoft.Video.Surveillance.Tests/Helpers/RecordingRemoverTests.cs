@@ -149,6 +149,24 @@ public sealed class RecordingRemoverTests : IDisposable
     }
 
     [Fact]
+    public void A_Recording_That_May_Not_Be_Deleted_Is_Refused_And_Kept()
+    {
+        var video = Write("Garden", "Garden_20261012_101500_000.mp4");
+        File.SetAttributes(video, FileAttributes.ReadOnly);
+        try
+        {
+            RecordingRemover.Remove(root, "Garden/Garden_20261012_101500_000.mp4", NoneActive)
+                .Should().Be(RecordingRemovalOutcome.Refused);
+
+            File.Exists(video).Should().BeTrue();
+        }
+        finally
+        {
+            File.SetAttributes(video, FileAttributes.Normal);
+        }
+    }
+
+    [Fact]
     public void Without_A_Recording_Folder_Nothing_Is_A_Recording()
         => RecordingRemover.Remove(string.Empty, "Garden/Garden_20261012_101500_000.mp4", NoneActive)
             .Should().Be(RecordingRemovalOutcome.NotARecording);

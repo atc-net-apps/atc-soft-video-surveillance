@@ -137,15 +137,28 @@ public sealed class CaptureSnapshotHandler(
         CancellationToken cancellationToken)
     {
         var snapshotPath = settingsService.CameraDisplay.SnapshotPath;
-        Directory.CreateDirectory(snapshotPath);
 
         var safeName = RecordingPathHelper.GetCameraFolderName(camera.Display.DisplayName, camera.Id);
         var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
-        var fileName = $"{safeName}_{timestamp}.png";
-        var filePath = Path.Combine(snapshotPath, fileName);
 
-        await File.WriteAllBytesAsync(filePath, frame, cancellationToken);
+        try
+        {
+            Directory.CreateDirectory(snapshotPath);
 
-        return CaptureSnapshotResult.Ok(frame, "image/png", fileName);
+            // Two snapshots in the same second get a name each; the second
+            // never overwrites the first.
+            var filePath = UniqueFilename.EnsureUnique(Path.Combine(snapshotPath, $"{safeName}_{timestamp}.png"));
+
+            await File.WriteAllBytesAsync(filePath, frame, cancellationToken).ConfigureAwait(false);
+
+            return CaptureSnapshotResult.Ok(frame, "image/png", Path.GetFileName(filePath));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A full disk, a folder the server may not write to: the caller is
+            // told why, as a ProblemDetails, not with a server error.
+            return CaptureSnapshotResult.ServiceUnavailable(
+                $"The snapshot could not be saved in the snapshot folder: {ex.Message}", retryAfter: RetryAfterSeconds);
+        }
     }
 }

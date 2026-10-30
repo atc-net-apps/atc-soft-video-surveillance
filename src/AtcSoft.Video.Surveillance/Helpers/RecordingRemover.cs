@@ -47,6 +47,10 @@ public static class RecordingRemover
         {
             return RecordingRemovalOutcome.InProgress;
         }
+        catch (UnauthorizedAccessException)
+        {
+            return RecordingRemovalOutcome.Refused;
+        }
 
         foreach (var thumbnail in RecordingPathHelper.GetCompanionPaths(fullPath, recordingRoot))
         {
