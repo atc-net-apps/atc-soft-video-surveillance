@@ -10,9 +10,17 @@ namespace AtcSoft.Video.Surveillance.Helpers;
 /// </summary>
 public sealed class DiskSpaceGuard
 {
+    // How long the oldest-first list of a short volume is worked through before the volume is
+    // walked again. A full disk is an NVR's usual state, and every recording that starts asks
+    // first: walking the whole archive each time made each start wait on the walk.
+    private static readonly TimeSpan CandidateListLifetime = TimeSpan.FromMinutes(10);
+
+    private static readonly EnumerationOptions Recursive = new() { AttributesToSkip = default, RecurseSubdirectories = true };
+
     private readonly IFreeSpaceReader reader;
     private readonly Lock gate = new();
     private readonly Dictionary<string, DiskSpaceVolumeState> lastStates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, CandidateList> candidateLists = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DiskSpaceGuard"/> class.
@@ -183,20 +191,70 @@ public sealed class DiskSpaceGuard
 
         var needed = request.MinFreeBytes - free.Value;
         var errors = new List<MediaCleanupRunError>();
-        var candidates = Candidates(folders, recordingRoots, snapshotRoot, request, errors);
-
         var deleted = new List<string>();
         var deletedThumbnails = new List<string>();
         long freed = 0;
-        foreach (var (file, isRecording) in candidates)
+
+        // The list kept from an earlier pass first; should it run out while the volume is still
+        // short, the volume is walked again: a file it did not know of may be older.
+        var signature = Signature(folders, recordingRoots, snapshotRoot, request);
+        var fresh = false;
+        while (freed < needed)
         {
-            if (freed >= needed)
+            if (!candidateLists.TryGetValue(volume, out var list) ||
+                list.Count == 0 ||
+                !string.Equals(list.MadeFrom, signature, StringComparison.Ordinal) ||
+                System.Diagnostics.Stopwatch.GetElapsedTime(list.MadeAt) > CandidateListLifetime)
             {
-                break;
+                if (fresh)
+                {
+                    break;
+                }
+
+                list = new CandidateList(signature, Candidates(folders, recordingRoots, snapshotRoot, request, errors));
+                candidateLists[volume] = list;
+                fresh = true;
+            }
+
+            freed += DeleteOldest(list, needed - freed, request, deleted, deletedThumbnails, errors);
+        }
+
+        // Deleting the last recording of a day leaves its folder empty. Only the folders of what
+        // was deleted are looked at (the clean-up sweeps the rest); a folder made a moment ago
+        // may be about to get a recording, so young ones stay.
+        RemoveEmptyFoldersOf(deleted.Concat(deletedThumbnails), folders, errors);
+
+        var run = new MediaCleanupRunResult(deleted, deletedThumbnails, freed, errors) { StillShort = freed < needed };
+        var state = run.StillShort ? DiskSpaceVolumeState.StillShort : DiskSpaceVolumeState.Reclaimed;
+        return new DiskSpaceVolumeResult(volume, folders, state, free, run);
+    }
+
+    // Deletes from the front of the list until enough is freed or the list is used up. Each file
+    // is looked at again first: it may have gone meanwhile, or be recorded into now.
+    private static long DeleteOldest(
+        CandidateList list,
+        long needed,
+        DiskSpaceGuardRequest request,
+        List<string> deleted,
+        List<string> deletedThumbnails,
+        List<MediaCleanupRunError> errors)
+    {
+        long freed = 0;
+        while (freed < needed && list.TryTake(out var file, out var isRecording))
+        {
+            if (request.ProtectedPaths.Contains(file.FullName))
+            {
+                continue;
             }
 
             try
             {
+                file.Refresh();
+                if (!file.Exists)
+                {
+                    continue;
+                }
+
                 var size = file.Length;
                 file.Delete();
                 deleted.Add(file.FullName);
@@ -212,20 +270,67 @@ public sealed class DiskSpaceGuard
             }
         }
 
-        // Deleting the last recording of a day leaves its folder empty. A folder made a moment
-        // ago may be about to get a recording, so young ones stay.
-        if (deleted.Count > 0)
+        return freed;
+    }
+
+    // The folders the deleted files were in, and the folders above them up to (not including)
+    // the media folder they belong to, deepest first, while they are empty and old enough.
+    private static void RemoveEmptyFoldersOf(
+        IEnumerable<string> deletedFiles,
+        IReadOnlyList<string> mediaFolders,
+        List<MediaCleanupRunError> errors)
+    {
+        var oldestAllowedUtc = DateTime.UtcNow - MediaCleanupRunner.EmptyDirectoryGracePeriod;
+        var looked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in deletedFiles)
         {
-            foreach (var folder in folders)
+            var root = mediaFolders
+                .Where(f => RecordingRoots.Contains(f, file))
+                .MaxBy(f => f.Length);
+            if (root is null)
             {
-                errors.AddRange(MediaCleanupRunner.RemoveEmptyDirectoriesBelow(folder, MediaCleanupRunner.EmptyDirectoryGracePeriod).Errors);
+                continue;
+            }
+
+            for (var folder = Path.GetDirectoryName(file);
+                 folder is not null &&
+                 folder.Length > root.Length &&
+                 looked.Add(folder);
+                 folder = Path.GetDirectoryName(folder))
+            {
+                try
+                {
+                    if (!Directory.Exists(folder) ||
+                        Directory.EnumerateFileSystemEntries(folder).Any() ||
+                        Directory.GetCreationTimeUtc(folder) > oldestAllowedUtc)
+                    {
+                        break;
+                    }
+
+                    Directory.Delete(folder);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    errors.Add(new MediaCleanupRunError(folder, ex));
+                    break;
+                }
             }
         }
-
-        var run = new MediaCleanupRunResult(deleted, deletedThumbnails, freed, errors) { StillShort = freed < needed };
-        var state = run.StillShort ? DiskSpaceVolumeState.StillShort : DiskSpaceVolumeState.Reclaimed;
-        return new DiskSpaceVolumeResult(volume, folders, state, free, run);
     }
+
+    // What a kept list was made from: another set of folders or extensions needs a new walk.
+    private static string Signature(
+        IReadOnlyList<string> folders,
+        IReadOnlyList<string> recordingRoots,
+        string? snapshotRoot,
+        DiskSpaceGuardRequest request)
+        => string.Join(
+            '|',
+            string.Join(';', folders.Order(StringComparer.OrdinalIgnoreCase)),
+            string.Join(';', recordingRoots.Order(StringComparer.OrdinalIgnoreCase)),
+            snapshotRoot,
+            string.Join(';', request.RecordingExtensions.Order(StringComparer.OrdinalIgnoreCase)),
+            string.Join(';', request.SnapshotExtensions.Order(StringComparer.OrdinalIgnoreCase)));
 
     // The media on a volume that may go, oldest first: the recordings in its recording folders
     // and the pictures in its snapshot folder that are not inside a recording folder (recording
@@ -247,24 +352,25 @@ public sealed class DiskSpaceGuard
             var isSnapshotFolder = string.Equals(folder, snapshotRoot, StringComparison.OrdinalIgnoreCase);
             try
             {
-                foreach (var path in Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories))
+                // The size and time of each file come with the walk: no second look at each.
+                foreach (var file in new DirectoryInfo(folder).EnumerateFiles("*", Recursive))
                 {
-                    var full = Path.GetFullPath(path);
+                    var full = file.FullName;
                     if (request.ProtectedPaths.Contains(full))
                     {
                         continue;
                     }
 
-                    var extension = Path.GetExtension(full);
+                    var extension = file.Extension;
                     if (isRecordingFolder && recordingExtensions.Contains(extension))
                     {
-                        candidates.Add((new FileInfo(full), true));
+                        candidates.Add((file, true));
                     }
                     else if (isSnapshotFolder &&
                              snapshotExtensions.Contains(extension) &&
                              !recordingRoots.Any(r => RecordingRoots.Contains(r, full)))
                     {
-                        candidates.Add((new FileInfo(full), false));
+                        candidates.Add((file, false));
                     }
                 }
             }
@@ -314,4 +420,34 @@ public sealed class DiskSpaceGuard
 
     private static MediaCleanupRunResult Empty()
         => new([], [], 0, []);
+
+    // A volume's media, oldest first, from one walk; used under the guard's lock.
+    private sealed class CandidateList(
+        string signature,
+        List<(FileInfo File, bool IsRecording)> candidates)
+    {
+        private int next;
+
+        public string MadeFrom { get; } = signature;
+
+        public long MadeAt { get; } = System.Diagnostics.Stopwatch.GetTimestamp();
+
+        public int Count
+            => candidates.Count - next;
+
+        public bool TryTake(
+            [NotNullWhen(true)] out FileInfo? file,
+            out bool isRecording)
+        {
+            if (next >= candidates.Count)
+            {
+                file = null;
+                isRecording = false;
+                return false;
+            }
+
+            (file, isRecording) = candidates[next++];
+            return true;
+        }
+    }
 }
