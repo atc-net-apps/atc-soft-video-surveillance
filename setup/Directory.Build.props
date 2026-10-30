@@ -12,7 +12,7 @@
   -->
   <PropertyGroup Label="Versioning">
     <!-- x-release-please-start-version -->
-    <ProductVersion>1.2.3</ProductVersion>
+    <ProductVersion>1.2.4</ProductVersion>
     <!-- x-release-please-end -->
   </PropertyGroup>
 
