@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.5](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.2.4...v1.2.5) (2026-10-30)
+
+
+### Bug fixes
+
+* **installer:** create the data folder so every user can write to it ([c89d5a0](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/c89d5a0a1da8b44a2fcbf497745887a5a4e3d861))
+* **updates:** offer each app its own installer ([a170d9f](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/a170d9f3e2fb0efe818fedc821276fc299db8b8e))
+
 ## [1.2.4](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases/tag/v1.2.4) (2026-10-30)
 
 
