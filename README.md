@@ -260,13 +260,13 @@ Override categories: Connection, CameraDisplay, Performance, Recording, MotionDe
 
 ### 📥 Install
 
-Download the latest MSI installer from [GitHub Releases](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases). The installers include FFmpeg, so there is nothing else to install.
+Download the latest MSI installer from [GitHub Releases](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases). The installers include FFmpeg; the [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) must be installed first. The [wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki) has the installation guides.
 
 ### 🎞️ Install FFmpeg (building from source)
 
 The video engine loads FFmpeg in-process, so when you run from source the FFmpeg DLLs have to be on the machine.
 
-**Supported version: FFmpeg 9 (9.0.2), *shared* build, Windows x64.** The bindings (`Flyleaf.FFmpeg.Bindings` 9.0.2) load exactly one major version of each library (`avutil-61.dll`, `avcodec-62.dll`, `avformat-62.dll`, …), so FFmpeg 8 and older are not used. A *shared* build has these DLLs in its `bin` folder; the *essentials* and static builds contain only `ffmpeg.exe`, which won't work.
+**Supported version: FFmpeg 9 (9.0.2), *shared* build, Windows x64.** The bindings (`Flyleaf.FFmpeg.Bindings` 9.0.2) load exactly one major version of each library (`avutil-61.dll`, `avcodec-63.dll`, `avformat-63.dll`, …), so FFmpeg 8 and older are not used. A *shared* build has these DLLs in its `bin` folder; the *essentials* and static builds contain only `ffmpeg.exe`, which won't work.
 
 **The easy way: let the app install it.** When CameraWall or the VideoSurveillance WPF app starts without FFmpeg 9, it shows an *FFmpeg Setup* dialog. It says which FFmpeg is needed and what it found, and offers to:
 

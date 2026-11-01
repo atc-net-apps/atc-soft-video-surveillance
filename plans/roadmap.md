@@ -4,7 +4,7 @@ The one list of what is still open. Consolidated on **2026-10-19**: every item w
 
 How things work today is in [`docs/`](../docs/) and in CLAUDE.md. This folder holds plans only.
 
-*Last updated: 2026-10-19*
+*Last updated: 2026-11-01*
 
 ---
 
@@ -38,6 +38,7 @@ Sizes: **S** an hour or two, **M** a day, **L** several days.
 | 🟥 Bounding boxes and activity timeline | [roadmap-boundingbox.md](roadmap-boundingbox.md) | ✅ | Built: storybook harness, the new detector with tracking, track ids on the wire, the activity index beside every recording (`GET /recordings/activity`), the activity timeline under the player in all three clients. Built too: the server timeline (`GET /timeline`) and a Timeline view of every camera in the web and WPF clients. Built too: gaps tell their reason (offline, not recording, disk full, server down). Built too: *play all from here* in both API clients, and CameraWall's own Timeline window over its folders. Built too: *play events only*. Built too: sparklines in the recordings lists, and *Analyse recording* for older recordings in all three apps. Built too: grey frames from the engine, and ignore and watch zones in the detector, stored with each camera and drawn on a snapshot in all three apps, an event in its watch zone's colour on the timeline, and the timeline's zoom and hover with a picture of the moment (preview pictures of every recording), events close together joined. Built too: `sample/BoundingBoxWpfApp` with a deterministic clock and its FlaUI walk. Built too: strong wind taken in, *Analyse recording*'s 3 s warm-up, and the feedback loop (reviews of real recordings, verdicts from a right-click on the timeline in all three apps, the corpus test, the settings sweep), and the sample's debug layers, tuning panel and live clock. Done 2026-10-28; rain on a real camera and the first reviewed recordings are hands-on checks below; AI detection is planned in [AI support](roadmap-AI-support.md) |
 | 🧠 AI support (object labels on motion tracks) | [roadmap-AI-support.md](roadmap-AI-support.md) | ⬜ | Planned: an `IObjectDetector` seam, in-process ONNX first (permissive model), a CodeProject.AI-compatible HTTP client second; labels on tracks, the activity index, the timeline, webhooks and `GET /events`; per-camera classes and minimum score. Takes over the bounding-box plan's phase 10 |
 | 🧪 24/7 soak | [`docs/soak-test.md`](../docs/soak-test.md) | ⬜ | The procedure has never been run |
+| 🐳 Install anywhere (server installer, Docker, Linux, NAS) | [Platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support) | ⬜ | Today only CameraWall and the desktop client have installers (Windows x64, framework-dependent); the server is built and started by hand and the web client is hosted by hand. Planned, in order: (1) a server installer: `UseWindowsService`, the MSI installs it as a service with a firewall rule and a URL setting, published in the release; (2) the server serves the web client (`UseBlazorFrameworkFiles`, `MapFallbackToFile`; hls.js bundled instead of the CDN, so a LAN without internet works); (3) the server on Linux: `FFmpegRuntime.ReadVersions` reads `lib*.so.N` and `lib*.N.dylib` (only `*.dll` today, so the server exits on Linux), a Linux FFmpeg 9 shared build, the Windows project referenced only on Windows, `Storage__DataPath` required (CommonApplicationData is `/usr/share`), secret files `chmod 600`, CI on Linux; (4) a multi-arch Docker image (`amd64`, `arm64`) on GHCR with a compose file, `/health` as health check; (5) NAS guides checked on real devices: UGREEN (UGOS Pro Docker), Synology (Container Manager), then QNAP, Unraid, TrueNAS; (6) motion detection, the activity index, thumbnails and previews without GDI+ on Linux. The wiki's install guides mark each of these as coming |
 
 ---
 
@@ -81,6 +82,8 @@ Nothing here needs a camera or a person. Each item says how it can be tested.
 | Push notifications (WebPush) on confirmed events | None. Best after the bounding-box plan's tracker, so a tree does not notify |
 | WPF client: multi-monitor, camera groups and tags, a camera health view | None of it exists. Tags and health need the server first |
 | A per-camera size limit for recordings | Only a total limit exists (`MaxRecordingStorageGb`) |
+| The server as a Docker image for Linux and NAS (see the *Install anywhere* area) | Windows only: the FFmpeg check reads only `*.dll`, there is no Dockerfile, no Linux CI |
+| A server installer with a Windows service | No installer and no `UseWindowsService`; started by hand or from Task Scheduler |
 
 ---
 
