@@ -257,6 +257,15 @@ public sealed partial class ActivityIndexRecorder : IDisposable
                 ended = file.Activity.End();
                 file.Writer.Dispose();
             }
+
+            // The video is closed before its index: a file that never had a picture was removed
+            // (a stop before the first key frame, a switch to a file never made), and an index
+            // without its video would only be left behind.
+            if (!File.Exists(file.VideoPath))
+            {
+                File.Delete(file.Path);
+                LogIndexRemoved(logger, cameraId, file.Path);
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -273,6 +282,9 @@ public sealed partial class ActivityIndexRecorder : IDisposable
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Activity index started for camera {CameraId}: {Path}")]
     private static partial void LogIndexStarted(ILogger logger, Guid cameraId, string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Activity index for camera {CameraId} removed: its video was never made ({Path})")]
+    private static partial void LogIndexRemoved(ILogger logger, Guid cameraId, string path);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Activity index failed for camera {CameraId}")]
     private static partial void LogIndexFailed(ILogger logger, Exception ex, Guid cameraId);

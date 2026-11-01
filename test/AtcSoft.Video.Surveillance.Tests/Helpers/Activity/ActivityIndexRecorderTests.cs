@@ -171,9 +171,41 @@ public sealed class ActivityIndexRecorderTests : IDisposable
         ownMotion.Indexing.Should().ContainKey(camera);
     }
 
+    [Fact]
+    public void The_Index_Of_A_Video_That_Was_Never_Made_Is_Removed_When_It_Ends()
+    {
+        // A stop before the first key frame, or a switch to a file never opened: the recorder
+        // removes the video without pictures, and its index was left behind.
+        var video = Video("101500");
+        recordings.Start(camera, video, pipeline);
+        var index = RecordingPathHelper.BuildActivityPath(video);
+        File.Delete(video);
+
+        recordings.Stop(camera);
+
+        File.Exists(index).Should().BeFalse();
+    }
+
+    [Fact]
+    public void The_Index_Of_A_Video_That_Was_Made_Stays()
+    {
+        var video = Video("101500");
+        recordings.Start(camera, video, pipeline);
+
+        recordings.Stop(camera);
+
+        File.Exists(RecordingPathHelper.BuildActivityPath(video)).Should().BeTrue();
+    }
+
     private static DateTimeOffset Utc(DateTime time)
         => new(DateTime.SpecifyKind(time.ToUniversalTime(), DateTimeKind.Utc));
 
+    // A recording being written has its file.
     private string Video(string time)
-        => Path.Combine(folder, "Garden", $"Garden_20261019_{time}_000.mkv");
+    {
+        var path = Path.Combine(folder, "Garden", $"Garden_20261019_{time}_000.mkv");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, [1]);
+        return path;
+    }
 }
