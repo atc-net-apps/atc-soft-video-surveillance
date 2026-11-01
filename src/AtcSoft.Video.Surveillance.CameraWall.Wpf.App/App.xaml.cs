@@ -6,6 +6,12 @@ public partial class CameraWallApp
     private readonly IHost host;
     private readonly ILogger<CameraWallApp> logger;
 
+    // More UI errors than this within the window: the app starts again (see OnDispatcherUnhandledException).
+    private const int MaxUiErrorsInWindow = 5;
+    private static readonly TimeSpan UiErrorWindow = TimeSpan.FromMinutes(1);
+    private readonly Queue<DateTime> recentUiErrors = new();
+    private bool restartOnExit;
+
     public CameraWallApp()
     {
         // Load advanced settings early to configure logging before Host is built
@@ -186,6 +192,9 @@ public partial class CameraWallApp
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainUnhandledException;
         Current.DispatcherUnhandledException += ApplicationOnDispatcherUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+
+        // A crash or a hang (once the app has run a minute) makes Windows start CameraWall again.
+        _ = NativeMethods.RegisterApplicationRestart(null, 0);
         base.OnStartup(e);
 
         // Binding errors always go to the log (and so to Aspire and the E2E smoke tests);
@@ -217,9 +226,11 @@ public partial class CameraWallApp
 
         var exceptionMessage = ex.GetMessage(true);
 
+        // An exception on another thread ends the process whatever is done here: it is logged and
+        // the log written out. Windows starts the app again (RegisterApplicationRestart), and the
+        // cameras that record on connect record again.
         LogCurrentDomainUnhandledException(ex, exceptionMessage);
-
-        ShowFatalErrorDialog(exceptionMessage, Translations.CurrentDomainUnhandledException);
+        Log.CloseAndFlush();
     }
 
     private void ApplicationOnDispatcherUnhandledException(
@@ -235,40 +246,57 @@ public partial class CameraWallApp
             return;
         }
 
+        // A recorder goes on after an error in the UI: the recordings run on other threads and
+        // must not end because a dialog or a view failed. The error is logged and shown briefly.
         LogDispatcherUnhandledException(args.Exception, exceptionMessage);
-
-        ShowFatalErrorDialog(exceptionMessage, Translations.DispatcherUnhandledException);
-
         args.Handled = true;
-        Shutdown(-1);
-    }
 
-    /// <summary>
-    /// Shows the fatal-error dialog using <see cref="InfoDialogBox"/>
-    /// when an owner window is reachable. The handler runs while the
-    /// app is collapsing — if no window is up yet (early-startup
-    /// crash) we silently skip the popup; the original exception is
-    /// already in the Serilog file sink.
-    /// </summary>
-    private static void ShowFatalErrorDialog(
-        string message,
-        string title)
-    {
-        var owner = Application.Current?.MainWindow
-                    ?? Application.Current?.Windows.OfType<Window>().FirstOrDefault();
-        if (owner is null)
+        // Errors that keep coming mean the app is stuck in a broken state: it starts again.
+        var now = DateTime.UtcNow;
+        recentUiErrors.Enqueue(now);
+        while (recentUiErrors.Count > 0 && now - recentUiErrors.Peek() > UiErrorWindow)
         {
+            recentUiErrors.Dequeue();
+        }
+
+        if (recentUiErrors.Count > MaxUiErrorsInWindow)
+        {
+            LogTooManyErrorsRestarting(recentUiErrors.Count, UiErrorWindow.TotalSeconds);
+            restartOnExit = true;
+            Shutdown(-1);
             return;
         }
 
-        var settings = new DialogBoxSettings(DialogBoxType.Ok, LogCategoryType.Error)
+        try
         {
-            TitleBarText = title,
-            Width = 500,
-        };
+            host.Services.GetService<IToastNotificationService>()?.ShowError(
+                Translations.DispatcherUnhandledException,
+                Translations.ErrorHandledAppGoesOn,
+                expirationTime: TimeSpan.FromSeconds(15),
+                useDesktop: true);
+        }
+        catch (InvalidOperationException)
+        {
+            // No notification area yet (an error during start-up): the log has it.
+        }
+    }
 
-        var dialog = new InfoDialogBox(owner, settings, message);
-        dialog.ShowDialog();
+    // Starts the app again after it closed itself because errors kept coming: by then its
+    // recordings are stopped, so the two never record at the same time.
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "A restart that fails is logged; the app is closing anyway.")]
+    private void StartAgain()
+    {
+        try
+        {
+            if (Environment.ProcessPath is { } path)
+            {
+                using var process = Process.Start(new ProcessStartInfo(path) { UseShellExecute = false, WorkingDirectory = AppContext.BaseDirectory });
+            }
+        }
+        catch (Exception ex)
+        {
+            LogRestartFailed(ex);
+        }
     }
 
     private async void ApplicationStartup(
@@ -406,7 +434,7 @@ public partial class CameraWallApp
             $"{settings.ThemeBase}.{settings.ThemeAccent}");
     }
 
-    private async void ApplicationExit(
+    private void ApplicationExit(
         object sender,
         ExitEventArgs args)
     {
@@ -420,17 +448,24 @@ public partial class CameraWallApp
             LogAllRecordingsStopped();
         }
 
-        // Cleanup + segmentation are hosted services; host.StopAsync() below
-        // stops them gracefully (their BackgroundServiceBase loops observe the
-        // stopping token), so no explicit StopService() calls are needed.
-        await host
-            .StopAsync()
-            .ConfigureAwait(false);
+        if (restartOnExit)
+        {
+            StartAgain();
+        }
+
+        // Cleanup + segmentation are hosted services; host.StopAsync() stops them gracefully
+        // (their BackgroundServiceBase loops observe the stopping token). Waited for here, off the
+        // UI thread: an async handler let the process end before the host stopped and the log was
+        // written out.
+        if (!Task.Run(() => host.StopAsync()).Wait(TimeSpan.FromSeconds(15)))
+        {
+            LogHostStopTimedOut();
+        }
 
         host.Dispose();
 
         LogAppClosed();
 
-        await Log.CloseAndFlushAsync().ConfigureAwait(false);
+        Log.CloseAndFlush();
     }
 }

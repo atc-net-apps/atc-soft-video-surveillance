@@ -2844,4 +2844,7 @@ Miniature:
   <data name="EnableDiagnosticsHint" xml:space="preserve">
     <value>Skriver detaljerede logfiler (gemmes i 31 dage), en rapport om denne pc og indstillingerne ved opstart og en sundhedsmåling hvert minut i logmappen. Træder i kraft ved næste start.</value>
   </data>
+  <data name="ErrorHandledAppGoesOn" xml:space="preserve">
+    <value>Noget gik galt. CameraWall kører videre og optager stadig; detaljerne står i loggen.</value>
+  </data>
 </root>

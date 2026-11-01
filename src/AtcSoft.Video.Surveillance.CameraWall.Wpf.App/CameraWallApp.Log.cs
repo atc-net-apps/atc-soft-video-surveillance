@@ -11,6 +11,15 @@ public partial class CameraWallApp
     [LoggerMessage(Level = LogLevel.Error, Message = "Dispatcher Unhandled Exception: {ExceptionMessage}")]
     private partial void LogDispatcherUnhandledException(Exception ex, string exceptionMessage);
 
+    [LoggerMessage(Level = LogLevel.Critical, Message = "{Count} errors in the UI within {Seconds:0} s: CameraWall closes and starts again")]
+    private partial void LogTooManyErrorsRestarting(int count, double seconds);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The background services did not stop within 15 s; CameraWall closes anyway")]
+    private partial void LogHostStopTimedOut();
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "CameraWall could not start again")]
+    private partial void LogRestartFailed(Exception ex);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "A task failed and nobody looked at it")]
     private partial void LogUnobservedTaskException(Exception ex);
 
