@@ -11,6 +11,8 @@ internal sealed class VideoProcessorRenderer : IDisposable
     private readonly ID3D11VideoDevice videoDevice;
     private readonly ID3D11VideoContext videoContext;
     private readonly ID3D11Device device;
+    private readonly Dictionary<int, ID3D11VideoProcessorInputView> inputViews = [];
+    private readonly VideoProcessorStream[] streams = new VideoProcessorStream[1];
 
     private ID3D11VideoProcessorEnumerator? enumerator;
     private ID3D11VideoProcessor? processor;
@@ -22,6 +24,11 @@ internal sealed class VideoProcessorRenderer : IDisposable
     private VideoRotation cachedRotation = VideoRotation.None;
     private VideoRotation rotation = VideoRotation.None;
     private bool disposed;
+
+    // The input views of the decoder's texture array, one per slice, made once: the decoder writes
+    // into the same few slices all along. Let go when the texture changes (a new decoder after a
+    // reconnect), so the old pool is not kept alive. And the one stream of every Blt.
+    private nint inputTexture;
 
     public VideoProcessorRenderer(D3D11Device d3d11Device)
     {
@@ -74,44 +81,28 @@ internal sealed class VideoProcessorRenderer : IDisposable
     {
         EnsurePipeline(width, height);
 
-        var inputViewDesc = new VideoProcessorInputViewDescription
+        var inputView = InputViewOf(nv12Texture, arraySlice);
+
+        // Source rect = visible input area (excludes decoder padding rows for HEVC).
+        // Dest rect = output texture extents (swapped for 90/270 rotation).
+        var sourceRect = new RawRect(0, 0, width, height);
+        var destRect = new RawRect(0, 0, OutputWidth, OutputHeight);
+        videoContext.VideoProcessorSetStreamSourceRect(processor!, 0, true, sourceRect);
+        videoContext.VideoProcessorSetStreamDestRect(processor!, 0, true, destRect);
+        videoContext.VideoProcessorSetStreamRotation(processor!, 0, true, MapRotation(cachedRotation));
+
+        streams[0] = new VideoProcessorStream
         {
-            ViewDimension = VideoProcessorInputViewDimension.Texture2D,
-            Texture2D = { ArraySlice = (uint)arraySlice, MipSlice = 0 },
+            Enable = true,
+            InputSurface = inputView,
         };
 
-        videoDevice.CreateVideoProcessorInputView(
-            nv12Texture,
-            enumerator!,
-            inputViewDesc,
-            out var inputView).CheckError();
-
-        using (inputView)
-        {
-            // Source rect = visible input area (excludes decoder padding rows for HEVC).
-            // Dest rect = output texture extents (swapped for 90/270 rotation).
-            var sourceRect = new RawRect(0, 0, width, height);
-            var destRect = new RawRect(0, 0, OutputWidth, OutputHeight);
-            videoContext.VideoProcessorSetStreamSourceRect(processor!, 0, true, sourceRect);
-            videoContext.VideoProcessorSetStreamDestRect(processor!, 0, true, destRect);
-            videoContext.VideoProcessorSetStreamRotation(processor!, 0, true, MapRotation(cachedRotation));
-
-            VideoProcessorStream[] streams =
-            [
-                new VideoProcessorStream
-                {
-                    Enable = true,
-                    InputSurface = inputView,
-                },
-            ];
-
-            videoContext.VideoProcessorBlt(
-                processor!,
-                outputView!,
-                0,
-                (uint)streams.Length,
-                streams);
-        }
+        videoContext.VideoProcessorBlt(
+            processor!,
+            outputView!,
+            0,
+            (uint)streams.Length,
+            streams);
     }
 
     public void Dispose()
@@ -224,8 +215,52 @@ internal sealed class VideoProcessorRenderer : IDisposable
         }
     }
 
+    private ID3D11VideoProcessorInputView InputViewOf(
+        ID3D11Texture2D texture,
+        int arraySlice)
+    {
+        if (texture.NativePointer != inputTexture)
+        {
+            ReleaseInputViews();
+            inputTexture = texture.NativePointer;
+        }
+
+        if (inputViews.TryGetValue(arraySlice, out var view))
+        {
+            return view;
+        }
+
+        var description = new VideoProcessorInputViewDescription
+        {
+            ViewDimension = VideoProcessorInputViewDimension.Texture2D,
+            Texture2D = { ArraySlice = (uint)arraySlice, MipSlice = 0 },
+        };
+
+        videoDevice.CreateVideoProcessorInputView(
+            texture,
+            enumerator!,
+            description,
+            out view).CheckError();
+        inputViews[arraySlice] = view;
+        return view;
+    }
+
+    private void ReleaseInputViews()
+    {
+        foreach (var view in inputViews.Values)
+        {
+            view.Dispose();
+        }
+
+        inputViews.Clear();
+        inputTexture = nint.Zero;
+    }
+
     private void ReleasePipeline()
     {
+        // The views were made for the enumerator that goes now.
+        ReleaseInputViews();
+
         outputView?.Dispose();
         outputView = null;
 
