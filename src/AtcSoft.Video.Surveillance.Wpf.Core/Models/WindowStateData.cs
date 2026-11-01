@@ -1,4 +1,4 @@
-namespace AtcSoft.Video.Surveillance.Wpf.App.Models;
+namespace AtcSoft.Video.Surveillance.Wpf.Core.Models;
 
 /// <summary>
 /// Persisted window position, size, and state.

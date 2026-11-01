@@ -1,15 +1,17 @@
-namespace AtcSoft.Video.Surveillance.Wpf.App.Services;
+namespace AtcSoft.Video.Surveillance.Wpf.Core.Services;
 
 /// <summary>
-/// Persists and restores window position, size, and state.
-/// Not DI-registered — instantiated directly in MainWindow.xaml.cs.
+/// Persists and restores a main window's position, size, and state, in a file of the app's own.
+/// Not DI-registered — each app's MainWindow makes one with its file.
 /// </summary>
 public sealed class WindowStateService : JsonFileServiceBase<WindowStateData>
 {
-    private static readonly string StateFilePath = AtcSoft.Video.Surveillance.Helpers.ApplicationPaths.GetLocalDataPath("VideoSurveillance", "window-state.json");
-
-    public WindowStateService()
-        : base(StateFilePath)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WindowStateService"/> class.
+    /// </summary>
+    /// <param name="filePath">The file the state is kept in, from <c>ApplicationPaths.GetLocalDataPath</c>.</param>
+    public WindowStateService(string filePath)
+        : base(filePath)
     {
     }
 
