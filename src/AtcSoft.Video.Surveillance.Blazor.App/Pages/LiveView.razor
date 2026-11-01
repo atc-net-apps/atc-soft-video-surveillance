@@ -122,7 +122,7 @@ else
                                     <MudIconButton Icon="@Icons.Material.Filled.Stop"
                                                    Size="Size.Small"
                                                    Color="Color.Error"
-                                                   OnClick="@(() => StopStreamAsync(camera.Id))"
+                                                   OnClick="@(() => StopByViewerAsync(camera.Id))"
                                                    Style="background: rgba(0,0,0,0.6); border-radius: 4px;" />
                                 </MudTooltip>
                             </div>
@@ -145,7 +145,7 @@ else
                                            Color="Color.Primary"
                                            Size="Size.Small"
                                            StartIcon="@Icons.Material.Filled.PlayArrow"
-                                           OnClick="@(() => StartStreamAsync(camera.Id))">
+                                           OnClick="@(() => StartByViewerAsync(camera.Id))">
                                     @(errors.ContainsKey(camera.Id) ? Translations.TryAgain : Translations.Start)
                                 </MudButton>
                             </MudStack>
@@ -206,6 +206,9 @@ else
 
     // The streams the viewer started: one that broke is started again.
     private readonly WantedStreams wanted = new();
+
+    // The cameras the viewer had playing in each layout, kept in the browser: started again after a reload.
+    private RememberedStreams remembered = new();
     private readonly MotionThrottle motionThrottle = new();
     private DotNetObjectReference<LiveView>? self;
     private bool left;
@@ -248,6 +251,9 @@ else
 
         isLoading = false;
         _ = RunHeartbeatAsync(heartbeatCancellation.Token);
+
+        remembered = RememberedStreams.Parse(await ReadRememberedAsync());
+        await StartRememberedAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -295,6 +301,7 @@ else
         }
 
         activeLayout = next;
+        await StartRememberedAsync();
     }
 
     private async Task SetAsStartupLayoutAsync()
@@ -308,14 +315,71 @@ else
     private Task StartAllAsync()
         => Task.WhenAll(LayoutCameraIds()
             .Where(id => !streamUrls.ContainsKey(id) && !starting.Contains(id))
-            .Select(StartStreamAsync)
+            .Select(StartByViewerAsync)
             .ToList());
 
     private async Task StopAllAsync()
     {
         foreach (var cameraId in streamUrls.Keys.Concat(starting).Distinct().ToList())
         {
-            await StopStreamAsync(cameraId);
+            await StopByViewerAsync(cameraId);
+        }
+    }
+
+    // The viewer started a camera: it is remembered for this layout, and started after a reload.
+    private async Task StartByViewerAsync(Guid cameraId)
+    {
+        if (remembered.Remember(selectedLayoutId, cameraId))
+        {
+            await KeepRememberedAsync();
+        }
+
+        await StartStreamAsync(cameraId);
+    }
+
+    // The viewer stopped a camera: it is no longer started after a reload.
+    private async Task StopByViewerAsync(Guid cameraId)
+    {
+        if (remembered.Forget(selectedLayoutId, cameraId))
+        {
+            await KeepRememberedAsync();
+        }
+
+        await StopStreamAsync(cameraId);
+    }
+
+    // Starts the cameras the viewer had playing in the layout shown.
+    private Task StartRememberedAsync()
+    {
+        var inLayout = LayoutCameraIds().ToHashSet();
+        return Task.WhenAll(remembered.For(selectedLayoutId)
+            .Where(id => inLayout.Contains(id) && !streamUrls.ContainsKey(id) && !starting.Contains(id))
+            .Select(StartStreamAsync)
+            .ToList());
+    }
+
+    // The browser may keep nothing (a private window, blocked storage): the live view then starts nothing by itself.
+    private async Task<string?> ReadRememberedAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<string?>("localStorage.getItem", RememberedStreams.StorageKey);
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
+    private async Task KeepRememberedAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", RememberedStreams.StorageKey, remembered.ToText());
+        }
+        catch (JSException)
+        {
+            // Not kept: the streams are not started again after a reload.
         }
     }
 
