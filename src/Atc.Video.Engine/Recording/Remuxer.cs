@@ -15,6 +15,11 @@ internal sealed unsafe class Remuxer : IDisposable
     // behind.
     private const int WriteQueueCapacity = 1000;
 
+    // How far the source's clock may go back or forward between two pictures before it counts as a
+    // jump that is re-based (see Rebase).
+    private const long JumpBackMicroseconds = 5_000_000;
+    private const long JumpForwardMicroseconds = 60_000_000;
+
     // Two locks, so the thread that reads the camera never waits for the disk: stateLock guards
     // what WritePacket needs (the file being open, its clock, the queue), ioLock guards the
     // muxer's writes. The writer takes only ioLock for each packet; opening, switching and
@@ -42,6 +47,13 @@ internal sealed unsafe class Remuxer : IDisposable
     private long originMicroseconds = AV_NOPTS_VALUE;
     private long lastDts = AV_NOPTS_VALUE;
     private long lastAudioDts = AV_NOPTS_VALUE;
+
+    // A camera's clock that jumps (a resync, a wrap of the MPEG-TS clock every 26.5 h or of RTP's every
+    // 13.25 h) is re-based: the file goes on one picture after the last, instead of every packet
+    // after the jump being squeezed one tick apart (back) or leaving a hole (forward).
+    private long shiftMicroseconds;
+    private long lastSourceDtsMicroseconds = AV_NOPTS_VALUE;
+    private long lastStepMicroseconds = 40_000;
     private bool receivedKeyframe;
     private string? outputPath;
 
@@ -64,6 +76,11 @@ internal sealed unsafe class Remuxer : IDisposable
     /// <see langword="null"/> while it can. Packets after such an error are dropped.
     /// </summary>
     public string? WriteError => writeError;
+
+    /// <summary>
+    /// Gets how many jumps in the source's clock this recorder has re-based.
+    /// </summary>
+    public int ClockJumps { get; private set; }
 
     public void Open(
         string outputPath,
@@ -383,19 +400,38 @@ internal sealed unsafe class Remuxer : IDisposable
 
             try
             {
-                if (originMicroseconds == AV_NOPTS_VALUE)
+                // Worked out in microseconds on the source's clock, shifted past any jump in it.
+                var dtsUs = clonedPkt->dts != AV_NOPTS_VALUE
+                    ? av_rescale_q(clonedPkt->dts, srcTimeBase, Microseconds) + shiftMicroseconds
+                    : AV_NOPTS_VALUE;
+                var ptsUs = clonedPkt->pts != AV_NOPTS_VALUE
+                    ? av_rescale_q(clonedPkt->pts, srcTimeBase, Microseconds) + shiftMicroseconds
+                    : dtsUs;
+                if (dtsUs != AV_NOPTS_VALUE)
                 {
-                    originMicroseconds = clonedPkt->dts != AV_NOPTS_VALUE
-                        ? av_rescale_q(clonedPkt->dts, srcTimeBase, Microseconds)
-                        : 0;
+                    var correction = Rebase(dtsUs);
+                    dtsUs += correction;
+                    if (ptsUs != AV_NOPTS_VALUE)
+                    {
+                        ptsUs += correction;
+                    }
                 }
 
-                var firstDts = av_rescale_q(originMicroseconds, Microseconds, srcTimeBase);
-                var dtsOffset = clonedPkt->dts != AV_NOPTS_VALUE ? clonedPkt->dts - firstDts : 0;
-                var ptsOffset = clonedPkt->pts != AV_NOPTS_VALUE ? clonedPkt->pts - firstDts : dtsOffset;
+                if (originMicroseconds == AV_NOPTS_VALUE)
+                {
+                    originMicroseconds = dtsUs != AV_NOPTS_VALUE ? dtsUs : 0;
+                }
 
-                clonedPkt->dts = av_rescale_q(dtsOffset, srcTimeBase, outputTimeBase);
-                clonedPkt->pts = av_rescale_q(ptsOffset, srcTimeBase, outputTimeBase);
+                var dtsOffset = dtsUs != AV_NOPTS_VALUE ? dtsUs - originMicroseconds : 0;
+                var ptsOffset = ptsUs != AV_NOPTS_VALUE ? ptsUs - originMicroseconds : dtsOffset;
+
+                clonedPkt->dts = av_rescale_q(dtsOffset, Microseconds, outputTimeBase);
+                clonedPkt->pts = av_rescale_q(ptsOffset, Microseconds, outputTimeBase);
+                if (clonedPkt->duration > 0)
+                {
+                    clonedPkt->duration = av_rescale_q(clonedPkt->duration, srcTimeBase, outputTimeBase);
+                }
+
                 clonedPkt->stream_index = 0;
                 clonedPkt->pos = -1;
 
@@ -455,7 +491,8 @@ internal sealed unsafe class Remuxer : IDisposable
                 return;
             }
 
-            var offset = srcPacket->pts - av_rescale_q(originMicroseconds, Microseconds, srcTimeBase);
+            // Sound shares the picture's clock, and the shift that keeps it going past a jump.
+            var offset = av_rescale_q(srcPacket->pts, srcTimeBase, Microseconds) + shiftMicroseconds - originMicroseconds;
             if (offset < 0)
             {
                 return;
@@ -467,7 +504,7 @@ internal sealed unsafe class Remuxer : IDisposable
                 return;
             }
 
-            clonedPkt->pts = av_rescale_q(offset, srcTimeBase, audioOutputTimeBase);
+            clonedPkt->pts = av_rescale_q(offset, Microseconds, audioOutputTimeBase);
             clonedPkt->dts = clonedPkt->pts;
             clonedPkt->duration = av_rescale_q(srcPacket->duration, srcTimeBase, audioOutputTimeBase);
             clonedPkt->stream_index = 1;
@@ -490,6 +527,30 @@ internal sealed unsafe class Remuxer : IDisposable
                 av_packet_free(ref clonedPkt);
             }
         }
+    }
+
+    // Called under stateLock with a packet's decode time (microseconds, already shifted). Returns
+    // what to add to it: zero, or after a jump what puts it one picture after the last.
+    private long Rebase(long dtsMicroseconds)
+    {
+        var correction = 0L;
+        if (lastSourceDtsMicroseconds != AV_NOPTS_VALUE)
+        {
+            var step = dtsMicroseconds - lastSourceDtsMicroseconds;
+            if (step < -JumpBackMicroseconds || step > JumpForwardMicroseconds)
+            {
+                correction = lastSourceDtsMicroseconds + lastStepMicroseconds - dtsMicroseconds;
+                shiftMicroseconds += correction;
+                ClockJumps++;
+            }
+            else if (step > 0)
+            {
+                lastStepMicroseconds = step;
+            }
+        }
+
+        lastSourceDtsMicroseconds = dtsMicroseconds + correction;
+        return correction;
     }
 
     // BlockingCollection has no native drop-oldest mode; emulate it by
@@ -669,6 +730,9 @@ internal sealed unsafe class Remuxer : IDisposable
         outputPath = null;
         originMicroseconds = AV_NOPTS_VALUE;
         lastAudioDts = AV_NOPTS_VALUE;
+        shiftMicroseconds = 0;
+        lastSourceDtsMicroseconds = AV_NOPTS_VALUE;
+        lastStepMicroseconds = 40_000;
         lastDts = AV_NOPTS_VALUE;
         receivedKeyframe = false;
     }
