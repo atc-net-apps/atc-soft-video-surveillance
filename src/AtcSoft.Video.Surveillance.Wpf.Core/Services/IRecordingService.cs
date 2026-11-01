@@ -86,6 +86,14 @@ public interface IRecordingService : IActiveRecordings
     bool ResumeRecording(Guid cameraId) => false;
 
     /// <summary>
+    /// Gets a value indicating whether a camera records, or its recording was stopped by the service
+    /// for now (a write that failed, a full disk) and starts again by itself.
+    /// </summary>
+    /// <param name="cameraId">The camera.</param>
+    /// <returns>True while the recording goes on, or is to go on.</returns>
+    bool IsRecordingOrResuming(Guid cameraId) => IsRecording(cameraId);
+
+    /// <summary>
     /// Checks disk space mid-recording. Attempts to reclaim space; if the
     /// drive is still below the guard threshold after reclaim, stops all
     /// active recordings to prevent disk exhaustion.

@@ -7,25 +7,46 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.Services;
 /// back, still connected and recording.
 /// </summary>
 /// <remarks>
-/// A parked player is let go (its recording stopped, the player closed) when its recording stops,
-/// when its stream ends (nobody reconnects a camera no tile shows), when the camera is deleted,
-/// and when the parking is disposed with the camera grid. Used on the UI thread; the player's and
-/// the recording service's events are handled there through <c>post</c>.
+/// A parked camera whose stream ends (a network blip, a camera restart, a stream that went silent)
+/// is opened again, with back-off, and its recording goes on in a new file once pictures arrive.
+/// A parked player is let go (its recording stopped, the player closed) when its recording stops
+/// for good, when the camera is deleted, and when the parking is disposed with the camera grid.
+/// Used on the UI thread; the player's and the recording service's events are handled there
+/// through <c>post</c>.
 /// </remarks>
 public sealed class RecordingPlayerParking : IDisposable
 {
+    /// <summary>
+    /// The wait before the first new attempt to open a parked camera's stream; it doubles with each
+    /// failed attempt, up to <see cref="ReopenMaxDelay"/>.
+    /// </summary>
+    public static readonly TimeSpan ReopenFirstDelay = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// The longest wait between attempts to open a parked camera's stream.
+    /// </summary>
+    public static readonly TimeSpan ReopenMaxDelay = TimeSpan.FromSeconds(60);
+
     private readonly Dictionary<Guid, Parked> parked = [];
     private readonly Action<Action> post;
+    private readonly Func<TimeSpan, Action, Action> schedule;
     private bool disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RecordingPlayerParking"/> class.
     /// </summary>
     /// <param name="post">Runs an action on the UI thread later; <see langword="null"/> uses the current dispatcher.</param>
-    public RecordingPlayerParking(Action<Action>? post = null)
+    /// <param name="schedule">
+    /// Runs an action on the UI thread after a wait and returns what cancels it; <see langword="null"/>
+    /// uses a timer on the current dispatcher.
+    /// </param>
+    public RecordingPlayerParking(
+        Action<Action>? post = null,
+        Func<TimeSpan, Action, Action>? schedule = null)
     {
         var dispatcher = Dispatcher.CurrentDispatcher;
         this.post = post ?? (action => _ = dispatcher.BeginInvoke(action));
+        this.schedule = schedule ?? ((delay, action) => ScheduleOn(dispatcher, delay, action));
     }
 
     /// <summary>
@@ -47,11 +68,16 @@ public sealed class RecordingPlayerParking : IDisposable
     /// <param name="player">The player, connected and recording.</param>
     /// <param name="pipeline">The pipeline the recording runs on.</param>
     /// <param name="recordingService">The recording service that records the camera.</param>
+    /// <param name="reopen">
+    /// Opens the camera's stream on the player again (blocking; run in the background) when it
+    /// ended. <see langword="null"/> lets the player go when its stream ends.
+    /// </param>
     public void Park(
         Guid cameraId,
         IVideoPlayer player,
         IMediaPipeline? pipeline,
-        IRecordingService recordingService)
+        IRecordingService recordingService,
+        Action<IVideoPlayer>? reopen = null)
     {
         ArgumentNullException.ThrowIfNull(player);
         ArgumentNullException.ThrowIfNull(recordingService);
@@ -59,10 +85,16 @@ public sealed class RecordingPlayerParking : IDisposable
 
         Release(cameraId);
 
-        var entry = new Parked(cameraId, player, pipeline, recordingService, this);
+        var entry = new Parked(cameraId, player, pipeline, recordingService, reopen, this);
         parked[cameraId] = entry;
         player.StateChanged += entry.OnPlayerStateChanged;
         recordingService.RecordingStateChanged += entry.OnRecordingStateChanged;
+
+        // A stream that ended just before the tile went away is opened again from here.
+        if (player.State is PlayerState.Error or PlayerState.Stopped)
+        {
+            post(() => Recheck(entry));
+        }
     }
 
     /// <summary>
@@ -122,20 +154,126 @@ public sealed class RecordingPlayerParking : IDisposable
         }
     }
 
+    /// <summary>
+    /// Gets the wait before a new attempt to open a stream, after a number of failed attempts.
+    /// </summary>
+    /// <param name="failedAttempts">The attempts that failed in a row.</param>
+    /// <returns>The wait.</returns>
+    public static TimeSpan ReopenDelay(int failedAttempts)
+    {
+        var factor = Math.Pow(2, Math.Clamp(failedAttempts, 0, 16));
+        var delay = TimeSpan.FromTicks((long)Math.Min(ReopenFirstDelay.Ticks * factor, ReopenMaxDelay.Ticks));
+        return delay;
+    }
+
     // Looked at again on the UI thread: a segment switch reports idle and recording at once, and a
     // player taken back meanwhile is no longer this parking's.
     internal void Recheck(Parked entry)
     {
-        if (!parked.TryGetValue(entry.CameraId, out var current) || !ReferenceEquals(current, entry))
+        if (!IsCurrent(entry))
         {
             return;
         }
 
-        var streamEnded = entry.Player.State is PlayerState.Error or PlayerState.Stopped;
-        if (streamEnded || !entry.RecordingService.IsRecording(entry.CameraId))
+        if (!entry.RecordingService.IsRecordingOrResuming(entry.CameraId))
         {
             Release(entry.CameraId);
+            return;
         }
+
+        if (entry.IsOpening)
+        {
+            return;
+        }
+
+        switch (entry.Player.State)
+        {
+            case PlayerState.Playing:
+                entry.FailedAttempts = 0;
+
+                // The file ended with the stream; the recording goes on in a new one.
+                entry.RecordingService.ResumeRecording(entry.CameraId);
+                break;
+            case PlayerState.Error:
+            case PlayerState.Stopped:
+                ScheduleReopen(entry);
+                break;
+        }
+    }
+
+    private static Action ScheduleOn(
+        Dispatcher dispatcher,
+        TimeSpan delay,
+        Action action)
+    {
+        var timer = new DispatcherTimer(DispatcherPriority.Normal, dispatcher) { Interval = delay };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            action();
+        };
+        timer.Start();
+        return timer.Stop;
+    }
+
+    private bool IsCurrent(Parked entry)
+        => parked.TryGetValue(entry.CameraId, out var current) && ReferenceEquals(current, entry);
+
+    private void ScheduleReopen(Parked entry)
+    {
+        if (entry.Reopen is null)
+        {
+            // Nobody can open it again.
+            Release(entry.CameraId);
+            return;
+        }
+
+        if (entry.CancelReopen is not null)
+        {
+            return;
+        }
+
+        var delay = ReopenDelay(entry.FailedAttempts);
+        entry.FailedAttempts++;
+        entry.CancelReopen = schedule(delay, () =>
+        {
+            entry.CancelReopen = null;
+            Reopen(entry);
+        });
+    }
+
+    private void Reopen(Parked entry)
+    {
+        if (!IsCurrent(entry) ||
+            entry.IsOpening ||
+            entry.Player.State is not (PlayerState.Error or PlayerState.Stopped))
+        {
+            return;
+        }
+
+        entry.IsOpening = true;
+        var player = entry.Player;
+        var reopen = entry.Reopen!;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                player.Close();
+                reopen(player);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                // The state tells: the next look tries again later.
+            }
+            finally
+            {
+                post(() =>
+                {
+                    entry.IsOpening = false;
+                    Recheck(entry);
+                });
+            }
+        });
     }
 
     internal sealed class Parked(
@@ -143,6 +281,7 @@ public sealed class RecordingPlayerParking : IDisposable
         IVideoPlayer player,
         IMediaPipeline? pipeline,
         IRecordingService recordingService,
+        Action<IVideoPlayer>? reopen,
         RecordingPlayerParking parking)
     {
         public Guid CameraId { get; } = cameraId;
@@ -153,11 +292,19 @@ public sealed class RecordingPlayerParking : IDisposable
 
         public IRecordingService RecordingService { get; } = recordingService;
 
+        public Action<IVideoPlayer>? Reopen { get; } = reopen;
+
+        public int FailedAttempts { get; set; }
+
+        public bool IsOpening { get; set; }
+
+        public Action? CancelReopen { get; set; }
+
         public void OnPlayerStateChanged(
             object? sender,
             PlayerStateChangedEventArgs e)
         {
-            if (e.NewState is PlayerState.Error or PlayerState.Stopped)
+            if (e.NewState is PlayerState.Error or PlayerState.Stopped or PlayerState.Playing)
             {
                 parking.post(() => parking.Recheck(this));
             }
@@ -175,6 +322,8 @@ public sealed class RecordingPlayerParking : IDisposable
 
         public void Unsubscribe()
         {
+            CancelReopen?.Invoke();
+            CancelReopen = null;
             Player.StateChanged -= OnPlayerStateChanged;
             RecordingService.RecordingStateChanged -= OnRecordingStateChanged;
         }

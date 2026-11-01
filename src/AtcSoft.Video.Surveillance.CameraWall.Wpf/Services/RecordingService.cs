@@ -211,6 +211,10 @@ public partial class RecordingService : IRecordingService, IDisposable
         => sessions.ContainsKey(cameraId);
 
     /// <inheritdoc/>
+    public bool IsRecordingOrResuming(Guid cameraId)
+        => sessions.ContainsKey(cameraId) || stoppedForNow.ContainsKey(cameraId);
+
+    /// <inheritdoc/>
     public bool TriggerMotionRecording(
         CameraConfiguration camera,
         IMediaPipeline pipeline)

@@ -1638,13 +1638,18 @@ public partial class CameraTile : IDisposable
             Player is null ||
             recordingService is null ||
             registeredWithGrid?.ParkedPlayers is not { } parking ||
-            !recordingService.IsRecording(Camera.Id))
+            !recordingService.IsRecordingOrResuming(Camera.Id))
         {
             return false;
         }
 
+        // The parking opens the stream again when it ends; the address and options are read here,
+        // on the UI thread.
+        var uri = Camera.BuildSourceLocator().Uri;
+        var options = BuildStreamOptions(Camera);
+
         Player.StateChanged -= OnPlayerStateChanged;
-        parking.Park(Camera.Id, Player, mediaPipeline, recordingService);
+        parking.Park(Camera.Id, Player, mediaPipeline, recordingService, player => player.Open(uri, options));
         LogPlayerParked(Camera.Display.DisplayName);
 
         // The parking has them now: this tile lets go without closing them.

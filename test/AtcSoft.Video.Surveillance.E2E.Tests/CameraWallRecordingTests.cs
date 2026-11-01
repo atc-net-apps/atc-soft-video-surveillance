@@ -44,12 +44,9 @@ public sealed class CameraWallRecordingTests
         ShouldKeepRecording(app, recordings, started, "after the recordings browser closed");
 
         // Ctrl+2 shows the second layout, with one of the cameras; Ctrl+1 the first again.
-        main.Focus();
-        FlaUI.Core.Input.Keyboard.TypeSimultaneously(FlaUI.Core.WindowsAPI.VirtualKeyShort.CONTROL, FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_2);
-        app.Find(main, "Cameras  1", ControlType.Text);
+        ShowLayout(app, main, FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_2, "Cameras  1");
         ShouldKeepRecording(app, recordings, started, "while another layout is shown");
-        FlaUI.Core.Input.Keyboard.TypeSimultaneously(FlaUI.Core.WindowsAPI.VirtualKeyShort.CONTROL, FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_1);
-        app.Find(main, $"Cameras  {CameraCount + 1}", ControlType.Text);
+        ShowLayout(app, main, FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_1, $"Cameras  {CameraCount + 1}");
         ShouldKeepRecording(app, recordings, started, "after the first layout is back");
         ShouldAnswer(app, main, "Browse Recordings", "the main window");
 
@@ -114,6 +111,63 @@ public sealed class CameraWallRecordingTests
         var closed = app.CloseApp(main);
         closed.Should().BeTrue("CameraWall closes when its main window closes");
         DurationOf(first).Should().BeGreaterThan(TimeSpan.Zero, "the file of before the drop is playable");
+        DurationOf(newFile).Should().BeGreaterThan(TimeSpan.Zero, "the file of after the drop is playable");
+        LogFindings.AssertClean(run.LogFolder, "CameraWall");
+    }
+
+    [Fact]
+    public void A_Recording_Camera_That_No_Layout_Shows_Is_Opened_Again_After_Dropping_Out()
+    {
+        E2ESettings.SkipUnlessEnabled();
+        if (TestCameras.FFmpegTool is null)
+        {
+            Assert.Skip("The FFmpeg command-line tool is needed for the live test cameras.");
+        }
+
+        using var run = new CameraWallRun(liveCameraCount: 2, recordOnConnect: true, secondLayout: true);
+        var app = run.App;
+        var main = app.WaitForWindowTitled(CameraWallRun.MainWindowTitle, DesktopApp.StartTimeout);
+        var recordings = Path.Combine(run.DataFolder, "recordings");
+        app.Find(main, "Connected  2", ControlType.Text, TimeSpan.FromSeconds(30));
+        var before = WaitForRecordings(app, recordings, 2).Files;
+
+        // The second layout shows only the first camera: the second records on without a tile.
+        ShowLayout(app, main, FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_2, "Cameras  1");
+        ShouldKeepRecording(app, recordings, (before, DateTime.UtcNow), "while the second camera has no tile");
+
+        // The camera without a tile reboots: gone for 20 s, then back.
+        run.LiveCameras[1].DropOut(TimeSpan.FromSeconds(20));
+        var droppedAt = Stopwatch.StartNew();
+
+        // Its recording goes on in a new file once it is back, without a tile showing it; the first
+        // camera's file goes on as it was.
+        var deadline = TimeSpan.FromSeconds(20) + TimeSpan.FromSeconds(120);
+        List<string> ongoing = [];
+        while (droppedAt.Elapsed < deadline)
+        {
+            ongoing = Ongoing(recordings);
+            if (ongoing.Count == 2 && ongoing.Except(before, StringComparer.OrdinalIgnoreCase).Count() == 1)
+            {
+                break;
+            }
+
+            app.Process.HasExited.Should().BeFalse("CameraWall is still running");
+            Thread.Sleep(1000);
+        }
+
+        ongoing.Should().HaveCount(2, "both cameras record");
+        var newFile = ongoing.Except(before, StringComparer.OrdinalIgnoreCase).Should().ContainSingle(
+            "the camera without a tile was opened again and its recording went on in a new file").Subject;
+        var stillThere = ongoing.Intersect(before, StringComparer.OrdinalIgnoreCase).Should().ContainSingle(
+            "the shown camera's file goes on").Subject;
+
+        // Back to the first layout: the camera's tile takes the player back, still recording.
+        ShowLayout(app, main, FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_1, "Cameras  3");
+        app.Find(main, "Connected  2", ControlType.Text, TimeSpan.FromSeconds(30));
+        ShouldKeepRecording(app, recordings, ([.. new[] { stillThere, newFile }.Order(StringComparer.OrdinalIgnoreCase)], DateTime.UtcNow), "after the first layout is back");
+
+        var closed = app.CloseApp(main);
+        closed.Should().BeTrue("CameraWall closes when its main window closes");
         DurationOf(newFile).Should().BeGreaterThan(TimeSpan.Zero, "the file of after the drop is playable");
         LogFindings.AssertClean(run.LogFolder, "CameraWall");
     }
@@ -207,6 +261,30 @@ public sealed class CameraWallRecordingTests
         Thread.Sleep(Pause);
         app.Process.HasExited.Should().BeFalse($"CameraWall is still running {when}");
         Ongoing(recordings).Should().Equal(started.Files, $"each camera's recording goes on {when}");
+    }
+
+    // Ctrl+<n> shows the n-th layout. A key press is lost when another window has the focus at that
+    // moment (a toast, the desktop), so it is pressed again until the status bar shows the layout.
+    private static void ShowLayout(
+        DesktopApp app,
+        Window main,
+        FlaUI.Core.WindowsAPI.VirtualKeyShort key,
+        string statusText)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            main.Focus();
+            FlaUI.Core.Input.Keyboard.TypeSimultaneously(FlaUI.Core.WindowsAPI.VirtualKeyShort.CONTROL, key);
+            try
+            {
+                app.Find(main, statusText, ControlType.Text, TimeSpan.FromSeconds(5));
+                return;
+            }
+            catch (InvalidOperationException) when (attempt < 3)
+            {
+                // Pressed again.
+            }
+        }
     }
 
     // A frozen app does not answer UI Automation: finding a button times out.

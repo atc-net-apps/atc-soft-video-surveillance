@@ -11,6 +11,8 @@ public sealed class RecordingPlayerParkingTests
     private static readonly Guid Camera = Guid.NewGuid();
 
     private readonly List<Action> posted = [];
+    private readonly List<(TimeSpan Delay, Action Action)> scheduled = [];
+    private int cancelled;
     private readonly IVideoPlayer player = Substitute.For<IVideoPlayer>();
     private readonly IMediaPipeline pipeline = Substitute.For<IMediaPipeline>();
     private readonly IRecordingService recording = Substitute.For<IRecordingService>();
@@ -19,12 +21,13 @@ public sealed class RecordingPlayerParkingTests
     {
         player.State.Returns(PlayerState.Playing);
         recording.IsRecording(Camera).Returns(true);
+        recording.IsRecordingOrResuming(Camera).Returns(true);
     }
 
     [Fact]
     public void A_Parked_Player_Is_Taken_Back_As_It_Is()
     {
-        using var sut = new RecordingPlayerParking(posted.Add);
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
         sut.Park(Camera, player, pipeline, recording);
 
         sut.TryTake(Camera, out var taken, out var takenPipeline).Should().BeTrue();
@@ -39,7 +42,7 @@ public sealed class RecordingPlayerParkingTests
     [Fact]
     public void A_Camera_Without_A_Parked_Player_Has_Nothing_To_Take()
     {
-        using var sut = new RecordingPlayerParking(posted.Add);
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
 
         sut.TryTake(Camera, out var taken, out _).Should().BeFalse();
         taken.Should().BeNull();
@@ -48,10 +51,11 @@ public sealed class RecordingPlayerParkingTests
     [Fact]
     public void A_Parked_Player_Whose_Recording_Stopped_Is_Let_Go()
     {
-        using var sut = new RecordingPlayerParking(posted.Add);
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
         sut.Park(Camera, player, pipeline, recording);
 
         recording.IsRecording(Camera).Returns(false);
+        recording.IsRecordingOrResuming(Camera).Returns(false);
         recording.RecordingStateChanged += Raise.EventWith(new RecordingStateChangedEventArgs(Camera, RecordingState.Recording, RecordingState.Idle));
         RunPosted();
 
@@ -63,7 +67,7 @@ public sealed class RecordingPlayerParkingTests
     [Fact]
     public void A_Segment_Switch_Keeps_The_Player_Parked()
     {
-        using var sut = new RecordingPlayerParking(posted.Add);
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
         sut.Park(Camera, player, pipeline, recording);
 
         // The hourly switch reports idle, then recording again, before the check runs.
@@ -76,14 +80,79 @@ public sealed class RecordingPlayerParkingTests
     }
 
     [Fact]
-    public void A_Parked_Player_Whose_Stream_Ended_Is_Let_Go_And_Its_Recording_Stopped()
+    public async Task A_Parked_Camera_Whose_Stream_Ended_Is_Opened_Again_And_Its_Recording_Goes_On()
     {
-        using var sut = new RecordingPlayerParking(posted.Add);
+        using var opened = new SemaphoreSlim(0);
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
+        sut.Park(Camera, player, pipeline, recording, _ =>
+        {
+            player.State.Returns(PlayerState.Playing);
+            opened.Release();
+        });
+
+        EndStream();
+
+        sut.IsParked(Camera).Should().BeTrue("a blip does not end the recording");
+        recording.DidNotReceive().StopRecording(Camera);
+        scheduled.Should().ContainSingle().Which.Delay.Should().Be(RecordingPlayerParking.ReopenFirstDelay);
+
+        RunScheduled();
+        (await opened.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Should().BeTrue();
+        await RunPostedAsync();
+
+        recording.Received().ResumeRecording(Camera);
+        player.DidNotReceive().Dispose();
+    }
+
+    [Fact]
+    public async Task A_Stream_That_Will_Not_Open_Is_Tried_Again_Less_And_Less_Often()
+    {
+        using var tried = new SemaphoreSlim(0);
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
+        sut.Park(Camera, player, pipeline, recording, _ => tried.Release());
+
+        EndStream();
+        var delays = new List<TimeSpan>();
+        for (var attempt = 0; attempt < 6; attempt++)
+        {
+            delays.Add(scheduled.Single().Delay);
+            RunScheduled();
+            (await tried.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Should().BeTrue();
+            await RunPostedAsync();
+        }
+
+        delays.Should().Equal(
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(20),
+            TimeSpan.FromSeconds(40),
+            RecordingPlayerParking.ReopenMaxDelay,
+            RecordingPlayerParking.ReopenMaxDelay);
+        sut.IsParked(Camera).Should().BeTrue();
+    }
+
+    [Fact]
+    public void A_Recording_The_Service_Stopped_For_Now_Keeps_The_Player_Parked()
+    {
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
         sut.Park(Camera, player, pipeline, recording);
 
-        player.State.Returns(PlayerState.Error);
-        player.StateChanged += Raise.EventWith(new PlayerStateChangedEventArgs(PlayerState.Playing, PlayerState.Error));
+        // A full disk: the session is gone, but the service starts it again by itself.
+        recording.IsRecording(Camera).Returns(false);
+        recording.RecordingStateChanged += Raise.EventWith(new RecordingStateChangedEventArgs(Camera, RecordingState.Recording, RecordingState.Idle));
         RunPosted();
+
+        sut.IsParked(Camera).Should().BeTrue();
+        player.DidNotReceive().Dispose();
+    }
+
+    [Fact]
+    public void A_Parked_Player_That_Cannot_Be_Opened_Again_Is_Let_Go_When_Its_Stream_Ends()
+    {
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
+        sut.Park(Camera, player, pipeline, recording);
+
+        EndStream();
 
         sut.IsParked(Camera).Should().BeFalse();
         recording.Received(1).StopRecording(Camera);
@@ -91,9 +160,24 @@ public sealed class RecordingPlayerParkingTests
     }
 
     [Fact]
+    public void A_Player_Taken_Back_While_A_Reopen_Waits_Is_Not_Opened_By_The_Parking()
+    {
+        var reopened = false;
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
+        sut.Park(Camera, player, pipeline, recording, _ => reopened = true);
+        EndStream();
+
+        sut.TryTake(Camera, out _, out _);
+        RunScheduled();
+
+        reopened.Should().BeFalse();
+        cancelled.Should().Be(1);
+    }
+
+    [Fact]
     public void Another_Cameras_Recording_Leaves_The_Player_Parked()
     {
-        using var sut = new RecordingPlayerParking(posted.Add);
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
         sut.Park(Camera, player, pipeline, recording);
 
         recording.RecordingStateChanged += Raise.EventWith(new RecordingStateChangedEventArgs(Guid.NewGuid(), RecordingState.Recording, RecordingState.Idle));
@@ -105,11 +189,12 @@ public sealed class RecordingPlayerParkingTests
     [Fact]
     public void A_Player_Taken_Back_Is_No_Longer_Watched()
     {
-        using var sut = new RecordingPlayerParking(posted.Add);
+        using var sut = new RecordingPlayerParking(posted.Add, Schedule);
         sut.Park(Camera, player, pipeline, recording);
         sut.TryTake(Camera, out _, out _);
 
         recording.IsRecording(Camera).Returns(false);
+        recording.IsRecordingOrResuming(Camera).Returns(false);
         recording.RecordingStateChanged += Raise.EventWith(new RecordingStateChangedEventArgs(Camera, RecordingState.Recording, RecordingState.Idle));
         RunPosted();
 
@@ -119,7 +204,7 @@ public sealed class RecordingPlayerParkingTests
     [Fact]
     public void Disposing_The_Parking_Stops_And_Closes_What_It_Holds()
     {
-        var sut = new RecordingPlayerParking(posted.Add);
+        var sut = new RecordingPlayerParking(posted.Add, Schedule);
         sut.Park(Camera, player, pipeline, recording);
 
         sut.Dispose();
@@ -127,6 +212,48 @@ public sealed class RecordingPlayerParkingTests
         recording.Received(1).StopRecording(Camera);
         player.Received(1).Dispose();
         sut.Count.Should().Be(0);
+    }
+
+    private Action Schedule(
+        TimeSpan delay,
+        Action action)
+    {
+        var item = (delay, action);
+        scheduled.Add(item);
+        return () =>
+        {
+            cancelled++;
+            scheduled.Remove(item);
+        };
+    }
+
+    private void RunScheduled()
+    {
+        foreach (var (_, action) in scheduled.ToList())
+        {
+            scheduled.RemoveAt(0);
+            action();
+        }
+    }
+
+    private void EndStream()
+    {
+        player.State.Returns(PlayerState.Error);
+        player.StateChanged += Raise.EventWith(new PlayerStateChangedEventArgs(PlayerState.Playing, PlayerState.Error));
+        RunPosted();
+    }
+
+    // The reopen runs in the background and posts its end; waits for that post.
+    private async Task RunPostedAsync()
+    {
+        var waited = TimeSpan.Zero;
+        while (posted.Count == 0 && waited < TimeSpan.FromSeconds(5))
+        {
+            await Task.Delay(10, TestContext.Current.CancellationToken).ConfigureAwait(false);
+            waited += TimeSpan.FromMilliseconds(10);
+        }
+
+        RunPosted();
     }
 
     private void RunPosted()
