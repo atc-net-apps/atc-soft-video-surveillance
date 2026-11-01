@@ -77,6 +77,23 @@ public sealed class ServerRecordingServiceSharedPipelineTests : IDisposable
     }
 
     [Fact]
+    public async Task Two_Starts_At_Once_Record_Once_And_The_Loser_Does_Not_Stop_The_Winner()
+    {
+        IRecordingService service = sut;
+        using var bothIn = new Barrier(2);
+        pipeline.When(p => p.StartRecording(Arg.Any<string>())).Do(_ => Thread.Sleep(50));
+
+        var results = await Task.WhenAll(
+            Task.Run(() => { bothIn.SignalAndWait(); return service.StartRecordingOnSharedPipeline(camera, pipeline); }),
+            Task.Run(() => { bothIn.SignalAndWait(); return service.StartRecordingOnSharedPipeline(camera, pipeline); }));
+
+        results.Count(r => r).Should().Be(1);
+        pipeline.Received(1).StartRecording(Arg.Any<string>());
+        pipeline.DidNotReceive().StopRecording();
+        sut.IsRecording(camera.Id).Should().BeTrue();
+    }
+
+    [Fact]
     public void Stopping_It_Leaves_The_Shared_Pipeline_Open()
     {
         IRecordingService service = sut;

@@ -135,48 +135,37 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             return false;
         }
 
-        var filePath = GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera));
-
-        var directory = Path.GetDirectoryName(filePath);
-        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        // The camera's slot is taken before the pipeline is told to record: two
+        // starts at once (on a shared pipeline, the second start would be a
+        // silent no-op) can never have the loser stop the winner's file. The
+        // reaper walks the sessions only, so a slot taken here is not reaped.
+        if (!pipelines.TryAdd(camera.Id, pipeline))
         {
-            Directory.CreateDirectory(directory);
-        }
-
-        pipeline.StartRecording(filePath);
-
-        var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: !startedByMotion);
-
-        if (!sessions.TryAdd(camera.Id, session))
-        {
-            // Lost the race — a concurrent StartRecording already registered
-            // this camera. Clean up the pipeline we started and bail.
-            try
-            {
-                pipeline.StopRecording();
-            }
-            catch (Exception ex)
-            {
-                LogStopPipelineFailed(ex, camera.Id);
-            }
-
-            // A borrowed pipeline is its owner's to close.
-            if (!borrowed)
-            {
-                try
-                {
-                    pipeline.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    LogDisposePipelineFailed(ex, camera.Id);
-                }
-            }
-
             return false;
         }
 
-        pipelines[camera.Id] = pipeline;
+        string filePath;
+        try
+        {
+            filePath = GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera));
+
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            pipeline.StartRecording(filePath);
+        }
+        catch
+        {
+            pipelines.TryRemove(new KeyValuePair<Guid, IMediaPipeline>(camera.Id, pipeline));
+            throw;
+        }
+
+        var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: !startedByMotion);
+        sessions[camera.Id] = session;
+
         if (borrowed)
         {
             borrowedPipelines[camera.Id] = 0;
