@@ -53,6 +53,7 @@ public sealed partial class AccountService : IAccountService
     private readonly ILogger<AccountService> logger;
     private readonly PasswordHasher<StoredUser> hasher = new();
     private readonly StoredAccounts file;
+    private readonly ServerDataFile accountsFile;
 
     // In memory only: a rotated token's hash -> its session and how long it still renews.
     private readonly Dictionary<string, GraceEntry> graces = new(StringComparer.Ordinal);
@@ -82,7 +83,11 @@ public sealed partial class AccountService : IAccountService
             }
         }
 
-        file = SafeJsonFile.TryRead<StoredAccounts>(paths.AccountsPath, FileOptions) ?? new StoredAccounts();
+        // A file that cannot be read is never taken for a missing one: no new
+        // setup code is made for it (whoever read the code would become an
+        // admin), and nothing is saved over it unless it was copied aside.
+        accountsFile = new ServerDataFile(paths.AccountsPath, logger);
+        file = accountsFile.Read<StoredAccounts>(FileOptions) ?? new StoredAccounts();
 
         // A file from before sessions had an id.
         foreach (var session in file.Sessions.Where(s => s.Id == Guid.Empty))
@@ -90,7 +95,7 @@ public sealed partial class AccountService : IAccountService
             session.Id = Guid.NewGuid();
         }
 
-        if (file.Users.Count == 0)
+        if (file.Users.Count == 0 && accountsFile.Outcome != JsonFileReadOutcome.Unreadable)
         {
             EnsureSetupCode();
         }
@@ -688,10 +693,7 @@ public sealed partial class AccountService : IAccountService
     private void Save()
     {
         // The users' password hashes and sessions: kept from the machine's other users.
-        if (!SafeJsonFile.TryWrite(paths.AccountsPath, file, FileOptions, SecretFile.WriteAllText))
-        {
-            LogSaveFailed(paths.AccountsPath);
-        }
+        accountsFile.TryWrite(file, FileOptions, SecretFile.WriteAllText);
     }
 
     // What the file holds.

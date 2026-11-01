@@ -14,6 +14,7 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
 
     private readonly string storagePath;
     private readonly ILogger<JsonApplicationSettingsService> logger;
+    private readonly ServerDataFile file;
     private ApplicationSettings appSettings = new();
 
     public JsonApplicationSettingsService(
@@ -28,6 +29,7 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
     {
         this.storagePath = storagePath;
         this.logger = logger;
+        file = new ServerDataFile(storagePath, logger);
         EnsureSettingsFileExists();
         Load();
     }
@@ -150,7 +152,10 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
     /// <inheritdoc/>
     public void Load()
     {
-        var loaded = SafeJsonFile.TryRead<ApplicationSettings>(storagePath, JsonOptions);
+        // A file that cannot be read is never taken for a missing one: the
+        // backup is tried, the file is copied aside, and nothing is saved over
+        // a file that could not be kept.
+        var loaded = file.Read<ApplicationSettings>(JsonOptions);
         if (loaded is not null)
         {
             appSettings = loaded;
@@ -165,15 +170,13 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
     /// <inheritdoc/>
     public void Save()
     {
-        if (!SafeJsonFile.TryWrite(storagePath, appSettings, JsonOptions))
-        {
-            LogSettingsSaveFailed(new IOException("Atomic save failed"), storagePath);
-        }
+        file.TryWrite(appSettings, JsonOptions);
     }
 
     private void EnsureSettingsFileExists()
     {
-        if (File.Exists(storagePath))
+        // Only on a first start: a missing file with a backup is read from the backup.
+        if (File.Exists(storagePath) || File.Exists(storagePath + ".bak"))
         {
             return;
         }
