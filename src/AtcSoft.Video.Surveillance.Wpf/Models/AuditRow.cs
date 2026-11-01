@@ -6,6 +6,12 @@ namespace AtcSoft.Video.Surveillance.Wpf.Models;
 public sealed record AuditRow(
     AuditEntry Entry)
 {
+    /// <summary>
+    /// Gets when it happened, in this computer's time zone: the log shows it and filters on it.
+    /// </summary>
+    public DateTime LocalTime
+        => Entry.Timestamp.LocalDateTime;
+
     public string TimeText
         => Entry.Timestamp.LocalDateTime.ToString("G", CultureInfo.CurrentCulture);
 

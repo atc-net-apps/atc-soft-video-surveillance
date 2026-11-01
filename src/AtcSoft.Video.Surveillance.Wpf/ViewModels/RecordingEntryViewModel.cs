@@ -43,6 +43,11 @@ public sealed class RecordingEntryViewModel
 
     public DateTimeOffset RecordingTime => recording.StartedAt;
 
+    /// <summary>
+    /// Gets when the recording started, in this computer's time zone: the list shows it and filters on it.
+    /// </summary>
+    public DateTime LocalRecordingTime => RecordingTime.LocalDateTime;
+
     public long FileSizeBytes => recording.FileSizeBytes;
 
     public TimeSpan Duration => ParseIsoDuration(recording.Duration);

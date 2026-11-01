@@ -6,14 +6,11 @@ namespace AtcSoft.Video.Surveillance.Wpf.ViewModels;
 [SuppressMessage("", "S2325:Make properties static", Justification = "XAML binding requires instance properties")]
 public sealed partial class RecordingsViewModel : ViewModelBase
 {
-    private const string AllCamerasKey = "_ALL_";
-
     private readonly GatewayService gatewayService;
     private readonly Uri apiBaseUri;
     private readonly ClientSession? session;
 
-    [ObservableProperty(AfterChangedCallback = nameof(OnFilterChanged))]
-    private string selectedCameraFilter = AllCamerasKey;
+    private ObservableCollection<string> selectedCameraFilters = [];
 
     [ObservableProperty(AfterChangedCallback = nameof(OnFilterChanged))]
     private string selectedDayFilter = "_ALL_";
@@ -49,6 +46,7 @@ public sealed partial class RecordingsViewModel : ViewModelBase
 
         // The language changes live; CultureManager holds the handler weakly.
         CultureManager.UiCultureChanged += OnUiCultureChanged;
+        selectedCameraFilters.CollectionChanged += OnSelectedCameraFiltersChanged;
 
         this.gatewayService = gatewayService;
         this.apiBaseUri = apiBaseUri;
@@ -56,10 +54,37 @@ public sealed partial class RecordingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Gets the available camera filters: all cameras first, then each camera by name.
-    /// A new dictionary each time, because atc:LabelComboBox takes its items as one.
+    /// Gets the cameras that have recordings, by name. A new dictionary each time,
+    /// because atc:LabelMultiSelectComboBox takes its items as one.
     /// </summary>
     public IDictionary<string, string> CameraFilters { get; private set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Gets or sets the cameras whose recordings are listed; none ticked lists every camera.
+    /// </summary>
+    public ObservableCollection<string> SelectedCameraFilters
+    {
+        get => selectedCameraFilters;
+        set
+        {
+            value ??= [];
+            if (ReferenceEquals(value, selectedCameraFilters))
+            {
+                return;
+            }
+
+            selectedCameraFilters.CollectionChanged -= OnSelectedCameraFiltersChanged;
+            selectedCameraFilters = value;
+            selectedCameraFilters.CollectionChanged += OnSelectedCameraFiltersChanged;
+            OnPropertyChanged();
+            OnFilterChanged();
+        }
+    }
+
+    /// <summary>
+    /// Gets the text the camera filter shows when no camera is ticked.
+    /// </summary>
+    public string AllCamerasText => Translations.AllCameras;
 
     /// <summary>
     /// Gets the day filter items.
@@ -92,22 +117,25 @@ public sealed partial class RecordingsViewModel : ViewModelBase
     /// <summary>
     /// Gets the filtered recordings based on selected filters.
     /// </summary>
-    public IEnumerable<RecordingEntryViewModel> FilteredRecordings
+    /// <remarks>
+    /// A list, not a query: the grid's column filters filter the collection view of a list.
+    /// </remarks>
+    public IReadOnlyList<RecordingEntryViewModel> FilteredRecordings
     {
         get
         {
             var result = Recordings.AsEnumerable();
 
-            if (!string.IsNullOrEmpty(SelectedCameraFilter) && SelectedCameraFilter != AllCamerasKey)
+            if (SelectedCameraFilters.Count > 0)
             {
-                result = result.Where(r =>
-                    string.Equals(r.CameraName, SelectedCameraFilter, StringComparison.OrdinalIgnoreCase));
+                var cameras = new HashSet<string>(SelectedCameraFilters, StringComparer.OrdinalIgnoreCase);
+                result = result.Where(r => cameras.Contains(r.CameraName));
             }
 
             result = ApplyDayFilter(result);
             result = ApplyTimeFilter(result);
 
-            return result;
+            return result.ToList();
         }
     }
 
@@ -268,6 +296,9 @@ public sealed partial class RecordingsViewModel : ViewModelBase
             : null;
     }
 
+    private void OnSelectedCameraFiltersChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => OnFilterChanged();
+
     private void OnFilterChanged()
     {
         OnPropertyChanged(nameof(FilteredRecordings));
@@ -299,12 +330,7 @@ public sealed partial class RecordingsViewModel : ViewModelBase
 
     private void UpdateCameraFilters()
     {
-        var currentSelection = SelectedCameraFilter;
-
-        var filters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            [AllCamerasKey] = Translations.AllCameras,
-        };
+        var filters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         var cameraNames = Recordings
             .Select(r => r.CameraName)
@@ -319,14 +345,12 @@ public sealed partial class RecordingsViewModel : ViewModelBase
 
         CameraFilters = filters;
         OnPropertyChanged(nameof(CameraFilters));
+        OnPropertyChanged(nameof(AllCamerasText));
 
-        if (currentSelection is not null && filters.ContainsKey(currentSelection))
+        // A ticked camera that has no recordings any more is unticked; none left means all cameras.
+        foreach (var gone in SelectedCameraFilters.Where(c => !filters.ContainsKey(c)).ToList())
         {
-            SelectedCameraFilter = currentSelection;
-        }
-        else
-        {
-            SelectedCameraFilter = AllCamerasKey;
+            SelectedCameraFilters.Remove(gone);
         }
 
         OnPropertyChanged(nameof(FilteredRecordings));
@@ -334,7 +358,7 @@ public sealed partial class RecordingsViewModel : ViewModelBase
 
     private void UpdateStatusMessage()
     {
-        var count = FilteredRecordings.Count();
+        var count = FilteredRecordings.Count;
         StatusMessage = count == 0
             ? Translations.NoRecordingsFound
             : string.Format(CultureInfo.CurrentCulture, Translations.RecordingsFound1, count);

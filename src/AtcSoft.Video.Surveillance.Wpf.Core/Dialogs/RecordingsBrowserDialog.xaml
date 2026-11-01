@@ -29,19 +29,21 @@
             <atc:GridEx
                 Grid.Row="0"
                 Margin="0,0,0,16"
-                Columns="Auto,180,Auto,140,Auto,140,*,Auto">
+                Columns="Auto,200,Auto,140,Auto,140,Auto,*,Auto">
                 <TextBlock
                     Grid.Column="0"
                     Margin="0,0,8,0"
                     VerticalAlignment="Center"
                     Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                Key=Camera}" />
-                <ComboBox
+                <!--  None ticked lists every camera  -->
+                <atc:MultiSelectComboBox
                     Grid.Column="1"
-                    DisplayMemberPath="Value"
-                    ItemsSource="{Binding Path=CameraFilters}"
-                    SelectedValue="{Binding Path=SelectedCameraFilter}"
-                    SelectedValuePath="Key" />
+                    AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                    Key=Camera}"
+                    Items="{Binding Path=CameraFilters}"
+                    NoneText="{Binding Path=AllCamerasText}"
+                    SelectedKeys="{Binding Path=SelectedCameraFilters}" />
                 <TextBlock
                     Grid.Column="2"
                     Margin="16,0,8,0"
@@ -66,8 +68,22 @@
                     ItemsSource="{Binding Path=TimeFilterItems}"
                     SelectedValue="{Binding Path=SelectedTimeFilter}"
                     SelectedValuePath="Key" />
+                <!--  Searches every column of the list as you type  -->
+                <TextBox
+                    x:Name="SearchBox"
+                    Grid.Column="6"
+                    Width="200"
+                    Margin="16,0,0,0"
+                    VerticalContentAlignment="Center"
+                    atc:TextBoxHelper.ClearTextButton="True"
+                    atc:TextBoxHelper.Watermark="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                      Key=Search}"
+                    AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                    Key=Search}"
+                    ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                  Key=SearchAllColumnsToolTip}" />
                 <Button
-                    Grid.Column="7"
+                    Grid.Column="8"
                     Padding="16,6"
                     Command="{Binding Path=RefreshCommand}"
                     Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
@@ -78,6 +94,9 @@
             <DataGrid
                 x:Name="RecordingsGrid"
                 Grid.Row="1"
+                atc:DataGridFilter.IsEnabled="True"
+                atc:DataGridFilter.SearchText="{Binding ElementName=SearchBox, Path=Text}"
+                atc:DataGridFilter.ShowColumnChooser="True"
                 AutoGenerateColumns="False"
                 CanUserAddRows="False"
                 CanUserDeleteRows="False"
@@ -163,11 +182,12 @@
                                                      Key=RecordingCamera}" />
                     <DataGridTextColumn
                         Width="160"
-                        Binding="{Binding Path=FormattedRecordingTime}"
+                        Binding="{Binding Path=RecordingTime, StringFormat='yyyy-MM-dd HH:mm:ss'}"
                         Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                      Key=RecordingDateTime}" />
                     <DataGridTextColumn
                         Width="80"
+                        atc:DataGridFilter.IsColumnFilterEnabled="False"
                         Binding="{Binding Path=FormattedDuration}"
                         Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                      Key=RecordingDuration}" />
@@ -184,11 +204,13 @@
                     </DataGridTemplateColumn>
                     <DataGridTextColumn
                         Width="100"
+                        atc:DataGridFilter.IsColumnFilterEnabled="False"
                         Binding="{Binding Path=FormattedFileSize}"
                         Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                      Key=RecordingSize}" />
                     <DataGridTextColumn
                         Width="*"
+                        atc:DataGridFilter.IsColumnFilterEnabled="False"
                         Binding="{Binding Path=FileName}"
                         Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                      Key=FileName}" />

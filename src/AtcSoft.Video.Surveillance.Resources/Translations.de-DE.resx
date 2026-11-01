@@ -2832,4 +2832,10 @@ Vorschaubild:
   <data name="VerdictNotSaved1" xml:space="preserve">
     <value>Die Bewertung wurde nicht gespeichert: {0}</value>
   </data>
+  <data name="Search" xml:space="preserve">
+    <value>Suchen</value>
+  </data>
+  <data name="SearchAllColumnsToolTip" xml:space="preserve">
+    <value>Durchsucht beim Tippen alle Spalten der Liste</value>
+  </data>
 </root>

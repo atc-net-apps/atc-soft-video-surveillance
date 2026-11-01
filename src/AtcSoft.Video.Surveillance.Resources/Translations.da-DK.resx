@@ -2832,4 +2832,10 @@ Miniature:
   <data name="VerdictNotSaved1" xml:space="preserve">
     <value>Vurderingen blev ikke gemt: {0}</value>
   </data>
+  <data name="Search" xml:space="preserve">
+    <value>Søg</value>
+  </data>
+  <data name="SearchAllColumnsToolTip" xml:space="preserve">
+    <value>Søger i alle listens kolonner, mens du skriver</value>
+  </data>
 </root>

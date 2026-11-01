@@ -32,17 +32,23 @@ public partial class CameraListViewModel : ViewModelBase
 
         this.eventService.OnConnectionStateChanged += OnConnectionStateChanged;
         this.eventService.OnRecordingStateChanged += OnRecordingStateChanged;
+
+        // Set first, so it is the filter the grid's column filters find and keep.
+        System.Windows.Data.CollectionViewSource.GetDefaultView(Cameras).Filter =
+            item => item is CameraItemViewModel camera && camera.Matches(FilterText);
     }
 
     /// <summary>
     /// Shows only the cameras that match the filter text. The grid's view of
     /// the collection is filtered, so rows keep their selection and sorting.
     /// </summary>
+    /// <remarks>
+    /// The predicate is set once, in the constructor, and refreshed here: the grid's column filters
+    /// keep a filter they find on the view and add theirs to it, and setting a new
+    /// predicate would drop theirs until the next column filter change.
+    /// </remarks>
     private void OnFilterTextChanged()
-    {
-        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(Cameras);
-        view.Filter = item => item is CameraItemViewModel camera && camera.Matches(FilterText);
-    }
+        => System.Windows.Data.CollectionViewSource.GetDefaultView(Cameras).Refresh();
 
     [RelayCommand]
     private void ClearFilter()

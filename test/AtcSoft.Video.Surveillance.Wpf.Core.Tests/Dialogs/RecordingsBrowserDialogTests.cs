@@ -32,7 +32,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
 
         string? played = null;
         var closedByPlay = true;
-        string? filterAfterPlay = null;
+        string[]? filterAfterPlay = null;
         string? selectedAfterPlay = null;
 
         // Act
@@ -40,7 +40,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
         {
             var viewModel = new RecordingsBrowserDialogViewModel(settingsService)
             {
-                SelectedCameraFilter = "Garden",
+                SelectedCameraFilters = ["Garden"],
             };
 
             RecordingEntry? playedRecording = null;
@@ -53,7 +53,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
 
             played = playedRecording?.FileName;
             closedByPlay = closed;
-            filterAfterPlay = viewModel.SelectedCameraFilter;
+            filterAfterPlay = [.. viewModel.SelectedCameraFilters];
             selectedAfterPlay = viewModel.SelectedRecording?.FileName;
 
             dialog.Close();
@@ -63,7 +63,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
         error.Should().BeNull();
         played.Should().Be("Garden_20261012_220000_000.mkv");
         closedByPlay.Should().BeFalse("the browser is still there when playback ends");
-        filterAfterPlay.Should().Be("Garden");
+        filterAfterPlay.Should().Equal("Garden");
         selectedAfterPlay.Should().Be("Garden_20261012_220000_000.mkv");
     }
 

@@ -6,14 +6,11 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.Dialogs;
 [SuppressMessage("", "S2325:Make properties static", Justification = "XAML binding requires instance properties")]
 public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDisposable
 {
-    private const string AllCamerasKey = "_ALL_";
-
     private readonly IApplicationSettingsService settingsService;
     private readonly Func<IEnumerable<string?>>? cameraRecordingPaths;
     private readonly Func<string, AtcSoft.Video.Surveillance.Models.CameraConfiguration?>? cameraByFolder;
 
-    [ObservableProperty(AfterChangedCallback = nameof(OnSelectedCameraFilterChanged))]
-    private string selectedCameraFilter = AllCamerasKey;
+    private ObservableCollection<string> selectedCameraFilters = [];
 
     [ObservableProperty(AfterChangedCallback = nameof(OnSelectedDayFilterChanged))]
     private string selectedDayFilter = DropDownItemsFactory.DefaultDayFilter;
@@ -53,6 +50,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         this.settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         this.cameraRecordingPaths = cameraRecordingPaths;
         this.cameraByFolder = cameraByFolder;
+        selectedCameraFilters.CollectionChanged += OnSelectedCameraFiltersChanged;
 
         LoadRecordings();
     }
@@ -84,9 +82,37 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     public static string DialogTitle => Translations.BrowseRecordings;
 
     /// <summary>
-    /// Gets the available camera filters.
+    /// Gets the cameras that have recordings, by name. A new dictionary each time the cameras
+    /// change, because atc:MultiSelectComboBox takes its items as one.
     /// </summary>
-    public ObservableCollection<KeyValuePair<string, string>> CameraFilters { get; } = [];
+    public IDictionary<string, string> CameraFilters { get; private set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Gets or sets the cameras whose recordings are listed; none ticked lists every camera.
+    /// </summary>
+    public ObservableCollection<string> SelectedCameraFilters
+    {
+        get => selectedCameraFilters;
+        set
+        {
+            value ??= [];
+            if (ReferenceEquals(value, selectedCameraFilters))
+            {
+                return;
+            }
+
+            selectedCameraFilters.CollectionChanged -= OnSelectedCameraFiltersChanged;
+            selectedCameraFilters = value;
+            selectedCameraFilters.CollectionChanged += OnSelectedCameraFiltersChanged;
+            OnPropertyChanged();
+            OnFilterChanged();
+        }
+    }
+
+    /// <summary>
+    /// Gets the text the camera filter shows when no camera is ticked.
+    /// </summary>
+    public static string AllCamerasText => Translations.AllCameras;
 
     /// <summary>
     /// Gets the day filter items for the dropdown.
@@ -103,17 +129,20 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     /// <summary>
     /// Gets the filtered recordings based on the selected filters.
     /// </summary>
-    public IEnumerable<RecordingEntry> FilteredRecordings
+    /// <remarks>
+    /// A list, not a query: the grid's column filters filter the collection view of a list.
+    /// </remarks>
+    public IReadOnlyList<RecordingEntry> FilteredRecordings
     {
         get
         {
             var result = Recordings.AsEnumerable();
 
             // Camera filter
-            if (!string.IsNullOrEmpty(SelectedCameraFilter) && SelectedCameraFilter != AllCamerasKey)
+            if (SelectedCameraFilters.Count > 0)
             {
-                result = result.Where(r =>
-                    string.Equals(r.CameraName, SelectedCameraFilter, StringComparison.OrdinalIgnoreCase));
+                var cameras = new HashSet<string>(SelectedCameraFilters, StringComparer.OrdinalIgnoreCase);
+                result = result.Where(r => cameras.Contains(r.CameraName));
             }
 
             // Day filter
@@ -122,7 +151,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
             // Time filter
             result = ApplyTimeFilter(result);
 
-            return result;
+            return result.ToList();
         }
     }
 
@@ -169,25 +198,22 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     /// <returns>The current state.</returns>
     public RecordingsBrowserState CaptureState()
         => new(
-            SelectedCameraFilter,
+            [.. SelectedCameraFilters],
             SelectedDayFilter,
             SelectedTimeFilter,
             SelectedRecording?.FilePath);
 
     /// <summary>
     /// Applies filters and a selection from an earlier browser. Whatever no
-    /// longer exists is skipped: a camera without recordings falls back to
-    /// all cameras, and a deleted recording leaves nothing selected.
+    /// longer exists is skipped: a camera without recordings is left out (none
+    /// left means all cameras), and a deleted recording leaves nothing selected.
     /// </summary>
     /// <param name="state">The state to apply.</param>
     public void RestoreState(RecordingsBrowserState state)
     {
         ArgumentNullException.ThrowIfNull(state);
 
-        if (CameraFilters.Any(f => f.Key == state.CameraFilter))
-        {
-            SelectedCameraFilter = state.CameraFilter;
-        }
+        SelectedCameraFilters = [.. state.CameraFilters.Where(CameraFilters.ContainsKey)];
 
         if (DayFilterItems.ContainsKey(state.DayFilter))
         {
@@ -360,7 +386,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         CloseRequested?.Invoke(this, new DialogClosedEventArgs(dialogResult: true));
     }
 
-    private void OnSelectedCameraFilterChanged()
+    private void OnSelectedCameraFiltersChanged(object? sender, NotifyCollectionChangedEventArgs e)
         => OnFilterChanged();
 
     private void OnSelectedDayFilterChanged()
@@ -604,29 +630,22 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
 
     private void UpdateCameraFilters()
     {
-        var currentSelection = SelectedCameraFilter;
-
-        CameraFilters.Clear();
-        CameraFilters.Add(new KeyValuePair<string, string>(AllCamerasKey, Translations.AllCameras));
-
-        var cameraNames = Recordings
-            .Select(r => r.CameraName)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase);
-
-        foreach (var cameraName in cameraNames)
+        var filters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var cameraName in Recordings
+                     .Select(r => r.CameraName)
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
         {
-            CameraFilters.Add(new KeyValuePair<string, string>(cameraName, cameraName));
+            filters[cameraName] = cameraName;
         }
 
-        // Restore selection if still valid, otherwise default to All
-        if (CameraFilters.Any(f => f.Key == currentSelection))
+        CameraFilters = filters;
+        OnPropertyChanged(nameof(CameraFilters));
+
+        // A ticked camera that has no recordings any more is unticked; none left means all cameras.
+        foreach (var gone in SelectedCameraFilters.Where(c => !filters.ContainsKey(c)).ToList())
         {
-            SelectedCameraFilter = currentSelection;
-        }
-        else
-        {
-            SelectedCameraFilter = AllCamerasKey;
+            SelectedCameraFilters.Remove(gone);
         }
 
         OnPropertyChanged(nameof(FilteredRecordings));
@@ -634,7 +653,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
 
     private void UpdateStatusMessage()
     {
-        var count = FilteredRecordings.Count();
+        var count = FilteredRecordings.Count;
         if (count == 0)
         {
             StatusMessage = Translations.NoRecordingsFound;

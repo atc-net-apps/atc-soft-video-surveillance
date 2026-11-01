@@ -31,7 +31,7 @@ public sealed class RecordingsBrowserDialogViewModelStateTests : IDisposable
     {
         // Arrange
         using var first = CreateViewModel();
-        first.SelectedCameraFilter = "Garden";
+        first.SelectedCameraFilters.Add("Garden");
         first.SelectedDayFilter = "_ALL_";
         first.SelectedTimeFilter = "18_24";
         first.SelectedRecording = first.FilteredRecordings.Last();
@@ -42,7 +42,7 @@ public sealed class RecordingsBrowserDialogViewModelStateTests : IDisposable
         reopened.RestoreState(state);
 
         // Assert
-        reopened.SelectedCameraFilter.Should().Be("Garden");
+        reopened.SelectedCameraFilters.Should().Equal("Garden");
         reopened.SelectedDayFilter.Should().Be("_ALL_");
         reopened.SelectedTimeFilter.Should().Be("18_24");
         reopened.FilteredRecordings.Select(r => r.FileName).Should().Equal(
@@ -53,10 +53,10 @@ public sealed class RecordingsBrowserDialogViewModelStateTests : IDisposable
     }
 
     [Fact]
-    public void A_Camera_That_Has_No_Recordings_Any_More_Falls_Back_To_All_Cameras()
+    public void A_Camera_That_Has_No_Recordings_Any_More_Is_Left_Out_So_Every_Camera_Is_Listed()
     {
         using var first = CreateViewModel();
-        first.SelectedCameraFilter = "Front Door";
+        first.SelectedCameraFilters.Add("Front Door");
         first.SelectedDayFilter = "_ALL_";
         first.SelectedRecording = first.FilteredRecordings.Single();
         var state = first.CaptureState();
@@ -66,7 +66,7 @@ public sealed class RecordingsBrowserDialogViewModelStateTests : IDisposable
         using var reopened = CreateViewModel();
         reopened.RestoreState(state);
 
-        reopened.SelectedCameraFilter.Should().Be("_ALL_");
+        reopened.SelectedCameraFilters.Should().BeEmpty("no camera ticked lists every camera");
         reopened.SelectedRecording.Should().BeNull("the recording is gone");
         reopened.FilteredRecordings.Should().HaveCount(3);
     }

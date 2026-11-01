@@ -2832,4 +2832,10 @@ Thumbnail:
   <data name="VerdictNotSaved1" xml:space="preserve">
     <value>The verdict was not saved: {0}</value>
   </data>
+  <data name="Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="SearchAllColumnsToolTip" xml:space="preserve">
+    <value>Searches every column of the list as you type</value>
+  </data>
 </root>
