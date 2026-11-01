@@ -48,6 +48,12 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // not recording most of the time.
     private readonly ConcurrentDictionary<Guid, byte> recordingOnConnect = new();
 
+    // Cameras whose motion was not recorded yet (the cooldown after the last motion recording, a
+    // disk short of space): tried again with every analysed picture while the motion lasts. Before,
+    // only a picture that moved tried again, so a motion that began in the cooldown and then stood
+    // still was never recorded.
+    private readonly ConcurrentDictionary<Guid, byte> motionNotRecorded = new();
+
     // What each hosted camera's pipeline is in use for, beyond what the
     // server wants with the camera itself. One entry per Acquire: the same
     // use can be held more than once (two snapshots at the same time).
@@ -82,6 +88,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         this.recordingIntents = recordingIntents;
 
         this.motionDetectionService.MotionDetected += OnMotionDetected;
+        this.motionDetectionService.PictureAnalyzed += OnPictureAnalyzed;
         this.recordingService.RecordingStateChanged += OnRecordingStateChanged;
 
         // Subscribe before Start so we never miss the first event the
@@ -415,6 +422,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     {
         usbLifecycle.StateChanged -= OnUsbLifecycleChanged;
         motionDetectionService.MotionDetected -= OnMotionDetected;
+        motionDetectionService.PictureAnalyzed -= OnPictureAnalyzed;
         recordingService.RecordingStateChanged -= OnRecordingStateChanged;
 
         // Pipelines should already be stopped by StopAsync; dispose cleans up remaining resources
@@ -806,30 +814,58 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         // removes its pipeline first, then stops the detection, which ends the motion.
         if (!e.IsMotionActive)
         {
+            motionNotRecorded.TryRemove(e.CameraId, out _);
             StopMotionRecording(e.CameraId);
             return;
         }
 
-        if (!managedPipelines.TryGetValue(e.CameraId, out var pipeline))
+        RecordMotion(e.CameraId);
+    }
+
+    // A motion that could not be recorded yet is tried again with every analysed picture, moving
+    // or not, until it is recorded or ends. Runs on the detector's thread.
+    private void OnPictureAnalyzed(
+        object? sender,
+        PictureAnalyzedEventArgs e)
+    {
+        if (motionNotRecorded.ContainsKey(e.CameraId))
         {
+            RecordMotion(e.CameraId);
+        }
+    }
+
+    private void RecordMotion(Guid cameraId)
+    {
+        if (!managedPipelines.TryGetValue(cameraId, out var pipeline))
+        {
+            motionNotRecorded.TryRemove(cameraId, out _);
             return;
         }
 
         try
         {
-            var camera = storageService.GetCameraById(e.CameraId);
+            var camera = storageService.GetCameraById(cameraId);
             if (camera is null ||
                 !ShouldWatchForMotion(camera) ||
                 ShouldRecordContinuously(camera))
             {
+                motionNotRecorded.TryRemove(cameraId, out _);
                 return;
             }
 
-            recordingService.TriggerMotionRecording(camera, pipeline);
+            if (recordingService.TriggerMotionRecording(camera, pipeline))
+            {
+                motionNotRecorded.TryRemove(cameraId, out _);
+            }
+            else
+            {
+                motionNotRecorded[cameraId] = 0;
+            }
         }
         catch (Exception ex)
         {
-            LogStartMotionRecordingFailed(ex, e.CameraId);
+            motionNotRecorded.TryRemove(cameraId, out _);
+            LogStartMotionRecordingFailed(ex, cameraId);
         }
     }
 

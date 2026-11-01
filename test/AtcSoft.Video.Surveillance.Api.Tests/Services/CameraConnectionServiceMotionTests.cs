@@ -193,6 +193,34 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Motion_Refused_By_The_Cooldown_Is_Recorded_When_It_Ends_Though_Nothing_Moves_Any_More()
+    {
+        // Before, only a picture that moved tried again: a motion that began in the cooldown after
+        // the last motion recording and then stood still was never recorded.
+        await ConnectAsync();
+        recordingService.TriggerMotionRecording(camera, pipeline).Returns(false, true);
+
+        RaiseMotion(active: true);
+        RaiseStillPicture();
+        RaiseStillPicture();
+
+        recordingService.Received(2).TriggerMotionRecording(camera, pipeline);
+    }
+
+    [Fact]
+    public async Task A_Motion_That_Ended_Is_Not_Tried_Again()
+    {
+        await ConnectAsync();
+        recordingService.TriggerMotionRecording(camera, pipeline).Returns(false);
+
+        RaiseMotion(active: true);
+        RaiseMotion(active: false);
+        RaiseStillPicture();
+
+        recordingService.Received(1).TriggerMotionRecording(camera, pipeline);
+    }
+
+    [Fact]
     public void A_Motion_End_Raised_After_The_Pipeline_Was_Removed_Still_Ends_The_Motion_Recording()
     {
         // No pipeline is kept for the camera: it was just removed, and stopping
@@ -227,6 +255,9 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
 
     private void RaiseMotion(bool active)
         => motionDetection.MotionDetected += Raise.EventWith(new MotionDetectedEventArgs(camera.Id, 5, active));
+
+    private void RaiseStillPicture()
+        => motionDetection.PictureAnalyzed += Raise.EventWith(new PictureAnalyzedEventArgs(camera.Id, DateTimeOffset.UtcNow, new MotionDetectorResult(false, MotionHoldChange.None, 0, [])));
 
     // Pipelines are closed on a thread-pool thread, never on the one that
     // reports the camera's state.
