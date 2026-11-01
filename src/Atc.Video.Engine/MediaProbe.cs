@@ -19,10 +19,11 @@ public static class MediaProbe
 
         // A recording on a share that stops answering gives up instead of holding this thread.
         using var deadline = new FileReadDeadline(ProbeLimit);
-        var fmtCtx = deadline.NewContext();
+        AVFormatContext* fmtCtx = null;
         AVDictionary* dict = null;
         try
         {
+            fmtCtx = deadline.NewContext();
             int ret = avformat_open_input(ref fmtCtx, filePath, null, ref dict);
             if (ret < 0)
             {
@@ -72,10 +73,11 @@ public static class MediaProbe
 
         // A recording on a share that stops answering gives up instead of holding this thread.
         using var deadline = new FileReadDeadline(ProbeLimit);
-        var fmtCtx = deadline.NewContext();
+        AVFormatContext* fmtCtx = null;
         AVDictionary* dict = null;
         try
         {
+            fmtCtx = deadline.NewContext();
             int ret = avformat_open_input(ref fmtCtx, filePath, null, ref dict);
             if (ret < 0)
             {
@@ -118,10 +120,12 @@ public static class MediaProbe
 
         // A recording on a share that stops answering gives up instead of holding this thread.
         using var deadline = new FileReadDeadline(ProbeLimit);
-        var fmtCtx = deadline.NewContext();
+        AVFormatContext* fmtCtx = null;
         AVDictionary* dict = null;
         try
         {
+            fmtCtx = deadline.NewContext();
+
             // The size may only be known once the streams are probed.
             if (avformat_open_input(ref fmtCtx, filePath, null, ref dict) < 0 ||
                 avformat_find_stream_info(fmtCtx, (AVDictionary**)null) < 0)
