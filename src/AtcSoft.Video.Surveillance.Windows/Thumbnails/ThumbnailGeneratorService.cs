@@ -73,11 +73,15 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
     }
 
     /// <inheritdoc/>
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Write disposes the context on the pool thread it runs on.")]
     public void StopCapture(Guid cameraId)
     {
         if (captures.TryRemove(cameraId, out var context))
         {
-            Finish(context);
+            // The pictures are taken now; drawing and saving the thumbnail runs on a pool thread, not
+            // on the caller (the UI thread when a recording is stopped by hand, or a segment switch).
+            var frames = context.Complete();
+            _ = Task.Run(() => Write(context, frames));
         }
     }
 
@@ -192,8 +196,12 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
     /// releases them. Called once per capture, by whoever removed it.
     /// </summary>
     private void Finish(ThumbnailCaptureContext context)
+        => Write(context, context.Complete());
+
+    private void Write(
+        ThumbnailCaptureContext context,
+        Drawing.Bitmap[] frames)
     {
-        var frames = context.Complete();
         try
         {
             GenerateThumbnail(context, frames);
