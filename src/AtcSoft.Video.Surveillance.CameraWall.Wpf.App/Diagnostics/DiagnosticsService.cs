@@ -13,11 +13,13 @@ public sealed partial class DiagnosticsService : BackgroundServiceBase<Diagnosti
 {
     private static readonly TimeSpan StallAfter = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan NoPacketsAfter = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RecordingWorkerStaleAfter = TimeSpan.FromMinutes(2);
 
     private readonly DiagnosticsServiceOptions options;
     private readonly IApplicationSettingsService settingsService;
     private readonly ICameraStorageService cameraStorage;
     private readonly IRecordingService recordingService;
+    private readonly IRecordingSegmentationService? recordingWorker;
     private readonly RecordingGrowthWatch growthWatch = new(StallAfter);
     private UiResponsivenessWatch? uiWatch;
     private TimeSpan lastCpu;
@@ -31,13 +33,15 @@ public sealed partial class DiagnosticsService : BackgroundServiceBase<Diagnosti
         DiagnosticsServiceOptions options,
         IApplicationSettingsService settingsService,
         ICameraStorageService cameraStorage,
-        IRecordingService recordingService)
+        IRecordingService recordingService,
+        IRecordingSegmentationService? recordingWorker = null)
         : base(logger, Park(options))
     {
         this.options = options;
         this.settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         this.cameraStorage = cameraStorage ?? throw new ArgumentNullException(nameof(cameraStorage));
         this.recordingService = recordingService ?? throw new ArgumentNullException(nameof(recordingService));
+        this.recordingWorker = recordingWorker;
     }
 
     private string Folder => Path.Combine(options.LogPath, "diagnostics");
@@ -220,8 +224,20 @@ public sealed partial class DiagnosticsService : BackgroundServiceBase<Diagnosti
         return text.ToString();
     }
 
+    // The worker that segments, guards the disk and starts recordings again passes every 30 s; one
+    // that has not passed for two minutes is stuck, and recordings are no longer looked after.
+    private void CheckRecordingWorker()
+    {
+        if (recordingWorker?.LastPassUtc is { } lastPass &&
+            DateTime.UtcNow - lastPass > RecordingWorkerStaleAfter)
+        {
+            LogRecordingWorkerStale((DateTime.UtcNow - lastPass).TotalMinutes);
+        }
+    }
+
     private void Sample()
     {
+        CheckRecordingWorker();
         var now = DateTimeOffset.Now;
         using var process = Process.GetCurrentProcess();
         var cpuTime = process.TotalProcessorTime;

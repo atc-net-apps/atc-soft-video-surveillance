@@ -34,4 +34,7 @@ public sealed partial class DiagnosticsService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "A health sample failed")]
     private partial void LogSampleFailed(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The recording worker has not passed for {Minutes:N1} min: segments, the disk space guard and restarting recordings are stuck")]
+    private partial void LogRecordingWorkerStale(double minutes);
 }
