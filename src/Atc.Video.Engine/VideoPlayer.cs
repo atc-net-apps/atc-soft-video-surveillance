@@ -13,6 +13,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     private const int MaxConsecutiveReadErrors = 30;
     private const int FpsUpdateIntervalMs = 1000;
     private const int ThreadJoinTimeoutMs = 5000;
+    private const int MaxDecoderRecoveries = 3;
 
     // A stream that delivered packets and then sends nothing for this long is lost, however few read
     // errors that took (each read waits 10 s): found in seconds, not after 30 timeouts (~5 minutes).
@@ -68,6 +69,13 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
 
     // A run's thread that did not end in time; the next run waits for it.
     private Thread? lingeringRun;
+
+    // The decoder: how many threads it gets, how often it was opened again after failing, and
+    // whether decoding has stopped (the stream is still recorded). Used on the demux thread.
+    private int decoderThreads;
+    private int decoderRecoveries;
+    private bool decodingStopped;
+    private VideoDecoder? runDecoder;
     private CancellationTokenSource? demuxCts;
     private int fpsFrameCount;
     private long lastPacketTicks;
@@ -806,6 +814,9 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             LogStreamDemuxerOpened(source);
 
             var threadCount = VideoEngineBootstrap.Config?.DecoderThreads ?? 0;
+            decoderThreads = threadCount;
+            decoderRecoveries = 0;
+            decodingStopped = false;
             var useHwAccel = options.HardwareAcceleration
                 && gpuAccelerator is { IsInitialized: true };
             var hwDeviceCtx = useHwAccel
@@ -817,6 +828,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
 
             demuxer = localDemuxer;
             decoder = localDecoder;
+            runDecoder = localDecoder;
 
             latestFrame = av_frame_alloc();
 
@@ -867,6 +879,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         Demuxer? localDemuxer,
         VideoDecoder? localDecoder)
     {
+        VideoDecoder? replacedDecoder;
         lock (encoderLock)
         {
             frameEncoder?.Dispose();
@@ -882,10 +895,11 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             remuxer?.Dispose();
             remuxer = null;
 
-            if (ReferenceEquals(decoder, localDecoder))
-            {
-                decoder = null;
-            }
+            // The runs take turns, so the decoder in the field is this run's: the one it opened, or one
+            // that replaced it after it failed (disposed here; the first is disposed by the run).
+            replacedDecoder = ReferenceEquals(decoder, localDecoder) ? null : decoder;
+            decoder = null;
+            runDecoder = null;
 
             if (ReferenceEquals(demuxer, localDemuxer))
             {
@@ -897,6 +911,8 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 av_frame_free(ref memoryFrame);
             }
         }
+
+        replacedDecoder?.Dispose();
 
         lock (frameLock)
         {
@@ -1003,6 +1019,49 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         }
     }
 
+    // A decoder that keeps failing (a driver problem with hardware decoding, a stream it cannot
+    // follow) is opened again on the processor, a few times; after that the stream is only
+    // recorded, not decoded. Runs on the demux thread.
+    private void RecoverDecoder(FFmpegException failure)
+    {
+        var source = StreamInfo?.CodecName ?? "stream";
+        if (decoderRecoveries >= MaxDecoderRecoveries)
+        {
+            decodingStopped = true;
+            LogDecodingStopped(source, failure.Message);
+            return;
+        }
+
+        decoderRecoveries++;
+        var replacement = new VideoDecoder();
+        try
+        {
+            replacement.Open(demuxer!.VideoCodecParameters, decoderThreads);
+        }
+        catch (Exception ex) when (ex is FFmpegException or InvalidOperationException)
+        {
+            replacement.Dispose();
+            decodingStopped = true;
+            LogDecodingStopped(source, ex.Message);
+            return;
+        }
+
+        VideoDecoder? failed;
+        lock (encoderLock)
+        {
+            failed = decoder;
+            decoder = replacement;
+        }
+
+        // The run's first decoder is disposed by the run itself as it ends.
+        if (!ReferenceEquals(failed, runDecoder))
+        {
+            failed?.Dispose();
+        }
+
+        LogDecoderReopened(source, decoderRecoveries, failure.Message);
+    }
+
     private void ProcessVideoPacket()
     {
         // A stream that is being encoded is recorded picture by picture
@@ -1023,7 +1082,25 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             }
         }
 
-        if (!decoder!.SendPacket(demuxer!.CurrentPacket))
+        // The packet is in the recording already: a decoder that fails costs the picture (and the
+        // motion analysis), never the recording.
+        if (decodingStopped)
+        {
+            return;
+        }
+
+        bool sent;
+        try
+        {
+            sent = decoder!.SendPacket(demuxer!.CurrentPacket);
+        }
+        catch (FFmpegException ex)
+        {
+            RecoverDecoder(ex);
+            return;
+        }
+
+        if (!sent)
         {
             return;
         }
