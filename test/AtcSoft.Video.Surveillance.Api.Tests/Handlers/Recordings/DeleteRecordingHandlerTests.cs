@@ -49,6 +49,23 @@ public sealed class DeleteRecordingHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Recording_The_Server_May_Not_Delete_Is_A_Conflict_With_The_Reason_Not_A_Server_Error()
+    {
+        File.SetAttributes(video, FileAttributes.ReadOnly);
+        try
+        {
+            var result = await ExecuteAsync("Garden/Garden_20261012_101500_000.mp4");
+
+            result.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+            File.Exists(video).Should().BeTrue();
+        }
+        finally
+        {
+            File.SetAttributes(video, FileAttributes.Normal);
+        }
+    }
+
+    [Fact]
     public async Task A_Recording_That_Is_Not_There_Is_Not_Found()
     {
         var result = await ExecuteAsync("Garden/Garden_20261012_111500_000.mp4");

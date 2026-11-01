@@ -40,6 +40,11 @@ public sealed partial class AccountService : IAccountService
 
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromDays(30);
 
+    /// <summary>
+    /// How many sessions a user keeps at most; signing in once more ends the one used least lately.
+    /// </summary>
+    public const int MaxSessionsPerUser = 20;
+
     private static readonly JsonSerializerOptions FileOptions = new()
     {
         WriteIndented = true,
@@ -53,6 +58,7 @@ public sealed partial class AccountService : IAccountService
     private readonly ILogger<AccountService> logger;
     private readonly PasswordHasher<StoredUser> hasher = new();
     private readonly StoredAccounts file;
+    private readonly ServerDataFile accountsFile;
 
     // In memory only: a rotated token's hash -> its session and how long it still renews.
     private readonly Dictionary<string, GraceEntry> graces = new(StringComparer.Ordinal);
@@ -71,7 +77,32 @@ public sealed partial class AccountService : IAccountService
         this.time = time;
         this.logger = logger;
         Tokens = new AccessTokens(paths.SigningKeyPath, time);
-        file = SafeJsonFile.TryRead<StoredAccounts>(paths.AccountsPath, FileOptions) ?? new StoredAccounts();
+
+        // Files an older server wrote with the folder's access are kept from
+        // the machine's other users from now on.
+        foreach (var secret in new[] { paths.SigningKeyPath, paths.AccountsPath, paths.AccountsPath + ".bak", paths.SetupCodePath })
+        {
+            if (!SecretFile.TryRestrict(secret))
+            {
+                LogSecretNotRestricted(secret);
+            }
+        }
+
+        // A file that cannot be read is never taken for a missing one: no new
+        // setup code is made for it (whoever read the code would become an
+        // admin), and nothing is saved over it unless it was copied aside.
+        accountsFile = new ServerDataFile(
+            paths.AccountsPath,
+            logger,
+            onPreserved: copy =>
+            {
+                // The copy holds password and token hashes too.
+                if (!SecretFile.TryRestrict(copy))
+                {
+                    LogSecretNotRestricted(copy);
+                }
+            });
+        file = accountsFile.Read<StoredAccounts>(FileOptions) ?? new StoredAccounts();
 
         // A file from before sessions had an id.
         foreach (var session in file.Sessions.Where(s => s.Id == Guid.Empty))
@@ -79,7 +110,7 @@ public sealed partial class AccountService : IAccountService
             session.Id = Guid.NewGuid();
         }
 
-        if (file.Users.Count == 0)
+        if (file.Users.Count == 0 && accountsFile.Outcome != JsonFileReadOutcome.Unreadable)
         {
             EnsureSetupCode();
         }
@@ -145,27 +176,41 @@ public sealed partial class AccountService : IAccountService
         string userName,
         string password)
     {
+        // The password is checked outside the lock: hashing takes a while on
+        // purpose, and every request's token check takes the same lock.
+        StoredUser? found;
+        string passwordHash;
         lock (sync)
         {
-            var user = FindUser(userName);
-            if (user is null)
+            found = FindUser(userName);
+            passwordHash = found?.PasswordHash ?? DummyHash;
+        }
+
+        // As long for an unknown user as for a known one, so the time does not tell which.
+        var verified = hasher.VerifyHashedPassword(found ?? new StoredUser(), passwordHash, password);
+        if (found is null || verified == PasswordVerificationResult.Failed)
+        {
+            LogSignInRefused();
+            return null;
+        }
+
+        var rehashed = verified == PasswordVerificationResult.SuccessRehashNeeded
+            ? hasher.HashPassword(found, password)
+            : null;
+
+        lock (sync)
+        {
+            // The user may have been deleted, or given a new password, meanwhile.
+            var user = file.Users.Find(u => u.Id == found.Id);
+            if (user is null || !string.Equals(user.PasswordHash, passwordHash, StringComparison.Ordinal))
             {
-                // As long as for a known user, so the time does not tell which.
-                hasher.VerifyHashedPassword(new StoredUser(), DummyHash, password);
                 LogSignInRefused();
                 return null;
             }
 
-            var verified = hasher.VerifyHashedPassword(user, user.PasswordHash, password);
-            if (verified == PasswordVerificationResult.Failed)
+            if (rehashed is not null)
             {
-                LogSignInRefused();
-                return null;
-            }
-
-            if (verified == PasswordVerificationResult.SuccessRehashNeeded)
-            {
-                user.PasswordHash = hasher.HashPassword(user, password);
+                user.PasswordHash = rehashed;
             }
 
             var session = StartSession(user);
@@ -305,16 +350,31 @@ public sealed partial class AccountService : IAccountService
         string currentPassword,
         string newPassword)
     {
+        // Hashing is done outside the lock, as for a sign-in.
+        StoredUser? found;
+        string passwordHash;
         lock (sync)
         {
-            var user = FindUser(userName);
-            if (user is null ||
-                hasher.VerifyHashedPassword(user, user.PasswordHash, currentPassword) == PasswordVerificationResult.Failed)
+            found = FindUser(userName);
+            passwordHash = found?.PasswordHash ?? DummyHash;
+        }
+
+        if (found is null ||
+            hasher.VerifyHashedPassword(found, passwordHash, currentPassword) == PasswordVerificationResult.Failed)
+        {
+            return false;
+        }
+
+        var newHash = hasher.HashPassword(found, newPassword);
+        lock (sync)
+        {
+            var user = file.Users.Find(u => u.Id == found.Id);
+            if (user is null || !string.Equals(user.PasswordHash, passwordHash, StringComparison.Ordinal))
             {
                 return false;
             }
 
-            user.PasswordHash = hasher.HashPassword(user, newPassword);
+            user.PasswordHash = newHash;
             file.Sessions.RemoveAll(s => s.UserId == user.Id);
             Save();
             return true;
@@ -407,6 +467,48 @@ public sealed partial class AccountService : IAccountService
         }
     }
 
+    /// <summary>
+    /// Gets whether an access token still holds: its session lives (no sign-out,
+    /// no new password, the user not deleted) and the user still has the role it
+    /// names. One that does not is refused; the client renews its session and gets
+    /// a token with the user's role as it is now.
+    /// </summary>
+    /// <param name="principal">The token's claims, its signature and lifetime already checked.</param>
+    /// <returns><see langword="true"/> when the token may be used.</returns>
+    public bool IsAccessTokenCurrent(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        if (principal.Identity is not ClaimsIdentity identity)
+        {
+            return false;
+        }
+
+        lock (sync)
+        {
+            return IsCurrent(identity, checkRole: true);
+        }
+    }
+
+    /// <summary>
+    /// Checks a media token (<c>?media=</c>): valid, and its session still lives.
+    /// </summary>
+    /// <param name="token">The token from the address.</param>
+    /// <returns><see langword="true"/> when the recordings may be served.</returns>
+    public async Task<bool> IsValidMediaTokenAsync(string? token)
+    {
+        var identity = await Tokens.ReadMediaTokenAsync(token).ConfigureAwait(false);
+        if (identity is null)
+        {
+            return false;
+        }
+
+        lock (sync)
+        {
+            return IsCurrent(identity, checkRole: false);
+        }
+    }
+
     private static AccountUser ToUser(StoredUser user)
         => new(user.Id, user.UserName, user.Role, user.CreatedAt);
 
@@ -453,15 +555,28 @@ public sealed partial class AccountService : IAccountService
         file.Sessions.RemoveAll(s => s.ExpiresAt <= now);
 
         var refreshToken = NewRefreshToken();
-        file.Sessions.Add(new StoredSession
+        var session = new StoredSession
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
             TokenHash = HashToken(refreshToken),
             ExpiresAt = now + SessionLifetime,
-        });
+        };
+        file.Sessions.Add(session);
 
-        return CreateSession(user, refreshToken);
+        // A user signed in on more devices than this loses the session used least lately:
+        // the file and every token check stay small however often someone signs in.
+        var sessionsOfUser = file.Sessions.Where(s => s.UserId == user.Id).ToList();
+        if (sessionsOfUser.Count > MaxSessionsPerUser)
+        {
+            foreach (var oldest in sessionsOfUser.OrderBy(s => s.ExpiresAt).Take(sessionsOfUser.Count - MaxSessionsPerUser))
+            {
+                file.Sessions.Remove(oldest);
+                ForgetGraces(oldest.Id);
+            }
+        }
+
+        return CreateSession(user, session.Id, refreshToken);
     }
 
     // Called under the lock: gives a session a new refresh token, and keeps the
@@ -491,7 +606,7 @@ public sealed partial class AccountService : IAccountService
         newestTokens[stored.Id] = refreshToken;
         Save();
 
-        return CreateSession(user, refreshToken);
+        return CreateSession(user, stored.Id, refreshToken);
     }
 
     // Called under the lock: a rotated token within its grace window gets the
@@ -510,7 +625,7 @@ public sealed partial class AccountService : IAccountService
             return null;
         }
 
-        return CreateSession(user, refreshToken);
+        return CreateSession(user, sessionId, refreshToken);
     }
 
     // Called under the lock: the token before the current one, sent again after
@@ -564,22 +679,54 @@ public sealed partial class AccountService : IAccountService
 
     private AccountSession CreateSession(
         StoredUser user,
+        Guid sessionId,
         string refreshToken)
         => new(
-            Tokens.Create(user.Id, user.UserName, user.Role),
+            Tokens.Create(user.Id, sessionId, user.UserName, user.Role),
             Tokens.Lifetime,
             refreshToken,
             user.UserName,
             user.Role,
-            Tokens.CreateMediaToken(user.UserName));
+            Tokens.CreateMediaToken(user.Id, sessionId, user.UserName));
+
+    // Called under the lock: whether what a token was made for still holds.
+    // A token without a session id was made by an older server: it holds while
+    // its user does (it runs out within the hour, a media token within twelve).
+    private bool IsCurrent(
+        ClaimsIdentity identity,
+        bool checkRole)
+    {
+        var user = Guid.TryParse(identity.FindFirst(AccessTokens.UserIdClaim)?.Value, out var userId)
+            ? file.Users.Find(u => u.Id == userId)
+            : FindUser(identity.FindFirst(CallerIdentity.NameClaim)?.Value ?? string.Empty);
+        if (user is null)
+        {
+            return false;
+        }
+
+        if (checkRole &&
+            !string.Equals(identity.FindFirst(CallerIdentity.RoleClaim)?.Value, user.Role.ToApiRoleName(), StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (identity.FindFirst(AccessTokens.SessionClaim)?.Value is not { } sid)
+        {
+            return true;
+        }
+
+        var now = time.GetUtcNow();
+        return Guid.TryParse(sid, out var sessionId) &&
+               file.Sessions.Exists(s => s.Id == sessionId && s.UserId == user.Id && s.ExpiresAt > now);
+    }
 
     private void EnsureSetupCode()
     {
         if (ReadSetupCode() is null)
         {
+            // Whoever reads the code becomes the first admin.
             var code = new string(RandomNumberGenerator.GetItems(SetupCodeAlphabet.AsSpan(), SetupCodeLength));
-            Directory.CreateDirectory(Path.GetDirectoryName(paths.SetupCodePath)!);
-            File.WriteAllText(paths.SetupCodePath, code);
+            SecretFile.WriteAllText(paths.SetupCodePath, code);
         }
 
         // Where the code is, never the code itself.
@@ -601,10 +748,8 @@ public sealed partial class AccountService : IAccountService
 
     private void Save()
     {
-        if (!SafeJsonFile.TryWrite(paths.AccountsPath, file, FileOptions))
-        {
-            LogSaveFailed(paths.AccountsPath);
-        }
+        // The users' password hashes and sessions: kept from the machine's other users.
+        accountsFile.TryWrite(file, FileOptions, SecretFile.WriteAllText);
     }
 
     // What the file holds.

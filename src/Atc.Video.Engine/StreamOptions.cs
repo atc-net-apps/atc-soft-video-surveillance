@@ -111,6 +111,16 @@ public sealed class StreamOptions
     public bool TranscodeRecordingToH264 { get; set; }
 
     /// <summary>
+    /// Gets or sets how far back a recording may start: the player keeps the
+    /// packets of that long (from a key frame on), and
+    /// <see cref="IVideoPlayer.FindRecordingStart"/> can go back as far.
+    /// Zero (the default) keeps the packets from the last key frame on, so a
+    /// recording still starts at once. Only a source whose packets are
+    /// recorded as they are keeps them; one that is encoded keeps none.
+    /// </summary>
+    public TimeSpan RecordingPreRoll { get; set; }
+
+    /// <summary>
     /// The FFmpeg input-format string corresponding to
     /// <see cref="InputFormat"/>, or <see langword="null"/> when set
     /// to <see cref="InputFormatKind.Auto"/> (let FFmpeg sniff).

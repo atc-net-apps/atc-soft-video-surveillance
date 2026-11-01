@@ -6,7 +6,12 @@ namespace Atc.Video.Engine.DirectX;
 /// </summary>
 internal sealed unsafe class HwAccelContext : IDisposable
 {
+    // Kept alive for as long as FFmpeg may call them.
+    private static readonly AVD3D11VADeviceContext_lock LockCallback = Lock;
+    private static readonly AVD3D11VADeviceContext_unlock UnlockCallback = Unlock;
+
     private AVBufferRef* deviceContextBuffer;
+    private GCHandle lockHandle;
     private bool disposed;
 
     public HwAccelContext(D3D11Device d3d11Device)
@@ -22,6 +27,14 @@ internal sealed unsafe class HwAccelContext : IDisposable
 
         d3d11Ctx->device = (Flyleaf.FFmpeg.ID3D11Device*)(void*)d3d11Device.Device.NativePointer;
         d3d11Ctx->device_context = (Flyleaf.FFmpeg.ID3D11DeviceContext*)(void*)d3d11Device.DeviceContext.NativePointer;
+
+        // FFmpeg's work on the immediate context takes the device's own lock, the one our picture
+        // processing, presenting and snapshots take: they never interleave (unset, FFmpeg used a
+        // lock of its own that our work did not know about).
+        lockHandle = GCHandle.Alloc(d3d11Device);
+        d3d11Ctx->lock_ctx = (void*)GCHandle.ToIntPtr(lockHandle);
+        d3d11Ctx->@lock = LockCallback;
+        d3d11Ctx->unlock = UnlockCallback;
 
         int ret = av_hwdevice_ctx_init(deviceContextBuffer);
         if (ret < 0)
@@ -51,6 +64,27 @@ internal sealed unsafe class HwAccelContext : IDisposable
         if (deviceContextBuffer is not null)
         {
             av_buffer_unref(ref deviceContextBuffer);
+        }
+
+        if (lockHandle.IsAllocated)
+        {
+            lockHandle.Free();
+        }
+    }
+
+    private static void Lock(void* context)
+    {
+        if (GCHandle.FromIntPtr((nint)context).Target is D3D11Device device)
+        {
+            device.EnterContext();
+        }
+    }
+
+    private static void Unlock(void* context)
+    {
+        if (GCHandle.FromIntPtr((nint)context).Target is D3D11Device device)
+        {
+            device.LeaveContext();
         }
     }
 }

@@ -1,347 +1,125 @@
-# 📹 AtcSoft.Video.Surveillance
+# 📹 AtcSoft Video Surveillance
 
-A professional video surveillance platform for live monitoring of multiple RTSP/HTTP camera streams. Includes a WPF desktop application with an intuitive ribbon interface, a headless REST API server edition (live events over Server-Sent Events), and Aspire orchestration.
+[![Release](https://img.shields.io/github/v/release/atc-net-apps/atc-soft-video-surveillance?include_prereleases&logo=github&style=for-the-badge)](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/atc-net-apps/atc-soft-video-surveillance/ci.yml?branch=main&label=build&logo=github&style=for-the-badge)](https://github.com/atc-net-apps/atc-soft-video-surveillance/actions/workflows/ci.yml)
+[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&style=for-the-badge)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
-[![Release](https://img.shields.io/github/v/release/atc-net-apps/atc-soft-video-surveillance?include_prereleases)](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+Live view, recording, motion detection and an activity timeline for your RTSP, HTTP and USB cameras, on your own hardware. **No cloud, no subscription, no camera licences.**
 
-## ✨ Features
+> 📥 **Installing?** The **[installation guides](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki)** in the wiki take you through it step by step, for [CameraWall](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-CameraWall) and for the [Video Surveillance system](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance).
 
-### 🖥️ Camera Display
-- **Dynamic Grid Layout** - Auto-calculates optimal grid based on camera count (optimized for 4:3 aspect ratio)
-- **Camera Tile Overlay** - Configurable overlay showing title, description, timestamp, and connection status
-- **Overlay Configuration** - Choose corner position (TopLeft, TopRight, BottomLeft, BottomRight) and opacity (0-100%)
-- **Stream Rotation** - Per-camera 0°/90°/180°/270° rotation for the live picture, motion boxes, snapshots and thumbnails. Recordings carry a rotation flag (display matrix) that standard players and the built-in player apply at playback.
-- **Full Screen Mode** - Double-click or use context menu to view any camera in full screen (Escape to exit)
-- **Connection State Indicators** - Visual indicators for Connected, Connecting, and Error states
+## 🧭 Two Ways to Run It
 
-### 🔍 Zoom & Pan
-- **Scroll Zoom** - Ctrl+Scroll to zoom in/out on any camera tile or full screen view, centered on mouse pointer
-- **Rectangle Selection Zoom** - Ctrl+Left-drag to draw a selection rectangle, zooms to the selected region on release
-- **Pan** - Ctrl+Left-drag while zoomed to pan the viewport
-- **Zoom Indicator** - "Zoom: 150%" badge displayed on camera tile while zoomed
-- **Reset Zoom** - Double-click or ESC to reset back to fit-to-view
-- **Single Zoom Policy** - Only one camera tile can be zoomed at a time in the grid layout; zooming another resets the previous
-- **Motion Overlay Pause** - Bounding box overlays are hidden while zoomed to avoid visual clutter, restored on reset
-- **GPU-Accelerated** - Zoom operates at the DirectComposition transform level for smooth, low-latency rendering
-
-### 📷 Camera Management
-- **Context Menu** - Edit, Delete, Full Screen, Swap Left/Right, Snapshot, Reconnect, Start/Stop Recording, Reset Zoom, Rotate (0°/90°/180°/270°)
-- **Drag-and-Drop** - Reorder cameras by dragging tiles within the grid
-- **Network Scanner** - Auto-discover cameras on the local network (integrated in Add Camera dialog)
-- **Test Connection** - Validate camera connectivity before saving
-- **Multiple Protocols** - RTSP, HTTP, and HTTPS support with configurable ports and paths
-- **USB / Webcam Support** - Mix DirectShow / UVC USB cameras with IP cameras in the same grid (Windows). Devices are enumerated via Media Foundation; hot-plug events surface via WMI so unplugged devices transition cleanly to a `DeviceUnplugged` state instead of thrashing in a reconnect loop. See [`docs/usb-cameras.md`](docs/usb-cameras.md).
-- **Per-Camera Overrides** - Override any application-level setting on a per-camera basis (connection, display, performance, recording, motion detection)
-
-### 🔴 Recording
-- **Manual Recording** - Start/stop recording per camera via context menu
-- **Auto-Record on Connect** - Automatically start recording when a camera connects
-- **Motion-Triggered Recording** - Automatically record when motion is detected, with configurable post-motion duration
-- **Recording Segmentation** - Clock-aligned automatic file segmentation (e.g., every 15 minutes at :00, :15, :30, :45)
-- **Recording Format** - Configurable format (MP4, MKV, AVI) with per-camera override
-- **Recording Indicator** - Visual indicator when recording is active
-- **Thumbnail Generation** - Auto-generates thumbnails from recording frames (single image or 2x2 grid)
-- **Recording Folder Layout** - Optional folder per day and a separate thumbnail folder, to keep long-running archives easy to browse
-- **Recordings Browser** - Browse, filter, and playback recorded videos with playback overlay
-
-### 🏃 Motion Detection
-- **Frame-Based Detection** - Compares consecutive frames using grayscale pixel differencing
-- **Multi-Bounding Box** - Detects and highlights multiple motion regions simultaneously using grid-based clustering
-- **Configurable Sensitivity** - 0-100 scale (higher = more motion required to trigger)
-- **Analysis Resolution** - Configurable analysis width/height for performance tuning
-- **Bounding Box Visualization** - Real-time colored bounding boxes in both grid and full-screen views with configurable color, thickness, smoothing, and minimum area
-- **Smart Scheduling** - Staggered analysis across cameras to prevent CPU spikes
-- **Post-Motion Duration** - Continue recording for configurable seconds after motion stops
-- **Cooldown** - Configurable delay before motion can trigger a new recording
-
-### ⏱️ Timelapse
-- **Interval Capture** - Automatically capture snapshots at configurable intervals (10s, 1m, 5m, 1h)
-- **Per-Camera Configuration** - Enable/disable and configure interval per camera
-- **Organized Storage** - Snapshots stored in camera-named subdirectories
-
-### 📐 Layout Management
-- **Named Layouts** - Create, save, and switch between named layouts
-- **Startup Layout** - Designate a layout to load on application start
-- **Auto-Save** - Automatic persistence of camera positions (configurable)
-- **Camera Assignment** - Dual-list dialog for assigning cameras to layouts
-
-### 🧹 Media Cleanup
-- **Automatic Cleanup** - Remove old recordings and snapshots based on retention policy
-- **Flexible Scheduling** - On startup, hourly, daily, or weekly cleanup
-- **Configurable Retention** - Set maximum age for recordings (default 30 days) and snapshots (default 7 days)
-
-### 🔌 Connectivity
-- **Auto-Reconnect** - Automatic reconnection on failure with configurable delay
-- **Connection Timeout** - Configurable timeout per camera or globally
-- **Disconnect Notifications** - Optional notifications on camera disconnect/reconnect
-- **Notification Sounds** - Optional audio alert on connectivity events
-
-### 🎨 User Interface
-- **Fluent Ribbon UI** - Modern ribbon interface with Layouts, Cameras, View, and Help tabs
-- **Theme Support** - Dark/Light theme switching with configurable accent colors
-- **Multi-Language** - Localization support via LCID-based language selection
-- **Settings Dialog** - Comprehensive settings organized into General, Camera Display, Connection, Performance, Recording, Motion Detection, Timelapse, and Advanced sections
-- **Recordings Browser** - Browse and playback recorded videos with filtering
-- **About Dialog** - Application version and information
-- **Check for Updates** - GitHub-based update checking with download link
-
-### 📦 Installation
-- **MSI Installer** - Windows installer with Start Menu and Desktop shortcuts
-- **Per-Machine Install** - Installs for all users on the machine
-
-## 🛠️ Technology Stack
-
-| Component | Technology |
-|-----------|------------|
-| Framework | .NET 10.0 / .NET 10.0-windows |
-| Desktop UI | WPF with Fluent.Ribbon, Atc.Wpf.Controls |
-| Server | ASP.NET Core, Server-Sent Events, HLS |
-| API Definition | OpenAPI 3.2 (atc-rest-api-source-generator v3) |
-| Video Engine | Atc.Video.Engine (desktop + server, in-process FFmpeg) |
-| Orchestration | .NET Aspire |
-| MVVM | Atc.XamlToolkit |
-| Source Generators | Atc.SourceGenerators |
-| Theming | Atc.Wpf.Theming |
-| Logging | Serilog (file sink) |
-| Versioning | release-please (Conventional Commits) |
-| Installer | WiX Toolset v5 |
-
-## 🏗️ Solution Structure
-
-```
-AtcSoft.Video.Surveillance/
-├── src/
-│   ├── AtcSoft.Video.Surveillance/        # 📚 Shared library: models, enums, events, service interfaces
-│   ├── Atc.Video.Engine/                   # 🎬 Cross-platform video engine (FFmpeg in-process)
-│   ├── Atc.Video.Engine.DirectX/           # 🖥️ D3D11VA GPU acceleration for WPF
-│   ├── Atc.Video.Player.Wpf/               # 🎞️ WPF VideoHost control (DComp surface + overlay)
-│   ├── AtcSoft.Video.Surveillance.Wpf.Core/    # 🧩 Shared WPF library (dialogs, controls, services)
-│   ├── AtcSoft.Video.Surveillance.CameraWall.Wpf/                # 🧱 CameraWall WPF library (used by the CameraWall app)
-│   ├── AtcSoft.Video.Surveillance.CameraWall.Wpf.App/            # 🚀 Standalone WPF desktop app (Fluent.Ribbon)
-│   ├── AtcSoft.Video.Surveillance.Wpf/         # 🌐 WPF library for API client (GatewayService, event stream)
-│   ├── AtcSoft.Video.Surveillance.Wpf.App/     # 🚀 WPF API client app (Fluent.Ribbon)
-│   ├── VideoSurveillance.yaml                  # 📝 OpenAPI 3.2 spec (shared contract)
-│   ├── AtcSoft.Video.Surveillance.Api.Contracts/ # 📋 Generated: endpoints, models, handler interfaces
-│   ├── AtcSoft.Video.Surveillance.Api.Domain/  # ⚙️ Handler implementations calling Core services
-│   ├── AtcSoft.Video.Surveillance.Api/         # 🌍 ASP.NET Core host (REST, events, HLS)
-│   ├── AtcSoft.Video.Surveillance.Blazor.App/  # 🌐 Blazor WebAssembly UI (MudBlazor)
-│   └── AtcSoft.Video.Surveillance.Aspire/      # ☁️ Aspire AppHost (orchestration + dashboard)
-│
-├── setup/
-│   ├── AtcSoft.Video.Surveillance.CameraWall.Installer/          # 📦 WiX MSI installer (CameraWall)
-│   └── AtcSoft.Video.Surveillance.Installer/   # 📦 WiX MSI installer (VideoSurveillance)
-│
-├── test/
-│   ├── AtcSoft.Video.Surveillance.Tests/      # ✅ xUnit v3 tests for Core
-│   ├── AtcSoft.Video.Surveillance.Wpf.Core.Tests/  # ✅ xUnit v3 tests for Wpf.Core
-│   ├── AtcSoft.Video.Surveillance.Api.Tests/        # ✅ xUnit v3 tests for API
-│   └── Atc.Video.Engine.Tests/                  # ✅ xUnit v3 tests for Atc.Video.Engine
-│
-├── docs/                        # 📚 System documentation
-│   ├── architecture.md          # 🏛️ Architecture diagrams and assembly details
-│   ├── disk-space-guard.md      # 💾 Disk space guard
-│   ├── motion-detection.md      # 🏃 Motion detection setup guide
-│   ├── settings.md              # ⚙️ Complete settings reference
-│   └── usb-cameras.md           # 🎥 USB camera support
-│
-└── plans/                       # 🗺️ Roadmaps and plans (not system documentation)
-    ├── roadmap.md               # 🗺️ Roadmap home: every area, its status and what is next
-    └── roadmap-*.md             # 🗺️ One roadmap per area
-```
-
-### 🔗 Dependency Graph
-
-Arrows point from a project to the projects it depends on (compile-time `ProjectReference`).
-
-```mermaid
-flowchart TD
-    subgraph Foundation["📚 Foundation (cross-platform, net10.0)"]
-        Core[AtcSoft.Video.Surveillance]
-        VE[Atc.Video.Engine]
-    end
-
-    subgraph Server["☁️ Server (REST + events)"]
-        Contracts[AtcSoft.Video.Surveillance.Api.Contracts]
-        Domain[AtcSoft.Video.Surveillance.Api.Domain]
-        Api[AtcSoft.Video.Surveillance.Api]
-        Blazor[AtcSoft.Video.Surveillance.Blazor.App]
-    end
-
-    subgraph Windows["🪟 Windows-only (net10.0-windows)"]
-        VEDx[Atc.Video.Engine.DirectX]
-        VPWpf[Atc.Video.Player.Wpf]
-        WpfCore[AtcSoft.Video.Surveillance.Wpf.Core]
-        CamWall[AtcSoft.Video.Surveillance.CameraWall.Wpf]
-        VsWpf[AtcSoft.Video.Surveillance.Wpf]
-    end
-
-    subgraph Apps["🚀 Applications"]
-        CamApp[AtcSoft.Video.Surveillance.CameraWall.Wpf.App]
-        VsApp[AtcSoft.Video.Surveillance.Wpf.App]
-        Aspire[AtcSoft.Video.Surveillance.Aspire]
-    end
-
-    %% Server stack
-    Contracts --> Core
-    Domain --> Contracts
-    Domain --> Core
-    Api --> Contracts
-    Api --> Domain
-    Api --> Core
-    Api --> VE
-
-    %% Windows / WPF stack
-    VEDx --> VE
-    VPWpf --> VEDx
-    WpfCore --> Core
-    WpfCore --> VPWpf
-    CamWall --> WpfCore
-    VsWpf --> Core
-    VsWpf --> WpfCore
-
-    %% App composition
-    CamApp --> CamWall
-    VsApp --> VsWpf
-    Aspire --> Api
-    Aspire --> Blazor
-    Aspire --> CamApp
-    Aspire --> VsApp
-```
-
-## 🔧 Services
-
-Services are split between Core (shared) and WPF (UI-specific), all auto-registered via `[Registration]` attributes.
-
-### 📚 Core Services (AtcSoft.Video.Surveillance)
-
-| Service | Description |
-|---------|-------------|
-| `ICameraStorageService` | 💾 Persistence for cameras and layouts |
-| `IApplicationSettingsService` | ⚙️ Application settings with per-camera override support |
-| `IRecordingService` | 🔴 Manual and motion-triggered recording management |
-| `IRecordingSegmentationService` | ✂️ Clock-aligned recording file segmentation |
-| `IMotionDetectionService` | 🏃 Frame-based motion detection with multi-bounding box support |
-| `ITimelapseService` | ⏱️ Interval-based timelapse snapshot capture |
-| `IThumbnailGeneratorService` | 🖼️ Recording thumbnail generation |
-| `IMediaCleanupService` | 🧹 Automatic cleanup of old recordings and snapshots |
-| `IGitHubReleaseService` | 🔄 GitHub-based update checking |
-| `IMediaPipeline` | 🎬 Abstraction for video stream operations (record, capture frame) |
-| `IMediaPipelineFactory` | 🏭 Creates `IMediaPipeline` instances per camera |
-
-### 🖥️ WPF Services (AtcSoft.Video.Surveillance.CameraWall.Wpf)
-
-| Service | Description |
-|---------|-------------|
-| `ICameraWallManager` | 🎛️ Main facade for all camera wall operations |
-| `IDialogService` | 💬 Dialog abstraction for camera config, settings, input, confirmations |
-
-### 🔀 Per-Camera Override System
-
-Every application-level setting can be overridden per camera. Override models use nullable properties -- `null` means "use application default":
-
-```csharp
-// Get effective value: per-camera override wins over app default
-var timeout = settingsService.GetEffectiveValue(
-    camera,
-    settingsService.Connection.ConnectionTimeoutSeconds,
-    o => o?.Connection.ConnectionTimeoutSeconds);
-```
-
-Override categories: Connection, CameraDisplay, Performance, Recording, MotionDetection (with nested BoundingBox).
-
-## 🚀 Getting Started
-
-### 📋 Prerequisites
-
-- Windows 10/11
-- .NET 10 SDK (for building from source)
-- FFmpeg 9 shared libraries (for building from source; the apps offer to install them, see below)
-
-### 📥 Install
-
-Download the latest MSI installer from [GitHub Releases](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases). The installers include FFmpeg, so there is nothing else to install.
-
-### 🎞️ Install FFmpeg (building from source)
-
-The video engine loads FFmpeg in-process, so when you run from source the FFmpeg DLLs have to be on the machine.
-
-**Supported version: FFmpeg 9 (9.0.2), *shared* build, Windows x64.** The bindings (`Flyleaf.FFmpeg.Bindings` 9.0.2) load exactly one major version of each library (`avutil-61.dll`, `avcodec-62.dll`, `avformat-62.dll`, …), so FFmpeg 8 and older are not used. A *shared* build has these DLLs in its `bin` folder; the *essentials* and static builds contain only `ffmpeg.exe`, which won't work.
-
-**The easy way: let the app install it.** When CameraWall or the VideoSurveillance WPF app starts without FFmpeg 9, it shows an *FFmpeg Setup* dialog. It says which FFmpeg is needed and what it found, and offers to:
-
-- **Install FFmpeg**: downloads the pinned 9.0.2 build (about 100 MB) from the [gyan.dev mirror on GitHub](https://github.com/GyanD/codexffmpeg/releases), checks its SHA-256, and puts it in `%ProgramData%\AtcSoft\ffmpeg\9.0.2\bin`, where every app and the server find it. An FFmpeg you installed yourself is never touched.
-- **Use this folder**: takes a folder you name, when it holds FFmpeg 9. The folder is remembered for the whole machine (`%ProgramData%\AtcSoft\ffmpeg\folder.txt`).
-
-The server has no dialog. Without FFmpeg 9 it logs what is needed and exits with code 1. Start it once with `--install-ffmpeg` to install it:
-
-```bash
-dotnet run --project src/AtcSoft.Video.Surveillance.Api -- --install-ffmpeg
-```
-
-**By hand:** download a shared FFmpeg 9 build ([gyan.dev](https://www.gyan.dev/ffmpeg/builds/) `ffmpeg-9.0.2-full_build-shared`, or [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases) `…-win64-gpl-shared-9.0.zip`) and copy everything in its `bin` folder to one of the folders below.
-
-The engine looks in these folders, in this order, and uses the first one whose libraries are all FFmpeg 9:
-
-| # | Folder | Notes |
+| | 🖥️ **CameraWall** | 🌍 **Video Surveillance** (server + clients) |
 |---|---|---|
-| 1 | The folder the app is configured with | |
-| 2 | `ATCSOFT_FFMPEG_PATH` | An environment variable naming a folder |
-| 3 | The folder chosen in the set-up dialog | `%ProgramData%\AtcSoft\ffmpeg\folder.txt` |
-| 4 | `<app folder>\ffmpeg` | What the installers use |
-| 5 | `%ProgramData%\AtcSoft\ffmpeg\9.0.2\bin` | What the set-up dialog and `--install-ffmpeg` install |
-| 6 | `%ProgramFiles%\ffmpeg\bin`, `%LOCALAPPDATA%\ffmpeg\bin`, `C:\ffmpeg\bin` | |
-| 7 | `<app folder>`, then each folder on `PATH` | |
+| **What it is** | One Windows app that connects to the cameras itself | A server that records around the clock, and apps that connect to it |
+| **Good for** | One PC watching and recording a handful of cameras | A home or small business: record on one machine, watch from many |
+| **Watch from** | That PC | The Windows desktop client, or a browser (web client) |
+| **Users and roles** | The PC's own login | Users with roles, API keys, an audit log |
+| **Integrations** | — | REST API (OpenAPI), live events, webhooks |
+| **Runs on** | Windows | Windows today; Docker, Linux and NAS are [coming](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support) |
 
-A folder with another FFmpeg version is reported, not used. The server's live streams use `ffmpeg.exe` from the same folder.
+## ✨ Key Features
 
-This applies to the CameraWall app, the VideoSurveillance WPF app and the API server (also when started through Aspire). NuGet consumers of `Atc.Video.Engine` deploy the DLLs with their app, or call `FFmpegInstaller.InstallAsync`.
+| Area | Feature | Description |
+|---|---|---|
+| **Live view** | 🖥️ **Camera grid** | Auto-sized grid or fixed 1×1 to 4×4 with pages; named layouts with a start-up layout; drag to reorder |
+| | 🔲 **Full screen and zoom** | Double-click for full screen; Ctrl+scroll or draw a rectangle to zoom, drag to pan; GPU-accelerated |
+| | 🔄 **Rotation and overlay** | 0°/90°/180°/270° per camera, carried into motion boxes, snapshots and recordings; title, time and state on each tile |
+| **Cameras** | 📷 **Any stream** | RTSP, HTTP and HTTPS cameras; USB webcams on Windows, with hot-plug; a network scanner and *Test Connection* in the camera dialog |
+| | 🎛️ **Per-camera overrides** | Every setting (connection, display, recording, motion) can differ per camera |
+| **Recording** | 🔴 **When you want** | By hand, on connect, or on motion with a post-motion time and a cooldown; MKV or MP4, copied as the camera sends it or turned into H.264 |
+| | ✂️ **Segments and thumbnails** | Clock-aligned files (every hour, or every 15 minutes at :00, :15, …), a thumbnail and preview pictures per recording |
+| | ♾️ **Never interrupted** | Recordings go on while you browse recordings, open a camera in full screen or switch layouts |
+| **Motion and timeline** | 🏃 **Motion detection with tracking** | Moving objects tracked across frames and boxed live; ignore and watch zones per camera; wind and noise filtered out |
+| | 🕒 **Activity timeline** | Every camera's activity on one timeline, with the reason for each gap (offline, not recording, disk full); hover for a picture, *play events only*, *play all from here* |
+| | 🔎 **Analyse and review** | *Analyse recording* builds the timeline for older recordings; mark a detection right or wrong to tune the detector |
+| **Storage** | 💾 **Disk space guard** | Keeps a minimum free on every disk that holds media, deleting the oldest recordings first |
+| | 🧹 **Retention** | Removes recordings and snapshots older than you choose; optional folder per day |
+| **Server** | 🌐 **REST API** | OpenAPI 3.2 contract, ProblemDetails errors, rate limits; Scalar in development |
+| | 🌊 **Live events** | Connection, recording, motion and USB events as Server-Sent Events, resumable after a dropped connection |
+| | 📺 **Live streams** | HLS streams per camera with leases, so a stream stops when its last viewer leaves |
+| | 🪝 **Webhooks** | Signed HTTP calls on the events you pick |
+| | 🔐 **Users and security** | Users with roles (viewer, operator, admin), API keys, an audit log; camera passwords and webhook secrets encrypted at rest |
+| **Clients** | 🖥️ **Desktop and web** | A Windows desktop client and a Blazor web client, with the same views |
+| | 🌍 **Four languages** | English (US and UK), Danish and German; dark and light themes |
 
-### 🔨 Build from Source
+## 📥 Install
+
+| You want | Download from the [latest release](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases/latest) | Guide |
+|---|---|---|
+| CameraWall | `AtcSoft.Video.Surveillance.CameraWall.Installer.msi` | [Install CameraWall](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-CameraWall) |
+| The desktop client of the Video Surveillance system | `AtcSoft.Video.Surveillance.Installer.msi` | [Install Video Surveillance](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance) |
+| The server | No installer yet: built from source today | [The server on Windows today](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance#-the-server-on-windows-today) |
+
+## 📋 Requirements
+
+- **Windows 10** (version 2004 or later) or **Windows 11**, 64-bit
+- The **[.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0)** for the installers (the server needs the ASP.NET Core Runtime 10)
+- Cameras that stream **RTSP**, **HTTP** or **HTTPS**, or **USB** webcams
+- **FFmpeg 9** is included in the installers; see [FFmpeg](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-FFmpeg) when building from source
+
+What runs where, and what is coming (a server installer, Docker, Linux, UGREEN and Synology NAS): **[Platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support)**.
+
+## 🏗️ Architecture
+
+| Layer | Projects | Role |
+|---|---|---|
+| **Core** | `AtcSoft.Video.Surveillance` | Models, settings, motion detection, recording paths, disk space guard; no UI |
+| **Video engine** | `Atc.Video.Engine`, `Atc.Video.Engine.DirectX`, `Atc.Video.Player.Wpf` | Demux, decode, record and capture with in-process FFmpeg; D3D11VA rendering in WPF |
+| **Desktop** | `…Wpf.Core`, `…CameraWall.Wpf(.App)`, `…Wpf(.App)`, `…Windows` | CameraWall and the desktop client (WPF, Fluent.Ribbon); USB and thumbnails on Windows |
+| **Server** | `…Api`, `…Api.Domain`, `…Api.Contracts` | ASP.NET Core host; handlers; contracts generated from [`VideoSurveillance.yaml`](src/VideoSurveillance.yaml) by [Atc.Rest.Api.SourceGenerator](https://github.com/atc-net/atc-rest-api-source-generator) |
+| **Web** | `…Blazor.App` | Blazor WebAssembly client (MudBlazor) |
+| **Dev** | `…Aspire` | Aspire AppHost: server, web and desktop clients with a dashboard |
+
+The full picture, with diagrams: **[Architecture](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Architecture)**.
+
+## ✅ Quality
+
+- **About 2,600 tests**: unit tests per project, and host tests that run the real server in-process against a temporary data folder and a live FFmpeg test stream
+- **End-to-end smoke tests** start CameraWall, the server, the desktop client and the web client, open every window, page and dialog (FlaUI and Playwright), and fail on a binding error or an unhandled exception; one records three cameras while the user browses recordings and switches layouts ([E2E smoke tests](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/E2E-Smoke-Tests))
+- **A motion detection storybook**: scenes with known content, scored against a baseline that a change may not make worse ([storybook](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Motion-Detection-Storybook))
+- **Benchmarks** for the archive walks and the activity caches (`benchmark/`)
+- Strict analyzers (StyleCop, Meziantou, Sonar, AsyncFixer), warnings as errors
+
+## 🔨 Build from Source
 
 ```bash
 dotnet build
-dotnet run --project src/AtcSoft.Video.Surveillance.CameraWall.Wpf.App
+dotnet run --project src/AtcSoft.Video.Surveillance.CameraWall.Wpf.App   # CameraWall
+dotnet run --project src/AtcSoft.Video.Surveillance.Aspire                # server, web and desktop clients
+dotnet test
 ```
 
-### ☁️ Run Server Edition with Aspire
+Needs the .NET 10 SDK and FFmpeg 9 (the apps offer to install it). More in **[Building from source](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Building-from-Source)**.
 
-```bash
-dotnet run --project src/AtcSoft.Video.Surveillance.Aspire
-```
+## 📚 WIKI - Documentation
 
-This starts the Aspire dashboard and the REST API server. The dashboard provides monitoring, logs, and traces for all orchestrated services.
+Read the full documentation on the **[WIKI](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki)**.
 
-### 🌍 Run Server Edition Standalone
+| Document | Description |
+|---|---|
+| [🖥️ Install CameraWall](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-CameraWall) | Install, first start, where data is kept, updating |
+| [🌍 Install Video Surveillance](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance) | The server, the desktop client and the web client, per platform |
+| [🧭 Platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support) | What runs on Windows, Linux, macOS and NAS today, and what is coming |
+| [🎞️ FFmpeg](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-FFmpeg) | The FFmpeg 9 the apps need, and where they look for it |
+| [⚙️ Settings reference](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Settings-Reference) | Every setting, application-wide and per camera |
+| [🏃 Motion detection](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Motion-Detection) | How detection works, its settings and motion recording |
+| [🎥 USB cameras](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/USB-Cameras) | Webcams in CameraWall and on the server |
+| [💾 Disk space guard](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Disk-Space-Guard) | Keeping disks from filling up |
+| [🩺 Diagnostics](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Diagnostics) | What CameraWall records for a long test run, and how to read it |
+| [🖧 Server reference](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Server-Reference) | Configuration, sign-in and roles, events, live streams, webhooks |
+| [🔨 Building from source](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Building-from-Source) | For developers |
+| [🏛️ Architecture](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Architecture) | Assemblies, layers and data flow |
+| [🧪 E2E smoke tests](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/E2E-Smoke-Tests) | The end-to-end walks of every app |
+| [🎬 Motion detection storybook](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Motion-Detection-Storybook) | Measuring the detector on scenes with known content |
+| [🧪 24/7 soak test](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Soak-Test) | The procedure for a long stability run |
 
-```bash
-dotnet run --project src/AtcSoft.Video.Surveillance.Api
-```
+## 🗺️ Roadmap
 
-### 📁 User Data
-
-Application data is stored in:
-```
-%ProgramData%/AtcSoft/CameraWall/
-├── cameras.json        # 📷 Camera configurations and layouts
-├── settings.json       # ⚙️ Application settings
-├── logs/               # 📝 Debug log files (when enabled)
-├── snapshots/          # 🖼️ Camera snapshots and timelapse frames
-└── recordings/         # 🎥 Camera recordings with thumbnails
-```
-
-## 📖 Usage
-
-1. **➕ Add Camera** - Click "Add Camera" in the Cameras tab to open the configuration dialog
-2. **🔍 Network Scanner** - Use the built-in scanner in the Add Camera dialog to discover cameras
-3. **📐 Layouts** - Use the Layouts tab to create, delete, or set startup layouts
-4. **🖱️ Context Menu** - Right-click any camera tile for actions (Edit, Delete, Full Screen, Swap, Snapshot, Recording, Reconnect)
-5. **✋ Drag-and-Drop** - Drag camera tiles to reorder them in the grid
-6. **🔲 Full Screen** - Double-click a camera tile or use context menu for full screen view
-7. **⚙️ Settings** - Click the Settings button in the View tab to configure all application settings
-8. **🎥 Recordings** - Use the View tab to browse and playback recorded videos
-9. **🔄 Check for Updates** - Use Help tab to check for new versions on GitHub
+What is open and planned is in **[plans/roadmap.md](plans/roadmap.md)**. Found a problem or missing something? [Open an issue](https://github.com/atc-net-apps/atc-soft-video-surveillance/issues).
 
 ## 📄 License
 
-MIT
+[MIT](LICENSE)

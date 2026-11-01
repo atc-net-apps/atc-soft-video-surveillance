@@ -84,6 +84,51 @@ public sealed class ApiHostLiveStreamTests(ApiHostFixture host)
     }
 
     [Fact]
+    public async Task Deleting_A_Camera_That_Is_Recording_Stops_Its_Recording_And_Keeps_The_File()
+    {
+        var ffmpeg = FindFFmpegTool();
+        Assert.SkipWhen(ffmpeg is null, "The FFmpeg command-line tool is not installed.");
+
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var client = host.CreateClient();
+        var port = GetFreePort();
+        using var stream = StartTestStream(ffmpeg!, port);
+        var recordings = host.GetService<ServerRecordingService>();
+
+        try
+        {
+            // Arrange — a camera that is being recorded
+            var name = "Deleted " + Guid.NewGuid().ToString("N")[..8];
+            var created = await client.PostAsJsonAsync(
+                "/cameras",
+                new { displayName = name, ipAddress = "127.0.0.1", port, protocol = "http", path = "live" },
+                cancellationToken);
+            created.StatusCode.Should().Be(HttpStatusCode.Created);
+            var cameraId = (await created.Content.ReadFromJsonAsync<JsonElement>(cancellationToken)).GetProperty("id").GetGuid();
+            var started = await client.PostAsync(new Uri($"/cameras/{cameraId}/recording", UriKind.Relative), content: null, cancellationToken);
+            started.StatusCode.Should().Be(HttpStatusCode.OK, await started.Content.ReadAsStringAsync(cancellationToken));
+            recordings.IsRecording(cameraId).Should().BeTrue();
+            await WaitForActivityAsync(client, name, cancellationToken);
+
+            // Act
+            var deleted = await client.DeleteAsync(new Uri($"/cameras/{cameraId}", UriKind.Relative), cancellationToken);
+
+            // Assert — nothing runs for the camera any more, and what it recorded is kept
+            deleted.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            recordings.IsRecording(cameraId).Should().BeFalse();
+            recordings.FindPipeline(cameraId).Should().BeNull();
+            host.GetService<CameraConnectionService>().FindPipeline(cameraId).Should().BeNull();
+            var kept = await FindRecordingAsync(client, name, cancellationToken);
+            kept.Should().NotBeNull();
+            kept!.Value.GetProperty("inProgress").GetBoolean().Should().BeFalse();
+        }
+        finally
+        {
+            Stop(stream);
+        }
+    }
+
+    [Fact]
     public async Task A_Snapshot_Of_A_Camera_Being_Recorded_Comes_From_The_Recording_Turned_As_Shown()
     {
         var ffmpeg = FindFFmpegTool();

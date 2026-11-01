@@ -36,8 +36,13 @@ public sealed class ListEventsHandler(SurveillanceEventFeed feed) : IListEventsH
 
         // The events own the subscription: they leave the feed when the stream ends.
         var subscription = feed.Subscribe(lastSequence);
+
+        // A response abandoned before its events are read (the client went at
+        // once) never runs them: the subscription leaves the feed with the request.
+        var leaveWithRequest = cancellationToken.Register(subscription.Dispose);
         var events = EventsAsync(
             subscription,
+            leaveWithRequest,
             parameters.CameraId,
             TimeSpan.FromSeconds(parameters.HeartbeatSeconds ?? DefaultHeartbeatSeconds),
             cancellationToken);
@@ -47,11 +52,13 @@ public sealed class ListEventsHandler(SurveillanceEventFeed feed) : IListEventsH
 
     private static async IAsyncEnumerable<SseItem<SurveillanceEvent>> EventsAsync(
         SurveillanceEventSubscription subscription,
+        CancellationTokenRegistration leaveWithRequest,
         Guid? cameraId,
         TimeSpan heartbeat,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var owned = subscription;
+        using var registration = leaveWithRequest;
 
         foreach (var replayed in subscription.Replayed.Where(e => IsFor(e, cameraId)))
         {

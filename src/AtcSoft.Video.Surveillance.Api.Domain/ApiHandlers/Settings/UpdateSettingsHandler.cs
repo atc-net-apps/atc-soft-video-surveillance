@@ -5,7 +5,8 @@ namespace AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Settings;
 /// </summary>
 public sealed class UpdateSettingsHandler(
     IApplicationSettingsService settingsService,
-    IRecordingService recordingService) : IUpdateSettingsHandler
+    IRecordingService recordingService,
+    ISettingsBatch? batch = null) : IUpdateSettingsHandler
 {
     private static readonly string[] RecordingFileExtensions = [".mp4", ".mkv", ".avi"];
 
@@ -34,13 +35,17 @@ public sealed class UpdateSettingsHandler(
             recording,
             advanced);
 
-        settingsService.SaveGeneral(general);
-        settingsService.SaveCameraDisplay(cameraDisplay);
-        settingsService.SaveConnection(connection);
-        settingsService.SavePerformance(performance);
-        settingsService.SaveMotionDetection(motionDetection);
-        settingsService.SaveRecording(recording);
-        settingsService.SaveAdvanced(advanced);
+        // One write of the file, not one per section.
+        using (batch?.BeginBatch())
+        {
+            settingsService.SaveGeneral(general);
+            settingsService.SaveCameraDisplay(cameraDisplay);
+            settingsService.SaveConnection(connection);
+            settingsService.SavePerformance(performance);
+            settingsService.SaveMotionDetection(motionDetection);
+            settingsService.SaveRecording(recording);
+            settingsService.SaveAdvanced(advanced);
+        }
 
         // A changed folder layout moves the existing recordings, so the
         // folder matches the settings when this call returns.

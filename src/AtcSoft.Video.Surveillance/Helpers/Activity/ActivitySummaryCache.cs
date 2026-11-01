@@ -12,17 +12,38 @@ public sealed class ActivitySummaryCache
     /// <summary>
     /// Initializes a new instance of the <see cref="ActivitySummaryCache"/> class.
     /// </summary>
-    /// <param name="capacity">How many summaries are kept at most.</param>
-    public ActivitySummaryCache(int capacity = 5000)
+    /// <param name="capacity">How many summaries are kept at most, until a timeline needs more.</param>
+    /// <param name="maximumCapacity">
+    /// How far <see cref="Reserve"/> may grow the cache. A summary of an hour is about 17 KB, so
+    /// the default of 50,000 is a week of hourly recordings of some 300 cameras.
+    /// </param>
+    public ActivitySummaryCache(
+        int capacity = 5000,
+        int maximumCapacity = 50_000)
         => files = new ActivityFileCache<ActivitySummary>(
             capacity,
-            path => ActivityLogReader.Read(path) is { } log ? ActivitySummarizer.Summarize(log) : null);
+            path => ActivityLogReader.Read(path) is { } log ? ActivitySummarizer.Summarize(log) : null,
+            maximumCapacity);
 
     /// <summary>
     /// Gets how many summaries are kept.
     /// </summary>
     public int Count
         => files.Count;
+
+    /// <summary>
+    /// Gets how many summaries are kept at most now.
+    /// </summary>
+    public int Capacity
+        => files.Capacity;
+
+    /// <summary>
+    /// Makes room for a timeline that reads <paramref name="count"/> summaries, so a timeline
+    /// built again finds them all kept (up to the maximum capacity). The cache never shrinks.
+    /// </summary>
+    /// <param name="count">How many summaries the timeline reads.</param>
+    public void Reserve(int count)
+        => files.Reserve(count);
 
     /// <summary>
     /// Gets the summary of the activity index at the path.

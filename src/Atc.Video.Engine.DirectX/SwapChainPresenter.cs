@@ -214,7 +214,21 @@ public sealed class SwapChainPresenter : IDisposable
             if (!deviceLost)
             {
                 using var backBuffer = swapChain.GetBuffer<ID3D11Texture2D>(0);
-                d3d11Device.DeviceContext.CopyResource(backBuffer, bgraTexture);
+
+                // The copy is work on the shared immediate context: under the device's lock, which
+                // FFmpeg's decoder takes too. Present is left outside it: a Present that hangs (a
+                // locked session) must not keep the decoder, on the thread that reads the camera,
+                // waiting for the lock.
+                d3d11Device.EnterContext();
+                try
+                {
+                    d3d11Device.DeviceContext.CopyResource(backBuffer, bgraTexture);
+                }
+                finally
+                {
+                    d3d11Device.LeaveContext();
+                }
+
                 var presentResult = swapChain.Present(0, PresentFlags.None);
 
                 if (IsDeviceLostResult(presentResult))

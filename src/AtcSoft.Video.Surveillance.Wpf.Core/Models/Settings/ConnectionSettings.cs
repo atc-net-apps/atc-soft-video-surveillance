@@ -132,8 +132,14 @@ public partial class ConnectionSettings : ObservableObject
         get => Core.Usb;
         set
         {
+            // Only a real change is reported: the tile restarts its stream (and its recording) on
+            // a connection change, and saving the camera dialog sets this every time.
+            var same = Core.Usb is null ? value is null : Core.Usb.ValueEquals(value);
             Core.Usb = value;
-            OnPropertyChanged();
+            if (!same)
+            {
+                OnPropertyChanged();
+            }
         }
     }
 

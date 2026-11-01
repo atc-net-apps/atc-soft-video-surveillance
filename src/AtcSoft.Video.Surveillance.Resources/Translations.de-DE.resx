@@ -2832,4 +2832,22 @@ Vorschaubild:
   <data name="VerdictNotSaved1" xml:space="preserve">
     <value>Die Bewertung wurde nicht gespeichert: {0}</value>
   </data>
+  <data name="Search" xml:space="preserve">
+    <value>Suchen</value>
+  </data>
+  <data name="SearchAllColumnsToolTip" xml:space="preserve">
+    <value>Durchsucht beim Tippen alle Spalten der Liste</value>
+  </data>
+  <data name="EnableDiagnostics" xml:space="preserve">
+    <value>Diagnose für einen langen Testlauf</value>
+  </data>
+  <data name="EnableDiagnosticsHint" xml:space="preserve">
+    <value>Schreibt ausführliche Protokolle (31 Tage aufbewahrt), einen Bericht über diesen PC und die Einstellungen beim Start und jede Minute eine Zustandsmessung in den Protokollordner. Wirkt ab dem nächsten Start.</value>
+  </data>
+  <data name="ErrorHandledAppGoesOn" xml:space="preserve">
+    <value>Etwas ist schiefgegangen. CameraWall läuft weiter und nimmt weiter auf; die Einzelheiten stehen im Protokoll.</value>
+  </data>
+  <data name="StreamStoppedStartsAgain" xml:space="preserve">
+    <value>Der Stream wurde unterbrochen. Er startet von selbst neu.</value>
+  </data>
 </root>

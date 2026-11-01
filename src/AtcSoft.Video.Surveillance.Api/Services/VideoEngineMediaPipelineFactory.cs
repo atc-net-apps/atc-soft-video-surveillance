@@ -8,13 +8,16 @@ public sealed class VideoEngineMediaPipelineFactory : IMediaPipelineFactory
 {
     private readonly IVideoPlayerFactory videoPlayerFactory;
     private readonly IApplicationSettingsService? settingsService;
+    private readonly ILogger<VideoEngineMediaPipeline>? pipelineLogger;
 
     public VideoEngineMediaPipelineFactory(
         IVideoPlayerFactory videoPlayerFactory,
-        IApplicationSettingsService? settingsService = null)
+        IApplicationSettingsService? settingsService = null,
+        ILogger<VideoEngineMediaPipeline>? pipelineLogger = null)
     {
         this.videoPlayerFactory = videoPlayerFactory ?? throw new ArgumentNullException(nameof(videoPlayerFactory));
         this.settingsService = settingsService;
+        this.pipelineLogger = pipelineLogger;
     }
 
     /// <inheritdoc />
@@ -30,7 +33,7 @@ public sealed class VideoEngineMediaPipelineFactory : IMediaPipelineFactory
         VideoEngineMediaPipeline? pipeline = null;
         try
         {
-            pipeline = new VideoEngineMediaPipeline(player, camera.Display.DisplayName);
+            pipeline = new VideoEngineMediaPipeline(player, camera.Display.DisplayName, pipelineLogger);
 
             // Recorded as H.264 or as it is sent: the application's choice,
             // or the camera's own.

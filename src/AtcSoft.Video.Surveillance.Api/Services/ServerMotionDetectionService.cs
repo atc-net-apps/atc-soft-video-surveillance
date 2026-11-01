@@ -107,9 +107,52 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
             lock (context.Sync)
             {
                 context.Detector.UseZones(zones);
+                context.Zones = zones;
             }
         }
     }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Applied while the camera sees no motion: a detector made anew forgets an event going on, and its
+    /// end (which ends the motion recording) would never come. Asked again at every check, so it is
+    /// applied at the next quiet moment.
+    /// </remarks>
+    public void UseSettings(
+        Guid cameraId,
+        MotionDetectionSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        if (!contexts.TryGetValue(cameraId, out var context))
+        {
+            return;
+        }
+
+        lock (context.Sync)
+        {
+            if (context.IsMotionActive || SameSettings(context.Settings, settings))
+            {
+                return;
+            }
+
+            var detector = createDetector(settings);
+            if (context.Zones.Count > 0)
+            {
+                detector.UseZones(context.Zones);
+            }
+
+            context.Settings = settings;
+            context.Detector = detector;
+        }
+
+        LogMotionSettingsApplied(cameraId);
+    }
+
+    private static bool SameSettings(
+        MotionDetectionSettings current,
+        MotionDetectionSettings wanted)
+        => string.Equals(JsonSerializer.Serialize(current), JsonSerializer.Serialize(wanted), StringComparison.Ordinal);
 
     /// <inheritdoc/>
     public void StopIndexing(Guid cameraId)
@@ -296,6 +339,7 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
 
             var context = new DetectionContext(pipeline, cameraSettings, detector, cts)
             {
+                Zones = zones ?? [],
                 ReportsMotion = reportsMotion,
                 Indexes = !reportsMotion,
             };
@@ -451,13 +495,23 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
         Guid cameraId,
         MotionDetectedEventArgs args)
     {
-        try
+        var handlers = MotionDetected;
+        if (handlers is null)
         {
-            MotionDetected?.Invoke(this, args);
+            return;
         }
-        catch (Exception ex)
+
+        // Each on its own: one that fails does not keep the others from hearing it.
+        foreach (var handler in handlers.GetInvocationList().Cast<EventHandler<MotionDetectedEventArgs>>())
         {
-            LogMotionSubscriberFailed(ex, cameraId);
+            try
+            {
+                handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                LogMotionSubscriberFailed(ex, cameraId);
+            }
         }
     }
 
@@ -470,9 +524,32 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
             var token = context.Cts.Token;
             using var timer = new PeriodicTimer(GetInterval(context.Settings), timeProvider);
 
+            // One picture that cannot be analysed is skipped, and the next one is tried: an error
+            // used to end the loop while the camera still counted as watched, so nothing started it
+            // again. Logged at most once a minute while it goes on.
+            var lastLogged = DateTimeOffset.MinValue;
             while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false))
             {
-                await AnalyzeOnceAsync(cameraId, token).ConfigureAwait(false);
+                // New settings may change the analysis rate.
+                var interval = GetInterval(context.Settings);
+                if (timer.Period != interval)
+                {
+                    timer.Period = interval;
+                }
+
+                try
+                {
+                    await AnalyzeOnceAsync(cameraId, token).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not (OperationCanceledException or ObjectDisposedException or OutOfMemoryException))
+                {
+                    var now = timeProvider.GetUtcNow();
+                    if (now - lastLogged >= TimeSpan.FromMinutes(1))
+                    {
+                        lastLogged = now;
+                        LogMotionDetectionLoopError(ex, cameraId);
+                    }
+                }
             }
         }
         catch (OperationCanceledException)
@@ -499,7 +576,7 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
 
         public IMediaPipeline Pipeline { get; } = pipeline;
 
-        public MotionDetectionSettings Settings { get; } = settings;
+        public MotionDetectionSettings Settings { get; set; } = settings;
 
         public CancellationTokenSource Cts { get; } = cts;
 
@@ -512,7 +589,10 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
         public bool Indexes { get; set; }
 
         // The same detector as the desktop's, behind the shared seam.
-        public IMotionDetector Detector { get; } = detector;
+        public IMotionDetector Detector { get; set; } = detector;
+
+        // The zones the detector uses, for a detector made anew with new settings.
+        public IReadOnlyList<MotionZone> Zones { get; set; } = [];
 
         public DateTimeOffset LastMotionAt { get; set; }
 

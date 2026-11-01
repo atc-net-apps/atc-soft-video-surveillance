@@ -9,6 +9,13 @@ namespace AtcSoft.Video.Surveillance.Helpers.Activity;
 /// </summary>
 public sealed partial class RecordingPreviewMaker : IRecordingPreviews
 {
+    /// <summary>
+    /// How many recordings may wait for their previews. When previews fall behind (a slow disk,
+    /// weeks of 15-minute files after a long stop) the oldest waiting are let go: a recording without
+    /// previews is queued again when someone asks for them, and the newest are the ones looked at.
+    /// </summary>
+    public const int MaxQueued = 500;
+
     private readonly ConcurrentQueue<string> queue = new();
     private readonly ConcurrentDictionary<string, byte> pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly ILogger logger;
@@ -70,6 +77,19 @@ public sealed partial class RecordingPreviewMaker : IRecordingPreviews
         }
 
         queue.Enqueue(videoPath);
+
+        var dropped = 0;
+        while (queue.Count > MaxQueued && queue.TryDequeue(out var oldest))
+        {
+            pending.TryRemove(oldest, out _);
+            dropped++;
+        }
+
+        if (dropped > 0)
+        {
+            LogPreviewsDropped(logger, dropped, MaxQueued);
+        }
+
         return true;
     }
 
@@ -146,4 +166,7 @@ public sealed partial class RecordingPreviewMaker : IRecordingPreviews
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not make the previews of {Path}")]
     private static partial void LogPreviewsFailed(ILogger logger, Exception ex, string path);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Previews fall behind: {Count} of the oldest recordings waiting for them were let go (at most {Max} wait; they are made when asked for)")]
+    private static partial void LogPreviewsDropped(ILogger logger, int count, int max);
 }

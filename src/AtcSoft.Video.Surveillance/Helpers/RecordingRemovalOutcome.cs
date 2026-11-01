@@ -24,4 +24,10 @@ public enum RecordingRemovalOutcome
     /// The path does not name a recording below the recording folder.
     /// </summary>
     NotARecording = 3,
+
+    /// <summary>
+    /// The file may not be deleted: it is read-only, or the account the
+    /// program runs as may not delete it.
+    /// </summary>
+    Refused = 4,
 }

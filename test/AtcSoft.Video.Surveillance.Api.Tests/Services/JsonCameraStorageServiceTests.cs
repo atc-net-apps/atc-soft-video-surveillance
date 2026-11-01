@@ -92,6 +92,93 @@ public sealed class JsonCameraStorageServiceTests : IDisposable
         File.ReadAllText(FilePath).Should().Contain("\"motionZones\"").And.Contain("\"Ignore\"");
     }
 
+    [Fact]
+    public void A_File_With_A_Value_This_Version_Does_Not_Know_Falls_Back_To_The_Backup_And_Is_Kept()
+    {
+        var first = CreateCamera();
+        var second = CreateCamera();
+        CreateSut().AddOrUpdateCamera(first);
+        CreateSut().AddOrUpdateCamera(second);
+        File.WriteAllText(FilePath, File.ReadAllText(FilePath).Replace("\"Network\"", "\"Bogus\"", StringComparison.Ordinal));
+
+        var sut = CreateSut();
+
+        sut.GetAllCameras().Select(c => c.Id).Should().Equal(first.Id);
+        Directory.GetFiles(folder, "cameras.json.unreadable-*")
+            .Should().ContainSingle()
+            .Which.Should().Match(copy => File.ReadAllText(copy).Contains("Bogus", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_Corrupt_File_Without_A_Backup_Is_Copied_Aside_Before_It_Is_Saved_Over()
+    {
+        File.WriteAllText(FilePath, "{ \"cameras\": [ { \"id\": ");
+
+        var sut = CreateSut();
+        sut.GetAllCameras().Should().BeEmpty();
+        sut.AddOrUpdateCamera(CreateCamera());
+
+        Directory.GetFiles(folder, "cameras.json.unreadable-*")
+            .Should().ContainSingle()
+            .Which.Should().Match(copy => File.ReadAllText(copy).StartsWith("{ \"cameras\"", StringComparison.Ordinal));
+        CreateSut().GetAllCameras().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void A_Locked_File_Is_Never_Saved_Over()
+    {
+        var camera = CreateCamera();
+        CreateSut().AddOrUpdateCamera(camera);
+        File.Delete(FilePath + ".bak");
+        var before = File.ReadAllText(FilePath);
+
+        using (new FileStream(FilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var sut = CreateSut(lockedAttempts: 2);
+            sut.GetAllCameras().Should().BeEmpty();
+
+            sut.AddOrUpdateCamera(CreateCamera());
+        }
+
+        File.ReadAllText(FilePath).Should().Be(before);
+        CreateSut().GetCameraById(camera.Id).Should().NotBeNull();
+    }
+
+    [Fact]
+    public void A_File_That_Was_Locked_At_Start_Up_Is_Not_Saved_Over_After_The_Lock_Is_Gone()
+    {
+        // It was most likely fine, only busy: the server's empty list must never replace it.
+        var camera = CreateCamera();
+        CreateSut().AddOrUpdateCamera(camera);
+        File.Delete(FilePath + ".bak");
+        var before = File.ReadAllText(FilePath);
+
+        JsonCameraStorageService sut;
+        using (new FileStream(FilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            sut = CreateSut(lockedAttempts: 2);
+        }
+
+        sut.AddOrUpdateCamera(CreateCamera());
+
+        File.ReadAllText(FilePath).Should().Be(before);
+        CreateSut().GetCameraById(camera.Id).Should().NotBeNull("a restart reads it");
+    }
+
+    [Fact]
+    public void A_File_With_Plain_Passwords_That_Cannot_Be_Read_Is_Not_Saved_Over()
+    {
+        var camera = CreateCamera();
+        WritePlainFile(camera);
+        File.WriteAllText(FilePath, File.ReadAllText(FilePath).Replace("\"Network\"", "\"Bogus\"", StringComparison.Ordinal));
+        var before = File.ReadAllText(FilePath);
+
+        var sut = CreateSut();
+
+        sut.GetAllCameras().Should().BeEmpty();
+        File.ReadAllText(FilePath).Should().Be(before, "nothing was loaded, so nothing is written back");
+    }
+
     private static CameraConfiguration CreateCamera()
     {
         var camera = new CameraConfiguration();
@@ -101,8 +188,8 @@ public sealed class JsonCameraStorageServiceTests : IDisposable
         return camera;
     }
 
-    private JsonCameraStorageService CreateSut()
-        => new(FilePath, new SecretProtector(keys), NullLogger<JsonCameraStorageService>.Instance);
+    private JsonCameraStorageService CreateSut(int lockedAttempts = 2)
+        => new(FilePath, new SecretProtector(keys), NullLogger<JsonCameraStorageService>.Instance, lockedAttempts);
 
     // A file as a server before encryption wrote it.
     private void WritePlainFile(CameraConfiguration camera)

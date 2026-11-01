@@ -5,10 +5,11 @@ namespace AtcSoft.Video.Surveillance.Api.Services;
 /// <see cref="IVideoPlayer"/> from <c>Atc.Video.Engine</c>.
 /// Replaces the previous FFmpeg subprocess approach for recording and snapshots.
 /// </summary>
-public sealed class VideoEngineMediaPipeline : IMediaPipeline
+public sealed partial class VideoEngineMediaPipeline : IMediaPipeline
 {
     private readonly IVideoPlayer player;
     private readonly string source;
+    private readonly ILogger<VideoEngineMediaPipeline> logger;
     private ConnectionState currentState = ConnectionState.Disconnected;
     private bool disposed;
     private CameraRotation rotation;
@@ -18,12 +19,15 @@ public sealed class VideoEngineMediaPipeline : IMediaPipeline
     /// </summary>
     /// <param name="player">The video player to wrap.</param>
     /// <param name="source">A human-readable label (typically the camera display name) for log correlation.</param>
+    /// <param name="logger">Where a subscriber that fails is written.</param>
     public VideoEngineMediaPipeline(
         IVideoPlayer player,
-        string source = "")
+        string source = "",
+        ILogger<VideoEngineMediaPipeline>? logger = null)
     {
         this.player = player ?? throw new ArgumentNullException(nameof(player));
         this.source = source ?? string.Empty;
+        this.logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoEngineMediaPipeline>.Instance;
         this.player.StateChanged += OnPlayerStateChanged;
     }
 
@@ -69,8 +73,9 @@ public sealed class VideoEngineMediaPipeline : IMediaPipeline
             RtspTransport = settings.RtspTransport,
             BufferDurationMs = settings.BufferDurationMs,
             InputFormat = MapInputFormat(locator.InputFormat),
-            RawDeviceSpec = locator.RawDeviceSpec,
+            RawDeviceSpec = locator.RawDeviceSpec,
             RecordAudio = locator.IncludesAudio,
+            RecordingPreRoll = AtcSoft.Video.Surveillance.Helpers.RecordingPreRoll.Motion,
             TranscodeRecordingToH264 = TranscodeRecordingToH264,
             VideoSize = locator.VideoSize,
             FrameRate = locator.FrameRate,
@@ -96,10 +101,23 @@ public sealed class VideoEngineMediaPipeline : IMediaPipeline
     }
 
     /// <inheritdoc />
+    public DateTime? FindRecordingStart(TimeSpan preRoll)
+        => player.FindRecordingStart(preRoll);
+
+    /// <inheritdoc />
     public void StartRecording(string outputFilePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputFilePath);
         player.StartRecording(outputFilePath);
+    }
+
+    /// <inheritdoc />
+    public void StartRecording(
+        string outputFilePath,
+        DateTime startFromUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputFilePath);
+        player.StartRecording(outputFilePath, startFromUtc);
     }
 
     /// <inheritdoc />
@@ -113,6 +131,15 @@ public sealed class VideoEngineMediaPipeline : IMediaPipeline
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(newOutputFilePath);
         player.SwitchRecording(newOutputFilePath);
+    }
+
+    /// <inheritdoc />
+    public void SwitchRecording(
+        string newOutputFilePath,
+        DateTime startFromUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(newOutputFilePath);
+        player.SwitchRecording(newOutputFilePath, startFromUtc);
     }
 
     /// <inheritdoc />
@@ -194,10 +221,31 @@ public sealed class VideoEngineMediaPipeline : IMediaPipeline
 
         var previousState = currentState;
         currentState = newState;
-        ConnectionStateChanged?.Invoke(
-            this,
-            new ConnectionStateChangedEventArgs(previousState, newState));
+
+        var handlers = ConnectionStateChanged;
+        if (handlers is null)
+        {
+            return;
+        }
+
+        // Raised on the engine's own thread: a subscriber that fails must not
+        // unwind into it, nor keep the others from hearing the change.
+        var args = new ConnectionStateChangedEventArgs(previousState, newState);
+        foreach (var handler in handlers.GetInvocationList().Cast<EventHandler<ConnectionStateChangedEventArgs>>())
+        {
+            try
+            {
+                handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                LogSubscriberFailed(ex, source, newState);
+            }
+        }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "A subscriber of camera '{Source}' going {State} failed")]
+    private partial void LogSubscriberFailed(Exception ex, string source, ConnectionState state);
 
     private static ConnectionState MapPlayerState(PlayerState state)
         => state switch

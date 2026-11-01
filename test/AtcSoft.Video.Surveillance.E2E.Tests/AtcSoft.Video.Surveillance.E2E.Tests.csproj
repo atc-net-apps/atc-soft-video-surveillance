@@ -7,6 +7,8 @@
     test project). Run them with:  $env:ATCSOFT_E2E=1; dotnet test test/AtcSoft.Video.Surveillance.E2E.Tests
   -->
   <PropertyGroup>
+    <!-- The live test camera suspends its FFmpeg process to make a camera hang (ntdll). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>AtcSoft.Video.Surveillance.E2E</RootNamespace>

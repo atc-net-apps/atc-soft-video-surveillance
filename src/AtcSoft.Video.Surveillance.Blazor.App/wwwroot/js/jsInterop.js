@@ -1,7 +1,14 @@
 window.hlsInterop = {
     _players: {},
 
-    initPlayer: function (elementId, streamUrl) {
+    // A player that shows no new picture for this long while it should play is
+    // taken as stuck, and so is one that fails more often than this in a row.
+    stallSeconds: 20,
+    maxFatalErrors: 5,
+
+    // owner (optional) is told with OnPlayerFailed(elementId) when the player
+    // gives up, so it can start the stream again on a new lease.
+    initPlayer: function (elementId, streamUrl, owner) {
         this.destroyPlayer(elementId);
 
         var video = document.getElementById(elementId);
@@ -18,36 +25,115 @@ window.hlsInterop = {
             video.muted = true;
         }
 
+        var self = this;
+        var entry = {
+            hls: null,
+            owner: owner || null,
+            fatalErrors: 0,
+            lastTime: -1,
+            lastProgress: Date.now(),
+            retryTimer: null,
+            watchdog: null
+        };
+
         if (typeof Hls !== 'undefined' && Hls.isSupported()) {
             var hls = new Hls({
                 enableWorker: true,
                 lowLatencyMode: true
             });
+            entry.hls = hls;
             hls.loadSource(streamUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, function () {
                 video.play().catch(function () { });
             });
+            hls.on(Hls.Events.FRAG_LOADED, function () {
+                entry.fatalErrors = 0;
+            });
             hls.on(Hls.Events.ERROR, function (event, data) {
-                if (data.fatal) {
-                    console.error('[hlsInterop] Fatal error:', data.type, data.details);
-                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                        hls.startLoad();
-                    } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                        hls.recoverMediaError();
-                    }
+                if (!data.fatal) {
+                    return;
+                }
+
+                console.error('[hlsInterop] Fatal error:', data.type, data.details);
+                entry.fatalErrors++;
+                if (entry.fatalErrors > self.maxFatalErrors) {
+                    self._giveUp(elementId, 'fatal errors');
+                } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                    // Waits longer each time: 1, 2, 4, 8 and 16 seconds.
+                    var wait = Math.min(1000 * Math.pow(2, entry.fatalErrors - 1), 16000);
+                    clearTimeout(entry.retryTimer);
+                    entry.retryTimer = setTimeout(function () { hls.startLoad(); }, wait);
+                } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                    hls.recoverMediaError();
+                } else {
+                    self._giveUp(elementId, data.details);
                 }
             });
-            this._players[elementId] = hls;
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             // Native HLS support (Safari)
             video.src = streamUrl;
             video.addEventListener('loadedmetadata', function () {
                 video.play().catch(function () { });
             });
-            this._players[elementId] = 'native';
         } else {
             console.error('[hlsInterop] HLS is not supported in this browser.');
+            return;
+        }
+
+        // A picture that stands still while the video should play: the
+        // playlist stopped growing, or the connection hangs.
+        entry.watchdog = setInterval(function () {
+            if (video.paused && video.readyState >= 2) {
+                // Paused by the viewer.
+                entry.lastProgress = Date.now();
+                return;
+            }
+
+            if (video.currentTime !== entry.lastTime) {
+                entry.lastTime = video.currentTime;
+                entry.lastProgress = Date.now();
+                return;
+            }
+
+            if (Date.now() - entry.lastProgress >= self.stallSeconds * 1000) {
+                self._giveUp(elementId, 'stalled');
+            }
+        }, 5000);
+
+        this._players[elementId] = entry;
+    },
+
+    _giveUp: function (elementId, reason) {
+        var entry = this._players[elementId];
+        if (!entry) {
+            return;
+        }
+
+        console.warn('[hlsInterop] Giving up the player:', elementId, reason);
+        var owner = entry.owner;
+        this.destroyPlayer(elementId);
+        if (owner) {
+            owner.invokeMethodAsync('OnPlayerFailed', elementId).catch(function () { });
+        }
+    },
+
+    // Tells owner (OnPageVisible) when the page is shown again: a hidden tab's
+    // timers run late, and the page renews its stream leases at once.
+    watchVisibility: function (owner) {
+        this.unwatchVisibility();
+        this._visibilityHandler = function () {
+            if (document.visibilityState === 'visible') {
+                owner.invokeMethodAsync('OnPageVisible').catch(function () { });
+            }
+        };
+        document.addEventListener('visibilitychange', this._visibilityHandler);
+    },
+
+    unwatchVisibility: function () {
+        if (this._visibilityHandler) {
+            document.removeEventListener('visibilitychange', this._visibilityHandler);
+            this._visibilityHandler = null;
         }
     },
 
@@ -59,12 +145,14 @@ window.hlsInterop = {
     },
 
     destroyPlayer: function (elementId) {
-        var player = this._players[elementId];
-        if (!player) {
+        var entry = this._players[elementId];
+        if (!entry) {
             return;
         }
-        if (player !== 'native' && typeof player.destroy === 'function') {
-            player.destroy();
+        clearInterval(entry.watchdog);
+        clearTimeout(entry.retryTimer);
+        if (entry.hls && typeof entry.hls.destroy === 'function') {
+            entry.hls.destroy();
         }
         delete this._players[elementId];
     }

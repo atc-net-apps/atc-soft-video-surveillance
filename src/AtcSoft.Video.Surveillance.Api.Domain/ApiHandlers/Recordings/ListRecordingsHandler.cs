@@ -22,8 +22,28 @@ public sealed class ListRecordingsHandler(
         ArgumentNullException.ThrowIfNull(parameters);
 
         var recordingPath = settingsService.Recording.RecordingPath;
-        var files = RecordingCatalog
+
+        // The span and the limit are applied before the lengths and the activity are read: a client
+        // that asks for the newest few, or a day, costs no reads for the rest of the archive.
+        IEnumerable<RecordingFile> found = RecordingCatalog
             .Find(recordingPath, cameraStorageService.GetAllCameras(), recordingService.GetActiveSessions(), parameters.CameraId, DateTimeOffset.UtcNow);
+        if (parameters.From is { } from)
+        {
+            found = found.Where(f => f.StartedAt >= from);
+        }
+
+        if (parameters.To is { } to)
+        {
+            found = found.Where(f => f.StartedAt < to);
+        }
+
+        found = found.OrderByDescending(f => f.StartedAt);
+        if (parameters.Limit is { } limit)
+        {
+            found = found.Take(limit);
+        }
+
+        var files = found.ToList();
 
         // A cold listing reads many indexes: in parallel, as the timeline does.
         var activity = new IReadOnlyList<int>?[files.Count];
@@ -33,7 +53,7 @@ public sealed class ListRecordingsHandler(
                 0,
                 files.Count,
                 new ParallelOptions { CancellationToken = cancellationToken },
-                i => activity[i] = sparklines.Get(RecordingPathHelper.BuildActivityPath(files[i].FullPath)));
+                i => activity[i] = TryGetSparkline(sparklines, RecordingPathHelper.BuildActivityPath(files[i].FullPath)));
         }
 
         var recordings = files
@@ -42,6 +62,22 @@ public sealed class ListRecordingsHandler(
             .ToList();
 
         return Task.FromResult(ListRecordingsResult.Ok(recordings));
+    }
+
+    // One index that cannot be read (held, or its folder removed meanwhile) is left out; it
+    // never fails the whole listing.
+    private static IReadOnlyList<int>? TryGetSparkline(
+        ActivitySparklineCache cache,
+        string activityPath)
+    {
+        try
+        {
+            return cache.Get(activityPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private Recording ToRecording(
@@ -57,7 +93,8 @@ public sealed class ListRecordingsHandler(
         }
         else
         {
-            length = durationProvider?.GetDuration(file.FullPath) is { } duration
+            // The walk read the size and time already: the file is not looked at again.
+            length = durationProvider?.GetDuration(file.FullPath, file.Length, file.LastWrittenAt.UtcDateTime) is { } duration
                 ? System.Xml.XmlConvert.ToString(duration)
                 : string.Empty;
         }

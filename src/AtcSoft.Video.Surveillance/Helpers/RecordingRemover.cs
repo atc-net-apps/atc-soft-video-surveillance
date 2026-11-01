@@ -47,8 +47,13 @@ public static class RecordingRemover
         {
             return RecordingRemovalOutcome.InProgress;
         }
+        catch (UnauthorizedAccessException)
+        {
+            return RecordingRemovalOutcome.Refused;
+        }
 
-        foreach (var thumbnail in RecordingPathHelper.GetCompanionPaths(fullPath, recordingRoot))
+        var companions = RecordingPathHelper.GetCompanionPaths(fullPath, recordingRoot).ToList();
+        foreach (var thumbnail in companions)
         {
             try
             {
@@ -64,7 +69,11 @@ public static class RecordingRemover
             }
         }
 
-        _ = MediaCleanupRunner.RemoveEmptyDirectoriesBelow(recordingRoot, MediaCleanupRunner.EmptyDirectoryGracePeriod);
+        // Only the folders of what was deleted are looked at, not the whole archive.
+        DiskSpaceGuard.RemoveEmptyFoldersOf(
+            [fullPath, .. companions],
+            [Path.TrimEndingDirectorySeparator(Path.GetFullPath(recordingRoot))],
+            []);
 
         return RecordingRemovalOutcome.Removed;
     }

@@ -12,14 +12,15 @@ public class RecordingSession
         Guid cameraId,
         string cameraName,
         string filePath,
-        bool isManualRecording)
+        bool isManualRecording,
+        DateTime? startTime = null)
     {
         CameraId = cameraId;
         CameraName = cameraName ?? throw new ArgumentNullException(nameof(cameraName));
         CurrentFilePath = filePath ?? throw new ArgumentNullException(nameof(filePath));
         IsManualRecording = isManualRecording;
         State = isManualRecording ? RecordingState.Recording : RecordingState.RecordingMotion;
-        StartTime = DateTime.UtcNow;
+        StartTime = startTime ?? DateTime.UtcNow;
     }
 
     /// <summary>
@@ -44,7 +45,8 @@ public class RecordingSession
     public string CurrentFilePath { get; }
 
     /// <summary>
-    /// Gets the time when the recording started.
+    /// Gets the time (UTC) the recording's first picture arrived: a little before it was started
+    /// when it starts from pictures the player kept (a motion recording starts before the motion).
     /// </summary>
     public DateTime StartTime { get; }
 

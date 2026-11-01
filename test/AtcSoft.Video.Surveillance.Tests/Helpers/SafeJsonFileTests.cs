@@ -189,6 +189,104 @@ public sealed class SafeJsonFileTests : IDisposable
     }
 
     [Fact]
+    public void Read_NeitherFileNorBackup_IsMissing()
+    {
+        var result = SafeJsonFile.Read<Sample>(Path.Combine(tempDir, "missing.json"));
+
+        result.Outcome.Should().Be(JsonFileReadOutcome.Missing);
+        result.Value.Should().BeNull();
+        result.MayOverwrite.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Read_GoodFile_IsRead()
+    {
+        var path = Path.Combine(tempDir, "sample.json");
+        SafeJsonFile.TryWrite(path, new Sample(1, "a")).Should().BeTrue();
+
+        var result = SafeJsonFile.Read<Sample>(path);
+
+        result.Outcome.Should().Be(JsonFileReadOutcome.Read);
+        result.Value.Should().Be(new Sample(1, "a"));
+        result.PreservedCopies.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Read_CorruptPrimary_ReadsBackup_AndCopiesThePrimaryAside()
+    {
+        var path = Path.Combine(tempDir, "sample.json");
+        SafeJsonFile.TryWrite(path, new Sample(1, "first")).Should().BeTrue();
+        SafeJsonFile.TryWrite(path, new Sample(2, "second")).Should().BeTrue();
+        File.WriteAllText(path, "{ this is not valid json");
+
+        var result = SafeJsonFile.Read<Sample>(path);
+
+        result.Outcome.Should().Be(JsonFileReadOutcome.ReadFromBackup);
+        result.Value.Should().Be(new Sample(1, "first"));
+        result.Error.Should().NotBeNull();
+        result.MayOverwrite.Should().BeTrue();
+        result.PreservedCopies.Should().ContainSingle();
+        File.ReadAllText(result.PreservedCopies[0]).Should().Be("{ this is not valid json");
+    }
+
+    [Fact]
+    public void Read_ParserThatThrows_CountsAsUnreadable()
+    {
+        var path = Path.Combine(tempDir, "sample.json");
+        File.WriteAllText(path, "{}");
+
+        var result = SafeJsonFile.Read<Sample>(path, _ => throw new JsonException("unknown value"));
+
+        result.Outcome.Should().Be(JsonFileReadOutcome.Unreadable);
+        result.Error.Should().BeOfType<JsonException>();
+        result.PreservedCopies.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Read_EmptyPrimaryWithoutBackup_IsUnreadable_NotMissing()
+    {
+        var path = Path.Combine(tempDir, "sample.json");
+        File.WriteAllText(path, string.Empty);
+
+        var result = SafeJsonFile.Read<Sample>(path);
+
+        result.Outcome.Should().Be(JsonFileReadOutcome.Unreadable);
+        result.MayOverwrite.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Read_LockedFile_IsUnreadable_AndMayNotBeOverwritten()
+    {
+        var path = Path.Combine(tempDir, "sample.json");
+        SafeJsonFile.TryWrite(path, new Sample(1, "a")).Should().BeTrue();
+
+        JsonFileReadResult<Sample> result;
+        using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            result = SafeJsonFile.Read<Sample>(path, lockedAttempts: 2);
+        }
+
+        result.Outcome.Should().Be(JsonFileReadOutcome.Unreadable);
+        result.Error.Should().BeAssignableTo<IOException>();
+        result.MayOverwrite.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Read_MissingPrimary_ReadsBackup()
+    {
+        var path = Path.Combine(tempDir, "sample.json");
+        SafeJsonFile.TryWrite(path, new Sample(1, "first")).Should().BeTrue();
+        SafeJsonFile.TryWrite(path, new Sample(2, "second")).Should().BeTrue();
+        File.Delete(path);
+
+        var result = SafeJsonFile.Read<Sample>(path);
+
+        result.Outcome.Should().Be(JsonFileReadOutcome.ReadFromBackup);
+        result.Error.Should().BeOfType<FileNotFoundException>();
+        result.Value.Should().Be(new Sample(1, "first"));
+    }
+
+    [Fact]
     public void TryWrite_NullPath_Throws()
     {
         // Act

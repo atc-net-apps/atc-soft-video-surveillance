@@ -26,7 +26,7 @@ public sealed class RecordingsBrowserDialogViewModelLayoutTests : IDisposable
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void The_List_Is_The_Same_After_The_Files_Are_Moved_To_Another_Layout(
+    public async Task The_List_Is_The_Same_After_The_Files_Are_Moved_To_Another_Layout(
         bool useDailySubfolders,
         bool separateThumbnailFolder)
     {
@@ -37,7 +37,7 @@ public sealed class RecordingsBrowserDialogViewModelLayoutTests : IDisposable
         Touch("Garden", "Garden_20261012_230000_000.mp4");
         Touch("Garden", "Garden_20261012_230000_000.png");
 
-        var before = Snapshot();
+        var before = await SnapshotAsync();
 
         // Act
         var result = RecordingLayoutReorganizer.Reorganize(
@@ -48,32 +48,33 @@ public sealed class RecordingsBrowserDialogViewModelLayoutTests : IDisposable
         // Assert
         result.Errors.Should().BeEmpty();
         (result.MovedRecordings + result.MovedThumbnails).Should().BeGreaterThan(0, "the layout did change");
-        Snapshot().Should().Equal(before);
+        (await SnapshotAsync()).Should().Equal(before);
     }
 
     [Fact]
-    public void The_List_Is_The_Same_After_The_Files_Are_Moved_Back()
+    public async Task The_List_Is_The_Same_After_The_Files_Are_Moved_Back()
     {
         Touch("Front Door", "2026-10-12", "Front Door_20261012_101500_000.mkv");
         Touch("thumbnails", "Front Door", "2026-10-12", "Front Door_20261012_101500_000.png");
 
-        var before = Snapshot();
+        var before = await SnapshotAsync();
 
         RecordingLayoutReorganizer.Reorganize(root, RecordingLayoutOptions.Flat, Extensions);
 
-        Snapshot().Should().Equal(before);
+        (await SnapshotAsync()).Should().Equal(before);
         before.Should().ContainSingle().Which.Should().Be("Front Door|Front Door_20261012_101500_000.mkv|2026-10-12 10:15:00|thumbnail");
     }
 
     /// <summary>
     /// What the browser shows for each recording, in its display order.
     /// </summary>
-    private List<string> Snapshot()
+    private async Task<List<string>> SnapshotAsync()
     {
         var settingsService = Substitute.For<IWpfCoreSettingsService>();
         settingsService.Recording.Returns(new RecordingSettings { RecordingPath = root });
 
         using var viewModel = new RecordingsBrowserDialogViewModel(settingsService);
+        await viewModel.Loading.ConfigureAwait(false);
 
         return [.. viewModel.FilteredRecordings.Select(r =>
             string.Join(

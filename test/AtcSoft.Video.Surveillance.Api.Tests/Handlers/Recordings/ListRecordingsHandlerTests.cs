@@ -131,6 +131,44 @@ public class ListRecordingsHandlerTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ListsOnlyTheSpanAndTheNewestAskedFor()
+    {
+        // A client that asks for a day, or the newest few, gets only those; the rest of the
+        // archive is not read.
+        var root = Path.Combine(Path.GetTempPath(), "test-recordings-" + Guid.NewGuid());
+        try
+        {
+            var camera = new CameraConfiguration { Id = Guid.NewGuid() };
+            camera.Display.DisplayName = "Front Door";
+            Touch(Path.Combine(root, "Front Door", "2026-10-11", "Front Door_20261011_101500_000.mkv"));
+            Touch(Path.Combine(root, "Front Door", "2026-10-12", "Front Door_20261012_101500_000.mkv"));
+            Touch(Path.Combine(root, "Front Door", "2026-10-13", "Front Door_20261013_101500_000.mkv"));
+            var handler = CreateHandlerFor(root, camera);
+            var october12 = new DateTimeOffset(2026, 10, 12, 0, 0, 0, TimeSpan.Zero);
+
+            var since = await ListAsync(handler, new ListRecordingsParameters(CameraId: null, From: october12));
+            var before = await ListAsync(handler, new ListRecordingsParameters(CameraId: null, To: october12));
+            var newest = await ListAsync(handler, new ListRecordingsParameters(CameraId: null, Limit: 1));
+
+            since.Select(r => r.StartedAt.Day).Should().Equal(13, 12);
+            before.Select(r => r.StartedAt.Day).Should().Equal(11);
+            newest.Select(r => r.StartedAt.Day).Should().Equal(13);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static async Task<List<Recording>> ListAsync(
+        ListRecordingsHandler handler,
+        ListRecordingsParameters parameters)
+    {
+        var result = await handler.ExecuteAsync(parameters, CancellationToken.None);
+        return result.Result.Should().BeOfType<Ok<List<Recording>>>().Subject.Value!;
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ReturnsWhereEachThumbnailIs()
     {
         // Arrange — one thumbnail next to its video, one in the thumbnails folder, one missing
@@ -302,8 +340,8 @@ public class ListRecordingsHandlerTests
             var unreadable = Touch(Path.Combine(root, "Front Door", "Front Door_20261011_111500_000.mp4"));
 
             var durations = Substitute.For<IRecordingDurationProvider>();
-            durations.GetDuration(video).Returns(TimeSpan.FromSeconds(65));
-            durations.GetDuration(unreadable).Returns((TimeSpan?)null);
+            durations.GetDuration(video, Arg.Any<long>(), Arg.Any<DateTime>()).Returns(TimeSpan.FromSeconds(65));
+            durations.GetDuration(unreadable, Arg.Any<long>(), Arg.Any<DateTime>()).Returns((TimeSpan?)null);
 
             var handler = CreateHandlerFor(root, durations, camera);
 

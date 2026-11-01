@@ -38,6 +38,88 @@ public sealed class DiskSpaceGuardTests : IDisposable
     }
 
     [Fact]
+    public void A_Disk_That_Stays_Full_Loses_Its_Oldest_Recording_At_Each_Start_From_One_Walk()
+    {
+        // Every recording that starts asks the guard; the disk is a byte short each time.
+        var global = Path.Combine(VolumeA, "recordings");
+        var oldest = Write(global, @"Cam\a.mkv", 600, daysAgo: 30);
+        var older = Write(global, @"Cam\b.mkv", 600, daysAgo: 20);
+        var newer = Write(global, @"Cam\c.mkv", 600, daysAgo: 10);
+        volumes.Add(VolumeA, free: MinFree - 1);
+        var guard = Guard();
+
+        guard.Enforce(Request([global]));
+        File.Exists(oldest).Should().BeFalse();
+        File.Exists(older).Should().BeTrue();
+
+        guard.Enforce(Request([global]));
+        File.Exists(older).Should().BeFalse();
+        File.Exists(newer).Should().BeTrue();
+    }
+
+    [Fact]
+    public void A_Kept_Recording_That_Went_Or_Is_Being_Written_Meanwhile_Is_Passed_Over()
+    {
+        var global = Path.Combine(VolumeA, "recordings");
+        Write(global, @"Cam\a.mkv", 600, daysAgo: 40);
+        var deletedElsewhere = Write(global, @"Cam\b.mkv", 600, daysAgo: 30);
+        var recordedInto = Write(global, @"Cam\c.mkv", 600, daysAgo: 20);
+        var next = Write(global, @"Cam\d.mkv", 600, daysAgo: 10);
+        volumes.Add(VolumeA, free: MinFree - 1);
+        var guard = Guard();
+        guard.Enforce(Request([global]));
+
+        File.Delete(deletedElsewhere);
+        var result = guard.Enforce(Request([global], active: [recordedInto]));
+
+        File.Exists(recordedInto).Should().BeTrue("it is being written");
+        File.Exists(next).Should().BeFalse();
+        result.StateOf(next).Should().Be(DiskSpaceVolumeState.Reclaimed);
+    }
+
+    [Fact]
+    public void A_Volume_Still_Short_When_The_Kept_List_Runs_Out_Is_Walked_Again()
+    {
+        var global = Path.Combine(VolumeA, "recordings");
+        Write(global, @"Cam\a.mkv", 600, daysAgo: 30);
+        var gone = Write(global, @"Cam\b.mkv", 600, daysAgo: 20);
+        volumes.Add(VolumeA, free: MinFree - 1);
+        var guard = Guard();
+        guard.Enforce(Request([global]));
+
+        // The rest of the kept list goes elsewhere, and a recording is copied in.
+        File.Delete(gone);
+        var copiedIn = Write(global, @"Cam\copied.mkv", 600, daysAgo: 50);
+        var result = guard.Enforce(Request([global]));
+
+        File.Exists(copiedIn).Should().BeFalse();
+        result.StateOf(copiedIn).Should().Be(DiskSpaceVolumeState.Reclaimed);
+    }
+
+    [Fact]
+    public void The_Day_Folder_A_Deletion_Empties_Goes_With_It_And_Nothing_Above_That_Still_Holds_Recordings()
+    {
+        var global = Path.Combine(VolumeA, "recordings");
+        var emptied = Write(global, @"Cam\2026-01-01\a.mkv", 600, daysAgo: 30);
+        var kept = Write(global, @"Cam\2026-01-02\b.mkv", 600, daysAgo: 20);
+        var youngFolder = Path.Combine(global, "Cam", "2026-01-03");
+        Directory.CreateDirectory(youngFolder);
+        foreach (var folder in new[] { Path.GetDirectoryName(emptied)!, Path.GetDirectoryName(kept)!, Path.Combine(global, "Cam") })
+        {
+            Directory.SetCreationTimeUtc(folder, DateTime.UtcNow.AddDays(-30));
+        }
+
+        volumes.Add(VolumeA, free: MinFree - 1);
+
+        Guard().Enforce(Request([global]));
+
+        Directory.Exists(Path.GetDirectoryName(emptied)).Should().BeFalse();
+        File.Exists(kept).Should().BeTrue();
+        Directory.Exists(youngFolder).Should().BeTrue("a folder made a moment ago may be about to get a recording");
+        Directory.Exists(global).Should().BeTrue();
+    }
+
+    [Fact]
     public void A_Volume_With_Enough_Space_Is_Left_Alone()
     {
         var global = Path.Combine(VolumeA, "recordings");

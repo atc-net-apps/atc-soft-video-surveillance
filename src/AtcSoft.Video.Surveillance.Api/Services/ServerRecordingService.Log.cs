@@ -32,7 +32,7 @@ public sealed partial class ServerRecordingService
     [LoggerMessage(Level = LogLevel.Information, Message = "Reaper swept {ReapedCount} inactive recording session(s)")]
     private partial void LogReaperSwept(int reapedCount);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Disk space reclaim failed before recording start")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "The disk-space guard failed; a recording is not started on a volume whose room it could not check")]
     private partial void LogDiskSpaceReclaimFailed(Exception ex);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Disk still below the space kept free mid-recording: stopping {Count} recording(s)")]
@@ -49,4 +49,7 @@ public sealed partial class ServerRecordingService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Camera '{CameraName}' has a recording folder of its own, '{OwnFolder}'; the server records every camera below '{RecordingPath}', which it lists, serves and cleans")]
     private partial void LogOwnRecordingFolderNotUsed(string cameraName, string ownFolder, string recordingPath);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "A subscriber of {EventName} failed for camera {CameraId}; the others were told and the recording goes on")]
+    private partial void LogSubscriberFailed(Exception ex, string eventName, Guid cameraId);
 }

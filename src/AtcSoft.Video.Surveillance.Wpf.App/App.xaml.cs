@@ -73,6 +73,7 @@ public partial class App
 
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainUnhandledException;
         Current.DispatcherUnhandledException += ApplicationOnDispatcherUnhandledException;
+        TaskScheduler.UnobservedTaskException += TaskSchedulerOnUnobservedTaskException;
         base.OnStartup(e);
 
         // Binding errors always go to the log (and so to Aspire and the E2E smoke tests);
@@ -112,12 +113,41 @@ public partial class App
             return;
         }
 
-        LogDispatcherUnhandledException(exceptionMessage);
-
-        ShowFatalErrorDialog(exceptionMessage, Translations.DispatcherUnhandledException);
+        // The client may be left on a wall for weeks: one failure on the UI thread
+        // neither closes it nor waits for someone to close a dialog. It is logged
+        // and named in the status bar, and the app goes on.
+        if (logger is not null)
+        {
+            LogDispatcherUnhandledException(exceptionMessage);
+        }
+        else
+        {
+            Log.Error(args.Exception, "Dispatcher Unhandled Exception: {Message}", exceptionMessage);
+        }
 
         args.Handled = true;
-        Shutdown(-1);
+
+        // Before the main window is up the start-up itself failed: nothing to go on with.
+        if (MainWindow is not AtcSoft.Video.Surveillance.Wpf.App.MainWindow)
+        {
+            ShowFatalErrorDialog(exceptionMessage, Translations.DispatcherUnhandledException);
+            Shutdown(-1);
+            return;
+        }
+
+        if (host?.Services.GetService<MainWindowViewModel>() is { } mainViewModel)
+        {
+            mainViewModel.StatusText = $"{Translations.DispatcherUnhandledException}: {args.Exception.Message}";
+        }
+    }
+
+    private static void TaskSchedulerOnUnobservedTaskException(
+        object? sender,
+        UnobservedTaskExceptionEventArgs args)
+    {
+        // A failed task nobody waited for: logged, and the app goes on.
+        Log.Warning(args.Exception, "Unobserved task exception");
+        args.SetObserved();
     }
 
     /// <summary>
@@ -227,6 +257,11 @@ public partial class App
         RenderSplashMessage(Translations.StartingServices, 20);
         await host.StartAsync();
 
+        // After a sleep the event stream's connection may be dead without a word:
+        // it is opened again at once. (A network change is left to the watchdog:
+        // virtual adapters and VPNs change addresses often, for nothing.)
+        Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
+
         // Sign in (35%): the session of the last start, else the dialog. The
         // event stream and everything after this needs it.
         RenderSplashMessage(Translations.SigningIn, 35);
@@ -286,6 +321,7 @@ public partial class App
         try
         {
             var gatewayService = host.Services.GetRequiredService<GatewayService>();
+            coordinator.LoadCameras = () => gatewayService.GetCamerasAsync();
             var cameras = await gatewayService.GetCamerasAsync().ConfigureAwait(true);
             coordinator.UpdateCameraNameCache(cameras);
         }
@@ -381,14 +417,19 @@ public partial class App
                 services.AddSingleton<ClientSession>();
                 services.AddSingleton(new SessionStore(SessionStore.DefaultFolder));
 
-                // Named HttpClient (matches Blazor.App pattern)
+                // Named HttpClient (matches Blazor.App pattern). The connections
+                // have TCP keep-alive, and the event stream fails when it is silent
+                // past its heartbeats, so a connection that died is opened again.
+                services.AddSingleton(new EventStreamWatchdog());
                 services
                     .AddHttpClient("VideoSurveillance-ApiClient", client =>
                     {
                         client.BaseAddress = new Uri(apiBaseAddress);
                     })
+                    .ConfigurePrimaryHttpMessageHandler(KeepAliveHttpHandler.Create)
                     .AddApiCredentials((sp, credentials) => SessionCredentials.Configure(credentials, sp.GetRequiredService<ClientSession>()))
-                    .AddApiResilience();
+                    .AddApiResilience()
+                    .AddHttpMessageHandler(sp => new EventStreamWatchdogHandler(sp.GetRequiredService<EventStreamWatchdog>()));
 
                 // Source-generated endpoint DI
                 services.AddVideoSurveillanceEndpoints();
@@ -459,7 +500,8 @@ public partial class App
                     sp.GetRequiredService<IVideoPlayerFactory>(),
                     sp.GetRequiredService<AtcSoft.Video.Surveillance.Services.IUsbCameraWatcher>(),
                     apiBaseAddress,
-                    sp.GetService<AtcSoft.Video.Surveillance.Services.IApplicationSettingsService>()));
+                    sp.GetService<AtcSoft.Video.Surveillance.Services.IApplicationSettingsService>(),
+                    sp.GetService<ILoggerFactory>()));
                 services.AddSingleton(sp => new RecordingsViewModel(
                     sp.GetRequiredService<GatewayService>(),
                     new Uri(apiBaseAddress),
@@ -525,6 +567,16 @@ public partial class App
         }
     }
 
+    private void OnPowerModeChanged(
+        object sender,
+        Microsoft.Win32.PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == Microsoft.Win32.PowerModes.Resume)
+        {
+            host?.Services.GetService<EventStreamWatchdog>()?.AbortAll();
+        }
+    }
+
     private static void RenderSplashMessage(
         string message,
         int percentage)
@@ -544,6 +596,8 @@ public partial class App
         }
 
         LogAppClosing();
+
+        Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
 
         // The streams' leases are given back first, before anything is
         // awaited: the process ends soon after this handler's first await.

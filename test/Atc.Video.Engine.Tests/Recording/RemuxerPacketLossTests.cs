@@ -76,6 +76,48 @@ public sealed unsafe class RemuxerPacketLossTests : IDisposable
         counts.Should().AllSatisfy(count => count.Should().Be((PacketsPerFile, PacketsPerFile)));
     }
 
+    [Fact]
+    public void No_Picture_Is_Lost_When_The_File_Changes_Between_Two_Key_Frames()
+    {
+        // A key frame every 25 packets; the next file is asked for 5 packets after one. Before, the
+        // new file dropped everything up to the next key frame: 20 pictures here, seconds every hour.
+        TestEngine.Require();
+        var before = Path.Combine(directory, "gop-a.mkv");
+        var after = Path.Combine(directory, "gop-b.mkv");
+        using var remuxer = new Remuxer();
+        Open(remuxer, before, switchTo: false);
+
+        WritePackets(remuxer, first: 0, count: 30, keyEvery: 25);
+        Open(remuxer, after, switchTo: true);
+        WritePackets(remuxer, first: 30, count: 50, keyEvery: 25);
+        remuxer.Close();
+
+        (CountPackets(before) + CountPackets(after)).Should().Be(80, "every picture is in one of the two files");
+        CountPackets(before).Should().Be(50, "the first file runs on to the next key frame");
+    }
+
+    [Fact]
+    public void Packets_The_Disk_Cannot_Take_Are_Counted()
+    {
+        // An output that takes the connection and then reads nothing: the writer waits and the queue
+        // fills. Before, the oldest packets were thrown away without a word (key frames too).
+        TestEngine.Require();
+        using var output = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        output.Start();
+        var port = ((System.Net.IPEndPoint)output.LocalEndpoint).Port;
+        using var remuxer = new Remuxer();
+        Open(remuxer, $"tcp://127.0.0.1:{port}/stalled.mkv", switchTo: false);
+        var stalled = output.AcceptTcpClient();
+
+        // Far more than the queue and the socket's buffers hold.
+        WritePackets(remuxer, first: 0, count: 5000, keyEvery: 25, size: 16_384);
+
+        remuxer.DroppedPackets.Should().BeGreaterThan(0);
+        stalled.Dispose();
+        output.Stop();
+        remuxer.Close();
+    }
+
     private static void Open(
         Remuxer remuxer,
         string path,
@@ -108,17 +150,24 @@ public sealed unsafe class RemuxerPacketLossTests : IDisposable
     private static void WritePackets(
         Remuxer remuxer,
         int first)
+        => WritePackets(remuxer, first, PacketsPerFile, keyEvery: 1);
+
+    private static void WritePackets(
+        Remuxer remuxer,
+        int first,
+        int count,
+        int keyEvery,
+        int size = 64)
     {
         var packet = av_packet_alloc();
         try
         {
             // The recorder copies packets without looking inside them.
-            av_new_packet(packet, 64).Should().Be(0);
+            av_new_packet(packet, size).Should().Be(0);
             new Span<byte>(packet->data, packet->size).Clear();
-            packet->flags = PktFlags.Key;
-
-            for (var i = first; i < first + PacketsPerFile; i++)
+            for (var i = first; i < first + count; i++)
             {
+                packet->flags = i % keyEvery == 0 ? PktFlags.Key : PktFlags.None;
                 packet->pts = i;
                 packet->dts = i;
                 remuxer.WritePacket(packet, TimeBase);

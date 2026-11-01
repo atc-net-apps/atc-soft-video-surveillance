@@ -59,6 +59,49 @@ public sealed class ServerRecordingServiceSharedPipelineTests : IDisposable
     }
 
     [Fact]
+    public void A_Subscriber_That_Fails_Neither_Fails_The_Recording_Nor_Keeps_The_Others_From_Hearing_It()
+    {
+        // Arrange — a subscriber that throws, subscribed before the test's own
+        var others = new List<RecordingState>();
+        using var failing = new ServerRecordingService(settingsService, cameraStorageService, NullLogger<ServerRecordingService>.Instance);
+        failing.RecordingStateChanged += (_, _) => throw new InvalidOperationException("subscriber failed");
+        failing.RecordingStateChanged += (_, e) => others.Add(e.NewState);
+
+        // Act
+        var started = failing.StartRecordingOnSharedPipeline(camera, pipeline);
+
+        // Assert
+        started.Should().BeTrue();
+        failing.IsRecording(camera.Id).Should().BeTrue();
+        others.Should().Equal(RecordingState.Recording);
+    }
+
+    [Fact]
+    public async Task Two_Starts_At_Once_Record_Once_And_The_Loser_Does_Not_Stop_The_Winner()
+    {
+        IRecordingService service = sut;
+        using var bothIn = new Barrier(2);
+
+        // The pipeline takes a moment to start recording: the other start comes meanwhile.
+        pipeline.When(p => p.StartRecording(Arg.Any<string>())).Do(_ => Task.Delay(50).Wait());
+
+        var results = await Task.WhenAll(
+            Task.Run(StartTogether),
+            Task.Run(StartTogether));
+
+        results.Count(r => r).Should().Be(1);
+        pipeline.Received(1).StartRecording(Arg.Any<string>());
+        pipeline.DidNotReceive().StopRecording();
+        sut.IsRecording(camera.Id).Should().BeTrue();
+
+        bool StartTogether()
+        {
+            bothIn.SignalAndWait();
+            return service.StartRecordingOnSharedPipeline(camera, pipeline);
+        }
+    }
+
+    [Fact]
     public void Stopping_It_Leaves_The_Shared_Pipeline_Open()
     {
         IRecordingService service = sut;

@@ -1175,6 +1175,29 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: from
+          in: query
+          required: false
+          description: Only recordings that started at or after this moment
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Only recordings that started before this moment
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          required: false
+          description: At most this many recordings, the newest first
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 10000
       responses:
         '200':
           description: A list of recordings

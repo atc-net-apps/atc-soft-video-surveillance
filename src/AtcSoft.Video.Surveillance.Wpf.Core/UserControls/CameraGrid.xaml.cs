@@ -204,11 +204,20 @@ public partial class CameraGrid
     {
         InitializeComponent();
 
+        // The parked players of recording cameras no tile shows are let go when the app ends.
+        Dispatcher.ShutdownStarted += (_, _) => ParkedPlayers.Dispose();
+
         CameraItemsControl.ItemContainerGenerator.StatusChanged += OnTileContainersStatusChanged;
         CameraTiles = [];
 
         RegisterMessages();
     }
+
+    /// <summary>
+    /// Gets the players of cameras that go on recording while no tile shows them: a tile that
+    /// goes away parks a recording camera's player here, and the next tile for it takes it back.
+    /// </summary>
+    public RecordingPlayerParking ParkedPlayers { get; } = new();
 
     /// <summary>
     /// Registers a tile so it can be reached without a visual-tree walk.
@@ -330,12 +339,15 @@ public partial class CameraGrid
     }
 
     /// <summary>
-    /// Removes a camera from the wall.
+    /// Removes a deleted camera from the wall; its recording stops.
     /// </summary>
     /// <param name="cameraId">The identifier of the camera to remove.</param>
     /// <returns>True if the camera was removed.</returns>
     public bool RemoveCamera(Guid cameraId)
     {
+        // A deleted camera that records while no tile shows it stops now.
+        ParkedPlayers.Release(cameraId);
+
         var camera = CameraTiles.FirstOrDefault(c => c.Id == cameraId);
         if (camera is null)
         {
@@ -343,7 +355,7 @@ public partial class CameraGrid
         }
 
         var index = CameraTiles.IndexOf(camera);
-        GetCameraTileAt(index)?.MarkForRemoval();
+        GetCameraTileAt(index)?.MarkForDeletion();
 
         CameraTiles.Remove(camera);
         UpdateGridLayout();
@@ -385,6 +397,27 @@ public partial class CameraGrid
 
         var sourceCamera = CameraTiles[sourceIndex];
         PerformSwap(sourceIndex, targetIndex, sourceCamera);
+    }
+
+    /// <summary>
+    /// Makes anew the players whose graphics device was lost, and only those: a player that still
+    /// draws keeps running, and so does its recording in the same file. Called after the desktop
+    /// comes back (an unlock, a remote desktop connection).
+    /// </summary>
+    /// <returns>How many players were made anew.</returns>
+    public int RecreatePlayersWithLostDevice()
+    {
+        var recreated = 0;
+        foreach (var tile in trackedTiles.ToArray())
+        {
+            if (tile.HasLostGraphicsDevice)
+            {
+                tile.RecreatePlayer();
+                recreated++;
+            }
+        }
+
+        return recreated;
     }
 
     /// <summary>
@@ -530,18 +563,9 @@ public partial class CameraGrid
             CameraTiles[sourceIndex] = targetCamera;
             CameraTiles[targetIndex] = sourceCamera;
 
-            if (sourceTile.ConnectionState == ConnectionState.Connected &&
-                targetTile.ConnectionState == ConnectionState.Connected)
-            {
-                // Both connected — swap players to keep streams alive
-                sourceTile.SwapPlayerWith(targetTile);
-            }
-            else
-            {
-                // At least one not connected — close then re-open streams with new camera configs
-                sourceTile.Reconnect();
-                targetTile.Reconnect();
-            }
+            // Each camera takes its player, its recording and its connection state with it,
+            // connected or not. (Reconnecting both tiles instead crossed the recordings over.)
+            sourceTile.SwapPlayerWith(targetTile);
 
             sourceTile.CompleteSwap();
             targetTile.CompleteSwap();
@@ -687,16 +711,8 @@ public partial class CameraGrid
                 CameraTiles[i] = cameraB;
                 CameraTiles[swapIndex] = cameraA;
 
-                if (tileA.ConnectionState == ConnectionState.Connected &&
-                    tileB.ConnectionState == ConnectionState.Connected)
-                {
-                    tileA.SwapPlayerWith(tileB);
-                }
-                else
-                {
-                    tileA.Reconnect();
-                    tileB.Reconnect();
-                }
+                // Each camera takes its player, its recording and its connection state with it.
+                tileA.SwapPlayerWith(tileB);
 
                 tileA.CompleteSwap();
                 tileB.CompleteSwap();

@@ -122,7 +122,7 @@ else
                                     <MudIconButton Icon="@Icons.Material.Filled.Stop"
                                                    Size="Size.Small"
                                                    Color="Color.Error"
-                                                   OnClick="@(() => StopStreamAsync(camera.Id))"
+                                                   OnClick="@(() => StopByViewerAsync(camera.Id))"
                                                    Style="background: rgba(0,0,0,0.6); border-radius: 4px;" />
                                 </MudTooltip>
                             </div>
@@ -145,7 +145,7 @@ else
                                            Color="Color.Primary"
                                            Size="Size.Small"
                                            StartIcon="@Icons.Material.Filled.PlayArrow"
-                                           OnClick="@(() => StartStreamAsync(camera.Id))">
+                                           OnClick="@(() => StartByViewerAsync(camera.Id))">
                                     @(errors.ContainsKey(camera.Id) ? Translations.TryAgain : Translations.Start)
                                 </MudButton>
                             </MudStack>
@@ -203,6 +203,15 @@ else
 
     // The page's lease on each stream it shows, renewed while it is open.
     private readonly StreamLeases leases = new();
+
+    // The streams the viewer started: one that broke is started again.
+    private readonly WantedStreams wanted = new();
+
+    // The cameras the viewer had playing in each layout, kept in the browser: started again after a reload.
+    private RememberedStreams remembered = new();
+    private readonly MotionThrottle motionThrottle = new();
+    private DotNetObjectReference<LiveView>? self;
+    private bool left;
     private bool serverWasReached;
     private readonly HashSet<Guid> starting = new();
     private readonly Dictionary<Guid, string> errors = new();
@@ -224,6 +233,7 @@ else
         // (GET /events) until the page is left; it also says whether the
         // server can be reached.
         EventStream.ReadingChanged += OnReadingChanged;
+        EventStream.MissedEvents += OnMissedEvents;
         _ = EventStream.RunAsync(OnEventAsync, leaving.Token);
 
         // No answer is not the same as no layouts.
@@ -241,10 +251,19 @@ else
 
         isLoading = false;
         _ = RunHeartbeatAsync(heartbeatCancellation.Token);
+
+        remembered = RememberedStreams.Parse(await ReadRememberedAsync());
+        await StartRememberedAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            self ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("hlsInterop.watchVisibility", self);
+        }
+
         if (pendingStreamInits.Count == 0)
         {
             return;
@@ -257,7 +276,8 @@ else
         {
             if (streamUrls.TryGetValue(cameraId, out var url))
             {
-                await JS.InvokeVoidAsync("hlsInterop.initPlayer", $"video-{cameraId}", url);
+                self ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("hlsInterop.initPlayer", PlayerElement.IdFor(cameraId), url, self);
             }
         }
     }
@@ -281,6 +301,7 @@ else
         }
 
         activeLayout = next;
+        await StartRememberedAsync();
     }
 
     private async Task SetAsStartupLayoutAsync()
@@ -294,24 +315,82 @@ else
     private Task StartAllAsync()
         => Task.WhenAll(LayoutCameraIds()
             .Where(id => !streamUrls.ContainsKey(id) && !starting.Contains(id))
-            .Select(StartStreamAsync)
+            .Select(StartByViewerAsync)
             .ToList());
 
     private async Task StopAllAsync()
     {
         foreach (var cameraId in streamUrls.Keys.Concat(starting).Distinct().ToList())
         {
-            await StopStreamAsync(cameraId);
+            await StopByViewerAsync(cameraId);
+        }
+    }
+
+    // The viewer started a camera: it is remembered for this layout, and started after a reload.
+    private async Task StartByViewerAsync(Guid cameraId)
+    {
+        if (remembered.Remember(selectedLayoutId, cameraId))
+        {
+            await KeepRememberedAsync();
+        }
+
+        await StartStreamAsync(cameraId);
+    }
+
+    // The viewer stopped a camera: it is no longer started after a reload.
+    private async Task StopByViewerAsync(Guid cameraId)
+    {
+        if (remembered.Forget(selectedLayoutId, cameraId))
+        {
+            await KeepRememberedAsync();
+        }
+
+        await StopStreamAsync(cameraId);
+    }
+
+    // Starts the cameras the viewer had playing in the layout shown.
+    private Task StartRememberedAsync()
+    {
+        var inLayout = LayoutCameraIds().ToHashSet();
+        return Task.WhenAll(remembered.For(selectedLayoutId)
+            .Where(id => inLayout.Contains(id) && !streamUrls.ContainsKey(id) && !starting.Contains(id))
+            .Select(StartStreamAsync)
+            .ToList());
+    }
+
+    // The browser may keep nothing (a private window, blocked storage): the live view then starts nothing by itself.
+    private async Task<string?> ReadRememberedAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<string?>("localStorage.getItem", RememberedStreams.StorageKey);
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
+    private async Task KeepRememberedAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", RememberedStreams.StorageKey, remembered.ToText());
+        }
+        catch (JSException)
+        {
+            // Not kept: the streams are not started again after a reload.
         }
     }
 
     private async Task StartStreamAsync(Guid cameraId)
     {
-        if (!starting.Add(cameraId))
+        if (left || !starting.Add(cameraId))
         {
             return;
         }
 
+        wanted.Want(cameraId);
         errors.Remove(cameraId);
         StateHasChanged();
 
@@ -324,6 +403,7 @@ else
                 leases.Add(cameraId, lease.LeaseId, lease.RenewSeconds);
                 streamUrls[cameraId] = $"{Gateway.ApiBaseUrl.TrimEnd('/')}{lease.PlaylistUrl}";
                 pendingStreamInits.Add(cameraId);
+                wanted.Started(cameraId);
             }
             else
             {
@@ -334,14 +414,96 @@ else
         else if (starting.Contains(cameraId))
         {
             errors[cameraId] = started.Problem ?? Translations.StreamCouldNotBeStarted;
+            starting.Remove(cameraId);
+            RestartLater(cameraId);
         }
 
         starting.Remove(cameraId);
         StateHasChanged();
     }
 
+    /// <summary>
+    /// The browser gave up on a player (it stood still, or failed again and
+    /// again): the stream is let go and started again on a new lease.
+    /// </summary>
+    [JSInvokable]
+    public Task OnPlayerFailed(string elementId)
+        => InvokeAsync(async () =>
+        {
+            if (PlayerElement.CameraOf(elementId) is not { } cameraId || left || !streamUrls.Remove(cameraId))
+            {
+                return;
+            }
+
+            if (leases.TryTake(cameraId, out var leaseId))
+            {
+                await Gateway.StopStreamAsync(cameraId, leaseId);
+            }
+
+            errors[cameraId] = Translations.StreamStoppedStartsAgain;
+            RestartLater(cameraId);
+            StateHasChanged();
+        });
+
+    // A wanted stream that broke or could not start is started again after its wait.
+    private void RestartLater(Guid cameraId)
+    {
+        if (left || wanted.Failed(cameraId) is not { } wait)
+        {
+            return;
+        }
+
+        _ = RestartAfterAsync(wait, leaving.Token);
+    }
+
+    private async Task RestartAfterAsync(
+        TimeSpan wait,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(wait, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        await InvokeAsync(RestartWantedAsync);
+    }
+
+    // Starts every wanted stream that does not play: after a wait, when a camera
+    // connects again, or when the page missed events.
+    private Task RestartWantedAsync()
+        => Task.WhenAll(wanted.Cameras
+            .Where(id => !streamUrls.ContainsKey(id) && !starting.Contains(id) && cameras.Any(c => c.Id == id))
+            .Select(StartStreamAsync)
+            .ToList());
+
+    // The server restarted, or the page was away too long: what it shows is read again.
+    private void OnMissedEvents()
+        => InvokeAsync(async () =>
+        {
+            if (left)
+            {
+                return;
+            }
+
+            if (await Gateway.GetLayoutsAsync() is { } loadedLayouts)
+            {
+                layouts = loadedLayouts;
+                loadFailed = false;
+                activeLayout = layouts.FirstOrDefault(l => l.Id == selectedLayoutId) ?? activeLayout;
+            }
+
+            cameras = await Gateway.GetCamerasAsync() ?? cameras;
+            await RestartWantedAsync();
+            StateHasChanged();
+        });
+
     private async Task StopStreamAsync(Guid cameraId)
     {
+        wanted.Forget(cameraId);
         starting.Remove(cameraId);
         errors.Remove(cameraId);
 
@@ -376,17 +538,7 @@ else
             while (!cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(leases.RenewInterval, cancellationToken);
-
-                var gone = await leases.RenewAllAsync((cameraId, leaseId) => Gateway.RenewStreamLeaseAsync(cameraId, leaseId, cancellationToken));
-                foreach (var cameraId in gone)
-                {
-                    if (streamUrls.Remove(cameraId))
-                    {
-                        await JS.InvokeVoidAsync("hlsInterop.destroyPlayer", $"video-{cameraId}");
-                    }
-
-                    await StartStreamAsync(cameraId);
-                }
+                await RenewLeasesAsync(cancellationToken);
             }
         }
         catch (OperationCanceledException)
@@ -394,6 +546,45 @@ else
             // The page was closed.
         }
     }
+
+    private async Task RenewLeasesAsync(CancellationToken cancellationToken)
+    {
+        var gone = await leases.RenewAllAsync((cameraId, leaseId) => Gateway.RenewStreamLeaseAsync(cameraId, leaseId, cancellationToken));
+        foreach (var cameraId in gone)
+        {
+            if (streamUrls.Remove(cameraId))
+            {
+                await JS.InvokeVoidAsync("hlsInterop.destroyPlayer", PlayerElement.IdFor(cameraId));
+            }
+
+            await StartStreamAsync(cameraId);
+        }
+    }
+
+    /// <summary>
+    /// The page is shown again. A browser slows the timers of a hidden tab
+    /// (to once a minute), so a renewal may have come too late: the leases
+    /// are renewed now, and a stream the server let go starts again.
+    /// </summary>
+    [JSInvokable]
+    public Task OnPageVisible()
+        => InvokeAsync(async () =>
+        {
+            if (left)
+            {
+                return;
+            }
+
+            try
+            {
+                await RenewLeasesAsync(heartbeatCancellation.Token);
+                await RestartWantedAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                // The page was closed.
+            }
+        });
 
     private void OnReadingChanged()
         => InvokeAsync(() =>
@@ -416,7 +607,18 @@ else
 
                 await JS.InvokeVoidAsync("hlsInterop.destroyPlayer", $"video-{e.CameraId}");
                 errors[e.CameraId] = Translations.TheCameraDisconnected;
+
+                // The viewer still wants it: it starts again when the camera
+                // connects, or after its wait should that event not come.
+                RestartLater(e.CameraId);
                 StateHasChanged();
+            }
+            else if (e.NewState == CameraConnectionState.Connected
+                     && wanted.IsWanted(e.CameraId)
+                     && !streamUrls.ContainsKey(e.CameraId)
+                     && !starting.Contains(e.CameraId))
+            {
+                await StartStreamAsync(e.CameraId);
             }
         });
     }
@@ -428,7 +630,11 @@ else
             OnConnectionStateChanged(connection);
         }
 
-        if (surveillanceEvent.Motion is { } motion)
+        // Only for a camera that plays here, and at most five a second: the
+        // server sends one for every picture it analyses.
+        if (surveillanceEvent.Motion is { } motion
+            && (streamUrls.ContainsKey(motion.CameraId) || motionStates.ContainsKey(motion.CameraId))
+            && motionThrottle.ShouldShow(motion.CameraId, motion.IsMotionActive))
         {
             OnMotionDetected(motion);
         }
@@ -471,12 +677,24 @@ else
 
     public async ValueTask DisposeAsync()
     {
+        left = true;
         EventStream.ReadingChanged -= OnReadingChanged;
+        EventStream.MissedEvents -= OnMissedEvents;
         await leaving.CancelAsync();
         leaving.Dispose();
 
         await heartbeatCancellation.CancelAsync();
         heartbeatCancellation.Dispose();
+        try
+        {
+            await JS.InvokeVoidAsync("hlsInterop.unwatchVisibility");
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is already gone.
+        }
+
+        self?.Dispose();
 
         // Leaving the page lets the server stop the transcoders right away.
         foreach (var cameraId in streamUrls.Keys.ToList())

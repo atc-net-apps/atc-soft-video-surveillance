@@ -31,4 +31,10 @@ public interface ILiveStreamService
     void Release(
         Guid cameraId,
         Guid leaseId);
+
+    /// <summary>
+    /// Stops a camera's stream at once, whoever watches it (the camera was deleted, or its
+    /// address changed): its leases end, and a viewer that renews is told to start again.
+    /// </summary>
+    void EndStream(Guid cameraId);
 }

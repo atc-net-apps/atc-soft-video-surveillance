@@ -21,12 +21,14 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly RecordingsViewModel recordingsViewModel;
     private readonly TimelineViewModel timelineViewModel;
     private readonly NotificationHistoryViewModel notificationHistoryViewModel;
+    private readonly CameraStateCounts counts = new();
 
     private WindowState previousWindowState = WindowState.Normal;
     private WindowStyle previousWindowStyle = WindowStyle.SingleBorderWindow;
     private ResizeMode previousResizeMode = ResizeMode.CanResize;
     private DispatcherTimer? latencyTimer;
     private bool suppressAutoStartCallback;
+    private bool signingIn;
 
     [ObservableProperty]
     private string statusText = Translations.Ready;
@@ -150,9 +152,19 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 RaisePropertyChanged(nameof(SignedInText));
                 RaisePropertyChanged(nameof(ShowManageUsers));
+
+                // The session ended (a password reset, a revoked session, a
+                // renewal the server refused): sign in again, or nothing works.
+                if (!this.session.IsSignedIn)
+                {
+                    _ = SignInAgainAsync();
+                }
             });
         };
         this.eventService.OnRecordingStateChanged += OnRecordingStateChanged;
+
+        // The server could not send again what came meanwhile: the counts are read again.
+        this.eventService.OnMissedEvents += () => _ = Application.Current?.Dispatcher.InvokeAsync(LoadInitialStatsAsync);
 
         // The language changes live; CultureManager holds the handler weakly.
         CultureManager.UiCultureChanged += OnUiCultureChanged;
@@ -241,11 +253,61 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand("SignOut")]
     private async Task SignOutAsync()
     {
-        await authService.SignOutAsync().ConfigureAwait(true);
-        if (!await signInFlow.ShowDialogAsync(Application.Current.MainWindow).ConfigureAwait(true))
+        signingIn = true;
+        try
         {
-            Application.Current.Shutdown();
+            await authService.SignOutAsync().ConfigureAwait(true);
+            if (!await signInFlow.ShowDialogAsync(Application.Current.MainWindow).ConfigureAwait(true))
+            {
+                Application.Current.Shutdown();
+                return;
+            }
+
+            ReloadAfterSignIn();
         }
+        finally
+        {
+            signingIn = false;
+        }
+    }
+
+    // One sign-in at a time, and only once the main window is up (the start-up
+    // signs in by itself). The configured user of an unattended wall signs in
+    // again without a dialog.
+    private async Task SignInAgainAsync()
+    {
+        if (signingIn || session.IsSignedIn || Application.Current?.MainWindow is not MainWindow mainWindow || !mainWindow.IsLoaded)
+        {
+            return;
+        }
+
+        signingIn = true;
+        try
+        {
+            if (!await signInFlow.EnsureSignedInAsync(mainWindow).ConfigureAwait(true))
+            {
+                Application.Current.Shutdown();
+                return;
+            }
+
+            ReloadAfterSignIn();
+        }
+        finally
+        {
+            signingIn = false;
+        }
+    }
+
+    // What was shown came from the session that ended: read it again.
+    private void ReloadAfterSignIn()
+    {
+        if (CurrentView is not LiveViewViewModel)
+        {
+            liveViewViewModel.LoadCommand.Execute(parameter: null);
+        }
+
+        RefreshCurrentView();
+        _ = LoadInitialStatsAsync();
     }
 
     [RelayCommand("ShowSettings")]
@@ -455,15 +517,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
             if (cameras is not null)
             {
-                ConnectedCameras = cameras.Count(c =>
-                    c.ConnectionState == CameraConnectionState.Connected);
-                ActiveRecordings = cameras.Count(c => c.IsRecording);
+                counts.Load(cameras);
+                ShowCounts();
             }
         }
         catch (HttpRequestException)
         {
-            ConnectedCameras = 0;
-            ActiveRecordings = 0;
+            // The server is away: the counts stay until it is back.
         }
     }
 
@@ -523,31 +583,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnConnectionStateChanged(ConnectionStateChangedEvent e)
     {
-        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
-        {
-            if (e.NewState == CameraConnectionState.Connected)
-            {
-                ConnectedCameras++;
-            }
-            else
-            {
-                ConnectedCameras = Math.Max(0, ConnectedCameras - 1);
-            }
-        });
+        counts.Apply(e);
+        _ = Application.Current?.Dispatcher.InvokeAsync(ShowCounts);
     }
 
     private void OnRecordingStateChanged(RecordingStateChangedEvent e)
     {
-        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
-        {
-            if (HubStates.IsRecording(e.NewState) && !HubStates.IsRecording(e.OldState))
-            {
-                ActiveRecordings++;
-            }
-            else if (!HubStates.IsRecording(e.NewState) && HubStates.IsRecording(e.OldState))
-            {
-                ActiveRecordings = Math.Max(0, ActiveRecordings - 1);
-            }
-        });
+        counts.Apply(e);
+        _ = Application.Current?.Dispatcher.InvokeAsync(ShowCounts);
+    }
+
+    private void ShowCounts()
+    {
+        ConnectedCameras = counts.Connected;
+        ActiveRecordings = counts.Recording;
     }
 }

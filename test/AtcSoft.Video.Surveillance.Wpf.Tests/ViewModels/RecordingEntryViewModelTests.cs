@@ -60,6 +60,30 @@ public class RecordingEntryViewModelTests
         vm.ThumbnailUrl!.Query.Should().Be("?media=token%2B%2F%3D");
     }
 
+    [Fact]
+    public void An_Address_Carries_The_Media_Token_Of_The_Moment_It_Is_Made()
+    {
+        // The token runs out after some hours and is renewed with the session; a list stays open for days.
+        var token = "first";
+        var recording = new ApiRecording(
+            Id: Guid.NewGuid(),
+            CameraId: Guid.NewGuid(),
+            CameraName: "Cam",
+            FilePath: "Front Door/a.mkv",
+            StartedAt: DateTimeOffset.UnixEpoch,
+            Duration: string.Empty,
+            FileSizeBytes: 0,
+            HasThumbnail: false,
+            InProgress: false,
+            ThumbnailPath: null);
+        var vm = new RecordingEntryViewModel(recording, ApiBaseUrl, () => token);
+        vm.PlaybackUrl.Query.Should().Be("?media=first");
+
+        token = "renewed";
+
+        vm.PlaybackUrl.Query.Should().Be("?media=renewed");
+    }
+
     private static RecordingEntryViewModel Build(
         string filePath,
         string? thumbnailPath = null,

@@ -53,11 +53,8 @@ public partial class CameraTile : IDisposable
     [DependencyProperty(PropertyChangedCallback = nameof(OnCameraDescriptionChanged))]
     private string cameraDescription = string.Empty;
 
-    [DependencyProperty]
+    [DependencyProperty(PropertyChangedCallback = nameof(OnPlayerPropertyChanged))]
     private IVideoPlayer? player;
-
-    [DependencyProperty(DefaultValue = false)]
-    private bool isPlayerLent;
 
     [DependencyProperty(DefaultValue = HorizontalAlignment.Left)]
     private HorizontalAlignment overlayHorizontalAlignment;
@@ -237,6 +234,11 @@ public partial class CameraTile : IDisposable
 
     private bool disposed;
     private bool markedForRemoval;
+    private bool stopRecordingOnDispose;
+    private bool restartRecordingOnConnect;
+
+    // This tile's camera was parked with its motion watching left running.
+    private bool parkedWatchingMotion;
     private Window? subscribedWindow;
     private CameraGrid? registeredWithGrid;
     private bool isReconnecting;
@@ -253,6 +255,10 @@ public partial class CameraTile : IDisposable
 
     // Stream health monitoring
     private DispatcherTimer? streamHealthTimer;
+
+    // A connected stream with no packet for this long is taken as lost and reconnected.
+    private static readonly TimeSpan StreamStaleAfter = TimeSpan.FromSeconds(15);
+
     private long lastFramesDisplayed;
     private int staleStreamCheckCount;
 
@@ -490,6 +496,7 @@ public partial class CameraTile : IDisposable
         Unloaded += OnUnloaded;
         VideoPlayer.OverlayCreated += OnOverlayCreated;
         VideoPlayer.SurfaceCreated += OnSurfaceCreated;
+        VideoPlayer.DeviceLost += OnVideoHostDeviceLost;
         InputManager.Current.PreProcessInput += OnPreProcessInput;
     }
 
@@ -700,6 +707,20 @@ public partial class CameraTile : IDisposable
         // Swap motion detection state
         (IsMotionDetected, other.IsMotionDetected) = (other.IsMotionDetected, IsMotionDetected);
 
+        // The connection belongs to the camera too: a camera that is reconnecting or failed keeps
+        // that state, its attempt count and its device flags on the tile it moves to. The pending
+        // reconnect timers act on whatever camera their tile shows, so they start again below.
+        StopReconnectTimers();
+        other.StopReconnectTimers();
+        (ConnectionState, other.ConnectionState) = (other.ConnectionState, ConnectionState);
+        (isReconnecting, other.isReconnecting) = (other.isReconnecting, isReconnecting);
+        (reconnectAttemptCount, other.reconnectAttemptCount) = (other.reconnectAttemptCount, reconnectAttemptCount);
+        (restartRecordingOnConnect, other.restartRecordingOnConnect) = (other.restartRecordingOnConnect, restartRecordingOnConnect);
+        (IsDeviceBusy, other.IsDeviceBusy) = (other.IsDeviceBusy, IsDeviceBusy);
+        (IsDeviceUnplugged, other.IsDeviceUnplugged) = (other.IsDeviceUnplugged, IsDeviceUnplugged);
+        ResumeConnectionWatch();
+        other.ResumeConnectionWatch();
+
         // Restart stream health monitoring with new players
         StartStreamHealthCheck();
         other.StartStreamHealthCheck();
@@ -722,38 +743,10 @@ public partial class CameraTile : IDisposable
     }
 
     /// <summary>
-    /// Lends the player to another control (e.g., fullscreen window).
-    /// The player is removed from this tile and the tile shows a placeholder.
+    /// Occurs when the tile gets another player (a reconnect after a screen unlock, a camera
+    /// change): a full-screen view of the camera follows it. Raised on the UI thread.
     /// </summary>
-    /// <returns>The player instance, or null if no player is available.</returns>
-    public IVideoPlayer? LendPlayer()
-    {
-        if (Player is null || IsPlayerLent)
-        {
-            return null;
-        }
-
-        var lentPlayer = Player;
-        Player = null;
-        IsPlayerLent = true;
-        return lentPlayer;
-    }
-
-    /// <summary>
-    /// Returns a previously lent player to this tile.
-    /// </summary>
-    /// <param name="returnedPlayer">The player to return.</param>
-    public void ReturnPlayer(IVideoPlayer? returnedPlayer)
-    {
-        if (returnedPlayer is null)
-        {
-            IsPlayerLent = false;
-            return;
-        }
-
-        Player = returnedPlayer;
-        IsPlayerLent = false;
-    }
+    public event EventHandler<IVideoPlayer?>? PlayerChanged;
 
     /// <summary>
     /// Reconnects the camera stream.
@@ -805,7 +798,8 @@ public partial class CameraTile : IDisposable
             // keeps a stale entry pointing at the now-finalized file, and a new
             // tile for the same camera (RDP-driven zombie replacement) cannot
             // start a fresh recording — StartRecording bails on the duplicate.
-            if (recordingService is not null && Camera is not null)
+            // A recording camera's player is parked instead, so the recording goes on without a tile.
+            if (!TryParkPlayer() && recordingService is not null && Camera is not null)
             {
                 recordingService.StopRecording(Camera.Id);
             }
@@ -844,7 +838,11 @@ public partial class CameraTile : IDisposable
             }
 
             // Stop motion detection
-            StopMotionDetection();
+            // (not for a camera parked with its watching running: the parking stops it when it lets go).
+            if (!parkedWatchingMotion)
+            {
+                StopMotionDetection();
+            }
 
             // Unsubscribe from services
             if (recordingService is not null)
@@ -873,6 +871,7 @@ public partial class CameraTile : IDisposable
 
             VideoPlayer.OverlayCreated -= OnOverlayCreated;
             VideoPlayer.SurfaceCreated -= OnSurfaceCreated;
+            VideoPlayer.DeviceLost -= OnVideoHostDeviceLost;
             InputManager.Current.PreProcessInput -= OnPreProcessInput;
 
             if (VideoPlayer.Overlay is not null)
@@ -895,8 +894,10 @@ public partial class CameraTile : IDisposable
             mediaPipeline?.Dispose();
             mediaPipeline = null;
 
-            Player?.Dispose();
+            // Let the video hosts go of it first: the player's graphics device goes with it.
+            var oldPlayer = Player;
             Player = null;
+            oldPlayer?.Dispose();
         }
 
         disposed = true;
@@ -967,8 +968,10 @@ public partial class CameraTile : IDisposable
         CancelEventArgs e)
     {
         // The user is closing the parent window. Subsequent Unloaded fires are
-        // real teardown (not transient), so allow Dispose to run.
+        // real teardown (not transient), so allow Dispose to run, and stop the
+        // recordings rather than park them.
         markedForRemoval = true;
+        stopRecordingOnDispose = true;
     }
 
     private void OnUnloaded(
@@ -1004,6 +1007,16 @@ public partial class CameraTile : IDisposable
     public void MarkForRemoval()
     {
         markedForRemoval = true;
+    }
+
+    /// <summary>
+    /// Marks this tile for disposal because its camera is deleted: its recording is stopped, not
+    /// parked to go on without a tile.
+    /// </summary>
+    public void MarkForDeletion()
+    {
+        markedForRemoval = true;
+        stopRecordingOnDispose = true;
     }
 
     private CameraGrid? FindParentCameraGrid()
@@ -1144,6 +1157,16 @@ public partial class CameraTile : IDisposable
             {
                 overlay.IsDeviceBusy = busy;
             }
+        }
+    }
+
+    private static void OnPlayerPropertyChanged(
+        DependencyObject d,
+        DependencyPropertyChangedEventArgs e)
+    {
+        if (d is CameraTile tile)
+        {
+            tile.PlayerChanged?.Invoke(tile, e.NewValue as IVideoPlayer);
         }
     }
 
@@ -1427,7 +1450,31 @@ public partial class CameraTile : IDisposable
     }
 
     /// <summary>
-    /// Recreates the player with current settings. Used when performance settings change.
+    /// Gets a value indicating whether the graphics device this tile draws on was lost: its picture
+    /// stays black until the player is made anew.
+    /// </summary>
+    public bool HasLostGraphicsDevice
+        => VideoPlayer.IsDeviceLost;
+
+    // A driver update or reset removed the graphics device: the player is made anew (on the UI
+    // thread), and a recording goes on with it in a new file.
+    private void OnVideoHostDeviceLost(
+        object? sender,
+        EventArgs e)
+        => _ = Dispatcher.BeginInvoke(() =>
+        {
+            if (disposed || Camera is null || !HasLostGraphicsDevice)
+            {
+                return;
+            }
+
+            LogGraphicsDeviceLost(Camera.Display.DisplayName);
+            RecreatePlayer();
+        });
+
+    /// <summary>
+    /// Recreates the player with current settings. Used when performance settings change, and when
+    /// the graphics device was lost.
     /// </summary>
     public void RecreatePlayer()
     {
@@ -1443,6 +1490,10 @@ public partial class CameraTile : IDisposable
         if (recordingService is not null && recordingService.IsRecording(Camera.Id))
         {
             recordingService.StopRecording(Camera.Id);
+
+            // The camera records on: a new recording starts once the new stream connects, also
+            // one a person started (record-on-connect would only start its own).
+            restartRecordingOnConnect = true;
         }
 
         // Keep reference to old player and pipeline
@@ -1556,6 +1607,11 @@ public partial class CameraTile : IDisposable
 
     private void InitializePlayer()
     {
+        if (TryTakeParkedPlayer())
+        {
+            return;
+        }
+
         Player = CreatePlayer();
         Player.StateChanged += OnPlayerStateChanged;
         mediaPipeline = MediaPipelineFactory?.Invoke(Player);
@@ -1578,36 +1634,86 @@ public partial class CameraTile : IDisposable
     private IVideoPlayer CreatePlayer()
         => videoPlayerFactory!.Create();
 
-    private StreamOptions BuildStreamOptions(CameraConfiguration camera)
+    // A camera that kept recording while no tile showed it: its player is still connected and
+    // recording, so this tile shows it as it is instead of opening the stream again.
+    private bool TryTakeParkedPlayer()
     {
-        var locator = camera.BuildSourceLocator();
-        return new StreamOptions
+        if (Camera is null ||
+            registeredWithGrid?.ParkedPlayers is not { } parking ||
+            !parking.TryTake(Camera.Id, out var parkedPlayer, out var parkedPipeline))
         {
-            Source = camera.Display.DisplayName,
-            UseLowLatencyMode = camera.Stream.UseLowLatencyMode,
-            MaxLatencyMs = camera.Stream.MaxLatencyMs,
-            RtspTransport = camera.Stream.RtspTransport,
-            BufferDurationMs = camera.Stream.BufferDurationMs,
-            HardwareAcceleration = HardwareAcceleration,
-            MaxVerticalResolution = DropDownItemsFactory.GetMaxResolutionFromQuality(VideoQuality),
-            InputFormat = MapInputFormat(locator.InputFormat),
-            RawDeviceSpec = locator.RawDeviceSpec,
-            RecordAudio = locator.IncludesAudio,
-            TranscodeRecordingToH264 = TranscodeVideoCodec == VideoTranscodeCodec.H264,
-            VideoSize = locator.VideoSize,
-            FrameRate = locator.FrameRate,
-            PixelFormat = locator.PixelFormat,
-        };
+            return false;
+        }
+
+        Player = parkedPlayer;
+        Player.StateChanged += OnPlayerStateChanged;
+        mediaPipeline = parkedPipeline ?? MediaPipelineFactory?.Invoke(Player);
+        ApplyRotation();
+        LogParkedPlayerTaken(Camera.Display.DisplayName);
+
+        if (recordingService is not null)
+        {
+            RecordingState = recordingService.GetRecordingState(Camera.Id);
+            UpdateRecordingDurationTimer();
+            UpdateOverlayRecordingState();
+        }
+
+        OnPlayerStateChanged(Player, new PlayerStateChangedEventArgs(PlayerState.Stopped, Player.State));
+        return true;
     }
 
-    private static InputFormatKind MapInputFormat(string? name)
-        => name switch
+    // Leaves a recording camera's player and pipeline in the grid's parking instead of stopping the
+    // recording, when the tile goes away while the app runs (another layout, the camera taken out of
+    // the layout, a tile rebuilt after a remote desktop change).
+    private bool TryParkPlayer()
+    {
+        if (stopRecordingOnDispose ||
+            Camera is null ||
+            Player is null ||
+            recordingService is null ||
+            registeredWithGrid?.ParkedPlayers is not { } parking ||
+            Camera is null)
         {
-            "dshow" => InputFormatKind.Dshow,
-            "v4l2" => InputFormatKind.V4l2,
-            "avfoundation" => InputFormatKind.AVFoundation,
-            _ => InputFormatKind.Auto,
-        };
+            return false;
+        }
+
+        // A camera that records on motion is parked too, recording or not, with its watching left
+        // running: its motion is recorded while another layout is shown (MotionRecordingCoordinator).
+        var cameraId = Camera.Id;
+        var watchesMotion = GetEffectiveEnableRecordingOnMotion() &&
+                            motionDetectionService is not null &&
+                            motionDetectionService.IsDetectionActive(cameraId);
+        if (!watchesMotion && !recordingService.IsRecordingOrResuming(cameraId))
+        {
+            return false;
+        }
+
+        // The parking opens the stream again when it ends; the address and options are read here,
+        // on the UI thread.
+        var uri = Camera.BuildSourceLocator().Uri;
+        var options = BuildStreamOptions(Camera);
+
+        Player.StateChanged -= OnPlayerStateChanged;
+        var motion = motionDetectionService;
+        parking.Park(
+            cameraId,
+            Player,
+            mediaPipeline,
+            recordingService,
+            player => player.Open(uri, options),
+            keepWhileIdle: watchesMotion,
+            onRelease: watchesMotion ? () => motion!.StopDetection(cameraId) : null);
+        parkedWatchingMotion = watchesMotion;
+        LogPlayerParked(Camera.Display.DisplayName);
+
+        // The parking has them now: this tile lets go without closing them.
+        mediaPipeline = null;
+        Player = null;
+        return true;
+    }
+
+    private StreamOptions BuildStreamOptions(CameraConfiguration camera)
+        => CameraStreamOptions.For(camera, HardwareAcceleration, VideoQuality, TranscodeVideoCodec);
 
     private void OnPlayerStateChanged(
         object? sender,
@@ -1983,8 +2089,11 @@ public partial class CameraTile : IDisposable
             // Start stream health monitoring to detect if stream goes offline
             StartStreamHealthCheck();
 
-            // Auto-start recording on connect if enabled (respects per-camera override)
-            if (GetEffectiveEnableRecordingOnConnect() &&
+            // Auto-start recording on connect if enabled (respects per-camera override), or again
+            // after the player was made anew while it recorded.
+            var recordAgain = restartRecordingOnConnect;
+            restartRecordingOnConnect = false;
+            if ((GetEffectiveEnableRecordingOnConnect() || recordAgain) &&
                 recordingService is not null &&
                 mediaPipeline is not null &&
                 Camera is not null &&
@@ -1992,6 +2101,14 @@ public partial class CameraTile : IDisposable
             {
                 LogRecordingOnConnectStarting(Camera.Display.DisplayName);
                 recordingService.StartRecording(Camera, mediaPipeline);
+            }
+            else if (recordingService is not null &&
+                     Camera is not null &&
+                     RecordingState != RecordingState.Idle)
+            {
+                // Still recording, but the engine ended the file when the stream dropped:
+                // a new file starts now rather than at the next segment.
+                recordingService.ResumeRecording(Camera.Id);
             }
             else if (GetEffectiveEnableRecordingOnConnect() && Camera is not null)
             {
@@ -2020,10 +2137,11 @@ public partial class CameraTile : IDisposable
 
         reconnectAttemptCount++;
 
-        // Exponential backoff: base delay doubles each consecutive failure, capped at 15 min.
+        // Exponential backoff: base delay doubles each consecutive failure, capped at 2 minutes (a camera that is back is seen again soon).
         var delay = ReconnectBackoff.ComputeDelay(
             reconnectAttemptCount,
-            TimeSpan.FromSeconds(GetEffectiveReconnectDelaySeconds()));
+            TimeSpan.FromSeconds(GetEffectiveReconnectDelaySeconds()),
+            ReconnectBackoff.CameraMaxDelay);
 
         LogAutoReconnectScheduled(Camera.Display.DisplayName, (int)delay.TotalSeconds);
 
@@ -2112,22 +2230,21 @@ public partial class CameraTile : IDisposable
             return;
         }
 
-        // Detect stale stream using two indicators:
-        // 1. FPS is very low (< 1) - indicates no/few frames being decoded
-        // 2. FramesDisplayed not advancing - DWM not presenting new frames
-        // Both must be true to avoid false positives
-        var fpsIsLow = currentFps < 1.0;
-        var framesNotAdvancing = currentFrames == lastFramesDisplayed;
-
-        // Stream is stale if FPS is low AND frames aren't advancing
-        var isStale = fpsIsLow && framesNotAdvancing;
+        // A stream is stale when no packet has come for StreamStaleAfter: the recorder writes
+        // packets, so that is what a recording needs. (The frame rate cannot tell: it is only
+        // measured when a frame arrives, so it keeps its last value while nothing comes.) Before
+        // the first packet, frames that do not advance over three checks (15 s) count instead.
+        var lastPacket = Player.LastPacketUtc;
+        var isStale = lastPacket > DateTime.MinValue
+            ? DateTime.UtcNow - lastPacket >= StreamStaleAfter
+            : currentFrames == lastFramesDisplayed && currentFps < 1.0;
 
         if (isStale)
         {
             staleStreamCheckCount++;
 
-            // If stale for 3 consecutive checks (15 seconds), trigger reconnect
-            if (staleStreamCheckCount >= 3)
+            // Silent past the limit, or (without packets) stale for 3 checks: reconnect.
+            if (lastPacket > DateTime.MinValue || staleStreamCheckCount >= 3)
             {
                 LogStreamStaleDetected(Camera?.Display.DisplayName ?? "Unknown");
 
@@ -2387,10 +2504,22 @@ public partial class CameraTile : IDisposable
             // Ignore Close() errors - we'll try to Open() anyway
         }
 
-        // Build locator and options on the UI thread (they access DependencyProperties)
-        var locator = capturedCamera.BuildSourceLocator();
-        var uri = locator.Uri;
-        var options = BuildStreamOptions(capturedCamera);
+        // Build locator and options on the UI thread (they access DependencyProperties). A camera
+        // whose address cannot be read (no host, a typing error) fails like one that cannot be
+        // reached: this runs from timers on the UI thread, where a throw would end the app.
+        Uri uri;
+        StreamOptions options;
+        try
+        {
+            uri = capturedCamera.BuildSourceLocator().Uri;
+            options = BuildStreamOptions(capturedCamera);
+        }
+        catch (Exception ex) when (ex is UriFormatException or InvalidOperationException or ArgumentException)
+        {
+            isReconnecting = false;
+            UpdateConnectionState(ConnectionState.ConnectionFailed, ex.Message);
+            return;
+        }
 
         // Start status check timer before background operation
         StartReconnectStatusCheck();
@@ -2411,6 +2540,31 @@ public partial class CameraTile : IDisposable
                 });
             }
         });
+    }
+
+    private void StopReconnectTimers()
+    {
+        reconnectTimer?.Stop();
+        autoReconnectTimer?.Stop();
+        autoReconnectTimer = null;
+    }
+
+    /// <summary>
+    /// Starts the watch that fits the camera this tile shows now (after a swap): the check of a
+    /// reconnect in progress, or the next attempt for a camera that failed.
+    /// </summary>
+    private void ResumeConnectionWatch()
+    {
+        if (isReconnecting && Player is not null)
+        {
+            StartReconnectStatusCheck();
+        }
+        else if (ConnectionState == ConnectionState.ConnectionFailed)
+        {
+            // TryAutoReconnect counts an attempt; this one was already counted.
+            reconnectAttemptCount = Math.Max(0, reconnectAttemptCount - 1);
+            TryAutoReconnect();
+        }
     }
 
     private void StartReconnectStatusCheck()
@@ -2624,7 +2778,22 @@ public partial class CameraTile : IDisposable
             return;
         }
 
-        recordingService.StopRecording(Camera.Id);
+        // Closing the file (the last packets, the index at its end) can take a moment on a slow disk:
+        // not on the UI thread. The tile follows the state change it raises.
+        var service = recordingService;
+        var cameraId = Camera.Id;
+        var name = Camera.Display.DisplayName;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                service.StopRecording(cameraId);
+            }
+            catch (Exception ex)
+            {
+                LogStopRecordingFailed(ex, name);
+            }
+        });
     }
 
     private void OnServiceRecordingStateChanged(

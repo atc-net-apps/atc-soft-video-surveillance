@@ -10,6 +10,10 @@ namespace Atc.Video.Engine.Capture;
 internal sealed unsafe class RecordingFileDecoder : IDisposable
 {
     private readonly VideoDecoder decoder = new();
+
+    // Each read of the file (on a share that may stop answering) gives up after this long.
+    private readonly FileReadDeadline deadline = new(TimeSpan.FromSeconds(15));
+
     private AVFormatContext* formatContext;
     private AVPacket* packet;
     private int streamIndex = -1;
@@ -17,6 +21,10 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
     private long startPts;
     private bool draining;
     private bool finished;
+
+    // Where the last picture was, and how far ahead a wanted place must be to seek to it.
+    private static readonly TimeSpan SeekAhead = TimeSpan.FromSeconds(5);
+    private TimeSpan lastPosition;
     private bool disposed;
 
     private RecordingFileDecoder()
@@ -72,12 +80,20 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
         ObjectDisposedException.ThrowIf(disposed, this);
         ArgumentNullException.ThrowIfNull(take);
 
+        // Far ahead of the last picture: jump to the key frame before the place wanted instead of
+        // decoding everything on the way (previews take a few pictures an hour).
+        if (!draining && notBefore - lastPosition > SeekAhead)
+        {
+            SeekTo(notBefore);
+        }
+
         while (!finished)
         {
             if (decoder.ReceiveFrame())
             {
                 var frame = decoder.CurrentFrame;
                 var position = PositionOf(frame->pts);
+                lastPosition = position;
                 if (position >= notBefore && take((nint)frame, position) is { } taken)
                 {
                     return taken;
@@ -92,6 +108,7 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
                 break;
             }
 
+            deadline.Restart();
             if (av_read_frame(formatContext, packet) < 0)
             {
                 // The end: what the decoder still holds comes out after an empty packet.
@@ -138,6 +155,8 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
         {
             avformat_close_input(ref formatContext);
         }
+
+        deadline.Dispose();
     }
 
     private void OpenFile(
@@ -147,6 +166,7 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
         AVDictionary* options = null;
         try
         {
+            formatContext = deadline.NewContext();
             var ret = avformat_open_input(ref formatContext, filePath, null, ref options);
             if (ret < 0)
             {
@@ -154,6 +174,7 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
             }
 
             // Not "ref options": this argument is one dictionary per stream.
+            deadline.Restart();
             ret = avformat_find_stream_info(formatContext, (AVDictionary**)null);
             if (ret < 0)
             {
@@ -190,6 +211,19 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
         if (packet is null)
         {
             throw new InvalidOperationException("Failed to allocate AVPacket.");
+        }
+    }
+
+    // Jumps to the key frame at or before the place (decoding goes on from there up to it). A file
+    // that cannot seek is read on as before.
+    private void SeekTo(TimeSpan place)
+    {
+        deadline.Restart();
+        var target = startPts + av_rescale_q((long)(place.TotalSeconds * 1_000_000), new AVRational { Num = 1, Den = 1_000_000 }, timeBase);
+        if (av_seek_frame(formatContext, streamIndex, target, SeekFlags.Backward) >= 0)
+        {
+            decoder.Flush();
+            lastPosition = place;
         }
     }
 

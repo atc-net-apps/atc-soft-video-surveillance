@@ -25,4 +25,7 @@ public sealed partial class ServerMediaCleanupService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to enumerate active recording sessions; cleanup may delete an active recording")]
     private partial void LogActiveSessionLookupFailed(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The settings file could not be read, so the server runs on default settings: no recording is deleted by age or by the size limit until it can be read; only the free space is kept")]
+    private partial void LogSettingsUnreadableSkippingCleanup();
 }

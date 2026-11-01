@@ -34,6 +34,41 @@ public sealed class SurveillanceEventFeedTests
     }
 
     [Fact]
+    public async Task An_Update_That_Is_Not_Kept_Goes_Out_Live_But_Is_Not_Replayed()
+    {
+        // The boxes of a motion going on, four a second per camera, filled the replay buffer in
+        // minutes: a client resuming later was told it missed events and reloaded everything.
+        var feed = new SurveillanceEventFeed();
+        var first = feed.Publish(Event(1));
+        using var live = feed.Subscribe(lastSequence: null);
+        for (var i = 0; i < SurveillanceEventFeed.ReplayCapacity * 2; i++)
+        {
+            feed.Publish(Event(100), keep: false);
+        }
+
+        feed.Publish(Event(2));
+
+        using var resumed = feed.Subscribe(lastSequence: first);
+        resumed.Missed.Should().Be(0);
+        resumed.Replayed.Select(e => e.Event).Should().Equal(Event(2));
+        (await live.Live.ReadAsync(TestContext.Current.CancellationToken)).Event.Should().Be(Event(100), "it goes out live");
+    }
+
+    [Fact]
+    public void A_Client_That_Resumes_From_An_Update_That_Was_Not_Kept_Missed_Nothing()
+    {
+        var feed = new SurveillanceEventFeed();
+        feed.Publish(Event(1));
+        var update = feed.Publish(Event(100), keep: false);
+        feed.Publish(Event(2));
+
+        using var resumed = feed.Subscribe(lastSequence: update);
+
+        resumed.Missed.Should().Be(0);
+        resumed.Replayed.Select(e => e.Event).Should().Equal(Event(2));
+    }
+
+    [Fact]
     public void A_Subscriber_That_Was_Away_Too_Long_Is_Told_How_Many_It_Missed()
     {
         var feed = new SurveillanceEventFeed();
@@ -76,6 +111,32 @@ public sealed class SurveillanceEventFeedTests
 
         subscription.Replayed.Select(e => e.Event).Should().Equal(Event(1));
         subscription.Missed.Should().BePositive();
+    }
+
+    [Fact]
+    public void A_Client_A_Few_Seconds_Behind_32_Cameras_In_Motion_Is_Not_Cut_Off_And_Can_Resume()
+    {
+        // Four motion events a second per camera, for five seconds, while the client is busy.
+        const int perSecond = 32 * 4;
+        var feed = new SurveillanceEventFeed();
+        using var busy = feed.Subscribe(lastSequence: null);
+        var first = feed.Publish(Event(0));
+        for (var i = 1; i < perSecond * 5; i++)
+        {
+            feed.Publish(Event(i));
+        }
+
+        var read = 0;
+        while (busy.Live.TryRead(out _))
+        {
+            read++;
+        }
+
+        read.Should().Be(perSecond * 5, "the client gets every event once it reads again");
+
+        using var resumed = feed.Subscribe(first);
+        resumed.Missed.Should().Be(0, "a client whose connection dropped resumes without a reload");
+        resumed.Replayed.Should().HaveCount((perSecond * 5) - 1);
     }
 
     [Fact]

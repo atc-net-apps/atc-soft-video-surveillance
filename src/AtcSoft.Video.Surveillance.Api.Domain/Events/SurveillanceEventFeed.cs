@@ -13,14 +13,18 @@ namespace AtcSoft.Video.Surveillance.Api.Domain.Events;
 public sealed class SurveillanceEventFeed
 {
     /// <summary>
-    /// How many of the latest events a resuming client can get again.
+    /// How many of the latest events a resuming client can get again. The boxes of a motion going on
+    /// (four a second per camera) are not kept, only what changed: a motion's start and end, the
+    /// recordings and connections. That is hours of a busy server, not seconds.
     /// </summary>
-    public const int ReplayCapacity = 256;
+    public const int ReplayCapacity = 4096;
 
     /// <summary>
-    /// How many events a subscriber may be behind before it is cut off.
+    /// How many events a subscriber may be behind before it is cut off: some 8 seconds of 32
+    /// cameras in motion, so a client that is busy for a moment (a GC pause, a slow network) is
+    /// not cut off and made to reload everything.
     /// </summary>
-    public const int SubscriberCapacity = 256;
+    public const int SubscriberCapacity = 1024;
 
     private readonly Lock gate = new();
     private readonly Queue<SequencedEvent> replay = new();
@@ -42,6 +46,20 @@ public sealed class SurveillanceEventFeed
 
         firstSequence = (time.GetUtcNow().ToUnixTimeMilliseconds() * 1000) + 1;
         sequence = firstSequence - 1;
+    }
+
+    /// <summary>
+    /// Gets how many subscribers the feed has.
+    /// </summary>
+    public int SubscriberCount
+    {
+        get
+        {
+            lock (gate)
+            {
+                return subscribers.Count;
+            }
+        }
     }
 
     /// <summary>
@@ -89,18 +107,30 @@ public sealed class SurveillanceEventFeed
     /// <summary>
     /// Publishes an event to every subscriber.
     /// </summary>
+    /// <param name="surveillanceEvent">The event.</param>
+    /// <param name="keep">
+    /// <see langword="false"/> for an update that is only of use while it is new (the boxes of a motion going
+    /// on, four a second per camera): it goes to the subscribers but not into the replay buffer, so the
+    /// buffer keeps minutes of what changed rather than seconds of boxes. It takes the id of the last
+    /// event kept: a client that resumes from it gets what was kept after that, and has missed nothing.
+    /// </param>
     /// <returns>The event's sequence, its id on the stream.</returns>
-    public long Publish(SurveillanceEvent surveillanceEvent)
+    public long Publish(
+        SurveillanceEvent surveillanceEvent,
+        bool keep = true)
     {
         ArgumentNullException.ThrowIfNull(surveillanceEvent);
 
         lock (gate)
         {
-            var sequenced = new SequencedEvent(++sequence, surveillanceEvent);
-            replay.Enqueue(sequenced);
-            if (replay.Count > ReplayCapacity)
+            var sequenced = new SequencedEvent(keep ? ++sequence : sequence, surveillanceEvent);
+            if (keep)
             {
-                replay.Dequeue();
+                replay.Enqueue(sequenced);
+                if (replay.Count > ReplayCapacity)
+                {
+                    replay.Dequeue();
+                }
             }
 
             for (var i = subscribers.Count - 1; i >= 0; i--)

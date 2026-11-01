@@ -6,16 +6,26 @@ namespace Atc.Video.Engine.Recording;
 /// Records a video stream by remuxing (packet copy, no transcoding) to a container file.
 /// </summary>
 [SuppressMessage("", "CA1806:calls av_*", Justification = "OK")]
-internal sealed unsafe class Remuxer : IDisposable
+internal sealed unsafe partial class Remuxer : IDisposable
 {
     // Bounded queue capacity sized so a slow disk hiccup of a few seconds
     // (e.g. a cleanup pass thrashing the same drive) doesn't drop frames at
-    // 30 fps. When the queue fills, the producer side drops the oldest
-    // packet — keeping the freshest history when the disk is permanently
-    // behind.
+    // 30 fps. When the queue fills, new packets are left out up to the next
+    // key frame and counted (see TryEnqueue).
     private const int WriteQueueCapacity = 1000;
 
-    private readonly Lock syncLock = new();
+    // How far the source's clock may go back or forward between two pictures before it counts as a
+    // jump that is re-based (see Rebase).
+    private const long JumpBackMicroseconds = 5_000_000;
+    private const long JumpForwardMicroseconds = 60_000_000;
+
+    // Two locks, so the thread that reads the camera never waits for the disk: stateLock guards
+    // what WritePacket needs (the file being open, its clock, the queue), ioLock guards the
+    // muxer's writes. The writer takes only ioLock for each packet; opening, switching and
+    // closing take both, stateLock first, so no packet lands in the wrong file.
+    private readonly Lock stateLock = new();
+    private readonly Lock ioLock = new();
+    private readonly ILogger logger;
 
     // BlockingCollection (not Channel) because the surrounding class is
     // `unsafe` and cannot host `await`. The writer thread waits for
@@ -37,6 +47,13 @@ internal sealed unsafe class Remuxer : IDisposable
     private long originMicroseconds = AV_NOPTS_VALUE;
     private long lastDts = AV_NOPTS_VALUE;
     private long lastAudioDts = AV_NOPTS_VALUE;
+
+    // A camera's clock that jumps (a resync, a wrap of the MPEG-TS clock every 26.5 h or of RTP's every
+    // 13.25 h) is re-based: the file goes on one picture after the last, instead of every packet
+    // after the jump being squeezed one tick apart (back) or leaving a hole (forward).
+    private long shiftMicroseconds;
+    private long lastSourceDtsMicroseconds = AV_NOPTS_VALUE;
+    private long lastStepMicroseconds = 40_000;
     private bool receivedKeyframe;
     private string? outputPath;
 
@@ -52,13 +69,36 @@ internal sealed unsafe class Remuxer : IDisposable
 
     private Thread? writerThread;
 
+    // Packets left out because the disk could not keep up (the queue was full), in this file.
+    private long droppedPackets;
+
+    // After a packet was left out, the rest are left out up to the next key frame: the file then goes
+    // on from a picture that can be decoded. Guarded by stateLock.
+    private bool waitingForKeyFrame;
+
+    // A switch to the next file that waits for a key frame (see SwitchTo). Guarded by stateLock.
+    private PendingSwitch? pendingSwitch;
+
+    public Remuxer(ILogger? logger = null)
+        => this.logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+
     public bool IsOpen => outputCtx is not null;
+
+    /// <summary>
+    /// Gets how many packets of the current file were left out because the disk could not keep up.
+    /// </summary>
+    public long DroppedPackets => Interlocked.Read(ref droppedPackets);
 
     /// <summary>
     /// Gets why the current file can take no more packets (a full disk, a broken output), or
     /// <see langword="null"/> while it can. Packets after such an error are dropped.
     /// </summary>
     public string? WriteError => writeError;
+
+    /// <summary>
+    /// Gets how many jumps in the source's clock this recorder has re-based.
+    /// </summary>
+    public int ClockJumps { get; private set; }
 
     public void Open(
         string outputPath,
@@ -67,10 +107,15 @@ internal sealed unsafe class Remuxer : IDisposable
         int rotationDegrees = 0,
         AVCodecParameters* audioCodecpar = null)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            OpenLocked(outputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
-            EnsureWriterRunning();
+            pendingSwitch?.Dispose();
+            pendingSwitch = null;
+            lock (ioLock)
+            {
+                OpenLocked(outputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
+                EnsureWriterRunning();
+            }
         }
     }
 
@@ -86,10 +131,13 @@ internal sealed unsafe class Remuxer : IDisposable
         AVRational inputTimeBase,
         AVCodecParameters* audioCodecpar = null)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            OpenLocked(playlistPath, codecpar, inputTimeBase, rotationDegrees: 0, audioCodecpar, live: true);
-            EnsureWriterRunning();
+            lock (ioLock)
+            {
+                OpenLocked(playlistPath, codecpar, inputTimeBase, rotationDegrees: 0, audioCodecpar, live: true);
+                EnsureWriterRunning();
+            }
         }
     }
 
@@ -98,30 +146,46 @@ internal sealed unsafe class Remuxer : IDisposable
     /// </summary>
     public void Flush()
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            DrainQueueLocked();
+            lock (ioLock)
+            {
+                DrainQueueLocked();
+            }
         }
     }
 
     /// <summary>
-    /// Atomically closes the current output file and opens
-    /// <paramref name="newOutputPath"/>. Holding the lock across both
-    /// operations means packets arriving from the demux thread mid-switch
-    /// either land in the previous segment or the new one — they are
-    /// never silently dropped in the close/open gap.
+    /// Moves the recording on to <paramref name="newOutputPath"/>. A file has to start with a key
+    /// frame, so the switch is made at the next one: until then packets go on into the current
+    /// file, and none are lost between the two (before, everything up to the next key frame was
+    /// dropped from the new file: seconds every hour). A file without pictures yet, or one that
+    /// can take no more, is switched at once; so is one asked for <paramref name="atOnce"/> (the
+    /// caller then writes the new file's first key frame itself).
     /// </summary>
     public void SwitchTo(
         string newOutputPath,
         AVCodecParameters* codecpar,
         AVRational inputTimeBase,
         int rotationDegrees = 0,
-        AVCodecParameters* audioCodecpar = null)
+        AVCodecParameters* audioCodecpar = null,
+        bool atOnce = false)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            CloseLocked();
-            OpenLocked(newOutputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
+            pendingSwitch?.Dispose();
+            pendingSwitch = null;
+            if (!atOnce && outputCtx is not null && receivedKeyframe && writeError is null)
+            {
+                pendingSwitch = new PendingSwitch(newOutputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
+                return;
+            }
+
+            lock (ioLock)
+            {
+                CloseLocked();
+                OpenLocked(newOutputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
+            }
         }
     }
 
@@ -340,7 +404,7 @@ internal sealed unsafe class Remuxer : IDisposable
         AVPacket* srcPacket,
         AVRational srcTimeBase)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
             if (outputCtx is null)
             {
@@ -348,6 +412,11 @@ internal sealed unsafe class Remuxer : IDisposable
             }
 
             var isKeyframe = (srcPacket->flags & PktFlags.Key) != PktFlags.None;
+            if (isKeyframe && pendingSwitch is { } next && !SwitchAtKeyFrame(next))
+            {
+                return;
+            }
+
             if (!receivedKeyframe)
             {
                 if (!isKeyframe)
@@ -366,19 +435,38 @@ internal sealed unsafe class Remuxer : IDisposable
 
             try
             {
-                if (originMicroseconds == AV_NOPTS_VALUE)
+                // Worked out in microseconds on the source's clock, shifted past any jump in it.
+                var dtsUs = clonedPkt->dts != AV_NOPTS_VALUE
+                    ? av_rescale_q(clonedPkt->dts, srcTimeBase, Microseconds) + shiftMicroseconds
+                    : AV_NOPTS_VALUE;
+                var ptsUs = clonedPkt->pts != AV_NOPTS_VALUE
+                    ? av_rescale_q(clonedPkt->pts, srcTimeBase, Microseconds) + shiftMicroseconds
+                    : dtsUs;
+                if (dtsUs != AV_NOPTS_VALUE)
                 {
-                    originMicroseconds = clonedPkt->dts != AV_NOPTS_VALUE
-                        ? av_rescale_q(clonedPkt->dts, srcTimeBase, Microseconds)
-                        : 0;
+                    var correction = Rebase(dtsUs);
+                    dtsUs += correction;
+                    if (ptsUs != AV_NOPTS_VALUE)
+                    {
+                        ptsUs += correction;
+                    }
                 }
 
-                var firstDts = av_rescale_q(originMicroseconds, Microseconds, srcTimeBase);
-                var dtsOffset = clonedPkt->dts != AV_NOPTS_VALUE ? clonedPkt->dts - firstDts : 0;
-                var ptsOffset = clonedPkt->pts != AV_NOPTS_VALUE ? clonedPkt->pts - firstDts : dtsOffset;
+                if (originMicroseconds == AV_NOPTS_VALUE)
+                {
+                    originMicroseconds = dtsUs != AV_NOPTS_VALUE ? dtsUs : 0;
+                }
 
-                clonedPkt->dts = av_rescale_q(dtsOffset, srcTimeBase, outputTimeBase);
-                clonedPkt->pts = av_rescale_q(ptsOffset, srcTimeBase, outputTimeBase);
+                var dtsOffset = dtsUs != AV_NOPTS_VALUE ? dtsUs - originMicroseconds : 0;
+                var ptsOffset = ptsUs != AV_NOPTS_VALUE ? ptsUs - originMicroseconds : dtsOffset;
+
+                clonedPkt->dts = av_rescale_q(dtsOffset, Microseconds, outputTimeBase);
+                clonedPkt->pts = av_rescale_q(ptsOffset, Microseconds, outputTimeBase);
+                if (clonedPkt->duration > 0)
+                {
+                    clonedPkt->duration = av_rescale_q(clonedPkt->duration, srcTimeBase, outputTimeBase);
+                }
+
                 clonedPkt->stream_index = 0;
                 clonedPkt->pos = -1;
 
@@ -404,9 +492,9 @@ internal sealed unsafe class Remuxer : IDisposable
                 // disk write used to block the demux thread; on a slow
                 // drive (cleanup pass on the same disk, network share
                 // hiccup) that backed up the RTSP buffer and dropped
-                // frames upstream. The writer drains under syncLock so
+                // frames upstream. The writer writes under ioLock only, so
                 // CloseLocked can flush before changing outputCtx.
-                if (TryEnqueueDropOldest((nint)clonedPkt))
+                if (TryEnqueue((nint)clonedPkt, isVideo: true, isKeyframe))
                 {
                     // Ownership transferred to the queue — do NOT free here.
                     clonedPkt = null;
@@ -431,14 +519,15 @@ internal sealed unsafe class Remuxer : IDisposable
         AVPacket* srcPacket,
         AVRational srcTimeBase)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
             if (outputCtx is null || !hasAudio || !receivedKeyframe || srcPacket->pts == AV_NOPTS_VALUE)
             {
                 return;
             }
 
-            var offset = srcPacket->pts - av_rescale_q(originMicroseconds, Microseconds, srcTimeBase);
+            // Sound shares the picture's clock, and the shift that keeps it going past a jump.
+            var offset = av_rescale_q(srcPacket->pts, srcTimeBase, Microseconds) + shiftMicroseconds - originMicroseconds;
             if (offset < 0)
             {
                 return;
@@ -450,7 +539,7 @@ internal sealed unsafe class Remuxer : IDisposable
                 return;
             }
 
-            clonedPkt->pts = av_rescale_q(offset, srcTimeBase, audioOutputTimeBase);
+            clonedPkt->pts = av_rescale_q(offset, Microseconds, audioOutputTimeBase);
             clonedPkt->dts = clonedPkt->pts;
             clonedPkt->duration = av_rescale_q(srcPacket->duration, srcTimeBase, audioOutputTimeBase);
             clonedPkt->stream_index = 1;
@@ -464,7 +553,7 @@ internal sealed unsafe class Remuxer : IDisposable
 
             lastAudioDts = clonedPkt->dts;
 
-            if (TryEnqueueDropOldest((nint)clonedPkt))
+            if (TryEnqueue((nint)clonedPkt, isVideo: false, isKeyframe: false))
             {
                 packetQueued.Set();
             }
@@ -475,31 +564,90 @@ internal sealed unsafe class Remuxer : IDisposable
         }
     }
 
-    // BlockingCollection has no native drop-oldest mode; emulate it by
-    // attempting a non-blocking add and, on failure, draining the oldest
-    // queued packet (freeing it) before retrying once.
-    private bool TryEnqueueDropOldest(nint ptr)
+    // Called under stateLock with a packet's decode time (microseconds, already shifted). Returns
+    // what to add to it: zero, or after a jump what puts it one picture after the last.
+    private long Rebase(long dtsMicroseconds)
+    {
+        var correction = 0L;
+        if (lastSourceDtsMicroseconds != AV_NOPTS_VALUE)
+        {
+            var step = dtsMicroseconds - lastSourceDtsMicroseconds;
+            if (step < -JumpBackMicroseconds || step > JumpForwardMicroseconds)
+            {
+                correction = lastSourceDtsMicroseconds + lastStepMicroseconds - dtsMicroseconds;
+                shiftMicroseconds += correction;
+                ClockJumps++;
+            }
+            else if (step > 0)
+            {
+                lastStepMicroseconds = step;
+            }
+        }
+
+        lastSourceDtsMicroseconds = dtsMicroseconds + correction;
+        return correction;
+    }
+
+    // Called under stateLock with a key frame in hand: the current file is closed and the next one
+    // opened, and the key frame is its first picture. False when the next file could not be opened
+    // (the recording then reports why, and takes no more packets).
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Runs on the thread that reads the camera; a failure is reported through WriteError.")]
+    private bool SwitchAtKeyFrame(PendingSwitch next)
+    {
+        pendingSwitch = null;
+        using (next)
+        {
+            try
+            {
+                lock (ioLock)
+                {
+                    CloseLocked();
+                    OpenLocked(next.Path, next.Video, next.TimeBase, next.Rotation, next.Audio);
+                }
+
+                return true;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                writeError = ex.Message;
+                return false;
+            }
+        }
+    }
+
+    // Called under stateLock. A full queue (the disk cannot keep up) leaves the new packet out, and
+    // the ones after it up to the next key frame: what is queued stays whole, and the file goes on
+    // from a picture that can be decoded. (Dropping the oldest instead could take a key frame and
+    // leave seconds that cannot be played.) Every packet left out is counted.
+    private bool TryEnqueue(
+        nint ptr,
+        bool isVideo,
+        bool isKeyframe)
     {
         if (writeQueue.IsAddingCompleted)
         {
             return false;
         }
 
+        if (waitingForKeyFrame && !(isVideo && isKeyframe))
+        {
+            Interlocked.Increment(ref droppedPackets);
+            return false;
+        }
+
         if (writeQueue.TryAdd(ptr))
         {
+            waitingForKeyFrame = false;
             return true;
         }
 
-        if (writeQueue.TryTake(out var dropped))
-        {
-            FreeQueuedPacket(dropped);
-        }
-
-        return writeQueue.TryAdd(ptr);
+        waitingForKeyFrame = true;
+        Interlocked.Increment(ref droppedPackets);
+        return false;
     }
 
     // Started lazily on first Open and stopped in Dispose. Writes the
-    // queued packets to the current outputCtx under syncLock. CloseLocked
+    // queued packets to the current outputCtx under ioLock. CloseLocked
     // drains synchronously before closing the muxer, so packets are never
     // written to a stale outputCtx.
     private void EnsureWriterRunning()
@@ -548,7 +696,7 @@ internal sealed unsafe class Remuxer : IDisposable
 
     private bool WriteNextQueuedPacket()
     {
-        lock (syncLock)
+        lock (ioLock)
         {
             if (!writeQueue.TryTake(out var ptr))
             {
@@ -565,7 +713,7 @@ internal sealed unsafe class Remuxer : IDisposable
         }
     }
 
-    // Must be called while holding syncLock. Writes every queued packet to
+    // Must be called while holding both locks. Writes every queued packet to
     // the current outputCtx (or just frees them if outputCtx is null).
     private void DrainQueueLocked()
     {
@@ -580,7 +728,7 @@ internal sealed unsafe class Remuxer : IDisposable
         }
     }
 
-    // Must be called while holding syncLock with an open output. After a write that ends the
+    // Must be called while holding ioLock with an open output. After a write that ends the
     // file, the rest is dropped: the recording reports the error instead of claiming to run.
     private void WriteLocked(AVPacket* pkt)
     {
@@ -605,9 +753,14 @@ internal sealed unsafe class Remuxer : IDisposable
 
     public void Close()
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            CloseLocked();
+            pendingSwitch?.Dispose();
+            pendingSwitch = null;
+            lock (ioLock)
+            {
+                CloseLocked();
+            }
         }
     }
 
@@ -618,9 +771,16 @@ internal sealed unsafe class Remuxer : IDisposable
             return;
         }
 
+        var dropped = Interlocked.Exchange(ref droppedPackets, 0);
+        waitingForKeyFrame = false;
+        if (dropped > 0)
+        {
+            LogPacketsDropped(logger, dropped, outputPath ?? string.Empty);
+        }
+
         // Flush every packet still in the queue to the current outputCtx
         // before writing the trailer. The writer task is blocked on the
-        // syncLock by us, so this drain is exclusive.
+        // ioLock by us, so this drain is exclusive.
         DrainQueueLocked();
 
         var hasPictures = receivedKeyframe;
@@ -649,6 +809,9 @@ internal sealed unsafe class Remuxer : IDisposable
         outputPath = null;
         originMicroseconds = AV_NOPTS_VALUE;
         lastAudioDts = AV_NOPTS_VALUE;
+        shiftMicroseconds = 0;
+        lastSourceDtsMicroseconds = AV_NOPTS_VALUE;
+        lastStepMicroseconds = 40_000;
         lastDts = AV_NOPTS_VALUE;
         receivedKeyframe = false;
     }
@@ -680,5 +843,70 @@ internal sealed unsafe class Remuxer : IDisposable
         writeQueue.Dispose();
         packetQueued.Dispose();
         writerThread = null;
+    }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "{Count} packets of '{File}' were left out: the disk could not keep up (the recording goes on from the next key frame after each gap)")]
+    private static partial void LogPacketsDropped(ILogger logger, long count, string file);
+
+    // The next file of a switch that waits for a key frame, with its own copies of the codec
+    // parameters: the caller's may be gone by then.
+    private sealed class PendingSwitch : IDisposable
+    {
+        private AVCodecParameters* video;
+        private AVCodecParameters* audio;
+
+        public PendingSwitch(
+            string path,
+            AVCodecParameters* video,
+            AVRational timeBase,
+            int rotation,
+            AVCodecParameters* audio)
+        {
+            Path = path;
+            TimeBase = timeBase;
+            Rotation = rotation;
+            this.video = Copy(video);
+            this.audio = Copy(audio);
+        }
+
+        public string Path { get; }
+
+        public AVRational TimeBase { get; }
+
+        public int Rotation { get; }
+
+        public AVCodecParameters* Video => video;
+
+        public AVCodecParameters* Audio => audio;
+
+        public void Dispose()
+        {
+            if (video is not null)
+            {
+                avcodec_parameters_free(ref video);
+            }
+
+            if (audio is not null)
+            {
+                avcodec_parameters_free(ref audio);
+            }
+        }
+
+        private static AVCodecParameters* Copy(AVCodecParameters* source)
+        {
+            if (source is null)
+            {
+                return null;
+            }
+
+            var copy = avcodec_parameters_alloc();
+            if (avcodec_parameters_copy(copy, source) < 0)
+            {
+                avcodec_parameters_free(ref copy);
+                throw new InvalidOperationException("The codec parameters of the next file could not be copied.");
+            }
+
+            return copy;
+        }
     }
 }

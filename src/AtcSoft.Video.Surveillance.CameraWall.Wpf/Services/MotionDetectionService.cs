@@ -129,6 +129,10 @@ public partial class MotionDetectionService : IMotionDetectionService, IDisposab
         => contexts.TryGetValue(cameraId, out var context) && context.Indexes;
 
     /// <inheritdoc/>
+    public IMediaPipeline? FindPipeline(Guid cameraId)
+        => contexts.TryGetValue(cameraId, out var context) && context.ReportsMotion ? context.Pipeline : null;
+
+    /// <inheritdoc/>
     public bool IsDetectionActive(Guid cameraId)
         => contexts.TryGetValue(cameraId, out var context) && context.ReportsMotion;
 

@@ -47,6 +47,24 @@ public sealed partial class VideoPlayer
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "[{Source}] Exceeded {Max} consecutive read errors")]
     private partial void LogExceededConsecutiveReadErrors(string source, int max);
 
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "[{Source}] No packet for {Seconds:0} s: the stream is taken as lost")]
+    private partial void LogStreamSilent(string source, double seconds);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The {Codec} decoder failed ({Reason}); it is opened again on the processor (time {Attempt}); the recording goes on")]
+    private partial void LogDecoderReopened(string codec, int attempt, string reason);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "The {Codec} decoder keeps failing ({Reason}); the stream is recorded but no longer decoded (no picture, no motion analysis) until it is opened again")]
+    private partial void LogDecodingStopped(string codec, string reason);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "A subscriber to the player's state change to {State} failed")]
+    private partial void LogStateChangedSubscriberFailed(Exception ex, PlayerState state);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "[{Source}] The previous stream did not end within {Seconds:0} s; the stream is not opened again until it has")]
+    private partial void LogPreviousRunStillEnding(string source, double seconds);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The demux thread did not end within {TimeoutMs} ms; the graphics accelerator is kept for it instead of disposed")]
+    private partial void LogAcceleratorKeptForRunningThread(int timeoutMs);
+
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "[{Source}] Read-error burst classified: lastErrorCode={LastErrorCode}, reason={Reason}")]
     private partial void LogReadErrorCode(string source, int lastErrorCode, StreamFailureReason reason);
 }

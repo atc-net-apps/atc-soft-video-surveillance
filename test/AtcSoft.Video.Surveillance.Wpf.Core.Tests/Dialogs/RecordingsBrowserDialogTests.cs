@@ -32,7 +32,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
 
         string? played = null;
         var closedByPlay = true;
-        string? filterAfterPlay = null;
+        string[]? filterAfterPlay = null;
         string? selectedAfterPlay = null;
 
         // Act
@@ -40,20 +40,21 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
         {
             var viewModel = new RecordingsBrowserDialogViewModel(settingsService)
             {
-                SelectedCameraFilter = "Garden",
+                SelectedCameraFilters = ["Garden"],
             };
+            WpfTestThread.WaitFor(viewModel.Loading);
 
             RecordingEntry? playedRecording = null;
             var closed = false;
             var dialog = new RecordingsBrowserDialog(viewModel, recording => playedRecording = recording);
             dialog.Closed += (_, _) => closed = true;
 
-            viewModel.SelectedRecording = viewModel.FilteredRecordings.Last();
+            viewModel.SelectedRecording = viewModel.FilteredRecordings[^1];
             viewModel.PlayCommand.Execute(parameter: null);
 
             played = playedRecording?.FileName;
             closedByPlay = closed;
-            filterAfterPlay = viewModel.SelectedCameraFilter;
+            filterAfterPlay = [.. viewModel.SelectedCameraFilters];
             selectedAfterPlay = viewModel.SelectedRecording?.FileName;
 
             dialog.Close();
@@ -63,7 +64,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
         error.Should().BeNull();
         played.Should().Be("Garden_20261012_220000_000.mkv");
         closedByPlay.Should().BeFalse("the browser is still there when playback ends");
-        filterAfterPlay.Should().Be("Garden");
+        filterAfterPlay.Should().Equal("Garden");
         selectedAfterPlay.Should().Be("Garden_20261012_220000_000.mkv");
     }
 
@@ -83,6 +84,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
         var error = WpfTestThread.Run(() =>
         {
             var viewModel = new RecordingsBrowserDialogViewModel(settingsService);
+            WpfTestThread.WaitFor(viewModel.Loading);
             var closed = false;
             var dialog = new RecordingsBrowserDialog(
                 viewModel,
@@ -119,6 +121,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
         var error = WpfTestThread.Run(() =>
         {
             var viewModel = new RecordingsBrowserDialogViewModel(settingsService);
+            WpfTestThread.WaitFor(viewModel.Loading);
             var dialog = new RecordingsBrowserDialog(viewModel, recording => played = recording.FileName);
             viewModel.SelectedRecording = viewModel.FilteredRecordings.Single();
 

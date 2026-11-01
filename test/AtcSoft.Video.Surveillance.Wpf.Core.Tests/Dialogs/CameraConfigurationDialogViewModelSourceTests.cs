@@ -24,6 +24,27 @@ public class CameraConfigurationDialogViewModelSourceTests
     }
 
     [Fact]
+    public void SourceIndex_Is_The_Segment_Of_The_Source_And_Picking_A_Segment_Switches_It()
+    {
+        var vm = BuildVm(BuildNetworkCamera());
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.SourceIndex.Should().Be(0);
+
+        vm.SourceIndex = 1;
+
+        vm.IsUsbSource.Should().BeTrue();
+        vm.Camera.Connection.Source.Should().Be(CameraSource.Usb);
+        changed.Should().Contain(nameof(CameraConfigurationDialogViewModel.SourceIndex));
+
+        vm.SourceIndex = 0;
+
+        vm.IsNetworkSource.Should().BeTrue();
+        vm.SourceIndex.Should().Be(0);
+    }
+
+    [Fact]
     public void Switching_From_Network_To_Usb_Resets_IpAddress_Port_Auth()
     {
         var camera = BuildNetworkCamera();

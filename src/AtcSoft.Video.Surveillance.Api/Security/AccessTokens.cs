@@ -16,6 +16,18 @@ public sealed class AccessTokens
     /// </summary>
     public const string MediaAudience = "AtcSoft.Video.Surveillance.Media";
 
+    /// <summary>
+    /// The claim with the user's id.
+    /// </summary>
+    public const string UserIdClaim = "sub";
+
+    /// <summary>
+    /// The claim with the id of the session a token was made for: the token is
+    /// valid only while that session lives (sign-out, a deleted user and a new
+    /// password end it).
+    /// </summary>
+    public const string SessionClaim = "sid";
+
     private const int KeyLength = 64;
 
     private readonly TimeProvider time;
@@ -64,10 +76,11 @@ public sealed class AccessTokens
     public TokenValidationParameters ValidationParameters { get; }
 
     /// <summary>
-    /// Makes an access token for a user.
+    /// Makes an access token for a user's session.
     /// </summary>
     public string Create(
         Guid userId,
+        Guid sessionId,
         string userName,
         AccountRole role)
     {
@@ -81,7 +94,8 @@ public sealed class AccessTokens
             Expires = now + Lifetime,
             Claims = new Dictionary<string, object>(StringComparer.Ordinal)
             {
-                ["sub"] = userId.ToString(),
+                [UserIdClaim] = userId.ToString(),
+                [SessionClaim] = sessionId.ToString(),
                 [CallerIdentity.NameClaim] = userName,
                 [CallerIdentity.RoleClaim] = role.ToApiRoleName(),
             },
@@ -90,10 +104,13 @@ public sealed class AccessTokens
     }
 
     /// <summary>
-    /// Makes a media token: read-only access to the recordings, for an address a
-    /// player or an image opens without a header (?media=).
+    /// Makes a media token for a user's session: read-only access to the recordings,
+    /// for an address a player or an image opens without a header (?media=).
     /// </summary>
-    public string CreateMediaToken(string userName)
+    public string CreateMediaToken(
+        Guid userId,
+        Guid sessionId,
+        string userName)
     {
         var now = time.GetUtcNow().UtcDateTime;
         return handler.CreateToken(new SecurityTokenDescriptor
@@ -105,6 +122,8 @@ public sealed class AccessTokens
             Expires = now + MediaLifetime,
             Claims = new Dictionary<string, object>(StringComparer.Ordinal)
             {
+                [UserIdClaim] = userId.ToString(),
+                [SessionClaim] = sessionId.ToString(),
                 [CallerIdentity.NameClaim] = userName,
             },
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256),
@@ -112,23 +131,30 @@ public sealed class AccessTokens
     }
 
     /// <summary>
-    /// Checks a media token; an access token is not one.
+    /// Reads a media token whose signature, audience and lifetime are valid; an
+    /// access token is not one. Whether its session still lives is the
+    /// <see cref="AccountService"/>'s to tell.
     /// </summary>
-    public async Task<bool> IsValidMediaTokenAsync(string? token)
+    /// <returns>The token's claims, or <see langword="null"/> when it is not valid.</returns>
+    public async Task<ClaimsIdentity?> ReadMediaTokenAsync(string? token)
     {
         if (string.IsNullOrEmpty(token))
         {
-            return false;
+            return null;
         }
 
         var parameters = ValidationParameters.Clone();
         parameters.ValidAudience = MediaAudience;
         var result = await handler.ValidateTokenAsync(token, parameters).ConfigureAwait(false);
-        return result.IsValid;
+        return result.IsValid ? result.ClaimsIdentity : null;
     }
 
     private static byte[] LoadOrCreateKey(string keyPath)
     {
+        // Whoever reads the key can sign an admin's token: it is kept from the
+        // machine's other users, also when an older server wrote it.
+        SecretFile.TryRestrict(keyPath);
+
         if (File.Exists(keyPath) &&
             Convert.TryFromBase64String(File.ReadAllText(keyPath).Trim(), new byte[KeyLength], out var length) &&
             length == KeyLength)
@@ -137,8 +163,7 @@ public sealed class AccessTokens
         }
 
         var created = RandomNumberGenerator.GetBytes(KeyLength);
-        Directory.CreateDirectory(Path.GetDirectoryName(keyPath)!);
-        File.WriteAllText(keyPath, Convert.ToBase64String(created));
+        SecretFile.WriteAllText(keyPath, Convert.ToBase64String(created));
         return created;
     }
 }

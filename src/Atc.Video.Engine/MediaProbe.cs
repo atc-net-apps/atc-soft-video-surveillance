@@ -5,6 +5,9 @@ namespace Atc.Video.Engine;
 /// </summary>
 public static class MediaProbe
 {
+    // How long probing a file may wait for it.
+    private static readonly TimeSpan ProbeLimit = TimeSpan.FromSeconds(15);
+
     /// <summary>
     /// Gets the duration of a media file.
     /// </summary>
@@ -14,10 +17,13 @@ public static class MediaProbe
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
+        // A recording on a share that stops answering gives up instead of holding this thread.
+        using var deadline = new FileReadDeadline(ProbeLimit);
         AVFormatContext* fmtCtx = null;
         AVDictionary* dict = null;
         try
         {
+            fmtCtx = deadline.NewContext();
             int ret = avformat_open_input(ref fmtCtx, filePath, null, ref dict);
             if (ret < 0)
             {
@@ -65,10 +71,13 @@ public static class MediaProbe
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
+        // A recording on a share that stops answering gives up instead of holding this thread.
+        using var deadline = new FileReadDeadline(ProbeLimit);
         AVFormatContext* fmtCtx = null;
         AVDictionary* dict = null;
         try
         {
+            fmtCtx = deadline.NewContext();
             int ret = avformat_open_input(ref fmtCtx, filePath, null, ref dict);
             if (ret < 0)
             {
@@ -109,10 +118,14 @@ public static class MediaProbe
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
+        // A recording on a share that stops answering gives up instead of holding this thread.
+        using var deadline = new FileReadDeadline(ProbeLimit);
         AVFormatContext* fmtCtx = null;
         AVDictionary* dict = null;
         try
         {
+            fmtCtx = deadline.NewContext();
+
             // The size may only be known once the streams are probed.
             if (avformat_open_input(ref fmtCtx, filePath, null, ref dict) < 0 ||
                 avformat_find_stream_info(fmtCtx, (AVDictionary**)null) < 0)

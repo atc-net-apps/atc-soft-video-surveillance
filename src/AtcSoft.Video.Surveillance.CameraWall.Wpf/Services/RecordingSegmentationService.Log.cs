@@ -16,4 +16,7 @@ public partial class RecordingSegmentationService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to segment recording for camera '{CameraName}'")]
     private partial void LogSegmentingFailed(string cameraName);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The recording worker's {Step} step failed; the other steps go on")]
+    private partial void LogStepFailed(string step, Exception ex);
 }

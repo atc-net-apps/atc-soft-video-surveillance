@@ -76,6 +76,8 @@
         <!--  Camera DataGrid  -->
         <DataGrid
             Grid.Row="2"
+            atc:DataGridFilter.IsEnabled="True"
+            atc:DataGridFilter.ShowColumnChooser="True"
             AutoGenerateColumns="False"
             CanUserAddRows="False"
             CanUserDeleteRows="False"
@@ -101,7 +103,10 @@
                     Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Protocol}" />
 
                 <!--  Connection State with color indicator  -->
-                <DataGridTemplateColumn Width="120" Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Status}">
+                <DataGridTemplateColumn
+                    Width="120"
+                    Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Status}"
+                    SortMemberPath="ConnectionState">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel VerticalAlignment="Center" Orientation="Horizontal">

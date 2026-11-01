@@ -2,13 +2,16 @@ namespace AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Cameras;
 
 /// <summary>
 /// Handler business logic for the StartRecording operation.
-/// Requires an active IMediaPipeline and IRecordingService.
+/// Requires an active IMediaPipeline and IRecordingService. A recording started here goes on
+/// until someone stops it: after the camera drops out, and after the server restarts.
 /// </summary>
 public sealed class StartRecordingHandler(
     ICameraStorageService storage,
     IRecordingService recordingService,
     IMediaPipelineFactory pipelineFactory,
-    ICameraPipelineHost? pipelineHost = null) : IStartRecordingHandler
+    ICameraPipelineHost? pipelineHost = null,
+    IRecordingIntents? intents = null,
+    ICameraRuntime? runtime = null) : IStartRecordingHandler
 {
     // Wait at most this long for the camera to reach the Connected state
     // before reporting failure. Longer than the typical RTSP open (1-3 s)
@@ -41,9 +44,22 @@ public sealed class StartRecordingHandler(
                 .StartAsync(pipelineHost, recordingService, camera, ConnectionTimeout, cancellationToken)
                 .ConfigureAwait(false);
 
-            return outcome == HostedCameraRecordingOutcome.Started
-                ? StartRecordingResult.Ok(BuildStatus(parameters.CameraId))
-                : StartRecordingResult.Conflict(HostedCameraRecording.Describe(outcome, ConnectionTimeout));
+            if (outcome != HostedCameraRecordingOutcome.Started)
+            {
+                return StartRecordingResult.Conflict(HostedCameraRecording.Describe(outcome, ConnectionTimeout));
+            }
+
+            intents?.Want(parameters.CameraId);
+            return StartRecordingResult.Ok(BuildStatus(parameters.CameraId));
+        }
+
+        // A camera the server watches already is recorded on that connection,
+        // not on a second one: many cameras allow only a few.
+        if (runtime?.FindPlayingPipeline(camera.Id) is { } playing &&
+            recordingService.StartRecordingOnSharedPipeline(camera, playing))
+        {
+            intents?.Want(parameters.CameraId);
+            return StartRecordingResult.Ok(BuildStatus(parameters.CameraId));
         }
 
         var pipeline = pipelineFactory.Create(camera);
@@ -82,6 +98,7 @@ public sealed class StartRecordingHandler(
             throw;
         }
 
+        intents?.Want(parameters.CameraId);
         return StartRecordingResult.Ok(BuildStatus(parameters.CameraId));
     }
 

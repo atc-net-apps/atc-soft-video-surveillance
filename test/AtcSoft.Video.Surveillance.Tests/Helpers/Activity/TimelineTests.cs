@@ -114,6 +114,35 @@ public sealed class TimelineTests : IDisposable
     }
 
     [Fact]
+    public void A_Timeline_That_Reads_More_Than_The_Cache_Keeps_Makes_Room_So_It_Is_Not_Read_Again()
+    {
+        var cache = new ActivitySummaryCache(capacity: 2, maximumCapacity: 10);
+        var files = Enumerable.Range(0, 4).Select(i => WriteIndex($"r{i}", 3)).ToList();
+
+        cache.Reserve(files.Count);
+        files.ForEach(f => cache.Get(f));
+
+        cache.Capacity.Should().Be(4);
+        cache.Count.Should().Be(4, "a timeline built again finds every summary kept");
+
+        cache.Reserve(1_000);
+        cache.Capacity.Should().Be(10, "the cache grows no further than its maximum");
+        cache.Reserve(1);
+        cache.Capacity.Should().Be(10, "it never shrinks");
+    }
+
+    [Fact]
+    public void A_Full_Cache_Drops_Its_Least_Recently_Used_Tenth_At_Once()
+    {
+        var cache = new ActivitySummaryCache(capacity: 20);
+        var files = Enumerable.Range(0, 21).Select(i => WriteIndex($"f{i}", 3)).ToList();
+
+        files.ForEach(f => cache.Get(f));
+
+        cache.Count.Should().Be(18, "one past the limit makes room for the next tenth too");
+    }
+
+    [Fact]
     public void A_Week_Of_Hour_Long_Indexes_For_Ten_Cameras_Is_Read_Fast_Enough_For_A_Timeline()
     {
         // A cold timeline request summarizes every index in its span once. Here: 24 hour-long

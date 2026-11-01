@@ -161,6 +161,29 @@ public sealed unsafe class FrameEncoderTests : IDisposable
     }
 
     [Fact]
+    public void Pictures_After_The_Camera_Clock_Jumps_Back_Are_Still_Recorded()
+    {
+        // A camera that resyncs its clock: before, every picture after the jump back had a time
+        // that did not move on and was left out, until the clock caught up.
+        TestEngine.Require();
+        var path = Path.Combine(directory, "jump-back.mkv");
+
+        using (var encoder = new FrameEncoder())
+        using (var remuxer = new Remuxer())
+        {
+            encoder.Open(Width, Height, AVPixelFormat.Yuyv422, FramesPerSecond);
+            remuxer.Open(path, encoder.CodecParameters, encoder.TimeBase);
+
+            EncodeFrames(encoder, remuxer, AVPixelFormat.Yuyv422, first: 3000, count: 30);
+            EncodeFrames(encoder, remuxer, AVPixelFormat.Yuyv422, first: 0, count: 30);
+            encoder.Flush(packet => remuxer.WritePacket(packet, encoder.TimeBase));
+            remuxer.Close();
+        }
+
+        ReadBack(path).Frames.Should().Be(60);
+    }
+
+    [Fact]
     public void A_Picture_Of_An_Odd_Size_Is_Recorded_With_Even_Sides()
     {
         // H.264 with 4:2:0 colour needs even sides.

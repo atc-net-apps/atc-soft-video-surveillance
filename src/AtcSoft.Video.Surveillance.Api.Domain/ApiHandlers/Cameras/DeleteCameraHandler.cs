@@ -1,11 +1,15 @@
 namespace AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Cameras;
 
 /// <summary>
-/// Handler business logic for the DeleteCamera operation.
+/// Handler business logic for the DeleteCamera operation. What the server runs for the
+/// camera (recording, pipeline, motion detection, live stream) stops with it; its
+/// recordings are kept.
 /// </summary>
 public sealed class DeleteCameraHandler(
     ICameraStorageService storage,
-    IUsbCameraLifecycleCoordinator lifecycleCoordinator) : IDeleteCameraHandler
+    IUsbCameraLifecycleCoordinator lifecycleCoordinator,
+    ICameraRuntime? runtime = null,
+    ILiveStreamService? liveStreams = null) : IDeleteCameraHandler
 {
     public Task<DeleteCameraResult> ExecuteAsync(
         DeleteCameraParameters parameters,
@@ -20,6 +24,9 @@ public sealed class DeleteCameraHandler(
         }
 
         storage.Save();
+
+        runtime?.Forget(parameters.CameraId);
+        liveStreams?.EndStream(parameters.CameraId);
 
         // Drop any unplugged-state entry the coordinator still holds.
         // Cheap no-op for network cameras and for USB cameras that were

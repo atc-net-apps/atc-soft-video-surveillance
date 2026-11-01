@@ -30,6 +30,20 @@ internal static class WpfTestThread
         return error;
     }
 
+    /// <summary>
+    /// Waits on the UI thread for a task whose end runs on that thread, letting the dispatcher
+    /// work meanwhile (a plain wait would never let it finish).
+    /// </summary>
+    public static void WaitFor(Task task)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+
+        var frame = new System.Windows.Threading.DispatcherFrame();
+        _ = task.ContinueWith(_ => frame.Continue = false, TaskScheduler.Default);
+        System.Windows.Threading.Dispatcher.PushFrame(frame);
+        task.GetAwaiter().GetResult();
+    }
+
     private static System.Windows.Threading.Dispatcher Start()
     {
         System.Windows.Threading.Dispatcher? dispatcher = null;

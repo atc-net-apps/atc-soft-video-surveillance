@@ -26,11 +26,17 @@ public partial class CameraTile
     [LoggerMessage(Level = LogLevel.Information, Message = "Tile loaded: '{CameraName}' (window={WindowState}, isAncestor={WindowIsAncestor})")]
     private partial void LogTileLoaded(string cameraName, string windowState, bool windowIsAncestor);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Tile unloaded: '{CameraName}' (state={ConnectionState}, isLoaded={IsLoaded}, window={WindowState}, isAncestor={WindowIsAncestor}, parent={ParentType})")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tile unloaded: '{CameraName}' (state={ConnectionState}, isLoaded={IsLoaded}, window={WindowState}, isAncestor={WindowIsAncestor}, parent={ParentType})")]
     private partial void LogTileUnloaded(string cameraName, string connectionState, bool isLoaded, string windowState, bool windowIsAncestor, string parentType);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tile disposing: '{CameraName}' (state={ConnectionState})")]
     private partial void LogTileDispose(string cameraName, string connectionState);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tile gone while '{CameraName}' records: its player is parked and the recording goes on")]
+    private partial void LogPlayerParked(string cameraName);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tile took the parked player of '{CameraName}', still recording")]
+    private partial void LogParkedPlayerTaken(string cameraName);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Reconnecting '{CameraName}' on tile reload (state was {PreviousState}) — recovering from a transient WPF unload")]
     private partial void LogReconnectingAfterReload(string cameraName, string previousState);
@@ -38,6 +44,12 @@ public partial class CameraTile
     [LoggerMessage(Level = LogLevel.Debug, Message = "Motion boxes for camera '{CameraName}' not drawn: the tile has no motion overlay yet")]
     private partial void LogMotionOverlayNotFound(string cameraName);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The graphics device of camera '{CameraName}' was lost (a driver update or reset); its player is made anew and its recording goes on")]
+    private partial void LogGraphicsDeviceLost(string cameraName);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Snapshot capture or save failed")]
     private partial void LogSnapshotFailed(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Stopping the recording of {CameraName} failed")]
+    private partial void LogStopRecordingFailed(Exception ex, string cameraName);
 }

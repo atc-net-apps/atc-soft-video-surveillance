@@ -7,9 +7,10 @@ public sealed partial class GatewayService
 {
     public async Task<Recording[]?> GetRecordingsAsync(
         Guid? cameraId = null,
+        DateTimeOffset? from = null,
         CancellationToken cancellationToken = default)
     {
-        var parameters = new ListRecordingsParameters(CameraId: cameraId);
+        var parameters = new ListRecordingsParameters(CameraId: cameraId, From: from);
         var result = await listRecordingsEndpoint
             .ExecuteAsync(parameters, cancellationToken: cancellationToken)
             .ConfigureAwait(false);

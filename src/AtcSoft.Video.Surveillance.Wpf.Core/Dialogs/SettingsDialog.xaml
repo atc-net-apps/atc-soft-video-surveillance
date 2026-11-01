@@ -127,7 +127,19 @@
             <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Advanced}">
                 <ScrollViewer Padding="10" VerticalScrollBarVisibility="Auto">
                     <atc:UniformSpacingPanel Orientation="Vertical" Spacing="20">
-                        <settings:AdvancedLoggingSettings />
+                        <settings:AdvancedLoggingSettings>
+                            <settings:AdvancedLoggingSettings.ExtraContent>
+                                <atc:LabelToggleSwitch
+                                    Margin="0,0,0,10"
+                                    HideAreas="Validation"
+                                    InformationText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                          Key=EnableDiagnosticsHint}"
+                                    IsOn="{Binding Path=EnableDiagnostics, Mode=TwoWay}"
+                                    LabelPosition="Right"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                    Key=EnableDiagnostics}" />
+                            </settings:AdvancedLoggingSettings.ExtraContent>
+                        </settings:AdvancedLoggingSettings>
                         <settings:AdvancedMaintenanceSettings />
                     </atc:UniformSpacingPanel>
                 </ScrollViewer>

@@ -45,17 +45,24 @@
                     Icon="Times" />
             </Button>
             <Separator />
-            <atc:LabelComboBox
-                Width="300"
-                Margin="4,0,0,0"
+            <TextBlock
+                Margin="4,0,8,0"
+                VerticalAlignment="Center"
+                Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GridSizeGroup}" />
+            <!--  A segment's place is its size: automatic, then one to four cameras along a side  -->
+            <atc:Segmented
                 VerticalAlignment="Center"
                 AutomationProperties.Name="Grid size"
-                HideAreas="All"
-                Items="{Binding Path=GridPresetItems}"
-                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GridSizeGroup}"
-                LabelWidthSizeDefinition="Auto"
-                SelectedKey="{Binding Path=SelectedGridPreset, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GridSizeToolTip}" />
+                EqualSegmentWidth="False"
+                SelectedIndex="{Binding Path=SelectedGridPresetIndex, Mode=TwoWay}"
+                Size="Small"
+                ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GridSizeToolTip}">
+                <atc:SegmentedItem Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GridSizeAuto}" />
+                <atc:SegmentedItem Content="1 &#215; 1" />
+                <atc:SegmentedItem Content="2 &#215; 2" />
+                <atc:SegmentedItem Content="3 &#215; 3" />
+                <atc:SegmentedItem Content="4 &#215; 4" />
+            </atc:Segmented>
             <Button
                 AutomationProperties.Name="Previous page"
                 Command="{Binding PreviousPageCommand}"

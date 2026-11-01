@@ -43,6 +43,8 @@
                 <atc:GridEx Margin="8" Columns="*,16,280">
                     <DataGrid
                         Grid.Column="0"
+                        atc:DataGridFilter.IsEnabled="True"
+                        atc:DataGridFilter.ShowColumnChooser="True"
                         AutoGenerateColumns="False"
                         CanUserAddRows="False"
                         CanUserDeleteRows="False"
@@ -109,6 +111,8 @@
                 <atc:GridEx Margin="8" Columns="*,16,280">
                     <DataGrid
                         Grid.Column="0"
+                        atc:DataGridFilter.IsEnabled="True"
+                        atc:DataGridFilter.ShowColumnChooser="True"
                         AutoGenerateColumns="False"
                         CanUserAddRows="False"
                         CanUserDeleteRows="False"
@@ -173,8 +177,23 @@
 
             <!--  Audit log  -->
             <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AuditLog}">
+                <DockPanel Margin="8">
+                    <!--  Searches every column of the log as you type  -->
+                    <TextBox
+                        x:Name="AuditSearchBox"
+                        Width="260"
+                        Margin="0,0,0,8"
+                        HorizontalAlignment="Left"
+                        VerticalContentAlignment="Center"
+                        atc:TextBoxHelper.ClearTextButton="True"
+                        atc:TextBoxHelper.Watermark="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Search}"
+                        AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Search}"
+                        DockPanel.Dock="Top"
+                        ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SearchAllColumnsToolTip}" />
                 <DataGrid
-                    Margin="8"
+                    atc:DataGridFilter.IsEnabled="True"
+                    atc:DataGridFilter.SearchText="{Binding ElementName=AuditSearchBox, Path=Text}"
+                    atc:DataGridFilter.ShowColumnChooser="True"
                     AutoGenerateColumns="False"
                     CanUserAddRows="False"
                     CanUserDeleteRows="False"
@@ -184,7 +203,7 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn
                             Width="150"
-                            Binding="{Binding TimeText}"
+                            Binding="{Binding LocalTime, StringFormat='yyyy-MM-dd HH:mm:ss'}"
                             Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Time}" />
                         <DataGridTextColumn
                             Width="120"
@@ -200,6 +219,7 @@
                             Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AuditTarget}" />
                     </DataGrid.Columns>
                 </DataGrid>
+                </DockPanel>
             </TabItem>
         </TabControl>
     </DockPanel>

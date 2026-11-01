@@ -33,7 +33,7 @@
             x:Name="VideoPlayer"
             LoadedBehavior="Manual"
             Stretch="Uniform"
-            UnloadedBehavior="Stop">
+            UnloadedBehavior="Close">
             <MediaElement.LayoutTransform>
                 <RotateTransform Angle="{Binding Path=VideoRotationAngle}" />
             </MediaElement.LayoutTransform>

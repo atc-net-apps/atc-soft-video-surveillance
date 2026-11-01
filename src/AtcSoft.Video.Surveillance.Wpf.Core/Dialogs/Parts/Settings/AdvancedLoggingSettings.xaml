@@ -23,6 +23,9 @@
                 LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                 Key=EnableDebugLogging}" />
 
+            <!--  What an app adds to its logging settings (CameraWall: diagnostics).  -->
+            <ContentPresenter Content="{Binding Path=ExtraContent, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+
             <atc:LabelDirectoryPicker
                 LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                 Key=LogPath}"

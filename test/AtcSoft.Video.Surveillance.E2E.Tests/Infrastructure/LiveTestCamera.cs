@@ -5,7 +5,7 @@ namespace AtcSoft.Video.Surveillance.E2E.Infrastructure;
 /// ends when it goes, so this starts FFmpeg again on the same port each time: the camera
 /// survives a reconnect, an edit and a second viewer after the first.
 /// </summary>
-internal sealed class LiveTestCamera : IDisposable
+internal sealed partial class LiveTestCamera : IDisposable
 {
     private readonly string ffmpeg;
     private readonly int port;
@@ -15,6 +15,7 @@ internal sealed class LiveTestCamera : IDisposable
     private readonly Lock gate = new();
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "The loop disposes each process when it ends; this only points at the running one.")]
     private Process? current;
+    private DateTime backAtUtc = DateTime.MinValue;
 
     public LiveTestCamera(
         string ffmpeg,
@@ -29,6 +30,46 @@ internal sealed class LiveTestCamera : IDisposable
 
     public int Port
         => port;
+
+    /// <summary>
+    /// Makes the camera hang: it keeps the connection open but sends nothing for a while, as a camera
+    /// that freezes or a network path that dies without closing. Then it goes on.
+    /// </summary>
+    /// <param name="hangFor">How long it sends nothing.</param>
+    public void Hang(TimeSpan hangFor)
+    {
+        nint handle;
+        lock (gate)
+        {
+            if (current is null || current.HasExited)
+            {
+                return;
+            }
+
+            handle = current.Handle;
+            _ = NtSuspendProcess(handle);
+        }
+
+        _ = Task.Delay(hangFor, CancellationToken.None).ContinueWith(
+            _ => Resume(handle),
+            CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// Takes the camera off the network for a while, as a camera that reboots or loses its link:
+    /// the stream ends at once and the camera answers nothing until the time is up.
+    /// </summary>
+    /// <param name="downFor">How long the camera is gone.</param>
+    public void DropOut(TimeSpan downFor)
+    {
+        lock (gate)
+        {
+            backAtUtc = DateTime.UtcNow + downFor;
+            Kill(current);
+        }
+    }
 
     public void Dispose()
     {
@@ -49,6 +90,22 @@ internal sealed class LiveTestCamera : IDisposable
 
         stop.Dispose();
     }
+
+    private void Resume(nint handle)
+    {
+        lock (gate)
+        {
+            _ = NtResumeProcess(handle);
+        }
+    }
+
+    [System.Runtime.InteropServices.LibraryImport("ntdll.dll")]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    private static partial int NtSuspendProcess(nint process);
+
+    [System.Runtime.InteropServices.LibraryImport("ntdll.dll")]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    private static partial int NtResumeProcess(nint process);
 
     private static void Kill(Process? process)
     {
@@ -99,8 +156,9 @@ internal sealed class LiveTestCamera : IDisposable
                 process.Dispose();
             }
 
-            // The client went away; listen again for the next one.
-            await Task.Delay(200, CancellationToken.None);
+            // The client went away; listen again for the next one, or once the camera is back.
+            var away = backAtUtc - DateTime.UtcNow;
+            await Task.Delay(away > TimeSpan.FromMilliseconds(200) ? away : TimeSpan.FromMilliseconds(200), CancellationToken.None);
         }
     }
 

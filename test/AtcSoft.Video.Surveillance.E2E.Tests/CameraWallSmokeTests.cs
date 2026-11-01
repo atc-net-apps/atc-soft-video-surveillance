@@ -7,7 +7,7 @@ namespace AtcSoft.Video.Surveillance.E2E;
 /// </summary>
 /// <remarks>
 /// A tile's context menu is left out: it needs a real right click on the video, which does
-/// not open the menu reliably from a test (see docs/e2e-smoke-tests.md).
+/// not open the menu reliably from a test (see https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/E2E-Smoke-Tests).
 /// Left out on purpose as well: the snapshot (a save dialog), folder pickers, opening the recordings
 /// folder (Explorer), update downloads (a browser), deleting a recording, Exit and restoring
 /// the default settings.

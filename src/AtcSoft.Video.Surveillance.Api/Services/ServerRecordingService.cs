@@ -30,6 +30,11 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
 
     // When each camera's last motion recording stopped, for the cooldown.
     private readonly ConcurrentDictionary<Guid, DateTimeOffset> motionRecordingStops = new();
+
+    // One gate per camera: starting, stopping and switching a camera's recording happen one at a
+    // time (the detector's loop, the segment worker, the reaper, the REST calls all do them), so a
+    // stop cannot land between reading a session and switching its file.
+    private readonly ConcurrentDictionary<Guid, Lock> cameraGates = new();
     private readonly ConcurrentDictionary<Guid, RecordingSession> sessions = new();
     private readonly ConcurrentDictionary<Guid, IMediaPipeline> pipelines = new();
 
@@ -92,7 +97,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
     public void Report(
         Guid cameraId,
         ConnectionState state)
-        => CameraConnectionStateChanged?.Invoke(cameraId, state);
+        => RaiseConnectionState(cameraId, state);
 
     /// <inheritdoc/>
     public RecordingState GetRecordingState(Guid cameraId)
@@ -123,6 +128,18 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         ArgumentNullException.ThrowIfNull(camera);
         ArgumentNullException.ThrowIfNull(pipeline);
 
+        lock (GateOf(camera.Id))
+        {
+            return StartRecordingCore(camera, pipeline, borrowed, startedByMotion);
+        }
+    }
+
+    private bool StartRecordingCore(
+        CameraConfiguration camera,
+        IMediaPipeline pipeline,
+        bool borrowed,
+        bool startedByMotion)
+    {
         if (sessions.ContainsKey(camera.Id))
         {
             return false;
@@ -131,52 +148,44 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         if (!MayRecord())
         {
             LogDiskSpaceGateFailed(camera.Display.DisplayName);
-            DiskSpaceStopped?.Invoke(camera.Id);
+            RaiseDiskSpaceStopped(camera.Id);
             return false;
         }
 
-        var filePath = GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera));
-
-        var directory = Path.GetDirectoryName(filePath);
-        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        // The camera's slot is taken before the pipeline is told to record: two
+        // starts at once (on a shared pipeline, the second start would be a
+        // silent no-op) can never have the loser stop the winner's file. The
+        // reaper walks the sessions only, so a slot taken here is not reaped.
+        if (!pipelines.TryAdd(camera.Id, pipeline))
         {
-            Directory.CreateDirectory(directory);
-        }
-
-        pipeline.StartRecording(filePath);
-
-        var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: !startedByMotion);
-
-        if (!sessions.TryAdd(camera.Id, session))
-        {
-            // Lost the race — a concurrent StartRecording already registered
-            // this camera. Clean up the pipeline we started and bail.
-            try
-            {
-                pipeline.StopRecording();
-            }
-            catch (Exception ex)
-            {
-                LogStopPipelineFailed(ex, camera.Id);
-            }
-
-            // A borrowed pipeline is its owner's to close.
-            if (!borrowed)
-            {
-                try
-                {
-                    pipeline.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    LogDisposePipelineFailed(ex, camera.Id);
-                }
-            }
-
             return false;
         }
 
-        pipelines[camera.Id] = pipeline;
+        // A motion recording starts a few seconds before the motion, any other at the last key
+        // frame: the file, its session and its index are named by when its first picture came.
+        var startUtc = pipeline.FindRecordingStart(startedByMotion ? RecordingPreRoll.Motion : TimeSpan.Zero);
+        string filePath;
+        try
+        {
+            filePath = GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera), startUtc ?? DateTime.UtcNow);
+
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            RecordingPreRoll.Start(pipeline, filePath, startUtc);
+        }
+        catch
+        {
+            pipelines.TryRemove(new KeyValuePair<Guid, IMediaPipeline>(camera.Id, pipeline));
+            throw;
+        }
+
+        var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: !startedByMotion, startUtc);
+        sessions[camera.Id] = session;
+
         if (borrowed)
         {
             borrowedPipelines[camera.Id] = 0;
@@ -192,7 +201,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             // disconnect/reconnect transitions without subscribing per-pipeline.
             var capturedId = camera.Id;
             EventHandler<ConnectionStateChangedEventArgs> handler = (_, e) =>
-                CameraConnectionStateChanged?.Invoke(capturedId, e.NewState);
+                RaiseConnectionState(capturedId, e.NewState);
             pipeline.ConnectionStateChanged += handler;
             connectionHandlers[camera.Id] = handler;
 
@@ -201,7 +210,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             // is called *after* the connection wait succeeds) still see the
             // current state. Without this, the Blazor live view would show
             // "Disconnected" until the next genuine state change.
-            CameraConnectionStateChanged?.Invoke(camera.Id, ConnectionState.Connected);
+            RaiseConnectionState(camera.Id, ConnectionState.Connected);
         }
 
         StartThumbnail(camera, pipeline, filePath);
@@ -213,11 +222,19 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
     }
 
     /// <inheritdoc/>
+    public void StopRecording(Guid cameraId)
+    {
+        lock (GateOf(cameraId))
+        {
+            StopRecordingCore(cameraId);
+        }
+    }
+
     [SuppressMessage(
         "Reliability",
         "CA2000:Dispose objects before losing scope",
         Justification = "Pipeline is unconditionally disposed inside the TryRemove block via the explicit Dispose() call.")]
-    public void StopRecording(Guid cameraId)
+    private void StopRecordingCore(Guid cameraId)
     {
         if (!sessions.TryRemove(cameraId, out var session))
         {
@@ -278,7 +295,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         // synthetic Connected we fired in StartRecording.
         if (!borrowed)
         {
-            CameraConnectionStateChanged?.Invoke(cameraId, ConnectionState.Disconnected);
+            RaiseConnectionState(cameraId, ConnectionState.Disconnected);
         }
 
         RaiseStateChanged(cameraId, session.State, RecordingState.Idle, session.CurrentFilePath);
@@ -297,6 +314,16 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         ArgumentNullException.ThrowIfNull(camera);
         ArgumentNullException.ThrowIfNull(pipeline);
 
+        lock (GateOf(camera.Id))
+        {
+            return TriggerMotionRecordingCore(camera, pipeline);
+        }
+    }
+
+    private bool TriggerMotionRecordingCore(
+        CameraConfiguration camera,
+        IMediaPipeline pipeline)
+    {
         // Already recording, whoever started it: the motion is in it.
         if (sessions.TryGetValue(camera.Id, out var running))
         {
@@ -328,7 +355,16 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
     // keeps. When that space cannot be read, it may not.
     private bool MayRecord()
     {
-        if (!settingsService.Recording.Cleanup.EnableDiskSpaceGuard)
+        var cleanup = settingsService.Recording.Cleanup;
+        if (!cleanup.EnableDiskSpaceGuard)
+        {
+            return true;
+        }
+
+        // The common case: the volume has the room, read in one call without
+        // the guard's lock, so a start never waits for the clean-up's walk.
+        var minFree = (long)cleanup.MinFreeSpaceMb * 1024L * 1024L;
+        if (ReadFreeBytes(settingsService.Recording.RecordingPath) is { } free && free >= minFree)
         {
             return true;
         }
@@ -336,6 +372,20 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         var result = ReclaimDiskSpace();
         return result != DiskSpaceGuardResult.None &&
                result.StateOf(settingsService.Recording.RecordingPath) is DiskSpaceVolumeState.Ok or DiskSpaceVolumeState.Reclaimed;
+    }
+
+    private long? ReadFreeBytes(string path)
+    {
+        try
+        {
+            var reader = diskSpaceGuard.Reader;
+            var volume = reader.GetVolume(path);
+            return volume is null ? null : reader.GetFreeBytes(volume);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
     }
 
     /// <inheritdoc/>
@@ -373,6 +423,13 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
     public string GenerateRecordingFilename(
         CameraConfiguration camera,
         string format)
+        => GenerateRecordingFilename(camera, format, DateTime.UtcNow);
+
+    // Named by the time (UTC) of the file's first picture.
+    private string GenerateRecordingFilename(
+        CameraConfiguration camera,
+        string format,
+        DateTime startUtc)
     {
         ArgumentNullException.ThrowIfNull(camera);
 
@@ -380,7 +437,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         return UniqueFilename.EnsureUnique(RecordingPathHelper.BuildRecordingPath(
             GetEffectiveRecordingPath(camera),
             RecordingPathHelper.GetCameraFolderName(camera.Display.DisplayName, camera.Id),
-            DateTime.UtcNow,
+            startUtc,
             format,
             RecordingLayoutOptions.From(settingsService.Recording)));
     }
@@ -396,6 +453,14 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
 
     /// <inheritdoc/>
     public bool SegmentRecording(Guid cameraId)
+    {
+        lock (GateOf(cameraId))
+        {
+            return SegmentRecordingCore(cameraId);
+        }
+    }
+
+    private bool SegmentRecordingCore(Guid cameraId)
     {
         if (!sessions.TryGetValue(cameraId, out var session))
         {
@@ -415,9 +480,11 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             return false;
         }
 
+        // The next file starts at the last key frame the pipeline has, and is named by it.
         var oldFilePath = session.CurrentFilePath;
+        var startUtc = pipeline.FindRecordingStart(TimeSpan.Zero);
         var newFilePath = UniqueFilename.EnsureDifferentFrom(
-            GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera)),
+            GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera), startUtc ?? DateTime.UtcNow),
             oldFilePath);
 
         var directory = Path.GetDirectoryName(newFilePath);
@@ -431,7 +498,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         {
             LogDiskSpaceGuardStoppingRecordings(1);
             StopRecording(cameraId);
-            DiskSpaceStopped?.Invoke(cameraId);
+            RaiseDiskSpaceStopped(cameraId);
             return false;
         }
 
@@ -444,7 +511,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             // land in either the previous segment or the new one — never the
             // close/open gap. Falls back to Stop+Start if the underlying
             // pipeline doesn't support atomic switching.
-            pipeline.SwitchRecording(newFilePath);
+            RecordingPreRoll.Switch(pipeline, newFilePath, startUtc);
         }
         catch (Exception ex)
         {
@@ -452,7 +519,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             return false;
         }
 
-        var newSession = new RecordingSession(cameraId, session.CameraName, newFilePath, session.IsManualRecording)
+        var newSession = new RecordingSession(cameraId, session.CameraName, newFilePath, session.IsManualRecording, startUtc)
         {
             LastMotionTime = session.LastMotionTime,
             State = session.State,
@@ -474,6 +541,9 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         LogSegmented(session.CameraName, cameraId, newFilePath);
         return true;
     }
+
+    private Lock GateOf(Guid cameraId)
+        => cameraGates.GetOrAdd(cameraId, _ => new Lock());
 
     /// <inheritdoc/>
     public IReadOnlyList<RecordingSession> GetActiveSessions()
@@ -623,7 +693,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         foreach (var session in shortSessions)
         {
             StopRecording(session.CameraId);
-            DiskSpaceStopped?.Invoke(session.CameraId);
+            RaiseDiskSpaceStopped(session.CameraId);
         }
 
         return true;
@@ -714,10 +784,74 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         RecordingState newState,
         string? filePath)
     {
-        RecordingStateChanged?.Invoke(this, new RecordingStateChangedEventArgs(
+        var handlers = RecordingStateChanged;
+        if (handlers is null)
+        {
+            return;
+        }
+
+        var args = new RecordingStateChangedEventArgs(
             cameraId,
             oldState,
             newState,
-            filePath));
+            filePath);
+
+        // Each subscriber on its own: one that fails must neither keep the
+        // others from hearing it, nor unwind into the recording that raised it.
+        foreach (var handler in handlers.GetInvocationList().Cast<EventHandler<RecordingStateChangedEventArgs>>())
+        {
+            try
+            {
+                handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                LogSubscriberFailed(ex, nameof(RecordingStateChanged), cameraId);
+            }
+        }
+    }
+
+    private void RaiseConnectionState(
+        Guid cameraId,
+        ConnectionState state)
+    {
+        var handlers = CameraConnectionStateChanged;
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var handler in handlers.GetInvocationList().Cast<Action<Guid, ConnectionState>>())
+        {
+            try
+            {
+                handler(cameraId, state);
+            }
+            catch (Exception ex)
+            {
+                LogSubscriberFailed(ex, nameof(CameraConnectionStateChanged), cameraId);
+            }
+        }
+    }
+
+    private void RaiseDiskSpaceStopped(Guid cameraId)
+    {
+        var handlers = DiskSpaceStopped;
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var handler in handlers.GetInvocationList().Cast<Action<Guid>>())
+        {
+            try
+            {
+                handler(cameraId);
+            }
+            catch (Exception ex)
+            {
+                LogSubscriberFailed(ex, nameof(DiskSpaceStopped), cameraId);
+            }
+        }
     }
 }

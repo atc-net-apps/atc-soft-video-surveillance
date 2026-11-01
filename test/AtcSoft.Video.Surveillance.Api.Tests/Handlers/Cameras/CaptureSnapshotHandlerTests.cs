@@ -54,6 +54,110 @@ public class CaptureSnapshotHandlerTests
     }
 
     [Fact]
+    public async Task A_Camera_The_Server_Watches_Gives_The_Watching_Pipelines_Picture_Without_Being_Opened_Again()
+    {
+        var storage = Substitute.For<ICameraStorageService>();
+        var pipelineFactory = Substitute.For<IMediaPipelineFactory>();
+        var settingsService = Substitute.For<IApplicationSettingsService>();
+        var folder = Path.Combine(Path.GetTempPath(), "snapshot-" + Guid.NewGuid().ToString("N"));
+        settingsService.CameraDisplay.Returns(new CameraDisplayAppSettings { SnapshotPath = folder });
+        var runtime = Substitute.For<ICameraRuntime>();
+        var watching = Substitute.For<IMediaPipeline>();
+        var camera = new CameraConfiguration();
+        storage.GetCameraById(camera.Id).Returns(camera);
+        runtime.FindPlayingPipeline(camera.Id).Returns(watching);
+        watching.CaptureFrameAsync(Arg.Any<CancellationToken>()).Returns(new byte[] { 1, 2, 3 });
+        var handler = new CaptureSnapshotHandler(storage, pipelineFactory, settingsService, runtime: runtime);
+
+        try
+        {
+            var result = await handler.ExecuteAsync(new CaptureSnapshotParameters(camera.Id), CancellationToken.None);
+
+            (await result.Result.ExecuteAsync()).StatusCode.Should().Be(StatusCodes.Status200OK);
+            pipelineFactory.DidNotReceiveWithAnyArgs().Create(default!);
+            watching.DidNotReceive().Dispose();
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task A_Snapshot_Never_Overwrites_One_Taken_In_The_Same_Second()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "snapshot-" + Guid.NewGuid().ToString("N"));
+        var camera = new CameraConfiguration();
+        camera.Display.DisplayName = "Garden";
+        var handler = CreateRecordingSnapshotHandler(camera, folder);
+
+        // Snapshots already taken in every second the new one can fall in.
+        Directory.CreateDirectory(folder);
+        var now = DateTime.UtcNow;
+        var taken = new List<string>();
+        for (var second = -1; second <= 2; second++)
+        {
+            var path = Path.Combine(folder, $"{RecordingPathHelper.GetCameraFolderName("Garden", camera.Id)}_{now.AddSeconds(second):yyyyMMdd_HHmmss}.png");
+            await File.WriteAllTextAsync(path, "earlier", TestContext.Current.CancellationToken);
+            taken.Add(path);
+        }
+
+        try
+        {
+            var result = await handler.ExecuteAsync(new CaptureSnapshotParameters(camera.Id), CancellationToken.None);
+
+            (await result.Result.ExecuteAsync()).StatusCode.Should().Be(StatusCodes.Status200OK);
+            foreach (var path in taken)
+            {
+                (await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken)).Should().Be("earlier");
+            }
+
+            Directory.GetFiles(folder).Should().HaveCount(taken.Count + 1);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task A_Snapshot_That_Cannot_Be_Saved_Is_Answered_With_The_Reason_Not_A_Server_Error()
+    {
+        // A file where the snapshot folder should be: the folder cannot be made.
+        var blocker = Path.Combine(Path.GetTempPath(), "snapshot-" + Guid.NewGuid().ToString("N"));
+        await File.WriteAllTextAsync(blocker, "not a folder", TestContext.Current.CancellationToken);
+        var camera = new CameraConfiguration();
+        var handler = CreateRecordingSnapshotHandler(camera, blocker);
+
+        try
+        {
+            var result = await handler.ExecuteAsync(new CaptureSnapshotParameters(camera.Id), CancellationToken.None);
+
+            result.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+        }
+        finally
+        {
+            File.Delete(blocker);
+        }
+    }
+
+    // A camera being recorded: its picture comes from the recording, no camera is opened.
+    private static CaptureSnapshotHandler CreateRecordingSnapshotHandler(
+        CameraConfiguration camera,
+        string snapshotFolder)
+    {
+        var storage = Substitute.For<ICameraStorageService>();
+        var settingsService = Substitute.For<IApplicationSettingsService>();
+        settingsService.CameraDisplay.Returns(new CameraDisplayAppSettings { SnapshotPath = snapshotFolder });
+        var recordings = Substitute.For<IRecordingService>();
+        var recording = Substitute.For<IMediaPipeline>();
+        storage.GetCameraById(camera.Id).Returns(camera);
+        recordings.FindPipeline(camera.Id).Returns(recording);
+        recording.CaptureFrameAsync(Arg.Any<CancellationToken>()).Returns(new byte[] { 1, 2, 3 });
+        return new CaptureSnapshotHandler(storage, Substitute.For<IMediaPipelineFactory>(), settingsService, recordings: recordings);
+    }
+
+    [Fact]
     public async Task A_Recording_That_Gives_No_Picture_Leaves_The_Camera_To_Be_Opened()
     {
         var storage = Substitute.For<ICameraStorageService>();

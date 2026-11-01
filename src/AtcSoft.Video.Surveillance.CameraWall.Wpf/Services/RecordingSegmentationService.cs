@@ -16,6 +16,7 @@ public partial class RecordingSegmentationService : BackgroundServiceBase<Record
     private (DateOnly Date, int Slot) lastProcessed;
     private bool isRunning;
     private bool started;
+    private long lastPassTicks;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RecordingSegmentationService"/> class.
@@ -70,9 +71,28 @@ public partial class RecordingSegmentationService : BackgroundServiceBase<Record
     /// <param name="stoppingToken">The stopping token.</param>
     public override Task DoWorkAsync(CancellationToken stoppingToken)
     {
+        try
+        {
+            DoPass();
+        }
+        finally
+        {
+            Interlocked.Exchange(ref lastPassTicks, DateTime.UtcNow.Ticks);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    // Each step on its own: a step that fails is logged and the others still run, every pass.
+    private void DoPass()
+    {
         // Disk guard runs independently of the segmentation setting so manual
         // recordings are protected even when hourly segmentation is disabled.
-        recordingService.EnforceDiskSpaceGuard();
+        RunStep("disk space guard", () => recordingService.EnforceDiskSpaceGuard());
+
+        // A recording whose file ended (the stream dropped and came back, a write failed, a full
+        // disk) starts again here instead of at the next segment.
+        RunStep("resume recordings", () => recordingService.ResumeRecordings());
 
         var settings = settingsService.Recording;
         var enabled = settings.EnableHourlySegmentation;
@@ -84,7 +104,7 @@ public partial class RecordingSegmentationService : BackgroundServiceBase<Record
 
         if (!enabled)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         if (!started)
@@ -93,8 +113,32 @@ public partial class RecordingSegmentationService : BackgroundServiceBase<Record
             started = true;
         }
 
-        PerformSegmentationCheck(settings);
-        return Task.CompletedTask;
+        RunStep("segmentation", () => PerformSegmentationCheck(settings));
+    }
+
+    /// <inheritdoc/>
+    public DateTime? LastPassUtc
+    {
+        get
+        {
+            var ticks = Interlocked.Read(ref lastPassTicks);
+            return ticks == 0 ? null : new DateTime(ticks, DateTimeKind.Utc);
+        }
+    }
+
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "One failing step is logged and must not keep the others from running.")]
+    private void RunStep(
+        string step,
+        Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            LogStepFailed(step, ex);
+        }
     }
 
     private void PerformSegmentationCheck(RecordingSettings settings)

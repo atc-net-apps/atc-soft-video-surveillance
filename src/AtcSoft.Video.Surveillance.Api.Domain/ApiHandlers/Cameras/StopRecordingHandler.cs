@@ -1,11 +1,13 @@
 namespace AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Cameras;
 
 /// <summary>
-/// Handler business logic for the StopRecording operation.
+/// Handler business logic for the StopRecording operation. A camera the server records on
+/// connect is recorded again at the next connection check; one someone started is not.
 /// </summary>
 public sealed class StopRecordingHandler(
     ICameraStorageService storage,
-    IRecordingService recordingService) : IStopRecordingHandler
+    IRecordingService recordingService,
+    IRecordingIntents? intents = null) : IStopRecordingHandler
 {
     public Task<StopRecordingResult> ExecuteAsync(
         StopRecordingParameters parameters,
@@ -19,6 +21,7 @@ public sealed class StopRecordingHandler(
             return Task.FromResult(StopRecordingResult.NotFound($"Camera {parameters.CameraId} not found."));
         }
 
+        intents?.Drop(parameters.CameraId);
         recordingService.StopRecording(parameters.CameraId);
 
         var state = recordingService.GetRecordingState(parameters.CameraId);

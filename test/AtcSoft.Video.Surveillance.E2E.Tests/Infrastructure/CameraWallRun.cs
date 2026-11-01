@@ -10,26 +10,51 @@ internal sealed class CameraWallRun : IDisposable
 {
     public const string MainWindowTitle = "AtcSoft Camera Wall";
     public const string LayoutName = "E2E";
+    public const string SecondLayoutName = "E2E B";
+
+    private static int runs;
 
     /// <summary>
     /// The cameras' password; it must never be in cameras.json in plain text.
     /// </summary>
     public const string CameraPassword = "e2e-camera-secret";
 
-    private readonly LiveTestCamera? liveCamera;
+    private readonly List<LiveTestCamera> liveCameras = [];
 
     /// <param name="environment">More environment variables for the app, such as a limited FFmpeg search.</param>
+    /// <param name="liveCameraCount">How many live cameras the layout has (each its own test pattern).</param>
+    /// <param name="recordOnConnect">Whether each camera records as soon as it connects.</param>
+    /// <param name="recordOnMotion">Whether each camera records on motion (the test pattern moves all the time).</param>
+    /// <param name="secondLayout">Whether there is a second layout, <see cref="SecondLayoutName"/>, with only the first live camera.</param>
+    /// <param name="startOnSecondLayout">Whether the app starts with the second layout, so the other cameras never have a tile.</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The run owns the cameras it starts and stops them in Dispose.")]
     public CameraWallRun(
-        IReadOnlyDictionary<string, string>? environment = null)
+        IReadOnlyDictionary<string, string>? environment = null,
+        int liveCameraCount = 1,
+        bool recordOnConnect = false,
+        bool recordOnMotion = false,
+        bool secondLayout = false,
+        bool startOnSecondLayout = false)
     {
-        DataFolder = E2ESettings.NewFolder("camera-wall");
+        // A folder of its own for each run: seeding adds to the cameras a folder has, and a run that
+        // met the cameras of the run before it waited for cameras that were not its own.
+        var run = Interlocked.Increment(ref runs);
+        DataFolder = E2ESettings.NewFolder(run == 1 ? "camera-wall" : "camera-wall-" + run.ToString(CultureInfo.InvariantCulture));
         LogFolder = Path.Combine(DataFolder, "logs");
 
-        liveCamera = TestCameras.StartLiveCamera(
-            E2ESettings.GetFreePort(),
-            Path.Combine(E2ESettings.RunFolder, "camera-wall-test-camera.log"));
-        HasLiveCamera = liveCamera is not null;
-        Seed(liveCamera?.Port);
+        for (var i = 0; i < liveCameraCount; i++)
+        {
+            var camera = TestCameras.StartLiveCamera(
+                E2ESettings.GetFreePort(),
+                Path.Combine(E2ESettings.RunFolder, i == 0 ? "camera-wall-test-camera.log" : $"camera-wall-test-camera-{i + 1}.log"));
+            if (camera is not null)
+            {
+                liveCameras.Add(camera);
+            }
+        }
+
+        HasLiveCamera = liveCameras.Count > 0;
+        Seed(liveCameras.Select(c => c.Port).ToList(), recordOnConnect, recordOnMotion, secondLayout || startOnSecondLayout, startOnSecondLayout);
 
         var process = ChildProcess.Start(
             E2ESettings.CameraWallExe,
@@ -48,25 +73,46 @@ internal sealed class CameraWallRun : IDisposable
 
     public bool HasLiveCamera { get; }
 
+    /// <summary>
+    /// Gets the live cameras, in the order of their names (<see cref="LiveCameraName"/>).
+    /// </summary>
+    public IReadOnlyList<LiveTestCamera> LiveCameras
+        => liveCameras;
+
     public DesktopApp App { get; }
 
     public void Dispose()
     {
         App.Dispose();
         App.Process.Dispose();
-        liveCamera?.Dispose();
+        foreach (var camera in liveCameras)
+        {
+            camera.Dispose();
+        }
     }
 
-    private void Seed(int? livePort)
+    /// <summary>
+    /// Gets the names of the live cameras: the first is <see cref="TestCameras.LiveCameraName"/>, the next are numbered.
+    /// </summary>
+    public static string LiveCameraName(int index)
+        => index == 0 ? TestCameras.LiveCameraName : $"{TestCameras.LiveCameraName} {index + 1}";
+
+    private void Seed(
+        IReadOnlyList<int> livePorts,
+        bool recordOnConnect,
+        bool recordOnMotion,
+        bool secondLayout,
+        bool startOnSecondLayout)
     {
         var settings = new ApplicationSettingsService(Path.Combine(DataFolder, "settings.json"));
         settings.General.Language = "1033";
         settings.General.ConnectCamerasOnStartup = true;
         settings.Recording.RecordingPath = Path.Combine(DataFolder, "recordings");
-        settings.Recording.EnableRecordingOnConnect = false;
-        settings.Recording.EnableRecordingOnMotion = false;
+        settings.Recording.EnableRecordingOnConnect = recordOnConnect;
+        settings.Recording.EnableRecordingOnMotion = recordOnMotion;
         settings.CameraDisplay.SnapshotPath = Path.Combine(DataFolder, "snapshots");
         settings.Advanced.EnableDebugLogging = true;
+        settings.Advanced.EnableDiagnostics = recordOnConnect || recordOnMotion;
         settings.Advanced.LogPath = LogFolder;
         settings.Save();
 
@@ -75,7 +121,7 @@ internal sealed class CameraWallRun : IDisposable
         var order = 0;
 
         var layoutOptions = RecordingLayoutOptions.From(settings.Recording);
-        foreach (var (name, port) in Cameras(livePort))
+        foreach (var (name, port) in Cameras(livePorts))
         {
             var camera = new CameraConfiguration();
             camera.Connection.IpAddress = "127.0.0.1";
@@ -117,14 +163,26 @@ internal sealed class CameraWallRun : IDisposable
 
         storage.AddOrUpdateLayout(layout);
         storage.StartupLayoutId = layout.Id;
+        if (secondLayout && layout.Items.Count > 0)
+        {
+            var second = new CameraLayout { Name = SecondLayoutName };
+            second.Items.Add(new CameraLayoutItem { CameraId = layout.Items[0].CameraId, OrderNumber = 0 });
+            storage.AddOrUpdateLayout(second);
+            if (startOnSecondLayout)
+            {
+                storage.StartupLayoutId = second.Id;
+            }
+        }
+
         storage.Save();
     }
 
-    private static IEnumerable<(string Name, int Port)> Cameras(int? livePort)
+    private static IEnumerable<(string Name, int Port)> Cameras(
+        IReadOnlyList<int> livePorts)
     {
-        if (livePort is { } port)
+        for (var i = 0; i < livePorts.Count; i++)
         {
-            yield return (TestCameras.LiveCameraName, port);
+            yield return (LiveCameraName(i), livePorts[i]);
         }
 
         yield return (TestCameras.DeadCameraName, TestCameras.DeadPort);

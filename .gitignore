@@ -435,3 +435,7 @@ tmpclaude-*-cwd
 # Superpowers design specs and implementation plans are local working
 # artifacts, not repository content.
 docs/superpowers/
+
+# Local issue notes and plans are working files, not repository content.
+issues/*
+plans/*

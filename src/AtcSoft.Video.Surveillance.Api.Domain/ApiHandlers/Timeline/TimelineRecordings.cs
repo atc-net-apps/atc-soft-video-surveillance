@@ -23,12 +23,15 @@ internal static class TimelineRecordings
             .Where(f => f.StartedAt < to && f.LastWrittenAt > from)
             .ToList();
 
+        // A timeline built again a moment later finds every summary still kept.
+        cache.Reserve(touching.Count);
+
         var summaries = new AtcSoft.Video.Surveillance.Models.ActivitySummary?[touching.Count];
         Parallel.For(
             0,
             touching.Count,
             new ParallelOptions { CancellationToken = cancellationToken },
-            i => summaries[i] = cache.Get(RecordingPathHelper.BuildActivityPath(touching[i].FullPath)));
+            i => summaries[i] = TryGet(cache, RecordingPathHelper.BuildActivityPath(touching[i].FullPath)));
 
         var byCamera = new Dictionary<Guid, List<AtcSoft.Video.Surveillance.Models.TimelineRecording>>();
         for (var i = 0; i < touching.Count; i++)
@@ -44,6 +47,22 @@ internal static class TimelineRecordings
         }
 
         return byCamera;
+    }
+
+    // One index that cannot be read (held, or its folder removed meanwhile) is left out; it
+    // never fails the whole timeline.
+    private static AtcSoft.Video.Surveillance.Models.ActivitySummary? TryGet(
+        ActivitySummaryCache cache,
+        string activityPath)
+    {
+        try
+        {
+            return cache.Get(activityPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     public static TimelineEvent ToApi(

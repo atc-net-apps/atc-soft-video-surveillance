@@ -180,6 +180,67 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Watched_Camera_That_Drops_While_Playing_Is_Opened_Again_Within_Seconds()
+    {
+        // Before, it waited for a pass after the back-off: 30 s to 2.5 minutes blind.
+        await ConnectAsync();
+
+        pipeline.ConnectionStateChanged += Raise.EventWith(new ConnectionStateChangedEventArgs(ConnectionState.Connected, ConnectionState.Error));
+
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (pipelineFactory.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(IMediaPipelineFactory.Create)) < 2 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+        }
+
+        pipelineFactory.Received(2).Create(camera);
+    }
+
+    [Fact]
+    public async Task A_Camera_That_Never_Played_Waits_For_Its_Back_Off()
+    {
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        pipeline.ConnectionStateChanged += Raise.EventWith(new ConnectionStateChangedEventArgs(ConnectionState.Connecting, ConnectionState.Error));
+        await Task.Delay(TimeSpan.FromSeconds(7), TestContext.Current.CancellationToken);
+
+        pipelineFactory.Received(1).Create(camera);
+    }
+
+    [Fact]
+    public async Task A_Watched_Camera_Whose_Pictures_Stopped_While_Packets_Arrive_Is_Opened_Again()
+    {
+        // A decoder that froze: packets keep coming, the picture does not change, and the
+        // detector compared the same picture with itself for good.
+        await ConnectAsync();
+        motionDetection.IsDetectionActive(camera.Id).Returns(true);
+        pipeline.LastPacketUtc.Returns(_ => DateTime.UtcNow);
+        pipeline.FramesDecoded.Returns(500);
+
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        motionDetection.Received().StopDetection(camera.Id);
+        await WaitForAsync(() => pipeline.ReceivedCalls().Any(call => call.GetMethodInfo().Name == nameof(IDisposable.Dispose)));
+    }
+
+    [Fact]
+    public async Task A_Watched_Camera_Whose_Pictures_Go_On_Is_Left_Alone()
+    {
+        await ConnectAsync();
+        motionDetection.IsDetectionActive(camera.Id).Returns(true);
+        pipeline.LastPacketUtc.Returns(_ => DateTime.UtcNow);
+        var frames = 500L;
+        pipeline.FramesDecoded.Returns(_ => frames += 120);
+
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        motionDetection.DidNotReceive().StopDetection(camera.Id);
+    }
+
+    [Fact]
     public async Task A_Camera_That_Fails_Stops_Being_Watched_Before_Its_Pipeline_Is_Closed()
     {
         await ConnectAsync();
@@ -192,14 +253,72 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
         connectionStates.Received(1).Report(camera.Id, ConnectionState.Disconnected);
     }
 
+    [Fact]
+    public async Task A_Motion_Refused_By_The_Cooldown_Is_Recorded_When_It_Ends_Though_Nothing_Moves_Any_More()
+    {
+        // Before, only a picture that moved tried again: a motion that began in the cooldown after
+        // the last motion recording and then stood still was never recorded.
+        await ConnectAsync();
+        recordingService.TriggerMotionRecording(camera, pipeline).Returns(false, true);
+
+        RaiseMotion(active: true);
+        RaiseStillPicture();
+        RaiseStillPicture();
+
+        recordingService.Received(2).TriggerMotionRecording(camera, pipeline);
+    }
+
+    [Fact]
+    public async Task A_Motion_That_Ended_Is_Not_Tried_Again()
+    {
+        await ConnectAsync();
+        recordingService.TriggerMotionRecording(camera, pipeline).Returns(false);
+
+        RaiseMotion(active: true);
+        RaiseMotion(active: false);
+        RaiseStillPicture();
+
+        recordingService.Received(1).TriggerMotionRecording(camera, pipeline);
+    }
+
+    [Fact]
+    public void A_Motion_End_Raised_After_The_Pipeline_Was_Removed_Still_Ends_The_Motion_Recording()
+    {
+        // No pipeline is kept for the camera: it was just removed, and stopping
+        // the detection raises the end afterwards.
+        recordingService.GetSession(camera.Id).Returns(new RecordingSession(camera.Id, "Front Door", "a.mkv", isManualRecording: false));
+
+        RaiseMotion(active: false);
+
+        recordingService.Received(1).StopRecording(camera.Id);
+    }
+
     private async Task ConnectAsync()
     {
         await sut.DoWorkAsync(TestContext.Current.CancellationToken);
         pipeline.ConnectionStateChanged += Raise.EventWith(new ConnectionStateChangedEventArgs(ConnectionState.Connecting, ConnectionState.Connected));
+        await SettleStartAsync();
+    }
+
+    // A recording on connect is started on the thread pool, not on the
+    // pipeline's own thread: wait until it was asked for, or a moment passed.
+    private async Task SettleStartAsync()
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (DateTime.UtcNow < deadline &&
+               !recordingService.ReceivedCalls().Any(c => c.GetMethodInfo().Name.StartsWith("StartRecording", StringComparison.Ordinal)))
+        {
+            await Task.Delay(10);
+        }
+
+        await Task.Delay(50);
     }
 
     private void RaiseMotion(bool active)
         => motionDetection.MotionDetected += Raise.EventWith(new MotionDetectedEventArgs(camera.Id, 5, active));
+
+    private void RaiseStillPicture()
+        => motionDetection.PictureAnalyzed += Raise.EventWith(new PictureAnalyzedEventArgs(camera.Id, DateTimeOffset.UtcNow, new MotionDetectorResult(false, MotionHoldChange.None, 0, [])));
 
     // Pipelines are closed on a thread-pool thread, never on the one that
     // reports the camera's state.

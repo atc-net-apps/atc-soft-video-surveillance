@@ -20,6 +20,9 @@ public sealed class SettingsRoundTripTests
         // How the standalone app's recordings browser behaves; the server has no browser.
         "Recording.CloseRecordingsBrowserOnPlay",
         "Recording.RememberRecordingsBrowserState",
+
+        // CameraWall's diagnostics for a long test run; the server's logging is set in its own configuration.
+        "Advanced.EnableDiagnostics",
     };
 
     /// <summary>

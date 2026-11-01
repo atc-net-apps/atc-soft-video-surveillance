@@ -59,7 +59,7 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
         var thumbnailPath = string.IsNullOrEmpty(thumbnailFilePath)
             ? Path.ChangeExtension(videoFilePath, ".png")
             : thumbnailFilePath;
-        var context = new ThumbnailCaptureContext(cameraName, pipeline, thumbnailPath, tileCount);
+        var context = new ThumbnailCaptureContext(cameraName, pipeline, videoFilePath, thumbnailPath, tileCount);
 
         if (!captures.TryAdd(cameraId, context))
         {
@@ -73,11 +73,15 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
     }
 
     /// <inheritdoc/>
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Write disposes the context on the pool thread it runs on.")]
     public void StopCapture(Guid cameraId)
     {
         if (captures.TryRemove(cameraId, out var context))
         {
-            Finish(context);
+            // The pictures are taken now; drawing and saving the thumbnail runs on a pool thread, not
+            // on the caller (the UI thread when a recording is stopped by hand, or a segment switch).
+            var frames = context.Complete();
+            _ = Task.Run(() => Write(context, frames));
         }
     }
 
@@ -158,8 +162,15 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
                 return;
             }
 
-            using var memoryStream = new MemoryStream(pngBytes);
-            var bitmap = new Drawing.Bitmap(memoryStream);
+            // GDI+ reads a bitmap's stream for as long as the bitmap lives, and this one is kept
+            // until the thumbnail is drawn: it is copied into a bitmap that owns its pixels.
+            Drawing.Bitmap bitmap;
+            using (var memoryStream = new MemoryStream(pngBytes))
+            using (var decoded = new Drawing.Bitmap(memoryStream))
+            {
+                bitmap = new Drawing.Bitmap(decoded);
+            }
+
             var frameIndex = context.TryAddFrame(bitmap);
             if (frameIndex < 0)
             {
@@ -185,8 +196,12 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
     /// releases them. Called once per capture, by whoever removed it.
     /// </summary>
     private void Finish(ThumbnailCaptureContext context)
+        => Write(context, context.Complete());
+
+    private void Write(
+        ThumbnailCaptureContext context,
+        Drawing.Bitmap[] frames)
     {
-        var frames = context.Complete();
         try
         {
             GenerateThumbnail(context, frames);
@@ -307,9 +322,24 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
             // place. The recordings browser may read the same path
             // concurrently; without atomic replace it can observe a
             // partially-written PNG (corrupt image or GDI+ IOException).
+            // A recording that ended before its first picture has no video (the recorder removes
+            // it): it gets no thumbnail. Looked at before and after saving, as the video is closed
+            // while this runs.
+            if (!File.Exists(context.VideoPath))
+            {
+                LogThumbnailSkippedNoVideo(context.CameraName, context.VideoPath);
+                return;
+            }
+
             var tempPath = context.ThumbnailPath + ".tmp";
             thumbnail.Save(tempPath, DrawingImaging.ImageFormat.Png);
             File.Move(tempPath, context.ThumbnailPath, overwrite: true);
+            if (!File.Exists(context.VideoPath))
+            {
+                File.Delete(context.ThumbnailPath);
+                LogThumbnailSkippedNoVideo(context.CameraName, context.VideoPath);
+                return;
+            }
 
             LogGeneratedThumbnail(
                 context.CameraName,
@@ -337,11 +367,13 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
         public ThumbnailCaptureContext(
             string cameraName,
             IMediaPipeline pipeline,
+            string videoPath,
             string thumbnailPath,
             int tileCount = 4)
         {
             CameraName = cameraName;
             Pipeline = pipeline;
+            VideoPath = videoPath;
             ThumbnailPath = thumbnailPath;
             TileCount = tileCount;
             CancellationToken = cancellation.Token;
@@ -350,6 +382,8 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
         public string CameraName { get; }
 
         public IMediaPipeline Pipeline { get; }
+
+        public string VideoPath { get; }
 
         public string ThumbnailPath { get; }
 

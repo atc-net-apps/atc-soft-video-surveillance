@@ -18,11 +18,14 @@ public partial class MainWindow : Fluent.IRibbonWindow
     {
         this.viewModel = viewModel;
 
-        windowStateService = new WindowStateService();
+        InitializeComponent();
+
+        // After InitializeComponent: the size set in the XAML would replace the saved one.
+        windowStateService = new WindowStateService(
+            AtcSoft.Video.Surveillance.Helpers.ApplicationPaths.GetLocalDataPath("VideoSurveillance", "window-state.json"));
         windowStateService.Load();
         windowStateService.ApplyTo(this);
 
-        InitializeComponent();
         DataContext = viewModel;
 
         Closing += OnClosing;

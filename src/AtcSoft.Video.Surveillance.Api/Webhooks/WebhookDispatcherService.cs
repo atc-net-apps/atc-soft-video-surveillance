@@ -3,8 +3,15 @@
 /// <summary>
 /// Sends the server's camera events to the configured webhooks. The events
 /// are raised on the threads that record and analyse video, so they are only
-/// queued there; the queue is emptied, and the HTTP calls made, on this
-/// worker's own tick. Without configured receivers nothing is queued.
+/// queued there; the HTTP calls are made from this worker. Without configured
+/// receivers nothing is queued.
+/// <para>
+/// Each receiver has a queue and a sender of its own, so one that is slow or
+/// down (each event tried three times, ten seconds each) never holds up the
+/// others. A receiver that failed <see cref="FailuresBeforePause"/> events in a
+/// row is left alone for <see cref="PauseAfterFailures"/>; its events wait in
+/// its queue meanwhile, the oldest dropped when it is full.
+/// </para>
 /// </summary>
 public sealed partial class WebhookDispatcherService : BackgroundServiceBase<WebhookDispatcherService>
 {
@@ -14,7 +21,21 @@ public sealed partial class WebhookDispatcherService : BackgroundServiceBase<Web
     /// </summary>
     public const int QueueCapacity = 500;
 
-    private readonly ConcurrentQueue<WebhookEvent> queue = new();
+    /// <summary>
+    /// How many events in a row a receiver may fail before it is left alone for a while.
+    /// </summary>
+    public const int FailuresBeforePause = 3;
+
+    /// <summary>
+    /// How long a receiver that keeps failing is left alone.
+    /// </summary>
+    public static readonly TimeSpan PauseAfterFailures = TimeSpan.FromMinutes(1);
+
+    // How long a tick waits for the receivers' senders before it returns; a
+    // slow one goes on in the background and is not started twice.
+    private static readonly TimeSpan TickWait = TimeSpan.FromSeconds(2);
+
+    private readonly ConcurrentDictionary<string, Lane> lanes = new(StringComparer.Ordinal);
     private readonly WebhookRegistry registry;
     private readonly ConcurrentDictionary<Guid, byte> camerasInMotion = new();
     private readonly IWebhookSender sender;
@@ -50,7 +71,7 @@ public sealed partial class WebhookDispatcherService : BackgroundServiceBase<Web
     /// <summary>
     /// Gets the number of events waiting to be sent.
     /// </summary>
-    public int QueuedCount => queue.Count;
+    public int QueuedCount => lanes.Values.Sum(l => l.Queue.Count);
 
     /// <inheritdoc />
     public override Task StartAsync(CancellationToken cancellationToken)
@@ -90,22 +111,27 @@ public sealed partial class WebhookDispatcherService : BackgroundServiceBase<Web
     {
         ArgumentNullException.ThrowIfNull(webhookEvent);
 
-        if (registry.ActiveEndpoints.Count == 0)
+        var endpoints = registry.ActiveEndpoints;
+        if (endpoints.Count == 0)
         {
             return false;
         }
 
-        queue.Enqueue(webhookEvent);
-
-        var dropped = 0;
-        while (queue.Count > QueueCapacity && queue.TryDequeue(out _))
+        foreach (var endpoint in endpoints.Where(e => e.Wants(webhookEvent.Type)).DistinctBy(LaneKey, StringComparer.Ordinal))
         {
-            dropped++;
-        }
+            var lane = lanes.GetOrAdd(LaneKey(endpoint), _ => new Lane());
+            lane.Queue.Enqueue(webhookEvent);
 
-        if (dropped > 0)
-        {
-            LogDropped(dropped);
+            var dropped = 0;
+            while (lane.Queue.Count > QueueCapacity && lane.Queue.TryDequeue(out _))
+            {
+                dropped++;
+            }
+
+            if (dropped > 0)
+            {
+                LogDropped(dropped, endpoint.LogName);
+            }
         }
 
         return true;
@@ -114,30 +140,88 @@ public sealed partial class WebhookDispatcherService : BackgroundServiceBase<Web
     /// <inheritdoc />
     public override async Task DoWorkAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested && queue.TryDequeue(out var webhookEvent))
+        // Asked at every tick: a receiver changed or removed through the API
+        // is sent to as it is now, and one that is gone loses its queue.
+        // Two receivers alike in every way (address, secret, events) share a queue.
+        var endpoints = registry.ActiveEndpoints
+            .DistinctBy(LaneKey, StringComparer.Ordinal)
+            .ToDictionary(LaneKey, StringComparer.Ordinal);
+        foreach (var key in lanes.Keys)
         {
-            // Asked for each event: a receiver added or changed through the
-            // API gets the next one.
-            foreach (var endpoint in registry.ActiveEndpoints)
+            if (!endpoints.ContainsKey(key))
             {
-                if (!endpoint.Wants(webhookEvent.Type))
+                lanes.TryRemove(key, out _);
+            }
+        }
+
+        var running = new List<Task>();
+        foreach (var (key, lane) in lanes)
+        {
+            if (lane.Queue.IsEmpty || !endpoints.TryGetValue(key, out var endpoint))
+            {
+                continue;
+            }
+
+            lock (lane)
+            {
+                if (lane.Sending is { IsCompleted: false } busy)
                 {
+                    running.Add(busy);
                     continue;
                 }
 
-                try
-                {
-                    await sender.SendAsync(endpoint, webhookEvent, stoppingToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    // One receiver must not keep the event from the others.
-                    LogSendFailed(webhookEvent.Type, endpoint.LogName, ex.GetType().Name);
-                }
+                lane.Sending = Task.Run(() => SendQueuedAsync(lane, endpoint, stoppingToken), CancellationToken.None);
+                running.Add(lane.Sending);
+            }
+        }
+
+        if (running.Count > 0)
+        {
+            await Task.WhenAny(Task.WhenAll(running), Task.Delay(TickWait, stoppingToken)).ConfigureAwait(false);
+        }
+    }
+
+    // Sends one receiver's events in order, until its queue is empty or it
+    // keeps failing.
+    private async Task SendQueuedAsync(
+        Lane lane,
+        WebhookEndpoint endpoint,
+        CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            if (DateTimeOffset.UtcNow < lane.PausedUntil || !lane.Queue.TryDequeue(out var webhookEvent))
+            {
+                return;
+            }
+
+            bool delivered;
+            try
+            {
+                delivered = await sender.SendAsync(endpoint, webhookEvent, stoppingToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                LogSendFailed(webhookEvent.Type, endpoint.LogName, ex.GetType().Name);
+                delivered = false;
+            }
+
+            if (delivered)
+            {
+                lane.Failures = 0;
+                continue;
+            }
+
+            lane.Failures++;
+            if (lane.Failures >= FailuresBeforePause)
+            {
+                lane.PausedUntil = DateTimeOffset.UtcNow + PauseAfterFailures;
+                lane.Failures = 0;
+                LogReceiverPaused(endpoint.LogName, FailuresBeforePause, (int)PauseAfterFailures.TotalSeconds);
             }
         }
     }
@@ -179,6 +263,23 @@ public sealed partial class WebhookDispatcherService : BackgroundServiceBase<Web
         }
     }
 
+    // A receiver is told from another by everything that makes it one: two
+    // with the same address but other secrets or events are two receivers.
+    private static string LaneKey(WebhookEndpoint endpoint)
+        => string.Join('', endpoint.Url, endpoint.Secret ?? string.Empty, string.Join(',', endpoint.Events));
+
     private string GetCameraName(Guid cameraId)
         => cameraStorageService.GetCameraById(cameraId)?.Display.DisplayName ?? string.Empty;
+
+    // One receiver's queue, and how it fares.
+    private sealed class Lane
+    {
+        public ConcurrentQueue<WebhookEvent> Queue { get; } = new();
+
+        public Task? Sending { get; set; }
+
+        public int Failures { get; set; }
+
+        public DateTimeOffset PausedUntil { get; set; }
+    }
 }

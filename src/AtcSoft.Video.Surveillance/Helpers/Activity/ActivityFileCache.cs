@@ -8,24 +8,51 @@ namespace AtcSoft.Video.Surveillance.Helpers.Activity;
 internal sealed class ActivityFileCache<T>
     where T : class
 {
-    private readonly int capacity;
+    private readonly int maximumCapacity;
     private readonly Func<string, T?> read;
     private readonly ConcurrentDictionary<string, Entry> entries = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock trimGate = new();
+    private int capacity;
     private long clock;
 
     public ActivityFileCache(
         int capacity,
-        Func<string, T?> read)
+        Func<string, T?> read,
+        int? maximumCapacity = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
         ArgumentNullException.ThrowIfNull(read);
 
         this.capacity = capacity;
+        this.maximumCapacity = Math.Max(capacity, maximumCapacity ?? capacity);
         this.read = read;
     }
 
     public int Count
         => entries.Count;
+
+    public int Capacity
+        => Volatile.Read(ref capacity);
+
+    /// <summary>
+    /// Makes room for a request that reads <paramref name="count"/> files, up to the maximum.
+    /// A request that reads more files than the cache keeps would read every one of them again
+    /// each time: the least recently used is always the next one it needs.
+    /// </summary>
+    public void Reserve(int count)
+    {
+        var wanted = Math.Min(maximumCapacity, count + (count / 10));
+        int current;
+        do
+        {
+            current = Volatile.Read(ref capacity);
+            if (wanted <= current)
+            {
+                return;
+            }
+        }
+        while (Interlocked.CompareExchange(ref capacity, wanted, current) != current);
+    }
 
     public T? Get(string path)
     {
@@ -47,23 +74,45 @@ internal sealed class ActivityFileCache<T>
             return kept.Value;
         }
 
-        var value = read(path);
+        T? value;
+        try
+        {
+            value = read(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Locked by a writer, deleted mid-read, no access: no index this time. Not kept, so
+            // the next look reads it again.
+            return null;
+        }
+
         entries[path] = new Entry(info.Length, info.LastWriteTimeUtc, value) { LastUsed = used };
         Trim();
         return value;
     }
 
+    // The least recently used tenth goes at once: sorting every entry for each one added past
+    // the limit made a full cache slower than reading the files.
     private void Trim()
     {
-        var excess = entries.Count - capacity;
-        if (excess <= 0)
+        var limit = Capacity;
+        if (entries.Count <= limit)
         {
             return;
         }
 
-        foreach (var path in entries.OrderBy(e => e.Value.LastUsed).Take(excess).Select(e => e.Key).ToList())
+        lock (trimGate)
         {
-            entries.TryRemove(path, out _);
+            var excess = entries.Count - (limit - (limit / 10));
+            if (entries.Count <= limit || excess <= 0)
+            {
+                return;
+            }
+
+            foreach (var path in entries.OrderBy(e => e.Value.LastUsed).Take(excess).Select(e => e.Key).ToList())
+            {
+                entries.TryRemove(path, out _);
+            }
         }
     }
 

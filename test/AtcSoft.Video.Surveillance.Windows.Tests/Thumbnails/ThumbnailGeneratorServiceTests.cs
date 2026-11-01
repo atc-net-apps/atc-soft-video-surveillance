@@ -37,7 +37,7 @@ public sealed class ThumbnailGeneratorServiceTests : IDisposable
             Task.FromResult<byte[]?>(WhiteFrame));
         var thumbnailPath = Path.Combine(directory, "four.png");
 
-        sut.StartCapture(Guid.NewGuid(), "Cam", pipeline, Path.ChangeExtension(thumbnailPath, ".mkv"), tileCount: 4, thumbnailPath);
+        sut.StartCapture(Guid.NewGuid(), "Cam", pipeline, VideoFor(thumbnailPath), tileCount: 4, thumbnailPath);
 
         using var thumbnail = await WaitForThumbnailAsync(thumbnailPath);
         thumbnail.Width.Should().Be(CellWidth * 2);
@@ -55,7 +55,7 @@ public sealed class ThumbnailGeneratorServiceTests : IDisposable
         pipeline.CaptureFrameAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<byte[]?>(WhiteFrame));
         var thumbnailPath = Path.Combine(directory, "single.png");
 
-        sut.StartCapture(Guid.NewGuid(), "Cam", pipeline, Path.ChangeExtension(thumbnailPath, ".mkv"), tileCount: 1, thumbnailPath);
+        sut.StartCapture(Guid.NewGuid(), "Cam", pipeline, VideoFor(thumbnailPath), tileCount: 1, thumbnailPath);
 
         using var thumbnail = await WaitForThumbnailAsync(thumbnailPath);
         thumbnail.Width.Should().Be(CellWidth);
@@ -72,7 +72,7 @@ public sealed class ThumbnailGeneratorServiceTests : IDisposable
         pipeline.CaptureFrameAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<byte[]?>(CreateWhitePng(36, 64)));
         var thumbnailPath = Path.Combine(directory, "portrait.png");
 
-        sut.StartCapture(Guid.NewGuid(), "Cam", pipeline, Path.ChangeExtension(thumbnailPath, ".mkv"), tileCount: 1, thumbnailPath);
+        sut.StartCapture(Guid.NewGuid(), "Cam", pipeline, VideoFor(thumbnailPath), tileCount: 1, thumbnailPath);
 
         using var thumbnail = await WaitForThumbnailAsync(thumbnailPath);
         thumbnail.Width.Should().Be(CellWidth);
@@ -97,7 +97,7 @@ public sealed class ThumbnailGeneratorServiceTests : IDisposable
         var thumbnailPath = Path.Combine(directory, "early.png");
         sut.CaptureInterval = TimeSpan.FromMinutes(1);
 
-        sut.StartCapture(cameraId, "Cam", pipeline, Path.ChangeExtension(thumbnailPath, ".mkv"), tileCount: 4, thumbnailPath);
+        sut.StartCapture(cameraId, "Cam", pipeline, VideoFor(thumbnailPath), tileCount: 4, thumbnailPath);
         await captured.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         await WaitUntilAsync(() => !sut.IsCaptureActive(cameraId) || sut.CapturedFrameCount(cameraId) > 0);
         sut.StopCapture(cameraId);
@@ -115,10 +115,38 @@ public sealed class ThumbnailGeneratorServiceTests : IDisposable
         pipeline.CaptureFrameAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<byte[]?>(null));
         var thumbnailPath = Path.Combine(directory, "never.png");
 
-        sut.StartCapture(cameraId, "Cam", pipeline, Path.ChangeExtension(thumbnailPath, ".mkv"), tileCount: 4, thumbnailPath);
+        sut.StartCapture(cameraId, "Cam", pipeline, VideoFor(thumbnailPath), tileCount: 4, thumbnailPath);
 
         await WaitUntilAsync(() => !sut.IsCaptureActive(cameraId));
         File.Exists(thumbnailPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_Recording_Whose_Video_Was_Never_Made_Gets_No_Thumbnail()
+    {
+        // A recording that ended before its first picture: the recorder removes its video, and a
+        // thumbnail of it was left behind.
+        var cameraId = Guid.NewGuid();
+        var pipeline = Substitute.For<IMediaPipeline>();
+        pipeline.CaptureFrameAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<byte[]?>(WhiteFrame));
+        var thumbnailPath = Path.Combine(directory, "never-made.png");
+        sut.CaptureInterval = TimeSpan.FromMinutes(1);
+
+        sut.StartCapture(cameraId, "Cam", pipeline, Path.ChangeExtension(thumbnailPath, ".mkv"), tileCount: 4, thumbnailPath);
+        await WaitUntilAsync(() => sut.CapturedFrameCount(cameraId) > 0);
+        sut.StopCapture(cameraId);
+        await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
+
+        File.Exists(thumbnailPath).Should().BeFalse();
+    }
+
+    // The recording being written: a thumbnail is made only for a video that is there.
+    private static string VideoFor(string thumbnailPath)
+    {
+        var video = Path.ChangeExtension(thumbnailPath, ".mkv");
+        Directory.CreateDirectory(Path.GetDirectoryName(video)!);
+        File.WriteAllBytes(video, [1]);
+        return video;
     }
 
     private static bool IsWhite(

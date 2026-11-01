@@ -44,20 +44,6 @@
     </UserControl.Resources>
 
     <atc:GridEx>
-        <!--  Placeholder when player is lent to fullscreen window  -->
-        <Border
-            x:Name="PlayerLentPlaceholder"
-            Background="#2D2D2D"
-            Visibility="{Binding IsPlayerLent, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock
-                    FontSize="14"
-                    Foreground="#AAAAAA"
-                    Text="Viewing in Full Screen"
-                    TextAlignment="Center" />
-            </StackPanel>
-        </Border>
-
         <!--  Video Player with Overlay Content  -->
         <lve:VideoHost
             x:Name="VideoPlayer"

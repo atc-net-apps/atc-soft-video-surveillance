@@ -28,6 +28,7 @@
     <ProjectReference Include="..\AtcSoft.Video.Surveillance.Api.Domain\AtcSoft.Video.Surveillance.Api.Domain.csproj" />
     <ProjectReference Include="..\AtcSoft.Video.Surveillance\AtcSoft.Video.Surveillance.csproj" />
     <ProjectReference Include="..\Atc.Video.Engine\Atc.Video.Engine.csproj" />
+    <ProjectReference Include="..\Atc.Video.Engine.DirectX\Atc.Video.Engine.DirectX.csproj" />
     <ProjectReference Include="..\AtcSoft.Video.Surveillance.Windows\AtcSoft.Video.Surveillance.Windows.csproj" />
   </ItemGroup>
 

@@ -86,24 +86,11 @@ public partial class RecordingsBrowserDialog : IDisposable
         RoutedEventArgs e)
         => ongoingRecordingsTimer.Start();
 
+    // Reads in the background and skips what cannot be read; a look still going skips this one.
     private void OnOngoingRecordingsTimerTick(
         object? sender,
         EventArgs e)
-    {
-        try
-        {
-            viewModel.UpdateOngoingRecordings();
-        }
-        catch (IOException)
-        {
-            // A folder that is being moved or a drive that went away: the
-            // next look, or Refresh, will see what is there then.
-        }
-        catch (UnauthorizedAccessException)
-        {
-            // As above.
-        }
-    }
+        => _ = viewModel.UpdateOngoingRecordingsAsync();
 
     private void OnCloseRequested(
         object? sender,

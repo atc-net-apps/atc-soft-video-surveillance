@@ -2832,4 +2832,22 @@ Miniature:
   <data name="VerdictNotSaved1" xml:space="preserve">
     <value>Vurderingen blev ikke gemt: {0}</value>
   </data>
+  <data name="Search" xml:space="preserve">
+    <value>Søg</value>
+  </data>
+  <data name="SearchAllColumnsToolTip" xml:space="preserve">
+    <value>Søger i alle listens kolonner, mens du skriver</value>
+  </data>
+  <data name="EnableDiagnostics" xml:space="preserve">
+    <value>Diagnostik til en lang testkørsel</value>
+  </data>
+  <data name="EnableDiagnosticsHint" xml:space="preserve">
+    <value>Skriver detaljerede logfiler (gemmes i 31 dage), en rapport om denne pc og indstillingerne ved opstart og en sundhedsmåling hvert minut i logmappen. Træder i kraft ved næste start.</value>
+  </data>
+  <data name="ErrorHandledAppGoesOn" xml:space="preserve">
+    <value>Noget gik galt. CameraWall kører videre og optager stadig; detaljerne står i loggen.</value>
+  </data>
+  <data name="StreamStoppedStartsAgain" xml:space="preserve">
+    <value>Streamen stoppede. Den starter igen af sig selv.</value>
+  </data>
 </root>

@@ -13,6 +13,15 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     private const int MaxConsecutiveReadErrors = 30;
     private const int FpsUpdateIntervalMs = 1000;
     private const int ThreadJoinTimeoutMs = 5000;
+    private const int MaxDecoderRecoveries = 3;
+
+    // A stream that delivered packets and then sends nothing for this long is lost, however few read
+    // errors that took (each read waits 10 s): found in seconds, not after 30 timeouts (~5 minutes).
+    private static readonly TimeSpan StreamSilentAfter = TimeSpan.FromSeconds(20);
+
+    // How long a new run waits for the previous run's thread to end (its recording's last packets
+    // going to a slow disk) before it gives up: two runs never use the player at once.
+    private static readonly TimeSpan PreviousRunWait = TimeSpan.FromSeconds(30);
 
     private readonly ILogger<VideoPlayer> logger;
     private readonly IGpuAccelerator? gpuAccelerator;
@@ -35,6 +44,11 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     private Remuxer? liveRemuxer;
     private FrameEncoder? frameEncoder;
     private AudioEncoder? audioEncoder;
+
+    // The last packets of the run, for a recording to start from (none for a source that is encoded).
+    // Guarded by encoderLock.
+    private PacketHistory? history;
+    private TimeSpan recordingPreRoll;
     private volatile bool recordAudio;
     private volatile bool transcodeToH264;
 
@@ -57,8 +71,17 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
 
     private AVFrame* latestFrame;
     private Thread? demuxThread;
+
+    // A run's thread that did not end in time; the next run waits for it.
+    private Thread? lingeringRun;
+
+    // The decoder: how many threads it gets, how often it was opened again after failing, and
+    // whether decoding has stopped (the stream is still recorded). Used on the demux thread.
+    private int decoderThreads;
+    private int decoderRecoveries;
+    private bool decodingStopped;
+    private VideoDecoder? runDecoder;
     private CancellationTokenSource? demuxCts;
-    private volatile bool stopRequested;
     private int fpsFrameCount;
     private long lastPacketTicks;
     private bool disposed;
@@ -119,20 +142,21 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 $"Cannot open: player is in {state} state.");
         }
 
-        // Wait for previous demux thread to finish cleanup (runs from caller context — OK to block)
-        demuxThread?.Join(ThreadJoinTimeoutMs);
-        demuxThread = null;
+        // The previous run's thread may still be ending (a recording's last packets going to a
+        // slow disk). The new run waits for it on its own thread: two runs never share this
+        // player's fields, and the caller (often the UI thread) is not held up.
+        var previous = demuxThread is { IsAlive: true } ? demuxThread : Volatile.Read(ref lingeringRun);
 
         options ??= new StreamOptions();
         recordAudio = options.RecordAudio;
         transcodeToH264 = options.TranscodeRecordingToH264;
-        stopRequested = false;
-        demuxCts = new CancellationTokenSource();
-        var ct = demuxCts.Token;
+        recordingPreRoll = options.RecordingPreRoll;
+        var runCts = new CancellationTokenSource();
+        demuxCts = runCts;
 
         SetState(PlayerState.Opening);
 
-        demuxThread = new Thread(() => DemuxLoop(streamUri, options, ct))
+        demuxThread = new Thread(() => DemuxLoop(streamUri, options, runCts, previous))
         {
             Name = "VideoEngine-Demux",
             IsBackground = true,
@@ -147,11 +171,18 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             return;
         }
 
-        stopRequested = true;
-
         // Cancel the token first — this reaches the Demuxer's interrupt callback
         // even before the demuxer field is assigned (during the Opening phase).
-        demuxCts?.Cancel();
+        // The run disposes its token as it ends, which may be now.
+        try
+        {
+            demuxCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // That run has ended already.
+        }
+
         demuxer?.RequestAbort();
 
         // Non-blocking: DemuxLoop's finally block owns resource cleanup.
@@ -160,33 +191,52 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         SetState(PlayerState.Stopped);
     }
 
+    public DateTime? FindRecordingStart(TimeSpan preRoll)
+    {
+        lock (encoderLock)
+        {
+            return history?.FindStart(preRoll, DateTime.UtcNow);
+        }
+    }
+
     public void StartRecording(string outputFilePath)
+        => StartRecordingFrom(outputFilePath, startFromUtc: null);
+
+    public void StartRecording(
+        string outputFilePath,
+        DateTime startFromUtc)
+        => StartRecordingFrom(outputFilePath, startFromUtc);
+
+    private void StartRecordingFrom(
+        string outputFilePath,
+        DateTime? startFromUtc)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
-        // The thread that reads the camera clears these when the stream
-        // ends, which it may do at any moment: work on what is there now.
-        var source = demuxer;
-        var sourceDecoder = decoder;
-        if (state != PlayerState.Playing || source is null || sourceDecoder is null)
+        // The thread that reads the camera clears the stream when it ends, under this lock: what is
+        // read here stays alive until the recording is open, and a recorder is never made for a
+        // stream that has gone (it would keep a file open that nothing closes).
+        lock (encoderLock)
         {
-            throw new InvalidOperationException("Cannot record: player is not playing.");
-        }
+            var source = demuxer;
+            var sourceDecoder = decoder;
+            if (state != PlayerState.Playing || source is null || sourceDecoder is null)
+            {
+                throw new InvalidOperationException("Cannot record: player is not playing.");
+            }
 
-        remuxer ??= new Remuxer();
+            remuxer ??= new Remuxer(logger);
 
-        if (remuxer.IsOpen)
-        {
-            return;
-        }
+            if (remuxer.IsOpen)
+            {
+                return;
+            }
 
-        if (FrameEncoder.IsNeededFor(source.VideoCodecParameters->codec_id, transcodeToH264))
-        {
-            StartEncodedRecording(outputFilePath, source, sourceDecoder);
-        }
-        else
-        {
-            lock (encoderLock)
+            if (FrameEncoder.IsNeededFor(source.VideoCodecParameters->codec_id, transcodeToH264))
+            {
+                StartEncodedRecording(outputFilePath, source, sourceDecoder);
+            }
+            else
             {
                 // A live stream that is already running has the sound encoder open.
                 var sound = audioEncoder ?? OpenAudioEncoder(source);
@@ -206,6 +256,13 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                     DisposeUnlessShared(sound);
                     throw;
                 }
+
+                if (startFromUtc is { } from && history is not null)
+                {
+                    var recorder = remuxer;
+                    var timeBase = source.VideoTimeBase;
+                    history.WriteFrom(from, packet => recorder.WritePacket((AVPacket*)packet, timeBase));
+                }
             }
         }
 
@@ -214,13 +271,13 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
 
     public void StopRecording()
     {
-        if (remuxer is null || !remuxer.IsOpen)
-        {
-            return;
-        }
-
         lock (encoderLock)
         {
+            if (remuxer is null || !remuxer.IsOpen)
+            {
+                return;
+            }
+
             if (frameEncoder is not null && recordingIsEncoded && !(liveIsEncoded && liveRemuxer is { IsOpen: true }))
             {
                 // What the encoder still holds belongs in this file. With a
@@ -255,23 +312,40 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     /// silently dropped — they land in the previous segment or the new one.
     /// </summary>
     public void SwitchRecording(string newOutputFilePath)
+        => SwitchRecordingFrom(newOutputFilePath, startFromUtc: null);
+
+    /// <summary>
+    /// Moves the recording on to a new file that starts from a key frame the player kept (the
+    /// files overlap by the pictures since), so the new file's first picture is the one
+    /// <paramref name="startFromUtc"/> names. Before, the new file was named when the switch was
+    /// asked for and began at the next key frame: up to a group of pictures later.
+    /// </summary>
+    public void SwitchRecording(
+        string newOutputFilePath,
+        DateTime startFromUtc)
+        => SwitchRecordingFrom(newOutputFilePath, startFromUtc);
+
+    private void SwitchRecordingFrom(
+        string newOutputFilePath,
+        DateTime? startFromUtc)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
-        if (state != PlayerState.Playing || demuxer is null)
-        {
-            throw new InvalidOperationException("Cannot switch recording: player is not playing.");
-        }
-
-        if (remuxer is null || !remuxer.IsOpen)
-        {
-            // Nothing to switch — fall back to a plain start.
-            StartRecording(newOutputFilePath);
-            return;
-        }
-
         lock (encoderLock)
         {
+            var source = demuxer;
+            if (state != PlayerState.Playing || source is null)
+            {
+                throw new InvalidOperationException("Cannot switch recording: player is not playing.");
+            }
+
+            if (remuxer is null || !remuxer.IsOpen)
+            {
+                // Nothing to switch — fall back to a plain start.
+                StartRecordingFrom(newOutputFilePath, startFromUtc);
+                return;
+            }
+
             // The sound encoder runs on across the switch: the sound has no gap.
             var sound = audioEncoder is null || !recordingHasSound ? null : audioEncoder.CodecParameters;
 
@@ -282,9 +356,16 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 frameEncoder.RequestKeyFrame();
                 remuxer.SwitchTo(newOutputFilePath, frameEncoder.CodecParameters, frameEncoder.TimeBase, (int)rotation, sound);
             }
+            else if (startFromUtc is { } from && history is not null)
+            {
+                remuxer.SwitchTo(newOutputFilePath, source.VideoCodecParameters, source.VideoTimeBase, (int)rotation, sound, atOnce: true);
+                var recorder = remuxer;
+                var timeBase = source.VideoTimeBase;
+                history.WriteFrom(from, packet => recorder.WritePacket((AVPacket*)packet, timeBase));
+            }
             else
             {
-                remuxer.SwitchTo(newOutputFilePath, demuxer.VideoCodecParameters, demuxer.VideoTimeBase, (int)rotation, sound);
+                remuxer.SwitchTo(newOutputFilePath, source.VideoCodecParameters, source.VideoTimeBase, (int)rotation, sound);
             }
         }
 
@@ -478,7 +559,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 return;
             }
 
-            var live = new Remuxer();
+            var live = new Remuxer(logger);
             AudioEncoder? sound = null;
             try
             {
@@ -569,44 +650,29 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                     }
                 }
 
-                // CPU fallback.
-                AVFrame* clone;
-                lock (frameLock)
+                // CPU fallback. One capture at a time: the scaler and the PNG encoder are not
+                // thread-safe, Dispose must not free them under a capture that is still running, and
+                // the picture is taken (a decoder surface held) only once it is this capture's turn:
+                // captures waiting with a picture each could leave the decoder without surfaces.
+                lock (captureLock)
                 {
-                    if (latestFrame is null || latestFrame->width <= 0)
+                    if (disposed || CloneLatestFrame() is not { } clone)
                     {
                         return null;
                     }
 
-                    clone = av_frame_clone(latestFrame);
-                }
-
-                if (clone is null)
-                {
-                    return null;
-                }
-
-                try
-                {
-                    // One capture at a time: the scaler and the PNG encoder are
-                    // not thread-safe, and Dispose must not free them under a
-                    // capture that is still running.
-                    lock (captureLock)
+                    try
                     {
-                        if (disposed)
-                        {
-                            return null;
-                        }
-
                         // The GPU snapshot is already rotated; rotate here too so
                         // a capture looks the same whichever path produced it.
                         frameCapture ??= new FrameCapture();
-                        return frameCapture.CaptureFrame(clone, rotation);
+                        return frameCapture.CaptureFrame((AVFrame*)clone, rotation);
                     }
-                }
-                finally
-                {
-                    av_frame_free(ref clone);
+                    finally
+                    {
+                        var picture = (AVFrame*)clone;
+                        av_frame_free(ref picture);
+                    }
                 }
             },
             ct);
@@ -630,32 +696,25 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         return Task.Run(
             () =>
             {
-                AVFrame* clone;
-                lock (frameLock)
-                {
-                    if (latestFrame is null || latestFrame->width <= 0)
-                    {
-                        return null;
-                    }
-
-                    clone = av_frame_clone(latestFrame);
-                }
-
-                if (clone is null)
+                // The same lock as the PNG capture: one capture at a time, never after Dispose, and
+                // the picture is taken only once it is this capture's turn. A capture already
+                // running means this picture is skipped: analysis asks again a moment later, and
+                // captures piling up, each holding a decoder surface, left the decoder without any.
+                if (!captureLock.TryEnter())
                 {
                     return null;
                 }
 
                 try
                 {
-                    // The same lock as the PNG capture: one capture at a time, never after Dispose.
-                    lock (captureLock)
+                    if (disposed || CloneLatestFrame() is not { } cloned)
                     {
-                        if (disposed)
-                        {
-                            return null;
-                        }
+                        return null;
+                    }
 
+                    var clone = (AVFrame*)cloned;
+                    try
+                    {
                         greyScaler ??= new FrameScaler();
                         var pixels = greyScaler.ToPixels(clone, width, height, rotation);
                         var position = clone->pts != AV_NOPTS_VALUE && timeBase.Den != 0
@@ -663,13 +722,33 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                             : TimeSpan.Zero;
                         return pixels is null ? null : new GreyFrame(position, width, height, pixels);
                     }
+                    finally
+                    {
+                        av_frame_free(ref clone);
+                    }
                 }
                 finally
                 {
-                    av_frame_free(ref clone);
+                    captureLock.Exit();
                 }
             },
             ct);
+    }
+
+    // A reference to the newest decoded picture (null when there is none), as a pointer value so
+    // it can be passed in a pattern. The caller frees it with av_frame_free.
+    private nint? CloneLatestFrame()
+    {
+        lock (frameLock)
+        {
+            if (latestFrame is null || latestFrame->width <= 0)
+            {
+                return null;
+            }
+
+            var clone = av_frame_clone(latestFrame);
+            return clone is null ? null : (nint)clone;
+        }
     }
 
     public void Dispose()
@@ -682,16 +761,41 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         disposed = true;
         Close();
 
-        // Ensure the demux thread has fully completed cleanup before final disposal
-        demuxThread?.Join(ThreadJoinTimeoutMs);
+        var thread = demuxThread is { IsAlive: true } ? demuxThread : Volatile.Read(ref lingeringRun);
         demuxThread = null;
+        if (thread is not { IsAlive: true })
+        {
+            ReleasePlayer(exited: true);
+            return;
+        }
 
+        // The demux thread may still be ending a recording (its last packets, the file's index) on
+        // a slow disk. What it uses is let go on a pool thread once it has ended, not on the
+        // caller's thread, which is often the UI thread.
+        _ = Task.Run(() => ReleasePlayer(thread.Join(ThreadJoinTimeoutMs * 6)), CancellationToken.None);
+    }
+
+    // Lets go of what outlives the runs: the frame capture and the graphics accelerator.
+    private void ReleasePlayer(bool exited)
+    {
         lock (captureLock)
         {
             frameCapture?.Dispose();
             frameCapture = null;
             greyScaler?.Dispose();
             greyScaler = null;
+        }
+
+        // The player owns its graphics accelerator (a D3D11 device, its video processor and
+        // textures, FFmpeg's hardware context): it goes with the player. Not while the demux
+        // thread may still decode on it; then it is left to the process, and logged.
+        if (exited)
+        {
+            gpuAccelerator?.Dispose();
+        }
+        else if (gpuAccelerator is not null)
+        {
+            LogAcceleratorKeptForRunningThread(ThreadJoinTimeoutMs * 6);
         }
     }
 
@@ -721,14 +825,39 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     private void DemuxLoop(
         Uri streamUri,
         StreamOptions options,
-        CancellationToken ct)
+        CancellationTokenSource runCts,
+        Thread? previous)
     {
         Demuxer? localDemuxer = null;
         VideoDecoder? localDecoder = null;
         var source = options.Source;
+        var ct = runCts.Token;
+
+        // This run takes the player's fields only once the run before it has let go of them.
+        var ownsFields = false;
 
         try
         {
+            if (previous is { IsAlive: true } && !previous.Join(PreviousRunWait))
+            {
+                LogPreviousRunStillEnding(source, PreviousRunWait.TotalSeconds);
+
+                // The next run waits for that thread, not for this one, which ends now.
+                Volatile.Write(ref lingeringRun, previous);
+                if (!ct.IsCancellationRequested)
+                {
+                    SetState(PlayerState.Error, "The previous stream did not end");
+                }
+
+                return;
+            }
+
+            ownsFields = true;
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
             localDemuxer = new Demuxer(logger);
             localDecoder = new VideoDecoder();
 
@@ -737,6 +866,9 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             LogStreamDemuxerOpened(source);
 
             var threadCount = VideoEngineBootstrap.Config?.DecoderThreads ?? 0;
+            decoderThreads = threadCount;
+            decoderRecoveries = 0;
+            decodingStopped = false;
             var useHwAccel = options.HardwareAcceleration
                 && gpuAccelerator is { IsInitialized: true };
             var hwDeviceCtx = useHwAccel
@@ -746,8 +878,20 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             localDecoder.Open(localDemuxer.VideoCodecParameters, threadCount, hwDeviceCtx);
             LogDecoderOpened(source, localDecoder.IsHardwareAccelerated);
 
+            // A run keeps its own packets: none from a run before (another stream, perhaps
+            // another codec) can go into a file of this one.
+            var runHistory = FrameEncoder.IsNeededFor(localDemuxer.VideoCodecParameters->codec_id, transcodeToH264)
+                ? null
+                : new PacketHistory(recordingPreRoll);
+            lock (encoderLock)
+            {
+                history?.Dispose();
+                history = runHistory;
+            }
+
             demuxer = localDemuxer;
             decoder = localDecoder;
+            runDecoder = localDecoder;
 
             latestFrame = av_frame_alloc();
 
@@ -764,11 +908,11 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
 
             SetState(PlayerState.Playing);
 
-            RunReadLoop(source, options.InputFormat);
+            RunReadLoop(source, options.InputFormat, ct);
         }
         catch (Exception ex)
         {
-            if (!stopRequested)
+            if (!ct.IsCancellationRequested)
             {
                 LogDemuxLoopFailed(source, ex);
                 SetState(PlayerState.Error, ex.Message);
@@ -776,66 +920,83 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         }
         finally
         {
-            // The demux thread owns cleanup of all pipeline resources it created.
-            // This ensures the Demuxer's GCHandle is only freed after FFmpeg is done
-            // using the interrupt callback — preventing use-after-free.
-            lock (encoderLock)
+            if (ownsFields)
             {
-                frameEncoder?.Dispose();
-                frameEncoder = null;
-                audioEncoder?.Dispose();
-                audioEncoder = null;
-                liveRemuxer?.Dispose();
-                liveRemuxer = null;
-                liveIsEncoded = false;
-                recordingIsEncoded = false;
-                liveHasSound = false;
-                recordingHasSound = false;
-                remuxer?.Dispose();
-                remuxer = null;
+                ReleaseRun(localDemuxer, localDecoder);
             }
 
             localDecoder?.Dispose();
-            if (ReferenceEquals(decoder, localDecoder))
-            {
-                decoder = null;
-            }
-
             localDemuxer?.Dispose();
+
+            // The token is this run's; a newer run has its own in the field.
+            Interlocked.CompareExchange(ref demuxCts, null, runCts);
+            runCts.Dispose();
+        }
+    }
+
+    // The demux thread owns cleanup of all pipeline resources it created. This ensures the
+    // Demuxer's GCHandle is only freed after FFmpeg is done using the interrupt callback —
+    // preventing use-after-free. The stream is taken away under encoderLock, so a recording
+    // being started on another thread sees it either whole or gone.
+    private void ReleaseRun(
+        Demuxer? localDemuxer,
+        VideoDecoder? localDecoder)
+    {
+        VideoDecoder? replacedDecoder;
+        lock (encoderLock)
+        {
+            frameEncoder?.Dispose();
+            frameEncoder = null;
+            audioEncoder?.Dispose();
+            audioEncoder = null;
+            liveRemuxer?.Dispose();
+            liveRemuxer = null;
+            liveIsEncoded = false;
+            recordingIsEncoded = false;
+            liveHasSound = false;
+            recordingHasSound = false;
+            remuxer?.Dispose();
+            remuxer = null;
+            history?.Dispose();
+            history = null;
+
+            // The runs take turns, so the decoder in the field is this run's: the one it opened, or one
+            // that replaced it after it failed (disposed here; the first is disposed by the run).
+            replacedDecoder = ReferenceEquals(decoder, localDecoder) ? null : decoder;
+            decoder = null;
+            runDecoder = null;
+
             if (ReferenceEquals(demuxer, localDemuxer))
             {
                 demuxer = null;
             }
 
-            lock (frameLock)
+            if (memoryFrame is not null)
             {
-                if (latestFrame is not null)
-                {
-                    av_frame_free(ref latestFrame);
-                }
+                av_frame_free(ref memoryFrame);
             }
-
-            lock (encoderLock)
-            {
-                if (memoryFrame is not null)
-                {
-                    av_frame_free(ref memoryFrame);
-                }
-            }
-
-            demuxCts?.Dispose();
-            demuxCts = null;
-
-            StreamInfo = null;
-            CurrentFps = 0;
-            FramesDecoded = 0;
-            Interlocked.Exchange(ref lastPacketTicks, 0);
         }
+
+        replacedDecoder?.Dispose();
+
+        lock (frameLock)
+        {
+            if (latestFrame is not null)
+            {
+                av_frame_free(ref latestFrame);
+            }
+        }
+
+        StreamInfo = null;
+        CurrentFps = 0;
+        FramesDecoded = 0;
+        Interlocked.Exchange(ref lastPacketTicks, 0);
     }
 
     private void RunReadLoop(
         string source,
-        InputFormatKind inputFormat)
+        InputFormatKind inputFormat,
+        CancellationToken ct)
     {
         int consecutiveErrors = 0;
         int lastErrorCode = 0;
@@ -843,7 +1004,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         fpsWatch.Restart();
         fpsFrameCount = 0;
 
-        while (!stopRequested)
+        while (!ct.IsCancellationRequested)
         {
             int ret = demuxer!.ReadPacket();
 
@@ -856,7 +1017,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 // this, the demux thread exits cleanly and the tile is left
                 // believing the stream is still Playing forever (recording
                 // dies, no recovery).
-                if (!stopRequested)
+                if (!ct.IsCancellationRequested)
                 {
                     SetState(PlayerState.Error, "End of stream", StreamFailureReason.EndOfStream);
                 }
@@ -869,9 +1030,17 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 consecutiveErrors++;
                 lastErrorCode = ret;
 
-                if (consecutiveErrors > MaxConsecutiveReadErrors)
+                var silentFor = anyFramesReceived ? DateTime.UtcNow - LastPacketUtc : TimeSpan.Zero;
+                if (consecutiveErrors > MaxConsecutiveReadErrors || silentFor >= StreamSilentAfter)
                 {
-                    LogExceededConsecutiveReadErrors(source, MaxConsecutiveReadErrors);
+                    if (silentFor >= StreamSilentAfter)
+                    {
+                        LogStreamSilent(source, silentFor.TotalSeconds);
+                    }
+                    else
+                    {
+                        LogExceededConsecutiveReadErrors(source, MaxConsecutiveReadErrors);
+                    }
 
                     var reason = ReadErrorClassifier.Classify(
                         inputFormat,
@@ -884,7 +1053,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
 
                     // Same reasoning as the EOF path above: drive a real state
                     // transition so auto-reconnect can fire.
-                    if (!stopRequested)
+                    if (!ct.IsCancellationRequested)
                     {
                         SetState(PlayerState.Error, "Exceeded consecutive read errors", reason);
                     }
@@ -915,6 +1084,49 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         }
     }
 
+    // A decoder that keeps failing (a driver problem with hardware decoding, a stream it cannot
+    // follow) is opened again on the processor, a few times; after that the stream is only
+    // recorded, not decoded. Runs on the demux thread.
+    private void RecoverDecoder(FFmpegException failure)
+    {
+        var source = StreamInfo?.CodecName ?? "stream";
+        if (decoderRecoveries >= MaxDecoderRecoveries)
+        {
+            decodingStopped = true;
+            LogDecodingStopped(source, failure.Message);
+            return;
+        }
+
+        decoderRecoveries++;
+        var replacement = new VideoDecoder();
+        try
+        {
+            replacement.Open(demuxer!.VideoCodecParameters, decoderThreads);
+        }
+        catch (Exception ex) when (ex is FFmpegException or InvalidOperationException)
+        {
+            replacement.Dispose();
+            decodingStopped = true;
+            LogDecodingStopped(source, ex.Message);
+            return;
+        }
+
+        VideoDecoder? failed;
+        lock (encoderLock)
+        {
+            failed = decoder;
+            decoder = replacement;
+        }
+
+        // The run's first decoder is disposed by the run itself as it ends.
+        if (!ReferenceEquals(failed, runDecoder))
+        {
+            failed?.Dispose();
+        }
+
+        LogDecoderReopened(source, decoderRecoveries, failure.Message);
+    }
+
     private void ProcessVideoPacket()
     {
         // A stream that is being encoded is recorded picture by picture
@@ -933,9 +1145,31 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             {
                 liveRemuxer.WritePacket(demuxer!.CurrentPacket, demuxer.VideoTimeBase);
             }
+
+            // Kept after it was written: a recording started from the history has every packet
+            // once, either from it or from here.
+            history?.Add(demuxer!.CurrentPacket, DateTime.UtcNow);
         }
 
-        if (!decoder!.SendPacket(demuxer!.CurrentPacket))
+        // The packet is in the recording already: a decoder that fails costs the picture (and the
+        // motion analysis), never the recording.
+        if (decodingStopped)
+        {
+            return;
+        }
+
+        bool sent;
+        try
+        {
+            sent = decoder!.SendPacket(demuxer!.CurrentPacket);
+        }
+        catch (FFmpegException ex)
+        {
+            RecoverDecoder(ex);
+            return;
+        }
+
+        if (!sent)
         {
             return;
         }
@@ -1014,6 +1248,25 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     {
         var previous = state;
         state = newState;
-        StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(previous, newState, errorMessage, reason));
+
+        // Raised on the demux thread, also from its error handling: a subscriber that throws is
+        // logged, and neither ends the thread (or the process) nor keeps the others from hearing it.
+        if (StateChanged?.GetInvocationList() is not { } handlers)
+        {
+            return;
+        }
+
+        var args = new PlayerStateChangedEventArgs(previous, newState, errorMessage, reason);
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                ((EventHandler<PlayerStateChangedEventArgs>)handler).Invoke(this, args);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                LogStateChangedSubscriberFailed(ex, newState);
+            }
+        }
     }
 }

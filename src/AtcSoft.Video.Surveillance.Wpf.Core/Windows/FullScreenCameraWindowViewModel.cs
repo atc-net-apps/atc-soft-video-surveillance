@@ -183,6 +183,45 @@ public sealed partial class FullScreenCameraWindowViewModel : ViewModelDialogBas
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Shows the player the camera's tile has now: the window shows the tile's own player (the tile
+    /// keeps it, reconnects it and records with it), and follows it when the tile gets another one.
+    /// A window that made its own player keeps it.
+    /// </summary>
+    /// <param name="sharedPlayer">The tile's player, or <see langword="null"/> while it has none.</param>
+    public void FollowSharedPlayer(IVideoPlayer? sharedPlayer)
+    {
+        if (ownsPlayer || disposed || ReferenceEquals(sharedPlayer, Player))
+        {
+            return;
+        }
+
+        if (Player is not null)
+        {
+            Player.StateChanged -= OnPlayerStateChanged;
+        }
+
+        Player = sharedPlayer;
+        if (sharedPlayer is null)
+        {
+            ConnectionState = ConnectionState.Connecting;
+            return;
+        }
+
+        sharedPlayer.StateChanged += OnPlayerStateChanged;
+        ConnectionState = StateOf(sharedPlayer.State);
+    }
+
+    private static ConnectionState StateOf(PlayerState state)
+        => state switch
+        {
+            PlayerState.Playing => ConnectionState.Connected,
+            PlayerState.Opening => ConnectionState.Connecting,
+            PlayerState.Stopped => ConnectionState.Disconnected,
+            PlayerState.Error => ConnectionState.ConnectionFailed,
+            _ => ConnectionState.Disconnected,
+        };
+
     [RelayCommand]
     private void Close()
     {
@@ -224,7 +263,7 @@ public sealed partial class FullScreenCameraWindowViewModel : ViewModelDialogBas
                 "avfoundation" => InputFormatKind.AVFoundation,
                 _ => InputFormatKind.Auto,
             },
-            RawDeviceSpec = locator.RawDeviceSpec,
+            RawDeviceSpec = locator.RawDeviceSpec,
             RecordAudio = locator.IncludesAudio,
             VideoSize = locator.VideoSize,
             FrameRate = locator.FrameRate,
@@ -320,14 +359,14 @@ public sealed partial class FullScreenCameraWindowViewModel : ViewModelDialogBas
             {
                 Player.StateChanged -= OnPlayerStateChanged;
 
-                // Only dispose the player if we own it (created it ourselves)
-                // If it was borrowed from CameraTile, it will be returned and reused
+                // The window lets go of the player first (its video host detaches), then disposes
+                // it only when it made it itself; a tile's player stays with the tile.
+                var shown = Player;
+                Player = null;
                 if (ownsPlayer)
                 {
-                    Player.Dispose();
+                    shown.Dispose();
                 }
-
-                Player = null;
             }
         }
 

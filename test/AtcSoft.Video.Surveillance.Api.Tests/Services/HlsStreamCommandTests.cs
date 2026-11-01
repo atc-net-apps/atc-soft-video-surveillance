@@ -12,9 +12,45 @@ public sealed class HlsStreamCommandTests
 
         var arguments = HlsStreamCommand.BuildArguments(camera, Playlist);
 
-        arguments.Should().Contain("-rtsp_transport udp");
-        arguments.Should().Contain("-i \"rtsp://192.0.2.10:554/stream1\"");
-        arguments.Should().EndWith($"\"{Playlist}\"");
+        arguments.Should().ContainInConsecutiveOrder("-rtsp_transport", "udp");
+        arguments.Should().ContainInConsecutiveOrder("-i", "rtsp://192.0.2.10:554/stream1");
+        arguments[^1].Should().Be(Playlist);
+    }
+
+    [Fact]
+    public void A_Quote_In_The_Camera_Path_Stays_Inside_The_Address()
+    {
+        // An operator can set the path; it must not add options of its own,
+        // such as writing a file anywhere the server's account may write.
+        var camera = CreateCamera(CoreCameraProtocol.Rtsp, 554);
+        camera.Connection.Path = "stream1\" -y -f image2 \"C:\\target\\x.jpg";
+
+        var arguments = HlsStreamCommand.BuildArguments(camera, Playlist);
+
+        arguments.Should().NotContain("-y").And.NotContain("image2");
+        arguments[arguments.ToList().IndexOf("-i") + 1].Should().StartWith("rtsp://192.0.2.10:554/stream1").And.Contain("image2");
+        arguments[^1].Should().Be(Playlist);
+    }
+
+    [Fact]
+    public void A_Quote_In_The_Password_Or_The_Transport_Stays_One_Value()
+    {
+        var camera = CreateCamera(CoreCameraProtocol.Rtsp, 554);
+        camera.Authentication.UserName = "admin";
+        camera.Authentication.Password = "pw\" -y \"x";
+        camera.Stream.RtspTransport = "tcp -y";
+
+        var arguments = HlsStreamCommand.BuildArguments(camera, Playlist);
+
+        arguments.Should().NotContain("-y");
+        arguments.Should().ContainInConsecutiveOrder("-rtsp_transport", "tcp -y");
+    }
+
+    [Fact]
+    public void The_Logged_Command_Line_Quotes_A_Value_With_A_Space_Or_A_Quote()
+    {
+        HlsStreamCommand.ToCommandLine(["-i", "rtsp://h/a b", "say \"hi\"", @"C:\hls\x.m3u8"])
+            .Should().Be("-i \"rtsp://h/a b\" \"say \\\"hi\\\"\" C:\\hls\\x.m3u8");
     }
 
     [Theory]
@@ -30,8 +66,8 @@ public sealed class HlsStreamCommandTests
 
         var arguments = HlsStreamCommand.BuildArguments(camera, Playlist);
 
-        arguments.Should().NotContain("rtsp_transport");
-        arguments.Should().Contain("-c:v copy");
+        arguments.Should().NotContain("-rtsp_transport");
+        arguments.Should().ContainInConsecutiveOrder("-c:v", "copy");
     }
 
     [Theory]
@@ -45,7 +81,7 @@ public sealed class HlsStreamCommandTests
         // FFmpeg 9 verifies by default; a camera's certificate is usually self-signed.
         var arguments = HlsStreamCommand.BuildArguments(CreateCamera(protocol, 443), Playlist);
 
-        arguments.Contains("-tls_verify 0", StringComparison.Ordinal).Should().Be(expected);
+        HlsStreamCommand.ToCommandLine(arguments).Contains("-tls_verify 0", StringComparison.Ordinal).Should().Be(expected);
     }
 
     [Fact]
@@ -55,7 +91,7 @@ public sealed class HlsStreamCommandTests
         // FFmpeg prints goes into the server's log.
         var arguments = HlsStreamCommand.BuildArguments(CreateCamera(CoreCameraProtocol.Rtsp, 554), Playlist);
 
-        arguments.Should().StartWith("-nostats ");
+        arguments[0].Should().Be("-nostats");
     }
 
     [Fact]
@@ -65,7 +101,7 @@ public sealed class HlsStreamCommandTests
         camera.Authentication.UserName = "admin";
         camera.Authentication.Password = "s3cr3t!pw";
 
-        var arguments = HlsStreamCommand.BuildArguments(camera, Playlist);
+        var arguments = HlsStreamCommand.ToCommandLine(HlsStreamCommand.BuildArguments(camera, Playlist));
         arguments.Should().Contain("s3cr3t", "FFmpeg itself needs the password");
 
         var logged = HlsStreamCommand.Redact(arguments, camera);

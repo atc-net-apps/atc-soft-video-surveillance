@@ -25,6 +25,13 @@ public class ReconnectBackoffTests
     }
 
     [Fact]
+    public void A_Camera_Is_Tried_At_Least_Every_Two_Minutes()
+    {
+        ReconnectBackoff.ComputeDelay(3, maxDelay: ReconnectBackoff.CameraMaxDelay).Should().Be(TimeSpan.FromMinutes(2));
+        ReconnectBackoff.ComputeDelay(50, maxDelay: ReconnectBackoff.CameraMaxDelay).Should().Be(TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
     public void ComputeDelay_RespectsCustomBaseAndMax()
     {
         // Arrange

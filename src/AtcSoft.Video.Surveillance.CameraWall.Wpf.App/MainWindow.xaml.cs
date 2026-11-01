@@ -12,6 +12,7 @@ public partial class MainWindow : Fluent.IRibbonWindow
     public Fluent.RibbonTitleBar? TitleBar => null;
 
     private readonly MainWindowViewModel viewModel;
+    private readonly WindowStateService windowStateService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindow"/> class.
@@ -20,6 +21,12 @@ public partial class MainWindow : Fluent.IRibbonWindow
     public MainWindow(MainWindowViewModel viewModel)
     {
         InitializeComponent();
+
+        // After InitializeComponent: the size set in the XAML would replace the saved one.
+        windowStateService = new WindowStateService(
+            AtcSoft.Video.Surveillance.Helpers.ApplicationPaths.GetLocalDataPath("CameraWall", "window-state.json"));
+        windowStateService.Load();
+        windowStateService.ApplyTo(this);
 
         this.viewModel = viewModel;
         DataContext = viewModel;
@@ -41,7 +48,16 @@ public partial class MainWindow : Fluent.IRibbonWindow
     private void OnClosing(
         object? sender,
         CancelEventArgs e)
-        => viewModel.OnClosing(this, e);
+    {
+        viewModel.OnClosing(this, e);
+        if (e.Cancel)
+        {
+            return;
+        }
+
+        windowStateService.CaptureFrom(this);
+        windowStateService.Save();
+    }
 
     private void OnKeyDown(
         object sender,

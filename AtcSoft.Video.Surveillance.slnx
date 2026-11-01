@@ -1,14 +1,8 @@
 <Solution>
+  <Folder Name="/benchmark/">
+    <Project Path="benchmark/AtcSoft.Video.Surveillance.Benchmarks/AtcSoft.Video.Surveillance.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/docs/">
-    <File Path="docs/architecture.md" />
-    <File Path="docs/motion-detection.md" />
-    <File Path="docs/motion-detection-storybook.md" />
-    <File Path="docs/server.md" />
-    <File Path="docs/settings.md" />
-    <File Path="docs/disk-space-guard.md" />
-    <File Path="docs/usb-cameras.md" />
-    <File Path="docs/e2e-smoke-tests.md" />
-    <File Path="docs/soak-test.md" />
     <File Path="README.md" />
   </Folder>
   <Folder Name="/plans/">

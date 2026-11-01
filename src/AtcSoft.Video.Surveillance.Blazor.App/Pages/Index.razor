@@ -136,7 +136,7 @@ else if (!isLoading && !loadFailed)
     private bool loadFailed;
     private readonly CancellationTokenSource leaving = new();
 
-    protected override async Task OnInitializedAsync()
+    private async Task LoadAsync()
     {
         var loaded = await Gateway.GetCamerasAsync();
         loadFailed = loaded is null;
@@ -149,12 +149,27 @@ else if (!isLoading && !loadFailed)
         layoutCount = (await Gateway.GetLayoutsAsync())?.Length ?? 0;
         storage = await Gateway.GetStorageStatusAsync();
         isLoading = false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
 
         // The live counts come from the server's event stream (GET /events)
-        // until the page is left; it resumes by itself after a drop.
+        // until the page is left; it resumes by itself after a drop. When the
+        // server could not send again what came meanwhile (it restarted), the
+        // counts are read again.
         EventStream.ReadingChanged += OnReadingChanged;
+        EventStream.MissedEvents += OnMissedEvents;
         _ = EventStream.RunAsync(OnEventAsync, leaving.Token);
     }
+
+    private void OnMissedEvents()
+        => InvokeAsync(async () =>
+        {
+            await LoadAsync();
+            StateHasChanged();
+        });
 
     private Task OnEventAsync(SurveillanceEvent surveillanceEvent)
         => InvokeAsync(() =>
@@ -169,6 +184,7 @@ else if (!isLoading && !loadFailed)
     public void Dispose()
     {
         EventStream.ReadingChanged -= OnReadingChanged;
+        EventStream.MissedEvents -= OnMissedEvents;
         leaving.Cancel();
         leaving.Dispose();
     }

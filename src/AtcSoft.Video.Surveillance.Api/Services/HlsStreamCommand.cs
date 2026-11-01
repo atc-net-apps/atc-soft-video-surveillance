@@ -42,8 +42,12 @@ public static class HlsStreamCommand
     /// </summary>
     /// <param name="camera">The camera to stream.</param>
     /// <param name="playlistPath">The playlist file to write.</param>
-    /// <returns>The argument string. It holds the camera's password: log it through <see cref="Redact"/>.</returns>
-    public static string BuildArguments(
+    /// <returns>
+    /// The arguments, one value each, for <see cref="ProcessStartInfo.ArgumentList"/>: a value
+    /// the user typed (the camera's path or password) can never become an option of its own.
+    /// They hold the camera's password: log them through <see cref="ToCommandLine"/> and <see cref="Redact"/>.
+    /// </returns>
+    public static IReadOnlyList<string> BuildArguments(
         CameraConfiguration camera,
         string playlistPath)
     {
@@ -60,7 +64,24 @@ public static class HlsStreamCommand
         return BuildNetworkArguments(camera, playlistPath);
     }
 
-    private static string BuildNetworkArguments(
+    /// <summary>
+    /// Writes arguments as one command line, the way they are logged: a value with
+    /// a space or a quote is quoted.
+    /// </summary>
+    /// <param name="arguments">The arguments from <see cref="BuildArguments"/>.</param>
+    /// <returns>The command line. It holds the camera's password: clean it with <see cref="Redact"/>.</returns>
+    public static string ToCommandLine(IEnumerable<string> arguments)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+
+        return string.Join(
+            ' ',
+            arguments.Select(a => a.Length == 0 || a.Any(c => char.IsWhiteSpace(c) || c == '"')
+                ? $"\"{a.Replace("\"", "\\\"", StringComparison.Ordinal)}\""
+                : a));
+    }
+
+    private static List<string> BuildNetworkArguments(
         CameraConfiguration camera,
         string playlistPath)
     {
@@ -71,18 +92,18 @@ public static class HlsStreamCommand
             // Everything FFmpeg prints is logged; its progress line comes
             // twice a second for every stream.
             "-nostats",
-            "-v info",
-            "-fflags nobuffer",
-            "-flags low_delay",
-            "-probesize 512000",
-            "-analyzeduration 500000",
+            "-v", "info",
+            "-fflags", "nobuffer",
+            "-flags", "low_delay",
+            "-probesize", "512000",
+            "-analyzeduration", "500000",
         };
 
         // An option the input format does not know makes FFmpeg refuse to
         // start, so the RTSP transport is only given to RTSP cameras.
         if (camera.Connection.Protocol == CameraProtocol.Rtsp)
         {
-            arguments.Add($"-rtsp_transport {camera.Stream.RtspTransport ?? "tcp"}");
+            arguments.AddRange(["-rtsp_transport", camera.Stream.RtspTransport ?? "tcp"]);
         }
 
         // FFmpeg 9 verifies a server's certificate by default, and most cameras
@@ -90,7 +111,7 @@ public static class HlsStreamCommand
         // either (StreamOptions.VerifyTlsCertificate).
         if (camera.Connection.Protocol == CameraProtocol.Https)
         {
-            arguments.Add("-tls_verify 0");
+            arguments.AddRange(["-tls_verify", "0"]);
         }
 
         // -c:v copy: pass the camera's native H.264/H.265 video stream
@@ -113,18 +134,19 @@ public static class HlsStreamCommand
         // within a fraction of a second and the stream actually starts.
         arguments.AddRange(
         [
-            "-timeout 10000000",
-            $"-i \"{streamUri}\"",
-            "-c:v copy",
-            "-c:a aac -b:a 64k",
-            "-f hls",
-            "-hls_time 2",
-            "-hls_list_size 5",
-            "-hls_flags delete_segments+split_by_time",
-            $"\"{playlistPath}\"",
+            "-timeout", "10000000",
+            "-i", streamUri.ToString(),
+            "-c:v", "copy",
+            "-c:a", "aac",
+            "-b:a", "64k",
+            "-f", "hls",
+            "-hls_time", "2",
+            "-hls_list_size", "5",
+            "-hls_flags", "delete_segments+split_by_time",
+            playlistPath,
         ]);
 
-        return string.Join(' ', arguments);
+        return arguments;
     }
 
     /// <summary>

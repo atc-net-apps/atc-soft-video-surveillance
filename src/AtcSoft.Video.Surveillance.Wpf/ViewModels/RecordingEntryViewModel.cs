@@ -7,7 +7,7 @@ public sealed class RecordingEntryViewModel
 {
     private readonly Recording recording;
     private readonly Uri apiBaseUrl;
-    private readonly string? mediaToken;
+    private readonly Func<string?> mediaToken;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RecordingEntryViewModel"/> class.
@@ -19,9 +19,27 @@ public sealed class RecordingEntryViewModel
         Recording recording,
         Uri apiBaseUrl,
         string? mediaToken = null)
+        : this(recording, apiBaseUrl, () => mediaToken)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RecordingEntryViewModel"/> class.
+    /// </summary>
+    /// <param name="recording">The recording.</param>
+    /// <param name="apiBaseUrl">The server.</param>
+    /// <param name="mediaToken">
+    /// Reads the session's media token when an address is made: the token runs out after
+    /// some hours and is renewed with the session, and a list may stay open for days.
+    /// </param>
+    public RecordingEntryViewModel(
+        Recording recording,
+        Uri apiBaseUrl,
+        Func<string?> mediaToken)
     {
         ArgumentNullException.ThrowIfNull(recording);
         ArgumentNullException.ThrowIfNull(apiBaseUrl);
+        ArgumentNullException.ThrowIfNull(mediaToken);
 
         this.recording = recording;
         this.apiBaseUrl = apiBaseUrl;
@@ -42,6 +60,11 @@ public sealed class RecordingEntryViewModel
     public string FilePath => recording.FilePath;
 
     public DateTimeOffset RecordingTime => recording.StartedAt;
+
+    /// <summary>
+    /// Gets when the recording started, in this computer's time zone: the list shows it and filters on it.
+    /// </summary>
+    public DateTime LocalRecordingTime => RecordingTime.LocalDateTime;
 
     public long FileSizeBytes => recording.FileSizeBytes;
 
@@ -97,7 +120,7 @@ public sealed class RecordingEntryViewModel
     }
 
     private Uri BuildFileUrl(string relativePath)
-        => FileUrl(apiBaseUrl, relativePath, mediaToken);
+        => FileUrl(apiBaseUrl, relativePath, mediaToken());
 
     private static TimeSpan ParseIsoDuration(string? duration)
     {

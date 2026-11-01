@@ -24,20 +24,22 @@ internal sealed unsafe class GpuSnapshotCapture : IDisposable
     }
 
     /// <summary>
-    /// Captures the given BGRA texture as PNG bytes.
+    /// Reads the given BGRA texture back into this capture's own picture. Call with the texture
+    /// held (the device context entered); then <see cref="Encode"/> without it. One capture at a time:
+    /// the caller holds a lock of its own around both.
     /// </summary>
     /// <param name="sourceTexture">The BGRA texture to capture.</param>
     /// <param name="width">Texture width.</param>
     /// <param name="height">Texture height.</param>
-    /// <returns>PNG-encoded bytes, or <c>null</c> if capture failed.</returns>
-    public byte[]? Capture(
+    /// <returns><see langword="true"/> when the picture was read.</returns>
+    public bool Read(
         ID3D11Texture2D sourceTexture,
         int width,
         int height)
     {
         if (width <= 0 || height <= 0)
         {
-            return null;
+            return false;
         }
 
         EnsureStagingTexture(width, height);
@@ -55,8 +57,15 @@ internal sealed unsafe class GpuSnapshotCapture : IDisposable
             deviceContext.Unmap(stagingTexture!, 0);
         }
 
-        return EncodePng();
+        return true;
     }
+
+    /// <summary>
+    /// Encodes the picture <see cref="Read"/> read as PNG. Needs neither the texture nor the device.
+    /// </summary>
+    /// <returns>PNG-encoded bytes, or <see langword="null"/> if encoding failed.</returns>
+    public byte[]? Encode()
+        => EncodePng();
 
     public void Dispose()
     {

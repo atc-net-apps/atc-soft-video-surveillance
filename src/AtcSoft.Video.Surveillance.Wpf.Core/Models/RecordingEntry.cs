@@ -5,6 +5,13 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.Models;
 /// </summary>
 public class RecordingEntry : INotifyPropertyChanged
 {
+    // The list shows thumbnails small; the full picture is read only for the preview.
+    private const int ThumbnailDecodeWidth = 320;
+
+    // The thumbnail as the list shows it, read once: the grid asks for it again at every redraw.
+    private BitmapImage? thumbnailImage;
+    private string? thumbnailImagePath;
+
     /// <inheritdoc />
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -37,6 +44,12 @@ public class RecordingEntry : INotifyPropertyChanged
     /// Gets or sets the duration of the recording.
     /// </summary>
     public TimeSpan Duration { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether the length is still being read: the list shows the recording
+    /// at once and its length when the file has been probed.
+    /// </summary>
+    public bool IsDurationPending { get; private set; }
 
     /// <summary>
     /// Gets the recording's activity for the sparkline in the list, or <see langword="null"/> for a
@@ -85,6 +98,7 @@ public class RecordingEntry : INotifyPropertyChanged
     /// <param name="recordingTime">When the recording started.</param>
     /// <param name="fileSizeBytes">The size of the file.</param>
     /// <param name="duration">The length of the recording.</param>
+    /// <param name="durationPending">Whether the length is still to be read (see <see cref="SetDuration"/>).</param>
     /// <returns>The entry.</returns>
     public static RecordingEntry Finished(
         string filePath,
@@ -92,7 +106,8 @@ public class RecordingEntry : INotifyPropertyChanged
         string? recordingRoot,
         DateTime recordingTime,
         long fileSizeBytes,
-        TimeSpan duration)
+        TimeSpan duration,
+        bool durationPending = false)
         => new()
         {
             FilePath = filePath,
@@ -101,6 +116,7 @@ public class RecordingEntry : INotifyPropertyChanged
             RecordingTime = recordingTime,
             FileSizeBytes = fileSizeBytes,
             Duration = duration,
+            IsDurationPending = durationPending,
         };
 
     /// <summary>
@@ -118,8 +134,22 @@ public class RecordingEntry : INotifyPropertyChanged
             FileSizeBytes = FileSizeBytes,
             Duration = Duration,
             IsBeingRecorded = IsBeingRecorded,
+            IsDurationPending = IsDurationPending,
             Activity = activity,
         };
+
+    /// <summary>
+    /// Sets the length read from the file.
+    /// </summary>
+    /// <param name="duration">The length of the recording.</param>
+    public void SetDuration(TimeSpan duration)
+    {
+        Duration = duration;
+        IsDurationPending = false;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Duration)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDurationPending)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FormattedDuration)));
+    }
 
     /// <summary>
     /// The recording has ended: the entry becomes that of an ordinary
@@ -135,6 +165,9 @@ public class RecordingEntry : INotifyPropertyChanged
         FileSizeBytes = fileSizeBytes;
         Duration = duration;
         IsBeingRecorded = false;
+        IsDurationPending = false;
+        thumbnailImage = null;
+        thumbnailImagePath = null;
 
         foreach (var name in (string[])[
             nameof(IsBeingRecorded), nameof(FileSizeBytes), nameof(Duration),
@@ -154,7 +187,9 @@ public class RecordingEntry : INotifyPropertyChanged
     /// Gets the formatted duration string.
     /// </summary>
     public string FormattedDuration
-        => IsBeingRecorded ? Translations.RecordingInProgress : FormatDuration(Duration);
+        => IsBeingRecorded
+            ? Translations.RecordingInProgress
+            : IsDurationPending ? string.Empty : FormatDuration(Duration);
 
     /// <summary>
     /// Gets the formatted recording time string.
@@ -190,6 +225,11 @@ public class RecordingEntry : INotifyPropertyChanged
         get
         {
             var path = ThumbnailPath;
+            if (thumbnailImage is not null && string.Equals(path, thumbnailImagePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return thumbnailImage;
+            }
+
             if (!File.Exists(path))
             {
                 return null;
@@ -200,9 +240,12 @@ public class RecordingEntry : INotifyPropertyChanged
                 var image = new BitmapImage();
                 image.BeginInit();
                 image.CacheOption = BitmapCacheOption.OnLoad;
+                image.DecodePixelWidth = ThumbnailDecodeWidth;
                 image.UriSource = new Uri(path, UriKind.Absolute);
                 image.EndInit();
                 image.Freeze();
+                thumbnailImage = image;
+                thumbnailImagePath = path;
                 return image;
             }
             catch

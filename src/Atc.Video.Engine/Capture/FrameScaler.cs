@@ -16,6 +16,7 @@ internal sealed unsafe class FrameScaler : IDisposable
     private AVPixelFormat scalerFormat = AVPixelFormat.None;
     private int targetWidth;
     private int targetHeight;
+    private AVFrame* transferFrame;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FrameScaler"/> class.
@@ -51,34 +52,72 @@ internal sealed unsafe class FrameScaler : IDisposable
             return null;
         }
 
-        AVFrame* memoryFrame = null;
         if ((AVPixelFormat)frame->format == AVPixelFormat.D3d11)
         {
-            memoryFrame = av_frame_alloc();
-            if (memoryFrame is null || av_hwframe_transfer_data(memoryFrame, frame, 0) < 0)
+            if (!TransferToMemory(frame))
             {
-                av_frame_free(ref memoryFrame);
                 return null;
             }
 
-            frame = memoryFrame;
+            frame = transferFrame;
         }
 
-        try
+        return Scale(frame, width, height, rotation);
+    }
+
+    // A picture on the graphics card is copied into one memory frame, kept with its buffers: a new
+    // full-size frame for every analysed picture (15 a second) was the larger part of the cost.
+    private bool TransferToMemory(AVFrame* hardwareFrame)
+    {
+        if (hardwareFrame->hw_frames_ctx is null)
         {
-            return Scale(frame, width, height, rotation);
+            return false;
         }
-        finally
+
+        var memoryFormat = ((AVHWFramesContext*)hardwareFrame->hw_frames_ctx->data)->sw_format;
+        if (transferFrame is null ||
+            transferFrame->width != hardwareFrame->width ||
+            transferFrame->height != hardwareFrame->height ||
+            (AVPixelFormat)transferFrame->format != memoryFormat)
         {
-            if (memoryFrame is not null)
+            FreeTransferFrame();
+            transferFrame = av_frame_alloc();
+            if (transferFrame is null)
             {
-                av_frame_free(ref memoryFrame);
+                return false;
             }
+
+            transferFrame->format = (int)memoryFormat;
+            transferFrame->width = hardwareFrame->width;
+            transferFrame->height = hardwareFrame->height;
+            if (av_frame_get_buffer(transferFrame, 0) < 0)
+            {
+                FreeTransferFrame();
+                return false;
+            }
+        }
+
+        return av_hwframe_transfer_data(transferFrame, hardwareFrame, 0) >= 0;
+    }
+
+    private void FreeTransferFrame()
+    {
+        if (transferFrame is not null)
+        {
+            var frame = transferFrame;
+            av_frame_free(ref frame);
+            transferFrame = null;
         }
     }
 
     /// <inheritdoc />
     public void Dispose()
+    {
+        FreeScaler();
+        FreeTransferFrame();
+    }
+
+    private void FreeScaler()
     {
         if (scaler is not null)
         {
@@ -102,7 +141,7 @@ internal sealed unsafe class FrameScaler : IDisposable
             targetWidth != scaledWidth ||
             targetHeight != scaledHeight)
         {
-            Dispose();
+            FreeScaler();
             scaler = sws_getContext(frame->width, frame->height, format, scaledWidth, scaledHeight, targetFormat, SwsFlags.Area, null, null, null);
             if (scaler is null)
             {

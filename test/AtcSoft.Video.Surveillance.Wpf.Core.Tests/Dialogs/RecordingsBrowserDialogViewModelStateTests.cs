@@ -27,36 +27,39 @@ public sealed class RecordingsBrowserDialogViewModelStateTests : IDisposable
     }
 
     [Fact]
-    public void A_Reopened_Browser_Has_The_Filters_And_The_Selection_It_Was_Left_With()
+    public async Task A_Reopened_Browser_Has_The_Filters_And_The_Selection_It_Was_Left_With()
     {
         // Arrange
         using var first = CreateViewModel();
-        first.SelectedCameraFilter = "Garden";
+        await first.Loading;
+        first.SelectedCameraFilters.Add("Garden");
         first.SelectedDayFilter = "_ALL_";
         first.SelectedTimeFilter = "18_24";
-        first.SelectedRecording = first.FilteredRecordings.Last();
+        first.SelectedRecording = first.FilteredRecordings[^1];
         var state = first.CaptureState();
 
         // Act
         using var reopened = CreateViewModel();
         reopened.RestoreState(state);
+        await reopened.Loading;
 
         // Assert
-        reopened.SelectedCameraFilter.Should().Be("Garden");
+        reopened.SelectedCameraFilters.Should().Equal("Garden");
         reopened.SelectedDayFilter.Should().Be("_ALL_");
         reopened.SelectedTimeFilter.Should().Be("18_24");
         reopened.FilteredRecordings.Select(r => r.FileName).Should().Equal(
             "Garden_20261012_230000_000.mkv",
             "Garden_20261012_220000_000.mkv");
         reopened.SelectedRecording!.FileName.Should().Be("Garden_20261012_220000_000.mkv");
-        reopened.SelectedRecording.Should().BeSameAs(reopened.FilteredRecordings.Last(), "the grid selects by instance");
+        reopened.SelectedRecording.Should().BeSameAs(reopened.FilteredRecordings[^1], "the grid selects by instance");
     }
 
     [Fact]
-    public void A_Camera_That_Has_No_Recordings_Any_More_Falls_Back_To_All_Cameras()
+    public async Task A_Camera_That_Has_No_Recordings_Any_More_Is_Left_Out_So_Every_Camera_Is_Listed()
     {
         using var first = CreateViewModel();
-        first.SelectedCameraFilter = "Front Door";
+        await first.Loading;
+        first.SelectedCameraFilters.Add("Front Door");
         first.SelectedDayFilter = "_ALL_";
         first.SelectedRecording = first.FilteredRecordings.Single();
         var state = first.CaptureState();
@@ -65,8 +68,9 @@ public sealed class RecordingsBrowserDialogViewModelStateTests : IDisposable
 
         using var reopened = CreateViewModel();
         reopened.RestoreState(state);
+        await reopened.Loading;
 
-        reopened.SelectedCameraFilter.Should().Be("_ALL_");
+        reopened.SelectedCameraFilters.Should().BeEmpty("no camera ticked lists every camera");
         reopened.SelectedRecording.Should().BeNull("the recording is gone");
         reopened.FilteredRecordings.Should().HaveCount(3);
     }

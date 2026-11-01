@@ -23,6 +23,12 @@ public unsafe interface IGpuAccelerator : IDisposable
     bool IsInitialized { get; }
 
     /// <summary>
+    /// Gets a value indicating whether the graphics device was lost (removed by a driver update or
+    /// reset): the accelerator then shows nothing, and the player is to be made anew.
+    /// </summary>
+    bool IsDeviceLost => false;
+
+    /// <summary>
     /// Called on the demux thread after each frame is decoded.
     /// For D3D11VA, extracts the texture from the frame and runs GPU conversion.
     /// </summary>

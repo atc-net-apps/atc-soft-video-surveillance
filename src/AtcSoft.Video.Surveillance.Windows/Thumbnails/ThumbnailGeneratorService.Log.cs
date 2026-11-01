@@ -26,4 +26,7 @@ public partial class ThumbnailGeneratorService
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to generate thumbnail for camera '{CameraName}'")]
     private partial void LogThumbnailGenerationFailed(Exception ex, string cameraName);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "No thumbnail for camera '{CameraName}': its recording ended before its first picture ({VideoPath})")]
+    private partial void LogThumbnailSkippedNoVideo(string cameraName, string videoPath);
 }

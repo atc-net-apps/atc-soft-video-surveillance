@@ -9,6 +9,9 @@ public static class RecordingCatalog
 {
     private static readonly string[] VideoExtensions = [".mp4", ".mkv", ".avi"];
 
+    // Hidden and system files too, as Directory.EnumerateFiles finds them.
+    private static readonly EnumerationOptions TopLevel = new() { AttributesToSkip = default };
+
     /// <summary>
     /// Finds the recordings.
     /// </summary>
@@ -64,21 +67,18 @@ public static class RecordingCatalog
             camerasByFolderName.TryAdd(RecordingPathHelper.GetCameraFolderName(camera.Display.DisplayName, camera.Id), camera);
         }
 
-        var files = Directory.EnumerateFiles(recordingPath, "*.*", SearchOption.AllDirectories)
-            .Where(f => VideoExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
-            .Where(f => !RecordingPathHelper.IsInThumbnailsFolder(f, recordingPath))
-            .Where(f => !activeFilePaths.Contains(f));
+        var files = EnumerateVideos(new DirectoryInfo(recordingPath), cameraId, camerasByFolderName)
+            .Where(f => !activeFilePaths.Contains(f.FullName));
 
-        foreach (var file in files)
+        foreach (var info in files)
         {
+            var file = info.FullName;
             var folderName = RecordingPathHelper.GetCameraFolderFromPath(file, recordingPath) ?? string.Empty;
             var matched = camerasByFolderName.GetValueOrDefault(folderName);
             if (cameraId is not null && matched?.Id != cameraId)
             {
                 continue;
             }
-
-            var info = new FileInfo(file);
 
             // The name carries the start time (in UTC on the server); the file's creation time
             // changes when it is moved or copied.
@@ -98,6 +98,83 @@ public static class RecordingCatalog
         }
 
         return found;
+    }
+
+    // The videos below the root, with their size and times as the walk read them (no second
+    // look at each file). One camera's recordings are all in its own folder, so only that
+    // folder is walked for it; the separate thumbnails folder holds no recording.
+    private static IEnumerable<FileInfo> EnumerateVideos(
+        DirectoryInfo root,
+        Guid? cameraId,
+        Dictionary<string, AtcSoft.Video.Surveillance.Models.CameraConfiguration> camerasByFolderName)
+    {
+        var found = new List<FileInfo>();
+        if (cameraId is not null)
+        {
+            var folder = camerasByFolderName.FirstOrDefault(c => c.Value.Id == cameraId).Key;
+            if (folder is not null)
+            {
+                Walk(new DirectoryInfo(Path.Combine(root.FullName, folder)), found);
+            }
+        }
+        else
+        {
+            AddVideos(root, found);
+            foreach (var directory in SubDirectories(root)
+                         .Where(d => !d.Name.Equals(RecordingPathHelper.ThumbnailsFolderName, StringComparison.OrdinalIgnoreCase)))
+            {
+                Walk(directory, found);
+            }
+        }
+
+        return found;
+    }
+
+    // Folder by folder: one that is removed, or cannot be read, while the walk runs (a day folder
+    // the clean-up deletes) is left out, and never fails the whole listing.
+    private static void Walk(
+        DirectoryInfo folder,
+        List<FileInfo> found)
+    {
+        var stack = new Stack<DirectoryInfo>();
+        stack.Push(folder);
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            AddVideos(current, found);
+            foreach (var sub in SubDirectories(current))
+            {
+                stack.Push(sub);
+            }
+        }
+    }
+
+    private static void AddVideos(
+        DirectoryInfo folder,
+        List<FileInfo> found)
+    {
+        try
+        {
+            found.AddRange(folder
+                .EnumerateFiles("*", TopLevel)
+                .Where(f => VideoExtensions.Contains(f.Extension, StringComparer.OrdinalIgnoreCase)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Gone or unreadable meanwhile.
+        }
+    }
+
+    private static List<DirectoryInfo> SubDirectories(DirectoryInfo folder)
+    {
+        try
+        {
+            return [.. folder.EnumerateDirectories("*", TopLevel)];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
     }
 
     /// <summary>

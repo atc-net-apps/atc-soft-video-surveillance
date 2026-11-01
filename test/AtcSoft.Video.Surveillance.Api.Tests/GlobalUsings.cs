@@ -3,6 +3,10 @@ global using System.Diagnostics;
 global using System.Globalization;
 global using System.Net;
 global using System.Net.Http.Json;
+global using System.Runtime.Versioning;
+global using System.Security.AccessControl;
+global using System.Security.Claims;
+global using System.Security.Principal;
 global using System.Text.Json;
 global using System.Text.Json.Nodes;
 
@@ -16,6 +20,7 @@ global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Settings;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Timeline;
 global using AtcSoft.Video.Surveillance.Api.Domain.Events;
 global using AtcSoft.Video.Surveillance.Api.Domain.Mapping;
+global using AtcSoft.Video.Surveillance.Api.Domain.Recordings;
 global using AtcSoft.Video.Surveillance.Api.Domain.Security;
 global using AtcSoft.Video.Surveillance.Api.Domain.Streaming;
 global using AtcSoft.Video.Surveillance.Api.Domain.Webhooks;

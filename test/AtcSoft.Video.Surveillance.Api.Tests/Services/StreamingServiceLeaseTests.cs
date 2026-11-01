@@ -145,6 +145,82 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Lease_On_A_Stream_That_Ended_By_Itself_Is_Not_Renewed_So_The_Viewer_Starts_Again()
+    {
+        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+
+        // The camera rebooted: the stream stopped while the viewer watched.
+        pipeline.IsLiveStreamActive.Returns(false);
+
+        sut.Renew(camera.Id, start.LeaseId).Should().BeFalse();
+        sut.IsStreaming(camera.Id).Should().BeFalse("its last viewer was told to start again");
+        sut.TryGetLeaseFolder(start.LeaseId, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task The_Sweep_Stops_A_Stream_That_Ended_By_Itself_Although_Its_Lease_Is_Fresh()
+    {
+        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        pipeline.IsLiveStreamActive.Returns(false);
+
+        sut.ReapIdleSessions();
+
+        sut.IsStreaming(camera.Id).Should().BeFalse();
+        sut.Renew(camera.Id, start.LeaseId).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_New_Viewer_Of_A_Stream_That_Ended_By_Itself_Gets_A_New_Stream()
+    {
+        var old = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        pipeline.ConnectionStateChanged += Raise.EventWith(
+            new ConnectionStateChangedEventArgs(ConnectionState.Connected, ConnectionState.Error));
+        sut.HasProcessExited(camera.Id).Should().BeTrue();
+
+        var current = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+
+        current.Outcome.Should().Be(LiveStreamOutcome.Started);
+        host.Received(2).Acquire(camera, CameraPipelineUse.Viewing);
+        host.Received(1).Release(camera.Id, CameraPipelineUse.Viewing);
+        sut.HasProcessExited(camera.Id).Should().BeFalse();
+        sut.GetViewerCount(camera.Id).Should().Be(1, "the viewer of the old stream does not count");
+        sut.Renew(camera.Id, old.LeaseId).Should().BeFalse();
+        sut.Renew(camera.Id, current.LeaseId).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Viewers_Starting_At_The_Same_Moment_Share_One_Stream()
+    {
+        // Opening the camera takes a moment, so the starts overlap.
+        using var opening = new ManualResetEventSlim();
+        host.Acquire(camera, CameraPipelineUse.Viewing).Returns(_ =>
+        {
+            opening.Wait(TimeSpan.FromMilliseconds(50), TestContext.Current.CancellationToken);
+            return pipeline;
+        });
+
+        var starts = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(
+            () => sut.StartAsync(camera.Id, TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken)));
+
+        starts.Should().OnlyContain(s => s.Outcome == LiveStreamOutcome.Started);
+        host.Received(1).Acquire(camera, CameraPipelineUse.Viewing);
+        sut.GetViewerCount(camera.Id).Should().Be(8);
+    }
+
+    [Fact]
+    public async Task A_Viewer_Leaving_Is_Not_Failed_By_A_Stream_That_Cannot_Be_Stopped_Cleanly()
+    {
+        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        pipeline.When(p => p.StopLiveStream()).Do(_ => throw new IOException("The pipe has been ended."));
+
+        var leave = () => sut.Release(camera.Id, start.LeaseId);
+
+        leave.Should().NotThrow();
+        sut.IsStreaming(camera.Id).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task A_Stream_That_Ends_Before_It_Can_Be_Played_Gets_No_Lease()
     {
         // The camera was unplugged while the viewer waited.

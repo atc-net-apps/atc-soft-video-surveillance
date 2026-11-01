@@ -29,6 +29,8 @@ public sealed class DeleteRecordingHandler(
             RecordingRemovalOutcome.Removed => DeleteRecordingResult.NoContent(),
             RecordingRemovalOutcome.InProgress => DeleteRecordingResult.Conflict(
                 "This recording is still being made. Stop the recording, or wait for it to end, and delete it then."),
+            RecordingRemovalOutcome.Refused => DeleteRecordingResult.Conflict(
+                "The recording may not be deleted: the file is read-only, or the server's account may not delete it."),
             RecordingRemovalOutcome.NotFound => DeleteRecordingResult.NotFound("There is no such recording."),
             _ => DeleteRecordingResult.BadRequest("The path does not name a recording."),
         });

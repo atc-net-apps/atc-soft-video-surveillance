@@ -208,6 +208,100 @@ public sealed class SurveillanceEventServiceTests
     }
 
     [Fact]
+    public async Task A_Stream_The_Server_Refused_Starts_Again_After_The_Last_Event()
+    {
+        // After a sleep the token has run out: the server answers 401 until it is renewed.
+        var requests = new List<string?>();
+        using var server = new GatewayTestServer(request =>
+        {
+            requests.Add(request.Headers.TryGetValues("Last-Event-ID", out var values) ? values.Single() : null);
+            return requests.Count switch
+            {
+                1 => Stream(ConnectionEvent(1)),
+                2 => new HttpResponseMessage(HttpStatusCode.Unauthorized),
+                _ => Stream(ConnectionEvent(2)),
+            };
+        });
+        var time = new ImmediateTimeProvider();
+        using var sut = CreateSut(server);
+        sut.Time = time;
+        using var done = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var missed = 0;
+        sut.OnMissedEvents += () => missed++;
+        sut.OnConnectionStateChanged += e =>
+        {
+            if (e.NewState == CameraConnectionState.Connected)
+            {
+                done.Cancel();
+            }
+        };
+
+        await sut.RunAsync(done.Token);
+
+        requests.Should().Equal(null, "1", "1");
+        time.Waits.Should().Contain(SurveillanceEventService.RestartDelay);
+        missed.Should().Be(0, "the server sent again what came while the stream was refused");
+    }
+
+    [Fact]
+    public async Task A_Stream_The_Watchdog_Ends_Is_Opened_Again_After_The_Last_Event()
+    {
+        // The watchdog fails a silent stream's read with an IOException.
+        var requests = new List<string?>();
+        using var server = new GatewayTestServer(request =>
+        {
+            requests.Add(request.Headers.TryGetValues("Last-Event-ID", out var values) ? values.Single() : null);
+            if (requests.Count > 1)
+            {
+                return Stream(ConnectionEvent(2));
+            }
+
+            var content = new StreamContent(new BrokenAfterStream(System.Text.Encoding.UTF8.GetBytes(ConnectionEvent(1))));
+            content.Headers.ContentType = new MediaTypeHeaderValue("text/event-stream");
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+        });
+        using var sut = CreateSut(server);
+        using var done = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        sut.OnConnectionStateChanged += e =>
+        {
+            if (e.NewState == CameraConnectionState.Connected)
+            {
+                done.Cancel();
+            }
+        };
+
+        await sut.RunAsync(done.Token);
+
+        requests.Should().Equal(null, "1");
+    }
+
+    [Fact]
+    public async Task A_Handler_That_Throws_Neither_Ends_The_Stream_Nor_Keeps_The_Event_From_The_Others()
+    {
+        var calls = 0;
+        using var server = new GatewayTestServer(_ => ++calls == 1
+            ? Stream(ConnectionEvent(1) + ConnectionEvent(2))
+            : Stream(ConnectionEvent(3)));
+        using var sut = CreateSut(server);
+        using var done = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var received = new List<CameraConnectionState>();
+        sut.OnConnectionStateChanged += _ => throw new InvalidOperationException("A view failed.");
+        sut.OnConnectionStateChanged += e =>
+        {
+            received.Add(e.NewState);
+            if (received.Count == 2)
+            {
+                done.Cancel();
+            }
+        };
+
+        await sut.RunAsync(done.Token);
+
+        received.Should().Equal(CameraConnectionState.Connecting, CameraConnectionState.Connected);
+        calls.Should().Be(1);
+    }
+
+    [Fact]
     public async Task The_Stream_Is_Not_Asked_For_Before_The_Client_Is_Signed_In()
     {
         var calls = 0;
@@ -284,6 +378,27 @@ public sealed class SurveillanceEventServiceTests
             (part.Length > 0 ? "," + part : string.Empty) + "}";
 
         return $"id: {id}\ndata: {json}\n\n";
+    }
+
+    // Gives its bytes, then fails as a connection the watchdog ended does.
+    private sealed class BrokenAfterStream(byte[] bytes) : MemoryStream(bytes)
+    {
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+        {
+            var read = await base.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            return read > 0
+                ? read
+                : throw new IOException("No data on the event stream: the connection is taken as lost.");
+        }
+
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken)
+            => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
     }
 
     // Ends every wait at once and remembers how long each was.

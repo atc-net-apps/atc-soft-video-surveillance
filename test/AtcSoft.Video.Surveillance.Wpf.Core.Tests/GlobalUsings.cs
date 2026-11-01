@@ -1,10 +1,18 @@
+global using System.Diagnostics.CodeAnalysis;
 global using System.Globalization;
+global using System.IO;
+global using System.Net;
+global using System.Net.Sockets;
 global using System.Runtime.CompilerServices;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
+global using System.Windows;
 
 global using Atc.Video.Engine;
+global using Atc.Video.Engine.Capture;
+global using Atc.Video.Engine.DirectX;
 global using AtcSoft.Video.Surveillance.Enums;
+global using AtcSoft.Video.Surveillance.Events;
 global using AtcSoft.Video.Surveillance.Helpers.Activity;
 global using AtcSoft.Video.Surveillance.Helpers.MotionDetection;
 global using AtcSoft.Video.Surveillance.Models;

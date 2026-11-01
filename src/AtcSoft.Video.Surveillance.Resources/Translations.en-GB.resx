@@ -2829,4 +2829,22 @@
   <data name="VerdictNotSaved1" xml:space="preserve">
     <value>The verdict was not saved: {0}</value>
   </data>
+  <data name="Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="SearchAllColumnsToolTip" xml:space="preserve">
+    <value>Searches every column of the list as you type</value>
+  </data>
+  <data name="EnableDiagnostics" xml:space="preserve">
+    <value>Diagnostics for a long test run</value>
+  </data>
+  <data name="EnableDiagnosticsHint" xml:space="preserve">
+    <value>Writes detailed logs (kept 31 days), a report of this PC and the settings at start-up, and a health sample every minute, to the log folder. Takes effect at the next start.</value>
+  </data>
+  <data name="ErrorHandledAppGoesOn" xml:space="preserve">
+    <value>Something went wrong. CameraWall goes on and keeps recording; the details are in the log.</value>
+  </data>
+  <data name="StreamStoppedStartsAgain" xml:space="preserve">
+    <value>The stream stopped. It starts again by itself.</value>
+  </data>
 </root>
