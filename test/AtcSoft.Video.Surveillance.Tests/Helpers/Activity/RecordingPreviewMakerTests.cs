@@ -85,6 +85,25 @@ public sealed class RecordingPreviewMakerTests : IDisposable
         sut.Contains(video).Should().BeFalse();
     }
 
+    [Fact]
+    public void When_Previews_Fall_Behind_The_Oldest_Waiting_Are_Let_Go()
+    {
+        // Weeks of 15-minute files: the queue grew one entry per file without end.
+        var sut = Started();
+        var paths = Enumerable.Range(0, RecordingPreviewMaker.MaxQueued + 20).Select(i => Path.Combine("C:", "rec", $"{i}.mp4")).ToList();
+
+        foreach (var path in paths)
+        {
+            sut.TryEnqueue(path);
+        }
+
+        sut.Contains(paths[0]).Should().BeFalse("the oldest waiting was let go");
+        sut.Contains(paths[19]).Should().BeFalse();
+        sut.Contains(paths[20]).Should().BeTrue();
+        sut.Contains(paths[^1]).Should().BeTrue("the newest waits");
+        sut.TryEnqueue(paths[0]).Should().BeTrue("asked for again, it is queued again");
+    }
+
     private RecordingPreviewMaker Started()
     {
         var sut = new RecordingPreviewMaker(NullLogger.Instance, recordings, builder);
