@@ -32,12 +32,13 @@ public sealed partial class JsonCameraStorageService : ICameraStorageService
     public JsonCameraStorageService(
         string storagePath,
         SecretProtector secrets,
-        ILogger<JsonCameraStorageService> logger)
+        ILogger<JsonCameraStorageService> logger,
+        int lockedAttempts = ServerDataFile.DefaultLockedAttempts)
     {
         this.storagePath = storagePath;
         this.secrets = secrets;
         this.logger = logger;
-        file = new ServerDataFile(storagePath, logger);
+        file = new ServerDataFile(storagePath, logger, lockedAttempts);
         Load();
     }
 
@@ -215,6 +216,12 @@ public sealed partial class JsonCameraStorageService : ICameraStorageService
             plainCount = UnprotectPasswords(node);
             return node.Deserialize<CameraStorageData>(JsonOptions);
         });
+
+        // Passwords counted in a file that then could not be read were never loaded.
+        if (loaded is null)
+        {
+            plainCount = 0;
+        }
 
         lock (dataLock)
         {

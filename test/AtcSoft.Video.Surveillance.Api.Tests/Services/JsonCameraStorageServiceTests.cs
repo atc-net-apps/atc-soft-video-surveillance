@@ -132,17 +132,51 @@ public sealed class JsonCameraStorageServiceTests : IDisposable
         File.Delete(FilePath + ".bak");
         var before = File.ReadAllText(FilePath);
 
-        JsonCameraStorageService sut;
         using (new FileStream(FilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
         {
-            sut = CreateSut();
-        }
+            var sut = CreateSut(lockedAttempts: 2);
+            sut.GetAllCameras().Should().BeEmpty();
 
-        sut.GetAllCameras().Should().BeEmpty();
-        sut.AddOrUpdateCamera(CreateCamera());
+            sut.AddOrUpdateCamera(CreateCamera());
+        }
 
         File.ReadAllText(FilePath).Should().Be(before);
         CreateSut().GetCameraById(camera.Id).Should().NotBeNull();
+    }
+
+    [Fact]
+    public void A_File_That_Was_Locked_At_Start_Up_Is_Copied_Aside_Before_The_First_Save_Once_It_Is_Free()
+    {
+        var camera = CreateCamera();
+        CreateSut().AddOrUpdateCamera(camera);
+        File.Delete(FilePath + ".bak");
+        var before = File.ReadAllText(FilePath);
+
+        JsonCameraStorageService sut;
+        using (new FileStream(FilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            sut = CreateSut(lockedAttempts: 2);
+        }
+
+        sut.AddOrUpdateCamera(CreateCamera());
+
+        Directory.GetFiles(folder, "cameras.json.unreadable-*")
+            .Should().ContainSingle()
+            .Which.Should().Match(copy => File.ReadAllText(copy) == before);
+    }
+
+    [Fact]
+    public void A_File_With_Plain_Passwords_That_Cannot_Be_Read_Is_Not_Saved_Over()
+    {
+        var camera = CreateCamera();
+        WritePlainFile(camera);
+        File.WriteAllText(FilePath, File.ReadAllText(FilePath).Replace("\"Network\"", "\"Bogus\"", StringComparison.Ordinal));
+        var before = File.ReadAllText(FilePath);
+
+        var sut = CreateSut();
+
+        sut.GetAllCameras().Should().BeEmpty();
+        File.ReadAllText(FilePath).Should().Be(before, "nothing was loaded, so nothing is written back");
     }
 
     private static CameraConfiguration CreateCamera()
@@ -154,8 +188,8 @@ public sealed class JsonCameraStorageServiceTests : IDisposable
         return camera;
     }
 
-    private JsonCameraStorageService CreateSut()
-        => new(FilePath, new SecretProtector(keys), NullLogger<JsonCameraStorageService>.Instance);
+    private JsonCameraStorageService CreateSut(int lockedAttempts = 2)
+        => new(FilePath, new SecretProtector(keys), NullLogger<JsonCameraStorageService>.Instance, lockedAttempts);
 
     // A file as a server before encryption wrote it.
     private void WritePlainFile(CameraConfiguration camera)

@@ -46,6 +46,16 @@ public sealed partial class ServerMediaCleanupService : BackgroundServiceBase<Se
             return;
         }
 
+        if (settingsService is JsonApplicationSettingsService { IsUnreadable: true })
+        {
+            // The server runs on default settings because its own could not be read: their
+            // retention and size limit are not the admin's, and a deleted recording is gone.
+            // Only the free space is kept.
+            LogSettingsUnreadableSkippingCleanup();
+            await Task.Run(recordingService.ReclaimDiskSpace, stoppingToken).ConfigureAwait(false);
+            return;
+        }
+
         await RunCleanupAsync().ConfigureAwait(false);
 
         if (schedule == MediaCleanupSchedule.OnStartup)

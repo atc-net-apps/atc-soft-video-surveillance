@@ -143,7 +143,7 @@ public static class SafeJsonFile
         var backupExists = File.Exists(backupPath);
         if (!primaryExists && !backupExists)
         {
-            return new JsonFileReadResult<T>(JsonFileReadOutcome.Missing, default, null, [], MayOverwrite: true);
+            return new JsonFileReadResult<T>(JsonFileReadOutcome.Missing, default, null, [], []);
         }
 
         Exception? primaryError = null;
@@ -151,7 +151,7 @@ public static class SafeJsonFile
         {
             if (TryReadWithParser(path, parse, lockedAttempts, out var value, out primaryError))
             {
-                return new JsonFileReadResult<T>(JsonFileReadOutcome.Read, value, null, [], MayOverwrite: true);
+                return new JsonFileReadResult<T>(JsonFileReadOutcome.Read, value, null, [], []);
             }
         }
         else
@@ -160,24 +160,24 @@ public static class SafeJsonFile
         }
 
         var preserved = new List<string>();
-        var mayOverwrite = true;
+        var unpreserved = new List<string>();
         if (primaryExists)
         {
-            mayOverwrite &= TryPreserve(path, preserved);
+            Preserve(path, preserved, unpreserved);
         }
 
         if (backupExists &&
             TryReadWithParser(backupPath, parse, lockedAttempts, out var backup, out _))
         {
-            return new JsonFileReadResult<T>(JsonFileReadOutcome.ReadFromBackup, backup, primaryError, preserved, mayOverwrite);
+            return new JsonFileReadResult<T>(JsonFileReadOutcome.ReadFromBackup, backup, primaryError, preserved, unpreserved);
         }
 
         if (backupExists)
         {
-            mayOverwrite &= TryPreserve(backupPath, preserved);
+            Preserve(backupPath, preserved, unpreserved);
         }
 
-        return new JsonFileReadResult<T>(JsonFileReadOutcome.Unreadable, default, primaryError, preserved, mayOverwrite);
+        return new JsonFileReadResult<T>(JsonFileReadOutcome.Unreadable, default, primaryError, preserved, unpreserved);
     }
 
     [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Any failure of the parser means the file cannot be read; the exception is returned.")]
@@ -249,23 +249,47 @@ public static class SafeJsonFile
         }
     }
 
-    // Copies a file that cannot be read aside, so a later save cannot destroy it.
-    private static bool TryPreserve(
+    /// <summary>
+    /// Copies a file that cannot be read aside (<c>{path}.unreadable-{time}</c>), so a later
+    /// save cannot destroy it.
+    /// </summary>
+    /// <param name="path">The file.</param>
+    /// <param name="copy">Where it was copied.</param>
+    /// <returns><c>false</c> when the file could not be copied (locked, access denied).</returns>
+    public static bool TryPreserve(
         string path,
-        List<string> preserved)
+        [NotNullWhen(true)] out string? copy)
     {
-        var copy = string.Create(
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        var target = string.Create(
             CultureInfo.InvariantCulture,
             $"{path}.unreadable-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}");
         try
         {
-            File.Copy(path, copy, overwrite: false);
-            preserved.Add(copy);
+            File.Copy(path, target, overwrite: false);
+            copy = target;
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            copy = null;
             return false;
+        }
+    }
+
+    private static void Preserve(
+        string path,
+        List<string> preserved,
+        List<string> unpreserved)
+    {
+        if (TryPreserve(path, out var copy))
+        {
+            preserved.Add(copy);
+        }
+        else
+        {
+            unpreserved.Add(path);
         }
     }
 

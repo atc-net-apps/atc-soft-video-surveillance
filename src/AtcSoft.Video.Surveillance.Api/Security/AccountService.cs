@@ -86,7 +86,17 @@ public sealed partial class AccountService : IAccountService
         // A file that cannot be read is never taken for a missing one: no new
         // setup code is made for it (whoever read the code would become an
         // admin), and nothing is saved over it unless it was copied aside.
-        accountsFile = new ServerDataFile(paths.AccountsPath, logger);
+        accountsFile = new ServerDataFile(
+            paths.AccountsPath,
+            logger,
+            onPreserved: copy =>
+            {
+                // The copy holds password and token hashes too.
+                if (!SecretFile.TryRestrict(copy))
+                {
+                    LogSecretNotRestricted(copy);
+                }
+            });
         file = accountsFile.Read<StoredAccounts>(FileOptions) ?? new StoredAccounts();
 
         // A file from before sessions had an id.

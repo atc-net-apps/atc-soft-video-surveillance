@@ -25,14 +25,21 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
 
     public JsonApplicationSettingsService(
         string storagePath,
-        ILogger<JsonApplicationSettingsService> logger)
+        ILogger<JsonApplicationSettingsService> logger,
+        int lockedAttempts = ServerDataFile.DefaultLockedAttempts)
     {
         this.storagePath = storagePath;
         this.logger = logger;
-        file = new ServerDataFile(storagePath, logger);
+        file = new ServerDataFile(storagePath, logger, lockedAttempts);
         EnsureSettingsFileExists();
         Load();
     }
+
+    /// <summary>
+    /// Gets a value indicating whether the settings file existed but could not be read, so the
+    /// server runs on the default settings: nothing is deleted by age or size on them.
+    /// </summary>
+    public bool IsUnreadable => file.Outcome == JsonFileReadOutcome.Unreadable;
 
     /// <inheritdoc/>
     public GeneralSettings General => appSettings.General;
