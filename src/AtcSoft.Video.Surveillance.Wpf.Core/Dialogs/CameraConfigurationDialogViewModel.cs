@@ -1805,7 +1805,9 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
     {
         using var player = videoPlayerFactory.Create();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var tcs = new TaskCompletionSource<bool>();
+        // Completed on the player's demux thread: the rest (closing and disposing the player) must
+        // not run on that thread.
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         player.StateChanged += OnPlayerStateChanged;
 
