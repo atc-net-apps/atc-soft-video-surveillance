@@ -23,6 +23,16 @@
                 LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                 Key=EnableDebugLogging}" />
 
+            <atc:LabelToggleSwitch
+                Margin="0,0,0,10"
+                HideAreas="Validation"
+                InformationText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                      Key=EnableDiagnosticsHint}"
+                IsOn="{Binding Path=EnableDiagnostics, Mode=TwoWay}"
+                LabelPosition="Right"
+                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                Key=EnableDiagnostics}" />
+
             <atc:LabelDirectoryPicker
                 LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                 Key=LogPath}"

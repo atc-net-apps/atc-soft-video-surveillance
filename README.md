@@ -108,6 +108,7 @@ Read the full documentation on the **[WIKI](https://github.com/atc-net-apps/atc-
 | [🏃 Motion detection](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Motion-Detection) | How detection works, its settings and motion recording |
 | [🎥 USB cameras](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/USB-Cameras) | Webcams in CameraWall and on the server |
 | [💾 Disk space guard](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Disk-Space-Guard) | Keeping disks from filling up |
+| [🩺 Diagnostics](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Diagnostics) | What CameraWall records for a long test run, and how to read it |
 | [🖧 Server reference](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Server-Reference) | Configuration, sign-in and roles, events, live streams, webhooks |
 | [🔨 Building from source](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Building-from-Source) | For developers |
 | [🏛️ Architecture](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Architecture) | Assemblies, layers and data flow |

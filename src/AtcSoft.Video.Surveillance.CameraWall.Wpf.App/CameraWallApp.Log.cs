@@ -11,6 +11,9 @@ public partial class CameraWallApp
     [LoggerMessage(Level = LogLevel.Error, Message = "Dispatcher Unhandled Exception: {ExceptionMessage}")]
     private partial void LogDispatcherUnhandledException(Exception ex, string exceptionMessage);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A task failed and nobody looked at it")]
+    private partial void LogUnobservedTaskException(Exception ex);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "App starting")]
     private partial void LogAppStarting();
 

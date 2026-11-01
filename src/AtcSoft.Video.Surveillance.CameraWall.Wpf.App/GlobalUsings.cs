@@ -2,6 +2,7 @@ global using System;
 global using System.Collections.ObjectModel;
 global using System.ComponentModel;
 global using System.Diagnostics;
+global using System.Diagnostics.CodeAnalysis;
 global using System.Globalization;
 global using System.IO;
 global using System.Linq;
@@ -13,6 +14,7 @@ global using System.Windows.Threading;
 global using Atc;
 global using Atc.DependencyInjection;
 global using Atc.Helpers;
+global using Atc.Hosting;
 global using Atc.Video.Engine;
 global using Atc.Video.Engine.DirectX;
 global using Atc.Wpf.Components.Dialogs;
@@ -25,6 +27,7 @@ global using Atc.XamlToolkit.Mvvm;
 
 global using AtcSoft.Video.Surveillance.CameraWall.Wpf.SplashScreens;
 
+global using AtcSoft.Video.Surveillance.Enums;
 global using AtcSoft.Video.Surveillance.Models.Settings;
 
 global using AtcSoft.Video.Surveillance.Resources;
@@ -36,6 +39,7 @@ global using AtcSoft.Video.Surveillance.Wpf.Core.Helpers;
 global using AtcSoft.Video.Surveillance.Wpf.Core.Models;
 global using AtcSoft.Video.Surveillance.Wpf.Core.Services;
 global using AtcSoft.Video.Surveillance.Wpf.Core.UserControls;
+global using AtcSoft.Video.Surveillance.Windows.Diagnostics;
 
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;

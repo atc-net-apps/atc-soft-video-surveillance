@@ -13,12 +13,17 @@ public partial class CameraWallApp
 
         // Configure Serilog based on settings. Drop framework Debug noise but
         // keep AtcSoft.* at Debug and Microsoft.* Information+ for ops.
+        // Diagnostics (a long test run) log at trace level and keep a month of files, so a three-week
+        // run can be read back from its first day; ordinary debug logging keeps a week.
+        var diagnostics = advancedSettings.EnableDiagnostics;
         var loggerConfig = new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            .MinimumLevel.Is(diagnostics ? LogEventLevel.Verbose : LogEventLevel.Debug)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+            .MinimumLevel.Override("System", LogEventLevel.Information)
+            .Enrich.With(new ThreadIdEnricher())
             .WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture);
 
-        if (advancedSettings.EnableDebugLogging)
+        if (advancedSettings.EnableDebugLogging || diagnostics)
         {
             Directory.CreateDirectory(advancedSettings.LogPath);
 
@@ -26,8 +31,12 @@ public partial class CameraWallApp
             loggerConfig.WriteTo.File(
                 logFile,
                 rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 7,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
+                retainedFileCountLimit: diagnostics ? 31 : 7,
+                fileSizeLimitBytes: diagnostics ? 100L * 1024 * 1024 : 1024L * 1024 * 1024,
+                rollOnFileSizeLimit: true,
+                outputTemplate: diagnostics
+                    ? "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{ThreadId}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
+                    : "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
                 formatProvider: CultureInfo.InvariantCulture);
         }
 
@@ -101,6 +110,14 @@ public partial class CameraWallApp
                     sp => new AtcSoft.Video.Surveillance.Services.OnvifConnectionTypeDetector(
                         sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<AtcSoft.Video.Surveillance.Services.OnvifConnectionTypeDetector>>()));
 
+                // Diagnostics for a long test run: a system report and health samples (Advanced.EnableDiagnostics).
+                services.AddSingleton(new AtcSoft.Video.Surveillance.CameraWall.Wpf.App.Diagnostics.DiagnosticsServiceOptions
+                {
+                    Enabled = advancedSettings.EnableDiagnostics,
+                    LogPath = advancedSettings.LogPath,
+                });
+                services.AddHostedService<AtcSoft.Video.Surveillance.CameraWall.Wpf.App.Diagnostics.DiagnosticsService>();
+
                 // App
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<MainWindow>();
@@ -168,6 +185,7 @@ public partial class CameraWallApp
         // Hook on error before app really starts
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainUnhandledException;
         Current.DispatcherUnhandledException += ApplicationOnDispatcherUnhandledException;
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         base.OnStartup(e);
 
         // Binding errors always go to the log (and so to Aspire and the E2E smoke tests);
@@ -176,6 +194,16 @@ public partial class CameraWallApp
             static message => Log.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "AtcSoft.BindingErrors")
                 .Warning("Binding error: {BindingError}", message),
             showMessageBox: Debugger.IsAttached);
+    }
+
+    // A task that failed and was never awaited: it does not end the app, but its exception is the
+    // only trace of what went wrong, so it is logged and marked as seen.
+    private void OnUnobservedTaskException(
+        object? sender,
+        UnobservedTaskExceptionEventArgs args)
+    {
+        LogUnobservedTaskException(args.Exception);
+        args.SetObserved();
     }
 
     private void CurrentDomainUnhandledException(

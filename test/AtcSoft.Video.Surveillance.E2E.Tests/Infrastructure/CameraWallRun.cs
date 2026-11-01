@@ -94,6 +94,7 @@ internal sealed class CameraWallRun : IDisposable
         settings.Recording.EnableRecordingOnMotion = false;
         settings.CameraDisplay.SnapshotPath = Path.Combine(DataFolder, "snapshots");
         settings.Advanced.EnableDebugLogging = true;
+        settings.Advanced.EnableDiagnostics = recordOnConnect;
         settings.Advanced.LogPath = LogFolder;
         settings.Save();
 

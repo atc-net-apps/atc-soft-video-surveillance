@@ -1,9 +1,14 @@
 global using System.Collections.Concurrent;
+global using System.Diagnostics;
 global using System.Diagnostics.CodeAnalysis;
+global using System.Globalization;
 global using System.Management;
+global using System.Reflection;
 global using System.Runtime.ExceptionServices;
 global using System.Runtime.InteropServices;
 global using System.Runtime.Versioning;
+global using System.Text;
+global using System.Text.RegularExpressions;
 global using System.Threading;
 
 global using Atc.Video.Engine;

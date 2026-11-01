@@ -2838,4 +2838,10 @@ Vorschaubild:
   <data name="SearchAllColumnsToolTip" xml:space="preserve">
     <value>Durchsucht beim Tippen alle Spalten der Liste</value>
   </data>
+  <data name="EnableDiagnostics" xml:space="preserve">
+    <value>Diagnose für einen langen Testlauf</value>
+  </data>
+  <data name="EnableDiagnosticsHint" xml:space="preserve">
+    <value>Schreibt ausführliche Protokolle (31 Tage aufbewahrt), einen Bericht über diesen PC und die Einstellungen beim Start und jede Minute eine Zustandsmessung in den Protokollordner. Wirkt ab dem nächsten Start.</value>
+  </data>
 </root>

@@ -407,6 +407,9 @@ public partial class SettingsDialogViewModel : ViewModelDialogBase
     private bool enableDebugLogging;
 
     [ObservableProperty]
+    private bool enableDiagnostics;
+
+    [ObservableProperty]
     private DirectoryInfo? logPath;
 
     #endregion
@@ -573,6 +576,7 @@ public partial class SettingsDialogViewModel : ViewModelDialogBase
 
         // Advanced Tab
         EnableDebugLogging = false;
+        EnableDiagnostics = false;
         LogPath = new DirectoryInfo(ApplicationPaths.DefaultLogsPath);
     }
 
@@ -692,6 +696,7 @@ public partial class SettingsDialogViewModel : ViewModelDialogBase
         // Load Advanced Tab settings
         var advanced = settingsService.Advanced;
         EnableDebugLogging = advanced.EnableDebugLogging;
+        EnableDiagnostics = advanced.EnableDiagnostics;
         LogPath = new DirectoryInfo(advanced.LogPath);
     }
 
@@ -874,6 +879,7 @@ public partial class SettingsDialogViewModel : ViewModelDialogBase
         var settings = new AdvancedSettings
         {
             EnableDebugLogging = EnableDebugLogging,
+            EnableDiagnostics = EnableDiagnostics,
             LogPath = LogPath?.FullName ?? ApplicationPaths.DefaultLogsPath,
         };
 
