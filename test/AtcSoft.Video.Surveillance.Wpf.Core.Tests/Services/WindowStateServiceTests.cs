@@ -15,11 +15,16 @@ public sealed class WindowStateServiceTests : IDisposable
     {
         var file = Path.Combine(folder, "window-state.json");
         double width = 0, height = 0, left = 0, top = 0;
+        double savedLeft = 0, savedTop = 0;
         var startup = WindowStartupLocation.CenterScreen;
 
         var error = WpfTestThread.Run(() =>
         {
-            var closed = new Window { Width = 900, Height = 700, Left = 120, Top = 80 };
+            // On the screen whatever its size (a build server's is small): a window that does not
+            // fit is opened in the middle instead, as it should be.
+            savedLeft = SystemParameters.VirtualScreenLeft + 40;
+            savedTop = SystemParameters.VirtualScreenTop + 30;
+            var closed = new Window { Width = 400, Height = 300, Left = savedLeft, Top = savedTop };
             var saving = new WindowStateService(file);
             saving.CaptureFrom(closed);
             saving.Save();
@@ -37,10 +42,10 @@ public sealed class WindowStateServiceTests : IDisposable
         });
 
         error.Should().BeNull();
-        width.Should().Be(900);
-        height.Should().Be(700);
-        left.Should().Be(120);
-        top.Should().Be(80);
+        width.Should().Be(400);
+        height.Should().Be(300);
+        left.Should().Be(savedLeft);
+        top.Should().Be(savedTop);
         startup.Should().Be(WindowStartupLocation.Manual);
     }
 

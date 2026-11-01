@@ -45,4 +45,24 @@ public sealed class CameraTileSwapTests
 
         error.Should().BeNull();
     }
+
+    [Fact]
+    public void A_Camera_Whose_Address_Cannot_Be_Read_Fails_To_Connect_Instead_Of_Ending_The_App()
+    {
+        // A camera without a host: the tile's reconnect timer built its address on the UI thread,
+        // and the exception ended the app (a test host on a build server, here).
+        var error = WpfTestThread.Run(() =>
+        {
+            var camera = new UiCameraConfiguration();
+            camera.Display.DisplayName = "Nowhere";
+            var tile = new CameraTile { Camera = camera, Player = Substitute.For<IVideoPlayer>() };
+
+            tile.Reconnect();
+            tile.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+            tile.ConnectionState.Should().Be(ConnectionState.ConnectionFailed);
+        });
+
+        error.Should().BeNull();
+    }
 }

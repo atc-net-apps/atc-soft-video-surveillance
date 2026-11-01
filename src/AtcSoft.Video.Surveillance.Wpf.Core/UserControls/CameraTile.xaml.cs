@@ -2504,10 +2504,22 @@ public partial class CameraTile : IDisposable
             // Ignore Close() errors - we'll try to Open() anyway
         }
 
-        // Build locator and options on the UI thread (they access DependencyProperties)
-        var locator = capturedCamera.BuildSourceLocator();
-        var uri = locator.Uri;
-        var options = BuildStreamOptions(capturedCamera);
+        // Build locator and options on the UI thread (they access DependencyProperties). A camera
+        // whose address cannot be read (no host, a typing error) fails like one that cannot be
+        // reached: this runs from timers on the UI thread, where a throw would end the app.
+        Uri uri;
+        StreamOptions options;
+        try
+        {
+            uri = capturedCamera.BuildSourceLocator().Uri;
+            options = BuildStreamOptions(capturedCamera);
+        }
+        catch (Exception ex) when (ex is UriFormatException or InvalidOperationException or ArgumentException)
+        {
+            isReconnecting = false;
+            UpdateConnectionState(ConnectionState.ConnectionFailed, ex.Message);
+            return;
+        }
 
         // Start status check timer before background operation
         StartReconnectStatusCheck();
