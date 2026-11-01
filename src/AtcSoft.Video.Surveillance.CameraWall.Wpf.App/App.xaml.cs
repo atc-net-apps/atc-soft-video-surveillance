@@ -3,12 +3,13 @@ namespace AtcSoft.Video.Surveillance.CameraWall.Wpf.App;
 
 public partial class CameraWallApp
 {
-    private readonly IHost host;
-    private readonly ILogger<CameraWallApp> logger;
-
     // More UI errors than this within the window: the app starts again (see OnDispatcherUnhandledException).
     private const int MaxUiErrorsInWindow = 5;
     private static readonly TimeSpan UiErrorWindow = TimeSpan.FromMinutes(1);
+
+    private readonly IHost host;
+    private readonly ILogger<CameraWallApp> logger;
+
     private readonly Queue<DateTime> recentUiErrors = new();
     private bool restartOnExit;
 
@@ -34,16 +35,23 @@ public partial class CameraWallApp
             Directory.CreateDirectory(advancedSettings.LogPath);
 
             var logFile = Path.Combine(advancedSettings.LogPath, "camera-wall-.log");
-            loggerConfig.WriteTo.File(
-                logFile,
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: diagnostics ? 31 : 7,
-                fileSizeLimitBytes: diagnostics ? 100L * 1024 * 1024 : 1024L * 1024 * 1024,
-                rollOnFileSizeLimit: true,
-                outputTemplate: diagnostics
-                    ? "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{ThreadId}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
-                    : "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
-                formatProvider: CultureInfo.InvariantCulture);
+            var outputTemplate = diagnostics
+                ? "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{ThreadId}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
+                : "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}";
+
+            // Written on a thread of its own: a slow disk does not hold up the UI or the threads
+            // that read the cameras. Nothing is dropped; a full buffer waits (it holds 10,000 lines).
+            loggerConfig.WriteTo.Async(
+                sink => sink.File(
+                    logFile,
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: diagnostics ? 31 : 7,
+                    fileSizeLimitBytes: diagnostics ? 100L * 1024 * 1024 : 1024L * 1024 * 1024,
+                    rollOnFileSizeLimit: true,
+                    outputTemplate: outputTemplate,
+                    formatProvider: CultureInfo.InvariantCulture),
+                bufferSize: 10_000,
+                blockWhenFull: true);
         }
 
         // Under Aspire the logs (binding errors included) also go to the dashboard; the sink reads
