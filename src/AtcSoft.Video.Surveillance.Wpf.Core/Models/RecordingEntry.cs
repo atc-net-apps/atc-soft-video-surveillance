@@ -5,6 +5,8 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.Models;
 /// </summary>
 public class RecordingEntry : INotifyPropertyChanged
 {
+    private bool isDurationPending;
+
     /// <inheritdoc />
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -37,6 +39,16 @@ public class RecordingEntry : INotifyPropertyChanged
     /// Gets or sets the duration of the recording.
     /// </summary>
     public TimeSpan Duration { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether the length is still being read: the list shows the recording
+    /// at once and its length when the file has been probed.
+    /// </summary>
+    public bool IsDurationPending
+    {
+        get => isDurationPending;
+        init => isDurationPending = value;
+    }
 
     /// <summary>
     /// Gets the recording's activity for the sparkline in the list, or <see langword="null"/> for a
@@ -85,6 +97,7 @@ public class RecordingEntry : INotifyPropertyChanged
     /// <param name="recordingTime">When the recording started.</param>
     /// <param name="fileSizeBytes">The size of the file.</param>
     /// <param name="duration">The length of the recording.</param>
+    /// <param name="durationPending">Whether the length is still to be read (see <see cref="SetDuration"/>).</param>
     /// <returns>The entry.</returns>
     public static RecordingEntry Finished(
         string filePath,
@@ -92,7 +105,8 @@ public class RecordingEntry : INotifyPropertyChanged
         string? recordingRoot,
         DateTime recordingTime,
         long fileSizeBytes,
-        TimeSpan duration)
+        TimeSpan duration,
+        bool durationPending = false)
         => new()
         {
             FilePath = filePath,
@@ -101,6 +115,7 @@ public class RecordingEntry : INotifyPropertyChanged
             RecordingTime = recordingTime,
             FileSizeBytes = fileSizeBytes,
             Duration = duration,
+            IsDurationPending = durationPending,
         };
 
     /// <summary>
@@ -118,6 +133,7 @@ public class RecordingEntry : INotifyPropertyChanged
             FileSizeBytes = FileSizeBytes,
             Duration = Duration,
             IsBeingRecorded = IsBeingRecorded,
+            IsDurationPending = IsDurationPending,
             Activity = activity,
         };
 
@@ -128,6 +144,19 @@ public class RecordingEntry : INotifyPropertyChanged
     /// </summary>
     /// <param name="fileSizeBytes">The size of the finished file.</param>
     /// <param name="duration">The length of the recording.</param>
+    /// <summary>
+    /// Sets the length read from the file.
+    /// </summary>
+    /// <param name="duration">The length of the recording.</param>
+    public void SetDuration(TimeSpan duration)
+    {
+        Duration = duration;
+        isDurationPending = false;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Duration)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDurationPending)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FormattedDuration)));
+    }
+
     public void MarkFinished(
         long fileSizeBytes,
         TimeSpan duration)
@@ -135,6 +164,7 @@ public class RecordingEntry : INotifyPropertyChanged
         FileSizeBytes = fileSizeBytes;
         Duration = duration;
         IsBeingRecorded = false;
+        isDurationPending = false;
 
         foreach (var name in (string[])[
             nameof(IsBeingRecorded), nameof(FileSizeBytes), nameof(Duration),
@@ -154,7 +184,9 @@ public class RecordingEntry : INotifyPropertyChanged
     /// Gets the formatted duration string.
     /// </summary>
     public string FormattedDuration
-        => IsBeingRecorded ? Translations.RecordingInProgress : FormatDuration(Duration);
+        => IsBeingRecorded
+            ? Translations.RecordingInProgress
+            : isDurationPending ? string.Empty : FormatDuration(Duration);
 
     /// <summary>
     /// Gets the formatted recording time string.

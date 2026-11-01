@@ -255,7 +255,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
                 continue;
             }
 
-            entry.MarkFinished(new FileInfo(entry.FilePath).Length, MediaProbe.GetDuration(entry.FilePath));
+            entry.MarkFinished(new FileInfo(entry.FilePath).Length, Durations.Get(entry.FilePath));
             ended = true;
         }
 
@@ -520,6 +520,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         if (disposing && !stopping.IsCancellationRequested)
         {
             stopping.Cancel();
+            durationFill?.Dispose();
             stopping.Dispose();
         }
     }
@@ -559,11 +560,45 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
 
             UpdateCameraFilters();
             UpdateStatusMessage();
+            FillDurations(Recordings);
         }
         finally
         {
             IsLoading = false;
         }
+    }
+
+    // Reads the lengths not known yet off the UI thread, and shows each as it comes. A new load or
+    // the dialog closing stops it.
+    private void FillDurations(IReadOnlyList<RecordingEntry> entries)
+    {
+        var pending = entries.Where(e => e.IsDurationPending).ToList();
+        if (pending.Count == 0 || stopping.IsCancellationRequested)
+        {
+            return;
+        }
+
+        durationFill?.Cancel();
+        durationFill?.Dispose();
+        durationFill = CancellationTokenSource.CreateLinkedTokenSource(stopping.Token);
+        var cancellationToken = durationFill.Token;
+        var dispatcher = Dispatcher.CurrentDispatcher;
+
+        _ = Task.Run(
+            () =>
+            {
+                foreach (var entry in pending)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    var duration = Durations.Get(entry.FilePath);
+                    _ = dispatcher.BeginInvoke(() => entry.SetDuration(duration));
+                }
+            },
+            cancellationToken);
     }
 
     // Each folder below a root is a camera. Its recordings may sit
@@ -598,8 +633,12 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     // refresh and every change of a recording.
     private static readonly ActivitySparklineCache Sparklines = new();
 
+    // Lengths of finished recordings, kept between openings of the browser.
+    private static readonly RecordingDurationCache Durations = new();
+
     // Stops an analysis when the browser closes.
     private readonly CancellationTokenSource stopping = new();
+    private CancellationTokenSource? durationFill;
 
     private static RecordingEntry CreateEntry(
         string filePath,
@@ -611,9 +650,13 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
             ? timestamp
             : info.CreationTime;
 
+        // A length not read before is read in the background (FillDurations): probing every file here
+        // held the app up for close to a minute with a large archive.
         var entry = RecordingPathHelper.IsBeingWritten(filePath)
             ? RecordingEntry.Ongoing(filePath, cameraName, basePath, recordingTime, info.Length)
-            : RecordingEntry.Finished(filePath, cameraName, basePath, recordingTime, info.Length, MediaProbe.GetDuration(filePath));
+            : Durations.TryGet(filePath, out var duration)
+                ? RecordingEntry.Finished(filePath, cameraName, basePath, recordingTime, info.Length, duration)
+                : RecordingEntry.Finished(filePath, cameraName, basePath, recordingTime, info.Length, TimeSpan.Zero, durationPending: true);
         return entry.WithActivity(Sparklines.Get(RecordingPathHelper.BuildActivityPath(filePath)));
     }
 
