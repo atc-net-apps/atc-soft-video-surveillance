@@ -57,6 +57,11 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // still was never recorded.
     private readonly ConcurrentDictionary<Guid, byte> motionNotRecorded = new();
 
+    // How many pictures each watched camera had decoded at the last pass. A decoder that froze
+    // while packets still arrive leaves the detector comparing the same picture: motion is off
+    // without a word, and the packet checks see nothing wrong.
+    private readonly ConcurrentDictionary<Guid, long> watchedFrames = new();
+
     // A pass and a quick retry of one camera never run at once.
     private readonly Lock passGate = new();
 
@@ -765,6 +770,18 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                 return;
             }
 
+            var frames = watching.FramesDecoded;
+            if (frames > 0 &&
+                watchedFrames.TryGetValue(camera.Id, out var before) &&
+                frames == before)
+            {
+                LogPicturesStopped(camera.Id, camera.Display.DisplayName);
+                ReleaseWatchedCamera(camera.Id);
+                return;
+            }
+
+            watchedFrames[camera.Id] = frames;
+
             // The state change was missed (it can come before the handler is
             // attached): a camera that plays is watched from here.
             if (watching.FramesDecoded > 0 && !motionDetectionService.IsDetectionActive(camera.Id))
@@ -1223,7 +1240,10 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         }
 
         var cameraId = camera.Id;
-        _ = Task.Delay(QuickRetryDelay, token).ContinueWith(
+
+        // A little after the time set above: a timer may end a few milliseconds early, and the
+        // camera would then still be waiting for its back-off.
+        _ = Task.Delay(QuickRetryDelay + TimeSpan.FromMilliseconds(500), token).ContinueWith(
             t =>
             {
                 if (!t.IsCanceled)
@@ -1337,6 +1357,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         Justification = "Pipeline is unconditionally disposed asynchronously on the ThreadPool inside the queued work item.")]
     private void ScheduleDeferredDisposal(Guid cameraId)
     {
+        watchedFrames.TryRemove(cameraId, out _);
         if (managedPipelines.TryRemove(cameraId, out var pipeline))
         {
             recordingOnConnect.TryRemove(cameraId, out _);

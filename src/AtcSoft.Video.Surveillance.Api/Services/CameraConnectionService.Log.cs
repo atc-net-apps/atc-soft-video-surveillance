@@ -97,4 +97,7 @@ public sealed partial class CameraConnectionService
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Camera {CameraName} ({CameraId}) dropped while it played: it is tried again now, not at the next pass")]
     private partial void LogQuickRetry(string cameraName, Guid cameraId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Camera {CameraId} ({CameraName}) sends packets but no new picture was decoded since the last pass: it is closed and opened again")]
+    private partial void LogPicturesStopped(Guid cameraId, string cameraName);
 }

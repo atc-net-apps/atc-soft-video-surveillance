@@ -208,6 +208,39 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Watched_Camera_Whose_Pictures_Stopped_While_Packets_Arrive_Is_Opened_Again()
+    {
+        // A decoder that froze: packets keep coming, the picture does not change, and the
+        // detector compared the same picture with itself for good.
+        await ConnectAsync();
+        motionDetection.IsDetectionActive(camera.Id).Returns(true);
+        pipeline.LastPacketUtc.Returns(_ => DateTime.UtcNow);
+        pipeline.FramesDecoded.Returns(500);
+
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        motionDetection.Received().StopDetection(camera.Id);
+        await WaitForAsync(() => pipeline.ReceivedCalls().Any(call => call.GetMethodInfo().Name == nameof(IDisposable.Dispose)));
+    }
+
+    [Fact]
+    public async Task A_Watched_Camera_Whose_Pictures_Go_On_Is_Left_Alone()
+    {
+        await ConnectAsync();
+        motionDetection.IsDetectionActive(camera.Id).Returns(true);
+        pipeline.LastPacketUtc.Returns(_ => DateTime.UtcNow);
+        var frames = 500L;
+        pipeline.FramesDecoded.Returns(_ => frames += 120);
+
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        motionDetection.DidNotReceive().StopDetection(camera.Id);
+    }
+
+    [Fact]
     public async Task A_Camera_That_Fails_Stops_Being_Watched_Before_Its_Pipeline_Is_Closed()
     {
         await ConnectAsync();
