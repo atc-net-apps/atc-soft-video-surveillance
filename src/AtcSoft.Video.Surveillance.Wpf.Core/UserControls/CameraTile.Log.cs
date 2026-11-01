@@ -44,6 +44,9 @@ public partial class CameraTile
     [LoggerMessage(Level = LogLevel.Debug, Message = "Motion boxes for camera '{CameraName}' not drawn: the tile has no motion overlay yet")]
     private partial void LogMotionOverlayNotFound(string cameraName);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The graphics device of camera '{CameraName}' was lost (a driver update or reset); its player is made anew and its recording goes on")]
+    private partial void LogGraphicsDeviceLost(string cameraName);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Snapshot capture or save failed")]
     private partial void LogSnapshotFailed(Exception ex);
 }

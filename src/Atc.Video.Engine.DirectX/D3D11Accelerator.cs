@@ -39,6 +39,9 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
 
     public bool IsInitialized => !disposed && HwDeviceContext is not null;
 
+    /// <inheritdoc />
+    public bool IsDeviceLost => !disposed && d3d11Device.IsRemoved;
+
     /// <summary>
     /// Gets the underlying D3D11 device for swap chain creation.
     /// </summary>

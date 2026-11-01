@@ -25,6 +25,25 @@ public sealed class D3D11Device : IDisposable
 
     public ID3D11DeviceContext DeviceContext { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether the device was removed (a driver update or reset, a remote
+    /// desktop session on another adapter): nothing drawn on it shows any more.
+    /// </summary>
+    public bool IsRemoved
+    {
+        get
+        {
+            try
+            {
+                return !disposed && Device.DeviceRemovedReason.Failure;
+            }
+            catch (SharpGen.Runtime.SharpGenException)
+            {
+                return true;
+            }
+        }
+    }
+
     public void Dispose()
     {
         if (disposed)

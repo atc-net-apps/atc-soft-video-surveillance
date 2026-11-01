@@ -7,6 +7,9 @@ namespace AtcSoft.Video.Surveillance.CameraWall.Wpf.Services;
 [Registration(Lifetime.Singleton)]
 public sealed partial class CameraWallManager : ObservableObject, ICameraWallManager, IDisposable
 {
+    // How long after the desktop comes back the players are looked at for a lost graphics device.
+    private static readonly TimeSpan SessionReturnSettleTime = TimeSpan.FromSeconds(3);
+
     private readonly ILogger<CameraWallManager> logger;
     private readonly ICameraStorageService storageService;
     private readonly IDialogService dialogService;
@@ -335,10 +338,12 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
         object sender,
         Microsoft.Win32.SessionSwitchEventArgs e)
     {
-        // We only care about transitions back into a usable desktop session.
-        // The disconnect side (RemoteDisconnect, ConsoleDisconnect, SessionLock)
-        // does not need recovery — the players keep running, they just can't
-        // render. The reconnect/unlock side is when we need to rebuild the GPU.
+        // We only care about transitions back into a usable desktop session. The
+        // disconnect side (RemoteDisconnect, ConsoleDisconnect, SessionLock) needs no
+        // recovery: the players keep running, they just cannot render. On the way back
+        // only players whose graphics device was lost are made anew; the others (and
+        // their recordings) go on untouched. Making them all anew split every recording
+        // at each unlock of a desktop that locks.
         if (e.Reason is not (Microsoft.Win32.SessionSwitchReason.RemoteConnect
             or Microsoft.Win32.SessionSwitchReason.ConsoleConnect
             or Microsoft.Win32.SessionSwitchReason.SessionUnlock))
@@ -354,11 +359,15 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
 
         // SystemEvents handlers run on a private SystemEvents thread — must
         // marshal to the UI dispatcher before touching CameraGrid/tiles.
-        _ = grid.Dispatcher.BeginInvoke(() =>
-        {
-            LogSessionSwitchReconnect(e.Reason.ToString());
-            grid.RecreateConnectedPlayers();
-        });
+        // The loss shows once the desktop draws again, so the check waits a moment.
+        var reason = e.Reason.ToString();
+        _ = Task.Delay(SessionReturnSettleTime).ContinueWith(
+            _ => grid.Dispatcher.BeginInvoke(() =>
+            {
+                var recreated = grid.RecreatePlayersWithLostDevice();
+                LogSessionSwitchReconnect(reason, recreated);
+            }),
+            TaskScheduler.Default);
     }
 
     /// <inheritdoc />

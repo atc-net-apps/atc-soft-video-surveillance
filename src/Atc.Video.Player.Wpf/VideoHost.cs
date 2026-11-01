@@ -126,6 +126,19 @@ public partial class VideoHost : ContentControl, IDisposable
     public event EventHandler? SurfaceCreated;
 
     /// <summary>
+    /// Occurs once when the graphics device the player draws on is lost (a driver update or reset):
+    /// the picture stays black until the player is made anew. Raised on the thread that presents
+    /// the pictures, not the UI thread.
+    /// </summary>
+    public event EventHandler? DeviceLost;
+
+    /// <summary>
+    /// Gets a value indicating whether the graphics device the player draws on is lost.
+    /// </summary>
+    public bool IsDeviceLost
+        => presenter?.IsDeviceLost == true || boundAccelerator?.IsDeviceLost == true;
+
+    /// <summary>
     /// Gets or sets the background color when no video is playing.
     /// </summary>
     public Color BackColor
@@ -444,6 +457,7 @@ public partial class VideoHost : ContentControl, IDisposable
             presenter = new SwapChainPresenter(
                 accelerator.D3D11DeviceRef,
                 surfaceHwnd);
+            presenter.DeviceLost += OnPresenterDeviceLost;
             boundAccelerator = accelerator;
             accelerator.FrameReady += OnFrameReady;
 
@@ -470,9 +484,18 @@ public partial class VideoHost : ContentControl, IDisposable
             boundAccelerator = null;
         }
 
-        presenter?.Dispose();
-        presenter = null;
+        if (presenter is not null)
+        {
+            presenter.DeviceLost -= OnPresenterDeviceLost;
+            presenter.Dispose();
+            presenter = null;
+        }
     }
+
+    private void OnPresenterDeviceLost(
+        object? sender,
+        EventArgs e)
+        => DeviceLost?.Invoke(this, EventArgs.Empty);
 
     [SuppressMessage(
         "Reliability",

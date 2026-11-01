@@ -252,6 +252,7 @@ public partial class CameraTile : IDisposable
 
     // Stream health monitoring
     private DispatcherTimer? streamHealthTimer;
+
     // A connected stream with no packet for this long is taken as lost and reconnected.
     private static readonly TimeSpan StreamStaleAfter = TimeSpan.FromSeconds(15);
 
@@ -492,6 +493,7 @@ public partial class CameraTile : IDisposable
         Unloaded += OnUnloaded;
         VideoPlayer.OverlayCreated += OnOverlayCreated;
         VideoPlayer.SurfaceCreated += OnSurfaceCreated;
+        VideoPlayer.DeviceLost += OnVideoHostDeviceLost;
         InputManager.Current.PreProcessInput += OnPreProcessInput;
     }
 
@@ -862,6 +864,7 @@ public partial class CameraTile : IDisposable
 
             VideoPlayer.OverlayCreated -= OnOverlayCreated;
             VideoPlayer.SurfaceCreated -= OnSurfaceCreated;
+            VideoPlayer.DeviceLost -= OnVideoHostDeviceLost;
             InputManager.Current.PreProcessInput -= OnPreProcessInput;
 
             if (VideoPlayer.Overlay is not null)
@@ -1440,7 +1443,31 @@ public partial class CameraTile : IDisposable
     }
 
     /// <summary>
-    /// Recreates the player with current settings. Used when performance settings change.
+    /// Gets a value indicating whether the graphics device this tile draws on was lost: its picture
+    /// stays black until the player is made anew.
+    /// </summary>
+    public bool HasLostGraphicsDevice
+        => VideoPlayer.IsDeviceLost;
+
+    // A driver update or reset removed the graphics device: the player is made anew (on the UI
+    // thread), and a recording goes on with it in a new file.
+    private void OnVideoHostDeviceLost(
+        object? sender,
+        EventArgs e)
+        => _ = Dispatcher.BeginInvoke(() =>
+        {
+            if (disposed || Camera is null || !HasLostGraphicsDevice)
+            {
+                return;
+            }
+
+            LogGraphicsDeviceLost(Camera.Display.DisplayName);
+            RecreatePlayer();
+        });
+
+    /// <summary>
+    /// Recreates the player with current settings. Used when performance settings change, and when
+    /// the graphics device was lost.
     /// </summary>
     public void RecreatePlayer()
     {

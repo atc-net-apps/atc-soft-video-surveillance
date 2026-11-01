@@ -400,6 +400,27 @@ public partial class CameraGrid
     }
 
     /// <summary>
+    /// Makes anew the players whose graphics device was lost, and only those: a player that still
+    /// draws keeps running, and so does its recording in the same file. Called after the desktop
+    /// comes back (an unlock, a remote desktop connection).
+    /// </summary>
+    /// <returns>How many players were made anew.</returns>
+    public int RecreatePlayersWithLostDevice()
+    {
+        var recreated = 0;
+        foreach (var tile in trackedTiles.ToArray())
+        {
+            if (tile.HasLostGraphicsDevice)
+            {
+                tile.RecreatePlayer();
+                recreated++;
+            }
+        }
+
+        return recreated;
+    }
+
+    /// <summary>
     /// Recreates players for all connected cameras with current settings.
     /// Call this after performance settings change to apply new VideoQuality/HardwareAcceleration.
     /// </summary>
