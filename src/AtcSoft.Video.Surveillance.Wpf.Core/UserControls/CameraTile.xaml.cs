@@ -237,6 +237,7 @@ public partial class CameraTile : IDisposable
 
     private bool disposed;
     private bool markedForRemoval;
+    private bool stopRecordingOnDispose;
     private Window? subscribedWindow;
     private CameraGrid? registeredWithGrid;
     private bool isReconnecting;
@@ -805,7 +806,8 @@ public partial class CameraTile : IDisposable
             // keeps a stale entry pointing at the now-finalized file, and a new
             // tile for the same camera (RDP-driven zombie replacement) cannot
             // start a fresh recording — StartRecording bails on the duplicate.
-            if (recordingService is not null && Camera is not null)
+            // A recording camera's player is parked instead, so the recording goes on without a tile.
+            if (!TryParkPlayer() && recordingService is not null && Camera is not null)
             {
                 recordingService.StopRecording(Camera.Id);
             }
@@ -967,8 +969,10 @@ public partial class CameraTile : IDisposable
         CancelEventArgs e)
     {
         // The user is closing the parent window. Subsequent Unloaded fires are
-        // real teardown (not transient), so allow Dispose to run.
+        // real teardown (not transient), so allow Dispose to run, and stop the
+        // recordings rather than park them.
         markedForRemoval = true;
+        stopRecordingOnDispose = true;
     }
 
     private void OnUnloaded(
@@ -1004,6 +1008,16 @@ public partial class CameraTile : IDisposable
     public void MarkForRemoval()
     {
         markedForRemoval = true;
+    }
+
+    /// <summary>
+    /// Marks this tile for disposal because its camera is deleted: its recording is stopped, not
+    /// parked to go on without a tile.
+    /// </summary>
+    public void MarkForDeletion()
+    {
+        markedForRemoval = true;
+        stopRecordingOnDispose = true;
     }
 
     private CameraGrid? FindParentCameraGrid()
@@ -1556,6 +1570,11 @@ public partial class CameraTile : IDisposable
 
     private void InitializePlayer()
     {
+        if (TryTakeParkedPlayer())
+        {
+            return;
+        }
+
         Player = CreatePlayer();
         Player.StateChanged += OnPlayerStateChanged;
         mediaPipeline = MediaPipelineFactory?.Invoke(Player);
@@ -1578,6 +1597,60 @@ public partial class CameraTile : IDisposable
     private IVideoPlayer CreatePlayer()
         => videoPlayerFactory!.Create();
 
+    // A camera that kept recording while no tile showed it: its player is still connected and
+    // recording, so this tile shows it as it is instead of opening the stream again.
+    private bool TryTakeParkedPlayer()
+    {
+        if (Camera is null ||
+            registeredWithGrid?.ParkedPlayers is not { } parking ||
+            !parking.TryTake(Camera.Id, out var parkedPlayer, out var parkedPipeline))
+        {
+            return false;
+        }
+
+        Player = parkedPlayer;
+        Player.StateChanged += OnPlayerStateChanged;
+        mediaPipeline = parkedPipeline ?? MediaPipelineFactory?.Invoke(Player);
+        ApplyRotation();
+        LogParkedPlayerTaken(Camera.Display.DisplayName);
+
+        if (recordingService is not null)
+        {
+            RecordingState = recordingService.GetRecordingState(Camera.Id);
+            UpdateRecordingDurationTimer();
+            UpdateOverlayRecordingState();
+        }
+
+        OnPlayerStateChanged(Player, new PlayerStateChangedEventArgs(PlayerState.Stopped, Player.State));
+        return true;
+    }
+
+    // Leaves a recording camera's player and pipeline in the grid's parking instead of stopping the
+    // recording, when the tile goes away while the app runs (another layout, the camera taken out of
+    // the layout, a tile rebuilt after a remote desktop change).
+    private bool TryParkPlayer()
+    {
+        if (stopRecordingOnDispose ||
+            IsPlayerLent ||
+            Camera is null ||
+            Player is null ||
+            recordingService is null ||
+            registeredWithGrid?.ParkedPlayers is not { } parking ||
+            !recordingService.IsRecording(Camera.Id))
+        {
+            return false;
+        }
+
+        Player.StateChanged -= OnPlayerStateChanged;
+        parking.Park(Camera.Id, Player, mediaPipeline, recordingService);
+        LogPlayerParked(Camera.Display.DisplayName);
+
+        // The parking has them now: this tile lets go without closing them.
+        mediaPipeline = null;
+        Player = null;
+        return true;
+    }
+
     private StreamOptions BuildStreamOptions(CameraConfiguration camera)
     {
         var locator = camera.BuildSourceLocator();
@@ -1591,7 +1664,7 @@ public partial class CameraTile : IDisposable
             HardwareAcceleration = HardwareAcceleration,
             MaxVerticalResolution = DropDownItemsFactory.GetMaxResolutionFromQuality(VideoQuality),
             InputFormat = MapInputFormat(locator.InputFormat),
-            RawDeviceSpec = locator.RawDeviceSpec,
+            RawDeviceSpec = locator.RawDeviceSpec,
             RecordAudio = locator.IncludesAudio,
             TranscodeRecordingToH264 = TranscodeVideoCodec == VideoTranscodeCodec.H264,
             VideoSize = locator.VideoSize,

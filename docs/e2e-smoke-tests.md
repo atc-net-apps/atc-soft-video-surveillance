@@ -34,6 +34,11 @@ Leave the mouse alone while the CameraWall walk runs: a few steps are real click
   on), a live camera (with FFmpeg) and a layout, all through the API.
 - **CameraWall**, with `ATCSOFT_DATA_PATH` set to a scratch folder seeded with the app's own storage
   services: en-US, a log file, no recording, the two cameras in the start-up layout.
+- **CameraWall recording** (`CameraWallRecordingTests`): three live test cameras that record as they
+  connect, and a second layout with one of them. The recordings browser is opened and closed, and the
+  app switches to the second layout and back (Ctrl+2, Ctrl+1). Each camera must keep the one recording
+  it started the whole time, the app must answer, and each file must last as long as the walk. Full
+  screen is left out: its button is in the tile's overlay window, which UI Automation does not reach.
 - **The WPF client**, pointed at the test server the way Aspire does it (`services__api__http__0`),
   signed in from `Auth__UserName` / `Auth__Password`, in a scratch folder of its own.
 - **The FFmpeg set-up dialog** (`FFmpegSetupSmokeTests`): CameraWall and the WPF client started with

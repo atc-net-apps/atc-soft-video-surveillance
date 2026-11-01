@@ -204,11 +204,20 @@ public partial class CameraGrid
     {
         InitializeComponent();
 
+        // The parked players of recording cameras no tile shows are let go when the app ends.
+        Dispatcher.ShutdownStarted += (_, _) => ParkedPlayers.Dispose();
+
         CameraItemsControl.ItemContainerGenerator.StatusChanged += OnTileContainersStatusChanged;
         CameraTiles = [];
 
         RegisterMessages();
     }
+
+    /// <summary>
+    /// Gets the players of cameras that go on recording while no tile shows them: a tile that
+    /// goes away parks a recording camera's player here, and the next tile for it takes it back.
+    /// </summary>
+    public RecordingPlayerParking ParkedPlayers { get; } = new();
 
     /// <summary>
     /// Registers a tile so it can be reached without a visual-tree walk.
@@ -330,12 +339,15 @@ public partial class CameraGrid
     }
 
     /// <summary>
-    /// Removes a camera from the wall.
+    /// Removes a deleted camera from the wall; its recording stops.
     /// </summary>
     /// <param name="cameraId">The identifier of the camera to remove.</param>
     /// <returns>True if the camera was removed.</returns>
     public bool RemoveCamera(Guid cameraId)
     {
+        // A deleted camera that records while no tile shows it stops now.
+        ParkedPlayers.Release(cameraId);
+
         var camera = CameraTiles.FirstOrDefault(c => c.Id == cameraId);
         if (camera is null)
         {
@@ -343,7 +355,7 @@ public partial class CameraGrid
         }
 
         var index = CameraTiles.IndexOf(camera);
-        GetCameraTileAt(index)?.MarkForRemoval();
+        GetCameraTileAt(index)?.MarkForDeletion();
 
         CameraTiles.Remove(camera);
         UpdateGridLayout();

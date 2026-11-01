@@ -32,6 +32,12 @@ public partial class CameraTile
     [LoggerMessage(Level = LogLevel.Information, Message = "Tile disposing: '{CameraName}' (state={ConnectionState})")]
     private partial void LogTileDispose(string cameraName, string connectionState);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tile gone while '{CameraName}' records: its player is parked and the recording goes on")]
+    private partial void LogPlayerParked(string cameraName);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tile took the parked player of '{CameraName}', still recording")]
+    private partial void LogParkedPlayerTaken(string cameraName);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Reconnecting '{CameraName}' on tile reload (state was {PreviousState}) — recovering from a transient WPF unload")]
     private partial void LogReconnectingAfterReload(string cameraName, string previousState);
 
