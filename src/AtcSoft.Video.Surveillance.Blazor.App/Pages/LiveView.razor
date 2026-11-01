@@ -206,6 +206,7 @@ else
 
     // The streams the viewer started: one that broke is started again.
     private readonly WantedStreams wanted = new();
+    private DotNetObjectReference<LiveView>? self;
     private bool left;
     private bool serverWasReached;
     private readonly HashSet<Guid> starting = new();
@@ -262,7 +263,8 @@ else
         {
             if (streamUrls.TryGetValue(cameraId, out var url))
             {
-                await JS.InvokeVoidAsync("hlsInterop.initPlayer", $"video-{cameraId}", url);
+                self ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("hlsInterop.initPlayer", PlayerElement.IdFor(cameraId), url, self);
             }
         }
     }
@@ -348,6 +350,29 @@ else
         starting.Remove(cameraId);
         StateHasChanged();
     }
+
+    /// <summary>
+    /// The browser gave up on a player (it stood still, or failed again and
+    /// again): the stream is let go and started again on a new lease.
+    /// </summary>
+    [JSInvokable]
+    public Task OnPlayerFailed(string elementId)
+        => InvokeAsync(async () =>
+        {
+            if (PlayerElement.CameraOf(elementId) is not { } cameraId || left || !streamUrls.Remove(cameraId))
+            {
+                return;
+            }
+
+            if (leases.TryTake(cameraId, out var leaseId))
+            {
+                await Gateway.StopStreamAsync(cameraId, leaseId);
+            }
+
+            errors[cameraId] = Translations.StreamStoppedStartsAgain;
+            RestartLater(cameraId);
+            StateHasChanged();
+        });
 
     // A wanted stream that broke or could not start is started again after its wait.
     private void RestartLater(Guid cameraId)
@@ -557,6 +582,7 @@ else
 
         await heartbeatCancellation.CancelAsync();
         heartbeatCancellation.Dispose();
+        self?.Dispose();
 
         // Leaving the page lets the server stop the transcoders right away.
         foreach (var cameraId in streamUrls.Keys.ToList())
