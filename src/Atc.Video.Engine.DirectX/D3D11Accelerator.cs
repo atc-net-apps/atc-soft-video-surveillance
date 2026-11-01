@@ -27,6 +27,14 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
     private int latestHeight;
     private bool disposed;
 
+    // A device that was removed (a driver reset, a GPU taken away) takes no more pictures: every one
+    // would fail and log. The player above makes a new device (DeviceLost).
+    private volatile bool deviceGone;
+
+    // Failures are logged at most once a minute, with how many there were since.
+    private long lastFailureLoggedAt = long.MinValue;
+    private int failuresSinceLogged;
+
     public D3D11Accelerator(ILogger logger)
     {
         this.logger = logger;
@@ -58,7 +66,7 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
 
     public void OnFrameDecoded(AVFrame* frame)
     {
-        if (frame is null)
+        if (frame is null || deviceGone)
         {
             return;
         }
@@ -99,8 +107,29 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
         }
         catch (Exception ex)
         {
-            LogGpuFrameProcessingFailed(ex);
+            OnFrameFailed(ex);
         }
+    }
+
+    private void OnFrameFailed(Exception ex)
+    {
+        if (d3d11Device.IsRemoved)
+        {
+            deviceGone = true;
+            LogGpuDeviceRemoved(ex);
+            return;
+        }
+
+        failuresSinceLogged++;
+        var now = Environment.TickCount64;
+        if (lastFailureLoggedAt != long.MinValue && now - lastFailureLoggedAt < 60_000)
+        {
+            return;
+        }
+
+        LogGpuFrameProcessingFailed(ex, failuresSinceLogged);
+        lastFailureLoggedAt = now;
+        failuresSinceLogged = 0;
     }
 
     [SuppressMessage(
