@@ -52,6 +52,10 @@ public static class SafeJsonFile
             // Write+flush the temp file
             (writeTempFile ?? File.WriteAllText)(tempPath, json);
 
+            // On the disk before it replaces the file: after a power cut the
+            // file is the old one or the new one, never an empty one.
+            FlushToDisk(tempPath);
+
             // Round-trip verify before promoting; catches truncated writes
             // (e.g. disk full mid-write) and serializer regressions.
             var verifyJson = File.ReadAllText(tempPath);
@@ -328,6 +332,12 @@ public static class SafeJsonFile
         {
             return false;
         }
+    }
+
+    private static void FlushToDisk(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+        stream.Flush(flushToDisk: true);
     }
 
     private static void TryDeleteIfExists(string path)

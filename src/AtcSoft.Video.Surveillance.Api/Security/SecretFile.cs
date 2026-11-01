@@ -13,7 +13,10 @@ public static class SecretFile
 {
     /// <summary>
     /// Writes a secret file, created with restricted access so it is never
-    /// readable by anyone else, not even for a moment. A file already there is replaced.
+    /// readable by anyone else, not even for a moment. A file already there is
+    /// replaced in one step: the text is written to a new restricted file next
+    /// to it, flushed to the disk, and moved over it, so a crash or a power cut
+    /// leaves the old file or the new one, never none.
     /// </summary>
     /// <param name="path">The file to write.</param>
     /// <param name="contents">The text to write.</param>
@@ -26,25 +29,48 @@ public static class SecretFile
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
 
-        if (!OperatingSystem.IsWindows())
+        var temp = path + ".new-" + Guid.NewGuid().ToString("N")[..8];
+        try
         {
-            File.WriteAllText(path, contents);
-            return;
+            if (OperatingSystem.IsWindows())
+            {
+                // Created with its own access; a move keeps it.
+                using var stream = new FileInfo(temp).Create(
+                    FileMode.CreateNew,
+                    FileSystemRights.Write | FileSystemRights.ReadData | FileSystemRights.Synchronize,
+                    FileShare.None,
+                    bufferSize: 4096,
+                    FileOptions.None,
+                    CreateFileSecurity());
+                using var writer = new StreamWriter(stream);
+                writer.Write(contents);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+            else
+            {
+                using var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                using var writer = new StreamWriter(stream);
+                writer.Write(contents);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temp, path, overwrite: true);
         }
+        catch
+        {
+            try
+            {
+                File.Delete(temp);
+            }
+            catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException)
+            {
+                // Left behind; it holds nothing the file it was for does not.
+            }
 
-        // A file that exists keeps its own access when it is opened for
-        // writing, so it is deleted first and created anew.
-        File.Delete(path);
-
-        using var stream = new FileInfo(path).Create(
-            FileMode.CreateNew,
-            FileSystemRights.Write | FileSystemRights.ReadData | FileSystemRights.Synchronize,
-            FileShare.None,
-            bufferSize: 4096,
-            FileOptions.None,
-            CreateFileSecurity());
-        using var writer = new StreamWriter(stream);
-        writer.Write(contents);
+            throw;
+        }
     }
 
     /// <summary>

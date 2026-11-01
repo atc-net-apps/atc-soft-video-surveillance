@@ -8,7 +8,9 @@ public sealed partial class StreamingService
     [LoggerMessage(Level = LogLevel.Information, Message = "Starting FFmpeg for camera {CameraId}: ffmpeg {Args}")]
     private partial void LogStartingFfmpeg(Guid cameraId, string args);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "[FFmpeg {CameraId}] {Line}")]
+    // FFmpeg writes a line every few seconds per stream: kept out of the log
+    // unless debug logging is on. The last lines are kept for the viewer's error.
+    [LoggerMessage(Level = LogLevel.Debug, Message = "[FFmpeg {CameraId}] {Line}")]
     private partial void LogFfmpegOutput(Guid cameraId, string line);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "HLS stream started for camera {CameraId} -> {PlaylistPath}")]
