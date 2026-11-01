@@ -118,7 +118,7 @@ Read the full documentation on the **[WIKI](https://github.com/atc-net-apps/atc-
 
 ## 🗺️ Roadmap
 
-What is open and planned is in **[plans/roadmap.md](plans/roadmap.md)**. Found a problem or missing something? [Open an issue](https://github.com/atc-net-apps/atc-soft-video-surveillance/issues).
+What is coming, and in which order, is in **[platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support#coming)** in the wiki. Found a problem or missing something? [Open an issue](https://github.com/atc-net-apps/atc-soft-video-surveillance/issues).
 
 ## 📄 License
 
