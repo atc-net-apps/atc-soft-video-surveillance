@@ -15,6 +15,9 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
     private readonly GpuSnapshotCapture snapshotCapture;
     private readonly Lock frameLock = new();
 
+    // How long a snapshot waits for the picture (see CaptureSnapshot).
+    private static readonly TimeSpan SnapshotLockWait = TimeSpan.FromSeconds(2);
+
     private ID3D11Texture2D? latestBgraTexture;
     private int latestWidth;
     private int latestHeight;
@@ -58,12 +61,18 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
 
         var srcFormat = (AVPixelFormat)frame->format;
 
+        // Runs on the thread that reads the camera and feeds the recorder: it never waits here. While
+        // the picture is being shown or captured (frameLock held by the present thread or a
+        // snapshot), or showing it hangs (a locked session, a monitor that is off), this picture is
+        // not shown, and the camera is read on.
+        if (!frameLock.TryEnter())
+        {
+            return;
+        }
+
         try
         {
-            // Hold frameLock during GPU processing + present to prevent
-            // CaptureSnapshot from reading the output texture mid-write.
-            // D3D11 immediate context is single-threaded.
-            lock (frameLock)
+            try
             {
                 if (srcFormat == AVPixelFormat.D3d11)
                 {
@@ -73,9 +82,14 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
                 {
                     ProcessSoftwareFrame(frame);
                 }
-
-                FrameReady?.Invoke();
             }
+            finally
+            {
+                frameLock.Exit();
+            }
+
+            // The subscriber (a VideoHost) only wakes its own present thread.
+            FrameReady?.Invoke();
         }
         catch (Exception ex)
         {
@@ -133,6 +147,28 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
     }
 
     /// <summary>
+    /// Uses the latest picture (a BGRA texture and its size) while no new one is written over it:
+    /// the picture is shown this way, on a thread of the viewer's own.
+    /// </summary>
+    /// <param name="use">What to do with the texture, its width and its height.</param>
+    /// <returns><see langword="false"/> when there is no picture yet.</returns>
+    public bool UseLatestFrame(Action<ID3D11Texture2D, int, int> use)
+    {
+        ArgumentNullException.ThrowIfNull(use);
+
+        lock (frameLock)
+        {
+            if (latestBgraTexture is null || latestWidth <= 0 || latestHeight <= 0)
+            {
+                return false;
+            }
+
+            use(latestBgraTexture, latestWidth, latestHeight);
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Retrieves the latest BGRA texture and its dimensions (thread-safe).
     /// </summary>
     public bool TryGetBgraTexture(
@@ -155,22 +191,30 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
         // Hold frameLock during the entire capture to prevent OnFrameDecoded
         // from writing to the BGRA texture (via ProcessFrame) while
         // CopyResource reads from it. D3D11 immediate context is single-threaded.
-        lock (frameLock)
+        // The lock is waited for a moment only: a picture that is being shown and hangs (a locked
+        // session) holds it, and the caller then takes its picture from memory instead.
+        if (!frameLock.TryEnter(SnapshotLockWait))
+        {
+            return null;
+        }
+
+        try
         {
             if (latestBgraTexture is null || latestWidth <= 0 || latestHeight <= 0)
             {
                 return null;
             }
 
-            try
-            {
-                return snapshotCapture.Capture(latestBgraTexture, latestWidth, latestHeight);
-            }
-            catch (Exception ex)
-            {
-                LogGpuSnapshotCaptureFailed(ex);
-                return null;
-            }
+            return snapshotCapture.Capture(latestBgraTexture, latestWidth, latestHeight);
+        }
+        catch (Exception ex)
+        {
+            LogGpuSnapshotCaptureFailed(ex);
+            return null;
+        }
+        finally
+        {
+            frameLock.Exit();
         }
     }
 

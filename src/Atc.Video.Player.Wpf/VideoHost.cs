@@ -57,6 +57,11 @@ public partial class VideoHost : ContentControl, IDisposable
 
     private readonly OverlayBridge bridge = new();
 
+    // Pictures are shown on a thread of this host's own, woken for each new one: never on the
+    // thread that reads the camera, which a hanging Present (a locked session, a monitor that is
+    // off) would stop, and the recording with it.
+    private readonly AutoResetEvent frameSignal = new(initialState: false);
+
     private Window? ownerWindow;
     private Window? surfaceWindow;
     private Window? overlayWindow;
@@ -65,6 +70,9 @@ public partial class VideoHost : ContentControl, IDisposable
 
     private SwapChainPresenter? presenter;
     private D3D11Accelerator? boundAccelerator;
+
+    private Thread? presentThread;
+    private volatile bool stopPresenting;
     private int lastX;
     private int lastY;
     private int lastW;
@@ -187,6 +195,7 @@ public partial class VideoHost : ContentControl, IDisposable
         if (disposing)
         {
             DetachPlayer();
+            frameSignal.Dispose();
 
             overlayWindow?.Close();
             overlayWindow = null;
@@ -460,6 +469,7 @@ public partial class VideoHost : ContentControl, IDisposable
             presenter.DeviceLost += OnPresenterDeviceLost;
             boundAccelerator = accelerator;
             accelerator.FrameReady += OnFrameReady;
+            StartPresenting();
 
             // Apply initial scale if the control already has a size.
             if (ActualWidth > 0 && ActualHeight > 0)
@@ -484,6 +494,8 @@ public partial class VideoHost : ContentControl, IDisposable
             boundAccelerator = null;
         }
 
+        StopPresenting();
+
         if (presenter is not null)
         {
             presenter.DeviceLost -= OnPresenterDeviceLost;
@@ -497,23 +509,61 @@ public partial class VideoHost : ContentControl, IDisposable
         EventArgs e)
         => DeviceLost?.Invoke(this, EventArgs.Empty);
 
-    [SuppressMessage(
-        "Reliability",
-        "CA2000:Dispose objects before losing scope",
-        Justification = "Texture is owned by the renderer; this method only forwards a non-owning reference to the presenter.")]
+    // Raised on the thread that reads the camera: only wakes the present thread.
     private void OnFrameReady()
+        => frameSignal.Set();
+
+    private void StartPresenting()
     {
-        if (presenter is null || boundAccelerator is null)
+        stopPresenting = false;
+        if (presentThread is { IsAlive: true })
         {
             return;
         }
 
-        if (boundAccelerator.TryGetBgraTexture(
-                out var texture,
-                out var width,
-                out var height))
+        presentThread = new Thread(PresentLoop)
         {
-            presenter.Present(texture!, width, height);
+            IsBackground = true,
+            Name = "VideoHost-Present",
+        };
+        presentThread.Start();
+    }
+
+    // A Present that hangs keeps this thread: it is left to end with the process, not waited for.
+    private void StopPresenting()
+    {
+        stopPresenting = true;
+        frameSignal.Set();
+        presentThread?.Join(TimeSpan.FromSeconds(1));
+        presentThread = null;
+    }
+
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "A picture that could not be shown is skipped; the next one is tried.")]
+    private void PresentLoop()
+    {
+        while (true)
+        {
+            frameSignal.WaitOne();
+            if (stopPresenting)
+            {
+                return;
+            }
+
+            var accelerator = boundAccelerator;
+            var target = presenter;
+            if (accelerator is null || target is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                _ = accelerator.UseLatestFrame((texture, width, height) => target.Present(texture, width, height));
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                // A presenter that went away meanwhile, or a device that was lost.
+            }
         }
     }
 
