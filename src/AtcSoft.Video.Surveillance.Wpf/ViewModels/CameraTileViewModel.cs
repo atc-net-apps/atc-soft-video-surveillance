@@ -10,8 +10,17 @@ namespace AtcSoft.Video.Surveillance.Wpf.ViewModels;
 /// </summary>
 public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
 {
-    private const int MaxStreamRetries = 5;
-    private static readonly TimeSpan StreamRetryDelay = TimeSpan.FromSeconds(5);
+    // The waits before each new start of a stream that failed, the last one
+    // repeated for as long as it fails: a wall left alone for weeks recovers
+    // from an outage of any length.
+    private static readonly TimeSpan[] StreamRetryDelays =
+    [
+        TimeSpan.FromSeconds(5),
+        TimeSpan.FromSeconds(10),
+        TimeSpan.FromSeconds(20),
+        TimeSpan.FromSeconds(40),
+        TimeSpan.FromSeconds(60),
+    ];
 
     private readonly IStreamLeaseGateway streams;
     private readonly SurveillanceEventService eventService;
@@ -172,6 +181,7 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         eventService.OnConnectionStateChanged += OnHubConnectionStateChanged;
         eventService.OnRecordingStateChanged += OnHubRecordingStateChanged;
         eventService.OnMotionDetected += OnHubMotionDetected;
+        eventService.ConnectedChanged += OnEventServiceConnectedChanged;
     }
 
     public bool IsRecording
@@ -354,6 +364,7 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         eventService.OnConnectionStateChanged -= OnHubConnectionStateChanged;
         eventService.OnRecordingStateChanged -= OnHubRecordingStateChanged;
         eventService.OnMotionDetected -= OnHubMotionDetected;
+        eventService.ConnectedChanged -= OnEventServiceConnectedChanged;
 
         // A tile that goes gives its lease back; the server stops a stream
         // nobody else watches.
@@ -573,16 +584,47 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
     {
         lock (retryLock)
         {
-            if (disposed || stoppedByUser || retryAttempt >= MaxStreamRetries)
+            if (disposed || stoppedByUser)
             {
                 return;
             }
 
+            var delay = StreamRetryDelayFor(retryAttempt);
             retryAttempt++;
             retryGeneration++;
             retryTimer?.Dispose();
-            retryTimer = time.CreateTimer(OnRetryDue, retryGeneration, StreamRetryDelay, Timeout.InfiniteTimeSpan);
+            retryTimer = time.CreateTimer(OnRetryDue, retryGeneration, delay, Timeout.InfiniteTimeSpan);
         }
+    }
+
+    /// <summary>
+    /// Gets the wait before the new start after <paramref name="failures"/> failed ones.
+    /// </summary>
+    internal static TimeSpan StreamRetryDelayFor(int failures)
+        => StreamRetryDelays[Math.Clamp(failures, 0, StreamRetryDelays.Length - 1)];
+
+    // The server is back (the event stream opened again): a tile waiting to
+    // start its stream again does so now, not after its back-off.
+    private void OnEventServiceConnectedChanged()
+    {
+        if (!eventService.IsConnected)
+        {
+            return;
+        }
+
+        lock (retryLock)
+        {
+            if (disposed || stoppedByUser || retryTimer is null)
+            {
+                return;
+            }
+
+            retryGeneration++;
+            retryTimer.Dispose();
+            retryTimer = null;
+        }
+
+        _ = StartStreamOrRetryLaterAsync();
     }
 
     private void CancelStreamRetry()

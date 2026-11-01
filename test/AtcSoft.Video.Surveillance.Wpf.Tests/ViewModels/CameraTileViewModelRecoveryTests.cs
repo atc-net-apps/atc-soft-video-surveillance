@@ -87,6 +87,31 @@ public sealed class CameraTileViewModelRecoveryTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Tile_Never_Gives_Up_And_Waits_Longer_Each_Time_Up_To_A_Minute()
+    {
+        // The server is away for a long while: ten starts fail, the eleventh plays.
+        var failures = 0;
+        streams
+            .StartStreamAsync(cameraId, Arg.Any<CancellationToken>())
+            .Returns(_ => ++failures <= 10
+                ? throw new HttpRequestException("The server could not be reached")
+                : new global::VideoSurveillance.Generated.Cameras.Models.StreamLease(LeaseId: Guid.NewGuid(), CameraId: cameraId, PlaylistUrl: "/streams/back/stream.m3u8", RenewSeconds: 30));
+
+        await sut.StartStreamOrRetryLaterAsync();
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            await WaitForAsync(() => sut.IsRetryScheduled);
+            time.Advance(CameraTileViewModel.StreamRetryDelayFor(attempt) - TimeSpan.FromMilliseconds(1));
+            failures.Should().Be(attempt + 1, "the wait is not over yet");
+            time.Advance(TimeSpan.FromMilliseconds(1));
+            await WaitForAsync(() => failures == attempt + 2);
+        }
+
+        await WaitForAsync(() => player.State == PlayerState.Playing);
+        CameraTileViewModel.StreamRetryDelayFor(10).Should().Be(TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
     public async Task A_Stopped_Tile_Does_Not_Start_Again()
     {
         await sut.StartStreamAsync();
