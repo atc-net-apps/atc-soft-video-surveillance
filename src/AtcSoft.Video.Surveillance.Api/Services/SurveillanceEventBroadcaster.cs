@@ -19,6 +19,10 @@ public sealed partial class SurveillanceEventBroadcaster : BackgroundServiceBase
     private readonly IUsbCameraLifecycleCoordinator usbLifecycle;
     private readonly SurveillanceEventFeed feed;
 
+    // The cameras in motion: the first event of a motion and its end are kept for clients that
+    // resume, the boxes in between only go out live.
+    private readonly ConcurrentDictionary<Guid, byte> moving = new();
+
     public SurveillanceEventBroadcaster(
         ILogger<SurveillanceEventBroadcaster> logger,
         SurveillanceEventBroadcasterOptions options,
@@ -88,12 +92,24 @@ public sealed partial class SurveillanceEventBroadcaster : BackgroundServiceBase
     {
         try
         {
-            feed.Publish(e.ToHubEvent().ToStreamEvent());
+            feed.Publish(e.ToHubEvent().ToStreamEvent(), IsChange(e));
         }
         catch (Exception ex)
         {
             LogBroadcastMotionFailed(ex, e.CameraId);
         }
+    }
+
+    // A motion's first event and its end are changes; the boxes in between are not.
+    private bool IsChange(MotionDetectedEventArgs e)
+    {
+        if (e.IsMotionActive)
+        {
+            return moving.TryAdd(e.CameraId, 0);
+        }
+
+        moving.TryRemove(e.CameraId, out _);
+        return true;
     }
 
     private void OnCameraConnectionStateChanged(

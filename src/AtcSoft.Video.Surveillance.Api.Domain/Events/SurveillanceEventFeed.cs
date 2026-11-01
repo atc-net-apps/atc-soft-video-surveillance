@@ -13,9 +13,9 @@ namespace AtcSoft.Video.Surveillance.Api.Domain.Events;
 public sealed class SurveillanceEventFeed
 {
     /// <summary>
-    /// How many of the latest events a resuming client can get again. Motion goes out up to four
-    /// times a second per camera, so 32 cameras in motion send some 128 events a second: this is
-    /// half a minute of them, enough to resume after a dropped connection without a full reload.
+    /// How many of the latest events a resuming client can get again. The boxes of a motion going on
+    /// (four a second per camera) are not kept, only what changed: a motion's start and end, the
+    /// recordings and connections. That is hours of a busy server, not seconds.
     /// </summary>
     public const int ReplayCapacity = 4096;
 
@@ -107,18 +107,30 @@ public sealed class SurveillanceEventFeed
     /// <summary>
     /// Publishes an event to every subscriber.
     /// </summary>
+    /// <param name="surveillanceEvent">The event.</param>
+    /// <param name="keep">
+    /// <see langword="false"/> for an update that is only of use while it is new (the boxes of a motion going
+    /// on, four a second per camera): it goes to the subscribers but not into the replay buffer, so the
+    /// buffer keeps minutes of what changed rather than seconds of boxes. It takes the id of the last
+    /// event kept: a client that resumes from it gets what was kept after that, and has missed nothing.
+    /// </param>
     /// <returns>The event's sequence, its id on the stream.</returns>
-    public long Publish(SurveillanceEvent surveillanceEvent)
+    public long Publish(
+        SurveillanceEvent surveillanceEvent,
+        bool keep = true)
     {
         ArgumentNullException.ThrowIfNull(surveillanceEvent);
 
         lock (gate)
         {
-            var sequenced = new SequencedEvent(++sequence, surveillanceEvent);
-            replay.Enqueue(sequenced);
-            if (replay.Count > ReplayCapacity)
+            var sequenced = new SequencedEvent(keep ? ++sequence : sequence, surveillanceEvent);
+            if (keep)
             {
-                replay.Dequeue();
+                replay.Enqueue(sequenced);
+                if (replay.Count > ReplayCapacity)
+                {
+                    replay.Dequeue();
+                }
             }
 
             for (var i = subscribers.Count - 1; i >= 0; i--)
