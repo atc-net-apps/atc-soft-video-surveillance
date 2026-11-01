@@ -160,20 +160,22 @@ internal sealed unsafe partial class Remuxer : IDisposable
     /// frame, so the switch is made at the next one: until then packets go on into the current
     /// file, and none are lost between the two (before, everything up to the next key frame was
     /// dropped from the new file: seconds every hour). A file without pictures yet, or one that
-    /// can take no more, is switched at once.
+    /// can take no more, is switched at once; so is one asked for <paramref name="atOnce"/> (the
+    /// caller then writes the new file's first key frame itself).
     /// </summary>
     public void SwitchTo(
         string newOutputPath,
         AVCodecParameters* codecpar,
         AVRational inputTimeBase,
         int rotationDegrees = 0,
-        AVCodecParameters* audioCodecpar = null)
+        AVCodecParameters* audioCodecpar = null,
+        bool atOnce = false)
     {
         lock (stateLock)
         {
             pendingSwitch?.Dispose();
             pendingSwitch = null;
-            if (outputCtx is not null && receivedKeyframe && writeError is null)
+            if (!atOnce && outputCtx is not null && receivedKeyframe && writeError is null)
             {
                 pendingSwitch = new PendingSwitch(newOutputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
                 return;

@@ -312,6 +312,22 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     /// silently dropped — they land in the previous segment or the new one.
     /// </summary>
     public void SwitchRecording(string newOutputFilePath)
+        => SwitchRecordingFrom(newOutputFilePath, startFromUtc: null);
+
+    /// <summary>
+    /// Moves the recording on to a new file that starts from a key frame the player kept (the
+    /// files overlap by the pictures since), so the new file's first picture is the one
+    /// <paramref name="startFromUtc"/> names. Before, the new file was named when the switch was
+    /// asked for and began at the next key frame: up to a group of pictures later.
+    /// </summary>
+    public void SwitchRecording(
+        string newOutputFilePath,
+        DateTime startFromUtc)
+        => SwitchRecordingFrom(newOutputFilePath, startFromUtc);
+
+    private void SwitchRecordingFrom(
+        string newOutputFilePath,
+        DateTime? startFromUtc)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -326,7 +342,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             if (remuxer is null || !remuxer.IsOpen)
             {
                 // Nothing to switch — fall back to a plain start.
-                StartRecording(newOutputFilePath);
+                StartRecordingFrom(newOutputFilePath, startFromUtc);
                 return;
             }
 
@@ -339,6 +355,13 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 // key frame, so the new file is made to start with one.
                 frameEncoder.RequestKeyFrame();
                 remuxer.SwitchTo(newOutputFilePath, frameEncoder.CodecParameters, frameEncoder.TimeBase, (int)rotation, sound);
+            }
+            else if (startFromUtc is { } from && history is not null)
+            {
+                remuxer.SwitchTo(newOutputFilePath, source.VideoCodecParameters, source.VideoTimeBase, (int)rotation, sound, atOnce: true);
+                var recorder = remuxer;
+                var timeBase = source.VideoTimeBase;
+                history.WriteFrom(from, packet => recorder.WritePacket((AVPacket*)packet, timeBase));
             }
             else
             {

@@ -476,10 +476,11 @@ public partial class RecordingService : IRecordingService, IDisposable
             // 1. Stop thumbnail capture for the old segment
             thumbnailService.StopCapture(cameraId);
 
-            // 2. Generate new filename with current timestamp
+            // 2. The next file starts at the last key frame the player has, and is named by it
             var format = GetEffectiveRecordingFormat(camera);
+            var startUtc = pipeline.FindRecordingStart(TimeSpan.Zero);
             var newFilePath = UniqueFilename.EnsureDifferentFrom(
-                GenerateRecordingFilename(camera, format),
+                GenerateRecordingFilename(camera, format, startUtc ?? DateTime.UtcNow),
                 oldFilePath);
 
             // Ensure directory exists
@@ -502,12 +503,12 @@ public partial class RecordingService : IRecordingService, IDisposable
             // the demux thread between the two file boundaries land in
             // either the previous segment or the new one — never dropped
             // in the close/open gap.
-            pipeline.SwitchRecording(newFilePath);
+            RecordingPreRoll.Switch(pipeline, newFilePath, startUtc);
 
             // 4. Atomically replace the session so IsRecording never dips
             // to false during the segment boundary.
             var newState = isManualRecording ? RecordingState.Recording : RecordingState.RecordingMotion;
-            var newSession = new RecordingSession(cameraId, camera.Display.DisplayName, newFilePath, isManualRecording)
+            var newSession = new RecordingSession(cameraId, camera.Display.DisplayName, newFilePath, isManualRecording, startUtc)
             {
                 LastMotionTime = lastMotionTime,
                 State = newState,

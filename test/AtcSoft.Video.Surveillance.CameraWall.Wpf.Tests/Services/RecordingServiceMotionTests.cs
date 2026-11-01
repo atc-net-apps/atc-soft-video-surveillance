@@ -78,6 +78,25 @@ public sealed class RecordingServiceMotionTests : IDisposable
         sut.GetSession(camera.Id)!.StartTime.Should().Be(lastKeyFrame);
     }
 
+    [Fact]
+    public void The_Next_Segment_Is_Named_By_The_Key_Frame_It_Starts_From()
+    {
+        var camera = new CameraConfiguration();
+        camera.Display.DisplayName = "Garden";
+        cameras.Add(camera);
+        var pipeline = Substitute.For<IMediaPipeline>();
+        using var sut = CreateSut(postMotionSeconds: 30);
+        sut.StartRecording(camera, pipeline).Should().BeTrue();
+        var lastKeyFrame = DateTime.UtcNow.AddSeconds(-1);
+        pipeline.FindRecordingStart(TimeSpan.Zero).Returns(lastKeyFrame);
+
+        sut.SegmentRecording(camera.Id).Should().BeTrue();
+
+        var name = lastKeyFrame.ToLocalTime().ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
+        pipeline.Received(1).SwitchRecording(Arg.Is<string>(p => p.Contains(name, StringComparison.Ordinal)), lastKeyFrame);
+        sut.GetSession(camera.Id)!.StartTime.Should().Be(lastKeyFrame);
+    }
+
     private RecordingService CreateSut(int postMotionSeconds)
     {
         var settings = Substitute.For<IApplicationSettingsService>();

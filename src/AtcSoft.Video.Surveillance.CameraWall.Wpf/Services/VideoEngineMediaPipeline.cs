@@ -124,6 +124,15 @@ public sealed class VideoEngineMediaPipeline : IMediaPipeline
     }
 
     /// <inheritdoc />
+    public void SwitchRecording(
+        string newOutputFilePath,
+        DateTime startFromUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(newOutputFilePath);
+        player.SwitchRecording(newOutputFilePath, startFromUtc);
+    }
+
+    /// <inheritdoc />
     public Task<byte[]?> CaptureFrameAsync(CancellationToken ct = default)
         => player.CaptureFrameAsync(ct);
 

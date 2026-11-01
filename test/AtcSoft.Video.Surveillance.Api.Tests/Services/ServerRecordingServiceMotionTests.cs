@@ -77,6 +77,19 @@ public sealed class ServerRecordingServiceMotionTests : IDisposable
     }
 
     [Fact]
+    public void The_Next_Segment_Is_Named_By_The_Key_Frame_It_Starts_From()
+    {
+        sut.TriggerMotionRecording(camera, pipeline).Should().BeTrue();
+        var lastKeyFrame = new DateTime(2026, 11, 1, 10, 30, 0, 800, DateTimeKind.Utc);
+        pipeline.FindRecordingStart(TimeSpan.Zero).Returns(lastKeyFrame);
+
+        sut.SegmentRecording(camera.Id).Should().BeTrue();
+
+        pipeline.Received(1).SwitchRecording(Arg.Is<string>(p => p.Contains("20261101_103000_800", StringComparison.Ordinal)), lastKeyFrame);
+        sut.GetSession(camera.Id)!.StartTime.Should().Be(lastKeyFrame);
+    }
+
+    [Fact]
     public void A_Pipeline_That_Keeps_Nothing_Starts_At_The_Next_Key_Frame_Named_By_Now()
     {
         var before = DateTime.UtcNow;

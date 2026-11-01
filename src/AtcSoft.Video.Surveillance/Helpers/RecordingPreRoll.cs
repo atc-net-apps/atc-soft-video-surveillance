@@ -35,4 +35,28 @@ public static class RecordingPreRoll
             pipeline.StartRecording(filePath);
         }
     }
+
+    /// <summary>
+    /// Moves a recording on to its next file, from the key frame <see cref="IMediaPipeline.FindRecordingStart"/>
+    /// found (the two files then overlap a little), or at the next one when it found none.
+    /// </summary>
+    /// <param name="pipeline">The pipeline that records.</param>
+    /// <param name="filePath">The next file, named by <paramref name="startFromUtc"/> when there is one.</param>
+    /// <param name="startFromUtc">What <see cref="IMediaPipeline.FindRecordingStart"/> returned.</param>
+    public static void Switch(
+        IMediaPipeline pipeline,
+        string filePath,
+        DateTime? startFromUtc)
+    {
+        ArgumentNullException.ThrowIfNull(pipeline);
+
+        if (startFromUtc is { } from)
+        {
+            pipeline.SwitchRecording(filePath, from);
+        }
+        else
+        {
+            pipeline.SwitchRecording(filePath);
+        }
+    }
 }

@@ -114,6 +114,59 @@ public sealed class VideoPlayerPreRollTests : IDisposable
             "a player kept for no pre-roll keeps the last key frame and a little more, not seconds of it");
     }
 
+    [Fact]
+    public async Task The_Next_File_Begins_At_The_Key_Frame_It_Is_Named_By()
+    {
+        // Before, the next file was named when the switch was asked for and began at the next key
+        // frame: everything on the timeline was up to a group of pictures late in it.
+        TestEngine.Require();
+        var tool = FindFFmpegTool();
+        Assert.SkipWhen(tool is null, "The FFmpeg command-line tool is not installed.");
+
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var port = GetFreePort();
+        using var source = StartH264Stream(tool!, port);
+        var first = Path.Combine(directory, "first.mkv");
+        var second = Path.Combine(directory, "second.mkv");
+        DateTime start;
+        DateTime stopped;
+
+        using (var player = new VideoPlayer(Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoPlayer>.Instance))
+        {
+            try
+            {
+                player.Open(
+                    new Uri($"tcp://127.0.0.1:{port}"),
+                    new StreamOptions { HardwareAcceleration = false, RecordingPreRoll = TimeSpan.FromSeconds(5) });
+                await WaitUntilAsync(() => player.State == PlayerState.Playing && player.FramesDecoded > 0, cancellationToken);
+                player.StartRecording(first);
+                await Task.Delay(TimeSpan.FromSeconds(2.5), cancellationToken);
+
+                // Act — half-way between two key frames
+                start = player.FindRecordingStart(TimeSpan.Zero)!.Value;
+                player.SwitchRecording(second, start);
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                stopped = DateTime.UtcNow;
+                player.StopRecording();
+            }
+            finally
+            {
+                player.Close();
+                Stop(source);
+            }
+        }
+
+        // Assert — the second file holds every picture from its named start on
+        var recorded = ReadBack(second);
+        recorded.FirstIsKeyFrame.Should().BeTrue();
+        var expected = (stopped - start).TotalSeconds * FramesPerSecond;
+        recorded.Frames.Should().BeInRange(
+            (int)(expected - (0.4 * FramesPerSecond)),
+            (int)(expected + (0.4 * FramesPerSecond)),
+            "second 0 of the file is the moment it is named by");
+        ReadBack(first).Frames.Should().BeGreaterThan(FramesPerSecond, "the first file runs until the switch");
+    }
+
     private static System.Diagnostics.Process StartH264Stream(
         string tool,
         int port)

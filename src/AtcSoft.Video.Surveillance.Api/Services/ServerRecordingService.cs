@@ -480,9 +480,11 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             return false;
         }
 
+        // The next file starts at the last key frame the pipeline has, and is named by it.
         var oldFilePath = session.CurrentFilePath;
+        var startUtc = pipeline.FindRecordingStart(TimeSpan.Zero);
         var newFilePath = UniqueFilename.EnsureDifferentFrom(
-            GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera)),
+            GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera), startUtc ?? DateTime.UtcNow),
             oldFilePath);
 
         var directory = Path.GetDirectoryName(newFilePath);
@@ -509,7 +511,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             // land in either the previous segment or the new one — never the
             // close/open gap. Falls back to Stop+Start if the underlying
             // pipeline doesn't support atomic switching.
-            pipeline.SwitchRecording(newFilePath);
+            RecordingPreRoll.Switch(pipeline, newFilePath, startUtc);
         }
         catch (Exception ex)
         {
@@ -517,7 +519,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             return false;
         }
 
-        var newSession = new RecordingSession(cameraId, session.CameraName, newFilePath, session.IsManualRecording)
+        var newSession = new RecordingSession(cameraId, session.CameraName, newFilePath, session.IsManualRecording, startUtc)
         {
             LastMotionTime = session.LastMotionTime,
             State = session.State,

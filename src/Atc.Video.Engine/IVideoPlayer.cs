@@ -113,6 +113,20 @@ public interface IVideoPlayer : IDisposable
     void SwitchRecording(string newOutputFilePath);
 
     /// <summary>
+    /// Moves the recording on to a new file that starts from a key frame the player already has:
+    /// the one <see cref="FindRecordingStart"/> found, which arrived at
+    /// <paramref name="startFromUtc"/>. The two files overlap by the pictures since then, and the
+    /// new one is named by when its first picture came. Without it, as
+    /// <see cref="SwitchRecording(string)"/>.
+    /// </summary>
+    /// <param name="newOutputFilePath">The next file.</param>
+    /// <param name="startFromUtc">The time <see cref="FindRecordingStart"/> returned.</param>
+    void SwitchRecording(
+        string newOutputFilePath,
+        DateTime startFromUtc)
+        => SwitchRecording(newOutputFilePath);
+
+    /// <summary>
     /// Gets a value indicating whether the player is writing a live stream
     /// for browsers.
     /// </summary>

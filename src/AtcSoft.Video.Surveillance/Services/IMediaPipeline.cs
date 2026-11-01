@@ -85,6 +85,18 @@ public interface IMediaPipeline : IDisposable
     }
 
     /// <summary>
+    /// Moves the recording on to a new file that starts from the key frame
+    /// <see cref="FindRecordingStart"/> found: the files overlap by the pictures since then, and the
+    /// new one is named by when its first picture came.
+    /// </summary>
+    /// <param name="newOutputFilePath">The next file.</param>
+    /// <param name="startFromUtc">The time <see cref="FindRecordingStart"/> returned.</param>
+    void SwitchRecording(
+        string newOutputFilePath,
+        DateTime startFromUtc)
+        => SwitchRecording(newOutputFilePath);
+
+    /// <summary>
     /// Gets a value indicating whether recording is currently active.
     /// </summary>
     bool IsRecordingActive { get; }
