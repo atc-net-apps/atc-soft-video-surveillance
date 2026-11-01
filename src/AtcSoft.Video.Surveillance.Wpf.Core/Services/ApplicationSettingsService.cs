@@ -8,6 +8,9 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.Services;
 [Registration(Lifetime.Singleton)]
 public partial class ApplicationSettingsService : IApplicationSettingsService
 {
+    // A file locked at start-up (a backup or virus scanner) is tried for 10 s, half a second apart.
+    private const int LockedAttemptsAtLoad = 20;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -18,6 +21,9 @@ public partial class ApplicationSettingsService : IApplicationSettingsService
     private readonly string storagePath;
     private readonly ILogger<ApplicationSettingsService> logger;
     private ApplicationSettings appSettings = new();
+
+    // False while the file could not be read and could not be copied aside: a save would lose it.
+    private bool mayOverwrite = true;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ApplicationSettingsService"/> class.
@@ -225,8 +231,16 @@ public partial class ApplicationSettingsService : IApplicationSettingsService
     /// <inheritdoc/>
     public void Load()
     {
-        appSettings = SafeJsonFile.TryRead<ApplicationSettings>(storagePath, JsonOptions)
-                      ?? new ApplicationSettings();
+        // A file that cannot be read (locked at start-up, damaged) is not taken for the defaults: it
+        // is copied aside and the backup is used, and it is not saved over while it could not be.
+        var result = SafeJsonFile.Read<ApplicationSettings>(storagePath, JsonOptions, LockedAttemptsAtLoad);
+        mayOverwrite = result.MayOverwrite;
+        if (result.Error is not null)
+        {
+            LogUnreadable(result.Error, storagePath, result.Outcome, string.Join(", ", result.PreservedCopies));
+        }
+
+        appSettings = result.Value ?? new ApplicationSettings();
 
         // Write a moved path back, so the file says where the data really is.
         if (UseOwnDataFolder(appSettings))
@@ -245,6 +259,12 @@ public partial class ApplicationSettingsService : IApplicationSettingsService
     /// <inheritdoc/>
     public void Save()
     {
+        if (!mayOverwrite)
+        {
+            LogNotSavedOverUnreadable(storagePath);
+            return;
+        }
+
         _ = UseOwnDataFolder(appSettings);
 
         if (!SafeJsonFile.TryWrite(storagePath, appSettings, JsonOptions))
@@ -275,6 +295,12 @@ public partial class ApplicationSettingsService : IApplicationSettingsService
             LogSaveFailed(storagePath);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The settings file '{StoragePath}' could not be read ({Outcome}); it was copied to '{Copies}'")]
+    private partial void LogUnreadable(Exception ex, string storagePath, AtcSoft.Video.Surveillance.Enums.JsonFileReadOutcome outcome, string copies);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The settings were not saved: '{StoragePath}' could not be read at start-up and is kept as it is")]
+    private partial void LogNotSavedOverUnreadable(string storagePath);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The settings could not be saved to '{StoragePath}'; changes are lost when the app closes")]
     private partial void LogSaveFailed(string storagePath);

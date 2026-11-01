@@ -7,6 +7,9 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.Services;
 [Registration(Lifetime.Singleton)]
 public partial class CameraStorageService : ICameraStorageService
 {
+    // A file locked at start-up (a backup or virus scanner) is tried for 10 s, half a second apart.
+    private const int LockedAttemptsAtLoad = 20;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -20,10 +23,14 @@ public partial class CameraStorageService : ICameraStorageService
 
     private readonly string storagePath;
     private readonly ILogger<CameraStorageService> logger;
+
     // The UI changes the cameras; the recording, segmentation and diagnostics workers read them on
     // other threads. Every use of the data goes through this lock, and reads hand out copies.
     private readonly Lock gate = new();
     private CameraStorageData data = new();
+
+    // False while the file could not be read and could not be copied aside: a save would lose it.
+    private bool mayOverwrite = true;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CameraStorageService"/> class.
@@ -207,6 +214,12 @@ public partial class CameraStorageService : ICameraStorageService
     {
         lock (gate)
         {
+            if (!mayOverwrite)
+            {
+                LogNotSavedOverUnreadable(storagePath);
+                return;
+            }
+
             var json = JsonSerializer.SerializeToNode(data, JsonOptions);
             _ = TransformPasswords(json, StoredSecret.Protect);
 
@@ -226,8 +239,17 @@ public partial class CameraStorageService : ICameraStorageService
     {
         lock (gate)
         {
-            var json = SafeJsonFile.TryRead<JsonNode>(storagePath, JsonOptions);
-            if (json is null)
+            // A file that cannot be read (locked at start-up, damaged) is never taken for no cameras:
+            // it is copied aside and the backup is used, and it is not saved over while it could not
+            // be copied.
+            var result = SafeJsonFile.Read(
+                storagePath,
+                text => JsonSerializer.Deserialize<JsonNode>(text, JsonOptions),
+                LockedAttemptsAtLoad);
+            mayOverwrite = result.MayOverwrite;
+            ReportUnreadable(result);
+
+            if (result.Value is not { } json)
             {
                 data = new CameraStorageData();
                 return;
@@ -305,6 +327,30 @@ public partial class CameraStorageService : ICameraStorageService
                value is JsonValue jsonValue &&
                jsonValue.TryGetValue(out text);
     }
+
+    private void ReportUnreadable(
+        AtcSoft.Video.Surveillance.Helpers.JsonFileReadResult<JsonNode> result)
+    {
+        if (result.Error is null)
+        {
+            return;
+        }
+
+        LogUnreadable(result.Error, storagePath, result.Outcome, string.Join(", ", result.PreservedCopies));
+        foreach (var file in result.UnpreservedFiles)
+        {
+            LogUnreadableKept(file);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The cameras file '{StoragePath}' could not be read ({Outcome}); it was copied to '{Copies}'")]
+    private partial void LogUnreadable(Exception ex, string storagePath, AtcSoft.Video.Surveillance.Enums.JsonFileReadOutcome outcome, string copies);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "'{File}' could not be read or copied aside; the cameras are not saved over it until the app starts again with it readable")]
+    private partial void LogUnreadableKept(string file);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The cameras were not saved: '{StoragePath}' could not be read at start-up and is kept as it is")]
+    private partial void LogNotSavedOverUnreadable(string storagePath);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The cameras could not be saved to '{StoragePath}'; changes since the last save are lost when the app closes")]
     private partial void LogSaveFailed(string storagePath);
