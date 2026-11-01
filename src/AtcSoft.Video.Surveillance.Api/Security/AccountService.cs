@@ -40,6 +40,11 @@ public sealed partial class AccountService : IAccountService
 
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromDays(30);
 
+    /// <summary>
+    /// How many sessions a user keeps at most; signing in once more ends the one used least lately.
+    /// </summary>
+    public const int MaxSessionsPerUser = 20;
+
     private static readonly JsonSerializerOptions FileOptions = new()
     {
         WriteIndented = true,
@@ -171,27 +176,41 @@ public sealed partial class AccountService : IAccountService
         string userName,
         string password)
     {
+        // The password is checked outside the lock: hashing takes a while on
+        // purpose, and every request's token check takes the same lock.
+        StoredUser? found;
+        string passwordHash;
         lock (sync)
         {
-            var user = FindUser(userName);
-            if (user is null)
+            found = FindUser(userName);
+            passwordHash = found?.PasswordHash ?? DummyHash;
+        }
+
+        // As long for an unknown user as for a known one, so the time does not tell which.
+        var verified = hasher.VerifyHashedPassword(found ?? new StoredUser(), passwordHash, password);
+        if (found is null || verified == PasswordVerificationResult.Failed)
+        {
+            LogSignInRefused();
+            return null;
+        }
+
+        var rehashed = verified == PasswordVerificationResult.SuccessRehashNeeded
+            ? hasher.HashPassword(found, password)
+            : null;
+
+        lock (sync)
+        {
+            // The user may have been deleted, or given a new password, meanwhile.
+            var user = file.Users.Find(u => u.Id == found.Id);
+            if (user is null || !string.Equals(user.PasswordHash, passwordHash, StringComparison.Ordinal))
             {
-                // As long as for a known user, so the time does not tell which.
-                hasher.VerifyHashedPassword(new StoredUser(), DummyHash, password);
                 LogSignInRefused();
                 return null;
             }
 
-            var verified = hasher.VerifyHashedPassword(user, user.PasswordHash, password);
-            if (verified == PasswordVerificationResult.Failed)
+            if (rehashed is not null)
             {
-                LogSignInRefused();
-                return null;
-            }
-
-            if (verified == PasswordVerificationResult.SuccessRehashNeeded)
-            {
-                user.PasswordHash = hasher.HashPassword(user, password);
+                user.PasswordHash = rehashed;
             }
 
             var session = StartSession(user);
@@ -331,16 +350,31 @@ public sealed partial class AccountService : IAccountService
         string currentPassword,
         string newPassword)
     {
+        // Hashing is done outside the lock, as for a sign-in.
+        StoredUser? found;
+        string passwordHash;
         lock (sync)
         {
-            var user = FindUser(userName);
-            if (user is null ||
-                hasher.VerifyHashedPassword(user, user.PasswordHash, currentPassword) == PasswordVerificationResult.Failed)
+            found = FindUser(userName);
+            passwordHash = found?.PasswordHash ?? DummyHash;
+        }
+
+        if (found is null ||
+            hasher.VerifyHashedPassword(found, passwordHash, currentPassword) == PasswordVerificationResult.Failed)
+        {
+            return false;
+        }
+
+        var newHash = hasher.HashPassword(found, newPassword);
+        lock (sync)
+        {
+            var user = file.Users.Find(u => u.Id == found.Id);
+            if (user is null || !string.Equals(user.PasswordHash, passwordHash, StringComparison.Ordinal))
             {
                 return false;
             }
 
-            user.PasswordHash = hasher.HashPassword(user, newPassword);
+            user.PasswordHash = newHash;
             file.Sessions.RemoveAll(s => s.UserId == user.Id);
             Save();
             return true;
@@ -529,6 +563,18 @@ public sealed partial class AccountService : IAccountService
             ExpiresAt = now + SessionLifetime,
         };
         file.Sessions.Add(session);
+
+        // A user signed in on more devices than this loses the session used least lately:
+        // the file and every token check stay small however often someone signs in.
+        var sessionsOfUser = file.Sessions.Where(s => s.UserId == user.Id).ToList();
+        if (sessionsOfUser.Count > MaxSessionsPerUser)
+        {
+            foreach (var oldest in sessionsOfUser.OrderBy(s => s.ExpiresAt).Take(sessionsOfUser.Count - MaxSessionsPerUser))
+            {
+                file.Sessions.Remove(oldest);
+                ForgetGraces(oldest.Id);
+            }
+        }
 
         return CreateSession(user, session.Id, refreshToken);
     }
