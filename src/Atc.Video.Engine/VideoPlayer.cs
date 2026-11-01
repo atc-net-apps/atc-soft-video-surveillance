@@ -11,6 +11,10 @@ namespace Atc.Video.Engine;
 public sealed unsafe partial class VideoPlayer : IVideoPlayer
 {
     private const int MaxConsecutiveReadErrors = 30;
+
+    // A stream that delivered packets and then sends nothing for this long is lost, however few read
+    // errors that took (each read waits 10 s): found in seconds, not after 30 timeouts (~5 minutes).
+    private static readonly TimeSpan StreamSilentAfter = TimeSpan.FromSeconds(20);
     private const int FpsUpdateIntervalMs = 1000;
     private const int ThreadJoinTimeoutMs = 5000;
 
@@ -869,9 +873,18 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 consecutiveErrors++;
                 lastErrorCode = ret;
 
-                if (consecutiveErrors > MaxConsecutiveReadErrors)
+                var silentFor = anyFramesReceived ? DateTime.UtcNow - LastPacketUtc : TimeSpan.Zero;
+                if (consecutiveErrors > MaxConsecutiveReadErrors || silentFor >= StreamSilentAfter)
                 {
-                    LogExceededConsecutiveReadErrors(source, MaxConsecutiveReadErrors);
+                    if (silentFor >= StreamSilentAfter)
+                    {
+                        LogStreamSilent(source, silentFor.TotalSeconds);
+                    }
+                    else
+                    {
+                        LogExceededConsecutiveReadErrors(source, MaxConsecutiveReadErrors);
+                    }
+
 
                     var reason = ReadErrorClassifier.Classify(
                         inputFormat,

@@ -254,6 +254,9 @@ public partial class CameraTile : IDisposable
 
     // Stream health monitoring
     private DispatcherTimer? streamHealthTimer;
+    // A connected stream with no packet for this long is taken as lost and reconnected.
+    private static readonly TimeSpan StreamStaleAfter = TimeSpan.FromSeconds(15);
+
     private long lastFramesDisplayed;
     private int staleStreamCheckCount;
 
@@ -2193,22 +2196,21 @@ public partial class CameraTile : IDisposable
             return;
         }
 
-        // Detect stale stream using two indicators:
-        // 1. FPS is very low (< 1) - indicates no/few frames being decoded
-        // 2. FramesDisplayed not advancing - DWM not presenting new frames
-        // Both must be true to avoid false positives
-        var fpsIsLow = currentFps < 1.0;
-        var framesNotAdvancing = currentFrames == lastFramesDisplayed;
-
-        // Stream is stale if FPS is low AND frames aren't advancing
-        var isStale = fpsIsLow && framesNotAdvancing;
+        // A stream is stale when no packet has come for StreamStaleAfter: the recorder writes
+        // packets, so that is what a recording needs. (The frame rate cannot tell: it is only
+        // measured when a frame arrives, so it keeps its last value while nothing comes.) Before
+        // the first packet, frames that do not advance over three checks (15 s) count instead.
+        var lastPacket = Player.LastPacketUtc;
+        var isStale = lastPacket > DateTime.MinValue
+            ? DateTime.UtcNow - lastPacket >= StreamStaleAfter
+            : currentFrames == lastFramesDisplayed && currentFps < 1.0;
 
         if (isStale)
         {
             staleStreamCheckCount++;
 
-            // If stale for 3 consecutive checks (15 seconds), trigger reconnect
-            if (staleStreamCheckCount >= 3)
+            // Silent past the limit, or (without packets) stale for 3 checks: reconnect.
+            if (lastPacket > DateTime.MinValue || staleStreamCheckCount >= 3)
             {
                 LogStreamStaleDetected(Camera?.Display.DisplayName ?? "Unknown");
 

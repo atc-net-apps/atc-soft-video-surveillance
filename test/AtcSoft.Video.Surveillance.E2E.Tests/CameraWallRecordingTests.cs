@@ -118,6 +118,51 @@ public sealed class CameraWallRecordingTests
         LogFindings.AssertClean(run.LogFolder, "CameraWall");
     }
 
+    [Fact]
+    public void A_Camera_That_Hangs_Is_Noticed_In_Seconds_And_Its_Recording_Goes_On()
+    {
+        E2ESettings.SkipUnlessEnabled();
+        if (TestCameras.FFmpegTool is null)
+        {
+            Assert.Skip("The FFmpeg command-line tool is needed for the live test cameras.");
+        }
+
+        using var run = new CameraWallRun(liveCameraCount: 1, recordOnConnect: true);
+        var app = run.App;
+        var main = app.WaitForWindowTitled(CameraWallRun.MainWindowTitle, DesktopApp.StartTimeout);
+        var recordings = Path.Combine(run.DataFolder, "recordings");
+        app.Find(main, "Connected  1", ControlType.Text, TimeSpan.FromSeconds(30));
+        var first = WaitForRecordings(app, recordings, 1).Files.Single();
+        Thread.Sleep(Pause);
+
+        // The camera hangs for 40 s: the connection stays open and nothing comes.
+        run.LiveCameras[0].Hang(TimeSpan.FromSeconds(40));
+        var hungAt = Stopwatch.StartNew();
+
+        // Noticed within seconds (not ~5 minutes of read time-outs), reconnected once the
+        // camera answers again, and the recording goes on in a new file.
+        var deadline = TimeSpan.FromSeconds(40) + TimeSpan.FromSeconds(90);
+        List<string> ongoing = [];
+        while (hungAt.Elapsed < deadline)
+        {
+            ongoing = Ongoing(recordings);
+            if (ongoing.Count == 1 && !string.Equals(ongoing[0], first, StringComparison.OrdinalIgnoreCase))
+            {
+                break;
+            }
+
+            app.Process.HasExited.Should().BeFalse("CameraWall is still running");
+            Thread.Sleep(1000);
+        }
+
+        ongoing.Should().ContainSingle().Which.Should().NotBe(first, "the recording goes on in a new file after the camera answers again");
+
+        var closed = app.CloseApp(main);
+        closed.Should().BeTrue("CameraWall closes when its main window closes");
+        DurationOf(first).Should().BeGreaterThan(TimeSpan.Zero, "the file of before the hang is playable");
+        LogFindings.AssertClean(run.LogFolder, "CameraWall");
+    }
+
     // The recordings being written: those whose file a recorder has open.
     private static List<string> Ongoing(string recordings)
         => Directory.Exists(recordings)

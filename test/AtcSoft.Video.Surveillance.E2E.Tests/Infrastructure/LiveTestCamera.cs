@@ -5,7 +5,7 @@ namespace AtcSoft.Video.Surveillance.E2E.Infrastructure;
 /// ends when it goes, so this starts FFmpeg again on the same port each time: the camera
 /// survives a reconnect, an edit and a second viewer after the first.
 /// </summary>
-internal sealed class LiveTestCamera : IDisposable
+internal sealed partial class LiveTestCamera : IDisposable
 {
     private readonly string ffmpeg;
     private readonly int port;
@@ -36,6 +36,32 @@ internal sealed class LiveTestCamera : IDisposable
     /// the stream ends at once and the camera answers nothing until the time is up.
     /// </summary>
     /// <param name="downFor">How long the camera is gone.</param>
+    /// <summary>
+    /// Makes the camera hang: it keeps the connection open but sends nothing for a while, as a camera
+    /// that freezes or a network path that dies without closing. Then it goes on.
+    /// </summary>
+    /// <param name="hangFor">How long it sends nothing.</param>
+    public void Hang(TimeSpan hangFor)
+    {
+        nint handle;
+        lock (gate)
+        {
+            if (current is null || current.HasExited)
+            {
+                return;
+            }
+
+            handle = current.Handle;
+            _ = NtSuspendProcess(handle);
+        }
+
+        _ = Task.Delay(hangFor, CancellationToken.None).ContinueWith(
+            _ => Resume(handle),
+            CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default);
+    }
+
     public void DropOut(TimeSpan downFor)
     {
         lock (gate)
@@ -64,6 +90,20 @@ internal sealed class LiveTestCamera : IDisposable
 
         stop.Dispose();
     }
+
+    private void Resume(nint handle)
+    {
+        lock (gate)
+        {
+            _ = NtResumeProcess(handle);
+        }
+    }
+
+    [System.Runtime.InteropServices.LibraryImport("ntdll.dll")]
+    private static partial int NtSuspendProcess(nint process);
+
+    [System.Runtime.InteropServices.LibraryImport("ntdll.dll")]
+    private static partial int NtResumeProcess(nint process);
 
     private static void Kill(Process? process)
     {
