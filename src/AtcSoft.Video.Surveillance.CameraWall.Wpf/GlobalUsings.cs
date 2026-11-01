@@ -41,6 +41,7 @@ global using BoundingBox = AtcSoft.Video.Surveillance.Models.BoundingBox;
 global using BuiltInMotionDetector = AtcSoft.Video.Surveillance.Helpers.MotionDetection.BuiltInMotionDetector;
 global using CameraConnectionTypeHelper = AtcSoft.Video.Surveillance.Helpers.CameraConnectionTypeHelper;
 global using CameraLayoutItem = AtcSoft.Video.Surveillance.Models.CameraLayoutItem;
+global using CameraStreamOptions = AtcSoft.Video.Surveillance.Wpf.Core.Helpers.CameraStreamOptions;
 global using ConnectionState = Atc.Network.ConnectionState;
 global using DiskSpaceGuard = AtcSoft.Video.Surveillance.Helpers.DiskSpaceGuard;
 global using DiskSpaceGuardLog = AtcSoft.Video.Surveillance.Helpers.DiskSpaceGuardLog;

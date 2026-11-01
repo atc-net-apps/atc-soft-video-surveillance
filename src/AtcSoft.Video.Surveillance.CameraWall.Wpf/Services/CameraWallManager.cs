@@ -1121,6 +1121,9 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
                 recordOnMotion);
         }
 
+        // The cameras that record on motion and this layout leaves out are watched without a tile.
+        WatchMotionCamerasNoLayoutShows();
+
         UpdateStatus(string.Format(CultureInfo.CurrentCulture, Translations.LoadedLayout1, CurrentLayout.Name));
     }
 
@@ -1216,6 +1219,9 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
                 recordOnConnect,
                 recordOnMotion);
         }
+
+        // The cameras that record on motion and the start-up layout leaves out are watched without a tile.
+        WatchMotionCamerasNoLayoutShows();
 
         UpdateStatus(string.Format(CultureInfo.CurrentCulture, Translations.LoadedCameras1, camerasToLoad.Count));
     }

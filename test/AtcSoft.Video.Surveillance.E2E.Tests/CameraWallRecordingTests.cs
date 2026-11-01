@@ -208,6 +208,35 @@ public sealed class CameraWallRecordingTests
     }
 
     [Fact]
+    public void A_Camera_That_Records_On_Motion_And_Never_Had_A_Tile_Records_Its_Motion()
+    {
+        E2ESettings.SkipUnlessEnabled();
+        if (TestCameras.FFmpegTool is null)
+        {
+            Assert.Skip("The FFmpeg command-line tool is needed for the live test cameras.");
+        }
+
+        // The app starts with the layout that shows only the first camera. Before, the second camera
+        // was never connected (cameras connected only through a tile), and its motion went unrecorded.
+        using var run = new CameraWallRun(liveCameraCount: 2, recordOnMotion: true, startOnSecondLayout: true);
+        var app = run.App;
+        var main = app.WaitForWindowTitled(CameraWallRun.MainWindowTitle, DesktopApp.StartTimeout);
+        var recordings = Path.Combine(run.DataFolder, "recordings");
+        app.Find(main, "Cameras  1", ControlType.Text, TimeSpan.FromSeconds(30));
+        WaitForRecordings(app, recordings, 2);
+
+        Directory.EnumerateFiles(recordings, "*.*", SearchOption.AllDirectories)
+            .Where(f => f.Contains(CameraWallRun.LiveCameraName(1), StringComparison.OrdinalIgnoreCase) &&
+                        (f.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".mkv", StringComparison.OrdinalIgnoreCase)))
+            .Where(RecordingPathHelper.IsBeingWritten)
+            .Should().ContainSingle("the camera no layout shows records its motion");
+
+        var closed = app.CloseApp(main);
+        closed.Should().BeTrue("CameraWall closes when its main window closes");
+        LogFindings.AssertClean(run.LogFolder, "CameraWall");
+    }
+
+    [Fact]
     public void A_Camera_That_Hangs_Is_Noticed_In_Seconds_And_Its_Recording_Goes_On()
     {
         E2ESettings.SkipUnlessEnabled();

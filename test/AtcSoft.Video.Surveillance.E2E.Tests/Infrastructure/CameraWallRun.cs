@@ -26,12 +26,14 @@ internal sealed class CameraWallRun : IDisposable
     /// <param name="recordOnConnect">Whether each camera records as soon as it connects.</param>
     /// <param name="recordOnMotion">Whether each camera records on motion (the test pattern moves all the time).</param>
     /// <param name="secondLayout">Whether there is a second layout, <see cref="SecondLayoutName"/>, with only the first live camera.</param>
+    /// <param name="startOnSecondLayout">Whether the app starts with the second layout, so the other cameras never have a tile.</param>
     public CameraWallRun(
         IReadOnlyDictionary<string, string>? environment = null,
         int liveCameraCount = 1,
         bool recordOnConnect = false,
         bool recordOnMotion = false,
-        bool secondLayout = false)
+        bool secondLayout = false,
+        bool startOnSecondLayout = false)
     {
         // A folder of its own for each run: seeding adds to the cameras a folder has, and a run that
         // met the cameras of the run before it waited for cameras that were not its own.
@@ -51,7 +53,7 @@ internal sealed class CameraWallRun : IDisposable
         }
 
         HasLiveCamera = liveCameras.Count > 0;
-        Seed(liveCameras.Select(c => c.Port).ToList(), recordOnConnect, recordOnMotion, secondLayout);
+        Seed(liveCameras.Select(c => c.Port).ToList(), recordOnConnect, recordOnMotion, secondLayout || startOnSecondLayout, startOnSecondLayout);
 
         var process = ChildProcess.Start(
             E2ESettings.CameraWallExe,
@@ -98,7 +100,8 @@ internal sealed class CameraWallRun : IDisposable
         IReadOnlyList<int> livePorts,
         bool recordOnConnect,
         bool recordOnMotion,
-        bool secondLayout)
+        bool secondLayout,
+        bool startOnSecondLayout)
     {
         var settings = new ApplicationSettingsService(Path.Combine(DataFolder, "settings.json"));
         settings.General.Language = "1033";
@@ -158,14 +161,18 @@ internal sealed class CameraWallRun : IDisposable
         }
 
         storage.AddOrUpdateLayout(layout);
+        storage.StartupLayoutId = layout.Id;
         if (secondLayout && layout.Items.Count > 0)
         {
             var second = new CameraLayout { Name = SecondLayoutName };
             second.Items.Add(new CameraLayoutItem { CameraId = layout.Items[0].CameraId, OrderNumber = 0 });
             storage.AddOrUpdateLayout(second);
+            if (startOnSecondLayout)
+            {
+                storage.StartupLayoutId = second.Id;
+            }
         }
 
-        storage.StartupLayoutId = layout.Id;
         storage.Save();
     }
 

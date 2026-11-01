@@ -35,7 +35,7 @@ public sealed class ActivityIndexService : BackgroundServiceBase<ActivityIndexSe
             recordingService,
             motionDetectionService,
             cameraId => storageService.GetCameraById(cameraId) is { } camera
-                ? Resolve(camera, settingsService.MotionDetection)
+                ? CameraMotionSettings.Resolve(camera, settingsService.MotionDetection)
                 : null,
             () => settingsService.Recording.EnableActivityIndex,
             cameraId => storageService.GetCameraById(cameraId)?.MotionZones ?? []);
@@ -64,25 +64,5 @@ public sealed class ActivityIndexService : BackgroundServiceBase<ActivityIndexSe
     {
         recorder.Dispose();
         base.Dispose();
-    }
-
-    // The camera's own motion settings over the app's, as its tile resolves them.
-    private static MotionDetectionSettings Resolve(
-        CameraConfiguration camera,
-        MotionDetectionSettings defaults)
-    {
-        var overrides = camera.Overrides?.MotionDetection;
-        return new MotionDetectionSettings
-        {
-            Sensitivity = overrides?.Sensitivity ?? defaults.Sensitivity,
-            SmallestObjectPercent = overrides?.SmallestObjectPercent ?? defaults.SmallestObjectPercent,
-            StoppedObjectSeconds = overrides?.StoppedObjectSeconds ?? defaults.StoppedObjectSeconds,
-            IgnoreLightingChanges = overrides?.IgnoreLightingChanges ?? defaults.IgnoreLightingChanges,
-            MinimumChangePercent = overrides?.MinimumChangePercent ?? defaults.MinimumChangePercent,
-            AnalysisFrameRate = overrides?.AnalysisFrameRate ?? defaults.AnalysisFrameRate,
-            AnalysisWidth = overrides?.AnalysisWidth is > 0 and var ownWidth ? ownWidth : defaults.AnalysisWidth,
-            PostMotionDurationSeconds = overrides?.PostMotionDurationSeconds ?? defaults.PostMotionDurationSeconds,
-            CooldownSeconds = overrides?.CooldownSeconds ?? defaults.CooldownSeconds,
-        };
     }
 }

@@ -1713,36 +1713,7 @@ public partial class CameraTile : IDisposable
     }
 
     private StreamOptions BuildStreamOptions(CameraConfiguration camera)
-    {
-        var locator = camera.BuildSourceLocator();
-        return new StreamOptions
-        {
-            Source = camera.Display.DisplayName,
-            UseLowLatencyMode = camera.Stream.UseLowLatencyMode,
-            MaxLatencyMs = camera.Stream.MaxLatencyMs,
-            RtspTransport = camera.Stream.RtspTransport,
-            BufferDurationMs = camera.Stream.BufferDurationMs,
-            HardwareAcceleration = HardwareAcceleration,
-            MaxVerticalResolution = DropDownItemsFactory.GetMaxResolutionFromQuality(VideoQuality),
-            InputFormat = MapInputFormat(locator.InputFormat),
-            RawDeviceSpec = locator.RawDeviceSpec,
-            RecordAudio = locator.IncludesAudio,
-            RecordingPreRoll = AtcSoft.Video.Surveillance.Helpers.RecordingPreRoll.Motion,
-            TranscodeRecordingToH264 = TranscodeVideoCodec == VideoTranscodeCodec.H264,
-            VideoSize = locator.VideoSize,
-            FrameRate = locator.FrameRate,
-            PixelFormat = locator.PixelFormat,
-        };
-    }
-
-    private static InputFormatKind MapInputFormat(string? name)
-        => name switch
-        {
-            "dshow" => InputFormatKind.Dshow,
-            "v4l2" => InputFormatKind.V4l2,
-            "avfoundation" => InputFormatKind.AVFoundation,
-            _ => InputFormatKind.Auto,
-        };
+        => CameraStreamOptions.For(camera, HardwareAcceleration, VideoQuality, TranscodeVideoCodec);
 
     private void OnPlayerStateChanged(
         object? sender,
