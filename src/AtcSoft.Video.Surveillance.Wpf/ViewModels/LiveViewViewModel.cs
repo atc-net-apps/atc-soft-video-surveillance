@@ -496,7 +496,14 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
         // The window borrows the tile's player: when the tile goes (its camera
         // was removed, or all streams were stopped), the window goes with it.
         var following = WhenTileCloses(tile, () => _ = window.Dispatcher.InvokeAsync(window.Close));
-        window.Closed += (_, _) => following.Dispose();
+        window.Closed += (_, _) =>
+        {
+            following.Dispose();
+            tile.IsShownFullScreen = false;
+        };
+
+        // A camera shown full screen plays even while the grid leaves it out.
+        tile.IsShownFullScreen = true;
         window.Show();
     }
 

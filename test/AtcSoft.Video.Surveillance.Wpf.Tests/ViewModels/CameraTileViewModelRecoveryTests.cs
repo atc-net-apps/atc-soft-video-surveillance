@@ -112,6 +112,52 @@ public sealed class CameraTileViewModelRecoveryTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Tile_The_Grid_Leaves_Out_Rests_And_Plays_Again_When_Shown()
+    {
+        await sut.StartStreamAsync();
+        await WaitForAsync(() => player.State == PlayerState.Playing);
+
+        sut.IsShownInGrid = false;
+
+        player.State.Should().Be(PlayerState.Stopped);
+        await streams.Received(1).StopStreamAsync(cameraId, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        player.Fail();
+        sut.IsRetryScheduled.Should().BeFalse("a resting tile does not start again by itself");
+
+        sut.IsShownInGrid = true;
+
+        await WaitForAsync(() => player.Opened.Count == 2 && player.State == PlayerState.Playing);
+    }
+
+    [Fact]
+    public void A_Tile_Shown_Full_Screen_Plays_While_The_Grid_Leaves_It_Out()
+    {
+        sut.IsShownFullScreen = true;
+        sut.IsShownInGrid = false;
+
+        sut.TakeMotion(Motion(active: true)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void A_Tile_Shows_At_Most_Five_Motion_Events_A_Second_And_Always_The_End_Of_Motion()
+    {
+        var shown = 0;
+        for (var picture = 0; picture < 25; picture++)
+        {
+            shown += sut.TakeMotion(Motion(active: true)) ? 1 : 0;
+            time.Advance(TimeSpan.FromMilliseconds(40));
+        }
+
+        shown.Should().Be(5);
+        sut.TakeMotion(Motion(active: true)).Should().BeTrue();
+        sut.TakeMotion(Motion(active: true)).Should().BeFalse();
+        sut.TakeMotion(Motion(active: false)).Should().BeTrue();
+
+        sut.IsShownInGrid = false;
+        sut.TakeMotion(Motion(active: false)).Should().BeFalse("a camera that is not shown shows no motion");
+    }
+
+    [Fact]
     public async Task A_Stopped_Tile_Does_Not_Start_Again()
     {
         await sut.StartStreamAsync();
@@ -123,6 +169,16 @@ public sealed class CameraTileViewModelRecoveryTests : IDisposable
         sut.IsRetryScheduled.Should().BeFalse();
         player.Opened.Should().HaveCount(1);
     }
+
+    private MotionDetectedEvent Motion(bool active)
+        => new(
+            CameraId: cameraId,
+            IsMotionActive: active,
+            ChangePercentage: 1,
+            BoundingBoxes: [],
+            AnalysisWidth: 320,
+            AnalysisHeight: 180,
+            Timestamp: DateTimeOffset.UtcNow);
 
     private static async Task WaitForAsync(Func<bool> condition)
     {

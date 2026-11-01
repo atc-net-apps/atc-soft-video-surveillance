@@ -40,10 +40,14 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string displayName = string.Empty;
 
-    // False while the live view's filter or page leaves this camera out.
-    // The tile is then not shown; its stream keeps running.
-    [ObservableProperty]
+    // False while the live view's filter or page leaves this camera out. The
+    // tile is then not shown, and its stream rests (no decoder, no lease)
+    // unless a full screen window shows it; it starts again when shown.
+    [ObservableProperty(AfterChangedCallback = nameof(OnVisibilityChanged))]
     private bool isShownInGrid = true;
+
+    private bool isShownFullScreen;
+    private DateTimeOffset lastMotionShown = DateTimeOffset.MinValue;
 
     [ObservableProperty]
     private string description = string.Empty;
@@ -243,8 +247,9 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
             .StartStreamAsync(CameraId)
             .ConfigureAwait(false);
 
-        // The tile went while the server started the stream: the lease goes back.
-        if (disposed)
+        // The tile went (or was left out of the grid) while the server started
+        // the stream: the lease goes back.
+        if (disposed || IsResting)
         {
             await streams.StopStreamAsync(CameraId, lease.LeaseId).ConfigureAwait(false);
             return;
@@ -304,7 +309,7 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
     /// </summary>
     public async Task EnsureStreamAsync()
     {
-        if (disposed || stoppedByUser)
+        if (disposed || stoppedByUser || IsResting)
         {
             return;
         }
@@ -472,7 +477,7 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         lock (playerLock)
         {
             var current = Player;
-            if (disposed || stoppedByUser || current is null)
+            if (disposed || stoppedByUser || IsResting || current is null)
             {
                 return;
             }
@@ -619,7 +624,7 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
     {
         lock (retryLock)
         {
-            if (disposed || stoppedByUser)
+            if (disposed || stoppedByUser || IsResting)
             {
                 return;
             }
@@ -696,7 +701,7 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
     /// </summary>
     public async Task StartStreamOrRetryLaterAsync()
     {
-        if (disposed)
+        if (disposed || IsResting)
         {
             return;
         }
@@ -714,9 +719,98 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Gets the shortest time between two motion events a tile shows: the
+    /// server sends one for every picture it analyses. The end of motion
+    /// always passes, so the boxes never stay on a still picture.
+    /// </summary>
+    internal static TimeSpan MotionInterval { get; } = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a full screen window shows
+    /// this camera: its stream then plays even while the grid leaves it out.
+    /// </summary>
+    internal bool IsShownFullScreen
+    {
+        get => isShownFullScreen;
+        set
+        {
+            isShownFullScreen = value;
+            OnVisibilityChanged();
+        }
+    }
+
+    // Left out of the grid and not shown full screen: the stream rests.
+    private bool IsResting
+        => !IsShownInGrid && !isShownFullScreen;
+
+    private void OnVisibilityChanged()
+    {
+        if (disposed || stoppedByUser)
+        {
+            return;
+        }
+
+        if (IsResting)
+        {
+            Rest();
+        }
+        else if (!IsStreaming && !IsRetryScheduled)
+        {
+            _ = StartStreamOrRetryLaterAsync();
+        }
+    }
+
+    // Closes the player and gives the lease back, without counting as the
+    // user's stop: the stream starts again when the tile is shown.
+    private void Rest()
+    {
+        CancelStreamRetry();
+        lock (playerLock)
+        {
+            Player?.Close();
+        }
+
+        IsStreaming = false;
+        CurrentBoundingBoxes = [];
+        IsMotionDetected = false;
+        if (TakeLease() is { } lease)
+        {
+            _ = streams.StopStreamAsync(CameraId, lease);
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether a motion event is shown; it is then counted.
+    /// </summary>
+    internal bool TakeMotion(MotionDetectedEvent e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        if (e.CameraId != CameraId || IsResting)
+        {
+            return false;
+        }
+
+        var now = time.GetUtcNow();
+        if (!e.IsMotionActive)
+        {
+            lastMotionShown = DateTimeOffset.MinValue;
+            return true;
+        }
+
+        if (now - lastMotionShown < MotionInterval)
+        {
+            return false;
+        }
+
+        lastMotionShown = now;
+        return true;
+    }
+
     private void OnHubMotionDetected(MotionDetectedEvent e)
     {
-        if (e.CameraId != CameraId)
+        if (!TakeMotion(e))
         {
             return;
         }

@@ -206,6 +206,7 @@ else
 
     // The streams the viewer started: one that broke is started again.
     private readonly WantedStreams wanted = new();
+    private readonly MotionThrottle motionThrottle = new();
     private DotNetObjectReference<LiveView>? self;
     private bool left;
     private bool serverWasReached;
@@ -531,7 +532,11 @@ else
             OnConnectionStateChanged(connection);
         }
 
-        if (surveillanceEvent.Motion is { } motion)
+        // Only for a camera that plays here, and at most five a second: the
+        // server sends one for every picture it analyses.
+        if (surveillanceEvent.Motion is { } motion
+            && (streamUrls.ContainsKey(motion.CameraId) || motionStates.ContainsKey(motion.CameraId))
+            && motionThrottle.ShouldShow(motion.CameraId, motion.IsMotionActive))
         {
             OnMotionDetected(motion);
         }
