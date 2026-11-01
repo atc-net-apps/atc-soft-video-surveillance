@@ -5,7 +5,9 @@ namespace AtcSoft.Video.Surveillance.Api.Services;
 /// cannot be read is never mistaken for a missing one, and never written over while it could
 /// not be kept. A file that cannot be read is logged at Error and copied aside. A file that is
 /// locked at start-up (a backup or a virus scanner) is waited for. When it can be neither read
-/// nor copied aside, saving is refused until it can be copied aside.
+/// nor copied aside, saving is refused until the server is restarted: the file was most likely
+/// fine, only busy, and what the server holds instead (no cameras, default settings) must never
+/// replace it.
 /// </summary>
 public sealed partial class ServerDataFile
 {
@@ -132,7 +134,7 @@ public sealed partial class ServerDataFile
         JsonSerializerOptions? options,
         Action<string, string>? writeTempFile = null)
     {
-        if (!TryPreservePending())
+        if (!MayOverwrite)
         {
             LogSaveRefused(Path);
             return false;
@@ -147,37 +149,6 @@ public sealed partial class ServerDataFile
         return false;
     }
 
-    // A file that was locked at start-up may be free by now: once it is copied aside, saving
-    // can no longer lose it.
-    private bool TryPreservePending()
-    {
-        lock (sync)
-        {
-            if (unpreserved.Count == 0)
-            {
-                return true;
-            }
-
-            foreach (var file in unpreserved.ToList())
-            {
-                if (!File.Exists(file))
-                {
-                    unpreserved.Remove(file);
-                    continue;
-                }
-
-                if (SafeJsonFile.TryPreserve(file, out var copy))
-                {
-                    unpreserved.Remove(file);
-                    onPreserved?.Invoke(copy);
-                    LogPreservedLater(file, copy);
-                }
-            }
-
-            return unpreserved.Count == 0;
-        }
-    }
-
     [LoggerMessage(Level = LogLevel.Warning, Message = "The data file {Path} is missing; its backup (.bak) was read instead")]
     private partial void LogReadFromBackupMissing(string path);
 
@@ -187,14 +158,11 @@ public sealed partial class ServerDataFile
     [LoggerMessage(Level = LogLevel.Error, Message = "The data file {Path} and its backup could not be read; the server starts without what they hold. The files that could not be read were copied to: {Copies}")]
     private partial void LogUnreadable(Exception? ex, string path, string copies);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "The data file {Path} could not be read, and {Files} could not be copied aside; changes are not saved to it until they can be. Restart the server once the file can be read")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "The data file {Path} could not be read, and {Files} could not be copied aside; changes are not saved to it until the server is restarted with the file readable")]
     private partial void LogNotSaving(string path, string files);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Not saving {Path}: a file that could not be read at start-up would be lost; restart the server once the file can be read")]
     private partial void LogSaveRefused(string path);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "The data file {File}, which could not be read at start-up, was copied to {Copy}; it is now saved over")]
-    private partial void LogPreservedLater(string file, string copy);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to save {Path}")]
     private partial void LogSaveFailed(string path);

@@ -145,8 +145,9 @@ public sealed class JsonCameraStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public void A_File_That_Was_Locked_At_Start_Up_Is_Copied_Aside_Before_The_First_Save_Once_It_Is_Free()
+    public void A_File_That_Was_Locked_At_Start_Up_Is_Not_Saved_Over_After_The_Lock_Is_Gone()
     {
+        // It was most likely fine, only busy: the server's empty list must never replace it.
         var camera = CreateCamera();
         CreateSut().AddOrUpdateCamera(camera);
         File.Delete(FilePath + ".bak");
@@ -160,9 +161,8 @@ public sealed class JsonCameraStorageServiceTests : IDisposable
 
         sut.AddOrUpdateCamera(CreateCamera());
 
-        Directory.GetFiles(folder, "cameras.json.unreadable-*")
-            .Should().ContainSingle()
-            .Which.Should().Match(copy => File.ReadAllText(copy) == before);
+        File.ReadAllText(FilePath).Should().Be(before);
+        CreateSut().GetCameraById(camera.Id).Should().NotBeNull("a restart reads it");
     }
 
     [Fact]
