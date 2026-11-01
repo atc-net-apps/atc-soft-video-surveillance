@@ -5,7 +5,14 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.Models;
 /// </summary>
 public class RecordingEntry : INotifyPropertyChanged
 {
+    // The list shows thumbnails small; the full picture is read only for the preview.
+    private const int ThumbnailDecodeWidth = 320;
+
     private bool isDurationPending;
+
+    // The thumbnail as the list shows it, read once: the grid asks for it again at every redraw.
+    private BitmapImage? thumbnailImage;
+    private string? thumbnailImagePath;
 
     /// <inheritdoc />
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -165,6 +172,8 @@ public class RecordingEntry : INotifyPropertyChanged
         Duration = duration;
         IsBeingRecorded = false;
         isDurationPending = false;
+        thumbnailImage = null;
+        thumbnailImagePath = null;
 
         foreach (var name in (string[])[
             nameof(IsBeingRecorded), nameof(FileSizeBytes), nameof(Duration),
@@ -222,6 +231,11 @@ public class RecordingEntry : INotifyPropertyChanged
         get
         {
             var path = ThumbnailPath;
+            if (thumbnailImage is not null && string.Equals(path, thumbnailImagePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return thumbnailImage;
+            }
+
             if (!File.Exists(path))
             {
                 return null;
@@ -232,9 +246,12 @@ public class RecordingEntry : INotifyPropertyChanged
                 var image = new BitmapImage();
                 image.BeginInit();
                 image.CacheOption = BitmapCacheOption.OnLoad;
+                image.DecodePixelWidth = ThumbnailDecodeWidth;
                 image.UriSource = new Uri(path, UriKind.Absolute);
                 image.EndInit();
                 image.Freeze();
+                thumbnailImage = image;
+                thumbnailImagePath = path;
                 return image;
             }
             catch

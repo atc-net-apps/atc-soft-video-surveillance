@@ -11,6 +11,9 @@ public partial class MainWindowViewModel : MainWindowViewModelBase
     private readonly IDialogService dialogService;
     private readonly IApplicationSettingsService settingsService;
     private readonly DispatcherTimer diskSpaceTimer;
+
+    // 1 while the free space is being read.
+    private int diskSpaceReading;
     private CameraGrid? cameraGrid;
 
     /// <summary>
@@ -177,14 +180,37 @@ public partial class MainWindowViewModel : MainWindowViewModelBase
     /// </summary>
     public bool HasDiskSpace => DiskSpaceText.Length > 0;
 
+    // The free space is read in the background (a network drive can take seconds to answer), and
+    // shown on the UI thread. A read still going skips the next tick.
     private void RefreshDiskSpace()
     {
-        var recording = settingsService.Recording;
-        var status = AtcSoft.Video.Surveillance.Helpers.DiskSpaceStatus.Read(
-            recording.RecordingPath,
-            recording.Cleanup.MinFreeSpaceMb,
-            recording.Cleanup.EnableDiskSpaceGuard);
+        if (Interlocked.Exchange(ref diskSpaceReading, 1) == 1)
+        {
+            return;
+        }
 
+        var recording = settingsService.Recording;
+        var path = recording.RecordingPath;
+        var minimum = recording.Cleanup.MinFreeSpaceMb;
+        var guard = recording.Cleanup.EnableDiskSpaceGuard;
+        var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var status = AtcSoft.Video.Surveillance.Helpers.DiskSpaceStatus.Read(path, minimum, guard);
+                _ = dispatcher.BeginInvoke(() => ShowDiskSpace(status));
+            }
+            finally
+            {
+                Interlocked.Exchange(ref diskSpaceReading, 0);
+            }
+        });
+    }
+
+    private void ShowDiskSpace(
+        AtcSoft.Video.Surveillance.Helpers.DiskSpaceStatus? status)
+    {
         DiskSpaceText = status?.Text ?? string.Empty;
         IsDiskSpaceLow = status?.IsLow ?? false;
         OnPropertyChanged(nameof(DiskSpaceText));

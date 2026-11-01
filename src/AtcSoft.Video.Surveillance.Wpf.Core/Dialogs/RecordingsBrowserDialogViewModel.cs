@@ -166,20 +166,20 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     /// Gets a value indicating whether a recording can be played. One that
     /// is still being recorded cannot: it would show a black picture.
     /// </summary>
-    public bool CanPlay => IsFinished(SelectedRecording);
+    public bool CanPlay => selectedIsFinished;
 
     /// <summary>
     /// Gets a value indicating whether a recording can be deleted. One that
     /// is still being recorded cannot: the recorder has the file.
     /// </summary>
-    public bool CanDelete => IsFinished(SelectedRecording);
+    public bool CanDelete => selectedIsFinished;
 
     /// <summary>
     /// Gets a value indicating whether the selected recording can be analysed for its activity
     /// timeline: a finished recording without an index, while no other is being analysed.
     /// </summary>
     public bool CanAnalyse
-        => IsFinished(SelectedRecording) && SelectedRecording!.Activity is null && !IsAnalysing;
+        => selectedIsFinished && SelectedRecording!.Activity is null && !IsAnalysing;
 
     /// <summary>
     /// Gets a value indicating whether a recording is being analysed.
@@ -373,7 +373,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private void Play()
     {
-        if (SelectedRecording is null || !CanPlay)
+        if (SelectedRecording is null || !CanPlay || !IsFinishedNow())
         {
             return;
         }
@@ -384,7 +384,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     [RelayCommand(CanExecute = nameof(CanDelete))]
     private void Delete()
     {
-        if (SelectedRecording is null || !CanDelete)
+        if (SelectedRecording is null || !CanDelete || !IsFinishedNow())
         {
             return;
         }
@@ -525,7 +525,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     [RelayCommand("Analyse", CanExecute = nameof(CanAnalyse))]
     private async Task AnalyseAsync()
     {
-        if (SelectedRecording is not { } recording || !CanAnalyse)
+        if (SelectedRecording is not { } recording || !CanAnalyse || !IsFinishedNow())
         {
             return;
         }
@@ -583,8 +583,23 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         }
     }
 
+    // Asks the file again just before a command uses it: a recording may have started meanwhile.
+    private bool IsFinishedNow()
+    {
+        var finished = IsFinished(SelectedRecording);
+        if (finished != selectedIsFinished)
+        {
+            OnSelectedRecordingChanged();
+        }
+
+        return finished;
+    }
+
     private void OnSelectedRecordingChanged()
     {
+        // The file is asked once here (and again when a command runs), not on every input event:
+        // WPF asks the commands whether they can run at each mouse move and key press.
+        selectedIsFinished = IsFinished(SelectedRecording);
         OnPropertyChanged(nameof(CanPlay));
         OnPropertyChanged(nameof(CanDelete));
         OnPropertyChanged(nameof(CanAnalyse));
@@ -825,6 +840,10 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
 
     // Filters and a selection to apply once the list is in.
     private RecordingsBrowserState? pendingState;
+
+    // Whether the selected recording is finished (can be played, deleted, analysed), as found when
+    // it was selected or the list was last brought up to date.
+    private bool selectedIsFinished;
 
     // Null for a file that went away or cannot be read while the list is read.
     private static RecordingEntry? CreateEntry(
