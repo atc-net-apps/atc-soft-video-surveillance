@@ -241,8 +241,8 @@ try
 
     // An activity index beside every recording, for the timelines.
     // A summary is about 17 KB: at most 12,000 (some 200 MB) are kept, a week of
-    // ten-minute recordings of a dozen cameras, so a long run cannot grow it to
-    // most of a gigabyte. A wider timeline reads the rest again.
+    // ten-minute recordings of ten cameras, so a long run cannot grow it to most
+    // of a gigabyte. A timeline over more recordings than that reads them again.
     builder.Services.AddSingleton(new ActivitySummaryCache(capacity: 5000, maximumCapacity: 12_000));
     builder.Services.AddSingleton(new ActivitySparklineCache());
     builder.Services.AddSingleton(new ActivityIndexServiceOptions());

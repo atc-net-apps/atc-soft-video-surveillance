@@ -602,6 +602,9 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
     private IMediaPipeline OpenManagedPipeline(CameraConfiguration camera)
     {
+        // Opened as the camera is now: an edit made while a pass was running
+        // (which reads the cameras once) is not opened with the old address.
+        camera = storageService.GetCameraById(camera.Id) ?? camera;
         var pipeline = pipelineFactory.Create(camera);
         managedPipelines[camera.Id] = pipeline;
 
