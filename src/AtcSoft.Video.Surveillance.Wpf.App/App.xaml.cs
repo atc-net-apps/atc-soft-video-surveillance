@@ -257,10 +257,10 @@ public partial class App
         RenderSplashMessage(Translations.StartingServices, 20);
         await host.StartAsync();
 
-        // After a sleep, or on another network, the event stream's connection may
-        // be dead without a word: it is opened again at once.
+        // After a sleep the event stream's connection may be dead without a word:
+        // it is opened again at once. (A network change is left to the watchdog:
+        // virtual adapters and VPNs change addresses often, for nothing.)
         Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
-        System.Net.NetworkInformation.NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
 
         // Sign in (35%): the session of the last start, else the dialog. The
         // event stream and everything after this needs it.
@@ -577,11 +577,6 @@ public partial class App
         }
     }
 
-    private void OnNetworkAddressChanged(
-        object? sender,
-        EventArgs e)
-        => host?.Services.GetService<EventStreamWatchdog>()?.AbortAll();
-
     private static void RenderSplashMessage(
         string message,
         int percentage)
@@ -603,7 +598,6 @@ public partial class App
         LogAppClosing();
 
         Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
-        System.Net.NetworkInformation.NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
 
         // The streams' leases are given back first, before anything is
         // awaited: the process ends soon after this handler's first await.
