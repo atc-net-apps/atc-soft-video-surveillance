@@ -59,7 +59,7 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
         var thumbnailPath = string.IsNullOrEmpty(thumbnailFilePath)
             ? Path.ChangeExtension(videoFilePath, ".png")
             : thumbnailFilePath;
-        var context = new ThumbnailCaptureContext(cameraName, pipeline, thumbnailPath, tileCount);
+        var context = new ThumbnailCaptureContext(cameraName, pipeline, videoFilePath, thumbnailPath, tileCount);
 
         if (!captures.TryAdd(cameraId, context))
         {
@@ -322,9 +322,24 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
             // place. The recordings browser may read the same path
             // concurrently; without atomic replace it can observe a
             // partially-written PNG (corrupt image or GDI+ IOException).
+            // A recording that ended before its first picture has no video (the recorder removes
+            // it): it gets no thumbnail. Looked at before and after saving, as the video is closed
+            // while this runs.
+            if (!File.Exists(context.VideoPath))
+            {
+                LogThumbnailSkippedNoVideo(context.CameraName, context.VideoPath);
+                return;
+            }
+
             var tempPath = context.ThumbnailPath + ".tmp";
             thumbnail.Save(tempPath, DrawingImaging.ImageFormat.Png);
             File.Move(tempPath, context.ThumbnailPath, overwrite: true);
+            if (!File.Exists(context.VideoPath))
+            {
+                File.Delete(context.ThumbnailPath);
+                LogThumbnailSkippedNoVideo(context.CameraName, context.VideoPath);
+                return;
+            }
 
             LogGeneratedThumbnail(
                 context.CameraName,
@@ -352,11 +367,13 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
         public ThumbnailCaptureContext(
             string cameraName,
             IMediaPipeline pipeline,
+            string videoPath,
             string thumbnailPath,
             int tileCount = 4)
         {
             CameraName = cameraName;
             Pipeline = pipeline;
+            VideoPath = videoPath;
             ThumbnailPath = thumbnailPath;
             TileCount = tileCount;
             CancellationToken = cancellation.Token;
@@ -365,6 +382,8 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
         public string CameraName { get; }
 
         public IMediaPipeline Pipeline { get; }
+
+        public string VideoPath { get; }
 
         public string ThumbnailPath { get; }
 
