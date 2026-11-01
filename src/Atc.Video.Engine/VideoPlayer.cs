@@ -596,44 +596,29 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                     }
                 }
 
-                // CPU fallback.
-                AVFrame* clone;
-                lock (frameLock)
+                // CPU fallback. One capture at a time: the scaler and the PNG encoder are not
+                // thread-safe, Dispose must not free them under a capture that is still running, and
+                // the picture is taken (a decoder surface held) only once it is this capture's turn:
+                // captures waiting with a picture each could leave the decoder without surfaces.
+                lock (captureLock)
                 {
-                    if (latestFrame is null || latestFrame->width <= 0)
+                    if (disposed || CloneLatestFrame() is not { } clone)
                     {
                         return null;
                     }
 
-                    clone = av_frame_clone(latestFrame);
-                }
-
-                if (clone is null)
-                {
-                    return null;
-                }
-
-                try
-                {
-                    // One capture at a time: the scaler and the PNG encoder are
-                    // not thread-safe, and Dispose must not free them under a
-                    // capture that is still running.
-                    lock (captureLock)
+                    try
                     {
-                        if (disposed)
-                        {
-                            return null;
-                        }
-
                         // The GPU snapshot is already rotated; rotate here too so
                         // a capture looks the same whichever path produced it.
                         frameCapture ??= new FrameCapture();
-                        return frameCapture.CaptureFrame(clone, rotation);
+                        return frameCapture.CaptureFrame((AVFrame*)clone, rotation);
                     }
-                }
-                finally
-                {
-                    av_frame_free(ref clone);
+                    finally
+                    {
+                        var picture = (AVFrame*)clone;
+                        av_frame_free(ref picture);
+                    }
                 }
             },
             ct);
@@ -657,32 +642,25 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         return Task.Run(
             () =>
             {
-                AVFrame* clone;
-                lock (frameLock)
-                {
-                    if (latestFrame is null || latestFrame->width <= 0)
-                    {
-                        return null;
-                    }
-
-                    clone = av_frame_clone(latestFrame);
-                }
-
-                if (clone is null)
+                // The same lock as the PNG capture: one capture at a time, never after Dispose, and
+                // the picture is taken only once it is this capture's turn. A capture already
+                // running means this picture is skipped: analysis asks again a moment later, and
+                // captures piling up, each holding a decoder surface, left the decoder without any.
+                if (!captureLock.TryEnter())
                 {
                     return null;
                 }
 
                 try
                 {
-                    // The same lock as the PNG capture: one capture at a time, never after Dispose.
-                    lock (captureLock)
+                    if (disposed || CloneLatestFrame() is not { } cloned)
                     {
-                        if (disposed)
-                        {
-                            return null;
-                        }
+                        return null;
+                    }
 
+                    var clone = (AVFrame*)cloned;
+                    try
+                    {
                         greyScaler ??= new FrameScaler();
                         var pixels = greyScaler.ToPixels(clone, width, height, rotation);
                         var position = clone->pts != AV_NOPTS_VALUE && timeBase.Den != 0
@@ -690,13 +668,33 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                             : TimeSpan.Zero;
                         return pixels is null ? null : new GreyFrame(position, width, height, pixels);
                     }
+                    finally
+                    {
+                        av_frame_free(ref clone);
+                    }
                 }
                 finally
                 {
-                    av_frame_free(ref clone);
+                    captureLock.Exit();
                 }
             },
             ct);
+    }
+
+    // A reference to the newest decoded picture (null when there is none), as a pointer value so
+    // it can be passed in a pattern. The caller frees it with av_frame_free.
+    private nint? CloneLatestFrame()
+    {
+        lock (frameLock)
+        {
+            if (latestFrame is null || latestFrame->width <= 0)
+            {
+                return null;
+            }
+
+            var clone = av_frame_clone(latestFrame);
+            return clone is null ? null : (nint)clone;
+        }
     }
 
     public void Dispose()
