@@ -475,5 +475,11 @@ public partial class CameraWallApp
         LogAppClosed();
 
         Log.CloseAndFlush();
+
+        // Everything is written out: the recordings were stopped and their files finished, the host
+        // stopped, the log flushed. Once in a while the process did not end after this (held in
+        // native teardown: the graphics driver, FFmpeg), which also kept a restart after too many
+        // errors from taking over. It is ended here, with its exit code.
+        _ = NativeMethods.TerminateProcess(NativeMethods.GetCurrentProcess(), unchecked((uint)args.ApplicationExitCode));
     }
 }

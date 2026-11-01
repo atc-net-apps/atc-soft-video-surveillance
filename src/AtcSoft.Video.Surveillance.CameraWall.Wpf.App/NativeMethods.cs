@@ -17,4 +17,25 @@ internal static class NativeMethods
     internal static extern int RegisterApplicationRestart(
         string? commandLine,
         int flags);
+
+    /// <summary>
+    /// Ends this process at once, with an exit code (see CameraWallApp.ApplicationExit).
+    /// </summary>
+    /// <param name="process">The process: <see cref="GetCurrentProcess"/>.</param>
+    /// <param name="exitCode">The exit code.</param>
+    /// <returns>True when it was ended (it does not return then).</returns>
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    internal static extern bool TerminateProcess(
+        nint process,
+        uint exitCode);
+
+    /// <summary>
+    /// Gets a handle of this process (a pseudo handle, nothing to close).
+    /// </summary>
+    /// <returns>The handle.</returns>
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    internal static extern nint GetCurrentProcess();
 }
