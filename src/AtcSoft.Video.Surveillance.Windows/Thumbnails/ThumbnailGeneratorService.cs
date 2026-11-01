@@ -158,8 +158,15 @@ public partial class ThumbnailGeneratorService : IThumbnailGeneratorService
                 return;
             }
 
-            using var memoryStream = new MemoryStream(pngBytes);
-            var bitmap = new Drawing.Bitmap(memoryStream);
+            // GDI+ reads a bitmap's stream for as long as the bitmap lives, and this one is kept
+            // until the thumbnail is drawn: it is copied into a bitmap that owns its pixels.
+            Drawing.Bitmap bitmap;
+            using (var memoryStream = new MemoryStream(pngBytes))
+            using (var decoded = new Drawing.Bitmap(memoryStream))
+            {
+                bitmap = new Drawing.Bitmap(decoded);
+            }
+
             var frameIndex = context.TryAddFrame(bitmap);
             if (frameIndex < 0)
             {
