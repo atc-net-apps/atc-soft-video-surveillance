@@ -21,6 +21,9 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // sends packets all the time.
     private static readonly TimeSpan WatchedCameraSilenceLimit = TimeSpan.FromSeconds(30);
 
+    // The longest a camera the server records or watches waits between attempts.
+    private static readonly TimeSpan RecordedCameraMaxBackoff = TimeSpan.FromMinutes(2);
+
     // A recording that ran this long before it failed was not failing all along.
     private static readonly TimeSpan RecordingRanWell = TimeSpan.FromMinutes(5);
 
@@ -190,6 +193,14 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         recordingStarts.TryRemove(cameraId, out _);
         writeFailures.TryRemove(cameraId, out _);
     }
+
+    /// <summary>
+    /// Gets when a camera that could not be opened is tried next.
+    /// </summary>
+    /// <param name="cameraId">The camera.</param>
+    /// <returns>The time, in UTC; <c>null</c> when the camera is not waiting.</returns>
+    public DateTime? GetNextAttemptUtc(Guid cameraId)
+        => backoffs.TryGetValue(cameraId, out var state) ? state.NextAttemptUtc : null;
 
     /// <inheritdoc />
     public IMediaPipeline? FindPlayingPipeline(Guid cameraId)
@@ -1104,12 +1115,16 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // extra storage lookup on the hot path.
     private void RecordFailure(CameraConfiguration camera)
     {
+        // A camera the server records or watches is tried at least every two
+        // minutes: every minute it is not, nothing is recorded. One opened
+        // only for a viewer backs off further.
+        var maxDelay = ServerKeepsOpen(camera) ? RecordedCameraMaxBackoff : ReconnectBackoff.DefaultMaxDelay;
         var updated = backoffs.AddOrUpdate(
             camera.Id,
             _ => new BackoffState
             {
                 ConsecutiveFailures = 1,
-                NextAttemptUtc = DateTime.UtcNow + ReconnectBackoff.ComputeDelay(1),
+                NextAttemptUtc = DateTime.UtcNow + ReconnectBackoff.ComputeDelay(1, maxDelay: maxDelay),
             },
             (_, prev) =>
             {
@@ -1117,7 +1132,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                 return new BackoffState
                 {
                     ConsecutiveFailures = next,
-                    NextAttemptUtc = DateTime.UtcNow + ReconnectBackoff.ComputeDelay(next),
+                    NextAttemptUtc = DateTime.UtcNow + ReconnectBackoff.ComputeDelay(next, maxDelay: maxDelay),
                 };
             });
 

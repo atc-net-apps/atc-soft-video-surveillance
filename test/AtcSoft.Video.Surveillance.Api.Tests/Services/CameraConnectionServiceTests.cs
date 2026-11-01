@@ -192,6 +192,27 @@ public sealed class CameraConnectionServiceTests
         sut.FindPipeline(camera.Id).Should().BeNull();
     }
 
+    [Fact]
+    public async Task A_Recorded_Camera_That_Keeps_Failing_Is_Tried_Again_Within_Two_Minutes()
+    {
+        var (camera, storage, pipeline, _, _, sut) = CreateRecordedCamera();
+        using var _ = sut;
+        storage.GetCameraById(camera.Id).Returns(camera);
+        await sut.DoWorkAsync(CancellationToken.None);
+
+        for (var i = 0; i < 10; i++)
+        {
+            pipeline.ConnectionStateChanged += Raise.EventWith(new ConnectionStateChangedEventArgs(ConnectionState.Connecting, ConnectionState.Error));
+            if (sut.FindPipeline(camera.Id) is null)
+            {
+                break;
+            }
+        }
+
+        sut.GetNextAttemptUtc(camera.Id).Should().NotBeNull();
+        sut.GetNextAttemptUtc(camera.Id)!.Value.Should().BeOnOrBefore(DateTime.UtcNow.AddMinutes(2).AddSeconds(5));
+    }
+
     private static (CameraConfiguration Camera, ICameraStorageService Storage, IMediaPipeline Pipeline, IRecordingService Recordings, IMotionDetectionService Motion, CameraConnectionService Sut) CreateRecordedCamera()
     {
         var camera = new CameraConfiguration { Id = Guid.NewGuid() };
