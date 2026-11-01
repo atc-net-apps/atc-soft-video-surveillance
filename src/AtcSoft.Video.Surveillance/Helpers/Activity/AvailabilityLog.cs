@@ -58,6 +58,46 @@ public static class AvailabilityLog
         return [.. lines.Select(Parse).OfType<AvailabilityEntry>().OrderBy(e => e.Time)];
     }
 
+    /// <summary>
+    /// Drops the changes before a time from the history file at the path, keeping the last one
+    /// before it (it tells the state at that time). The file is replaced in one step.
+    /// </summary>
+    /// <param name="path">The file.</param>
+    /// <param name="keepFrom">The oldest time still asked for.</param>
+    /// <returns>How many changes were dropped.</returns>
+    public static int Trim(
+        string path,
+        DateTimeOffset keepFrom)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        lock (Writing)
+        {
+            var entries = Read(path);
+            var firstKept = 0;
+            while (firstKept + 1 < entries.Count && entries[firstKept + 1].Time <= keepFrom)
+            {
+                firstKept++;
+            }
+
+            if (firstKept == 0)
+            {
+                return 0;
+            }
+
+            var text = new StringBuilder();
+            foreach (var entry in entries.Skip(firstKept))
+            {
+                text.Append(Write(entry)).Append('\n');
+            }
+
+            var temp = path + ".tmp";
+            File.WriteAllText(temp, text.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            File.Move(temp, path, overwrite: true);
+            return firstKept;
+        }
+    }
+
     private static string Write(AvailabilityEntry entry)
     {
         using var buffer = new MemoryStream();

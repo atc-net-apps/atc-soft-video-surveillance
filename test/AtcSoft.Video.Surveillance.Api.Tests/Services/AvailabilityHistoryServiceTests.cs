@@ -68,12 +68,48 @@ public sealed class AvailabilityHistoryServiceTests : IDisposable
         await second.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    [Fact]
+    public async Task A_Camera_Change_Is_Written_By_The_Queue_And_Read_Back_After_It_Changed()
+    {
+        var cameraId = Guid.NewGuid();
+        using var sut = Service();
+        await sut.StartAsync(TestContext.Current.CancellationToken);
+
+        recordingService.Report(cameraId, ConnectionState.Connected);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline && !sut.For(cameraId).Any(e => e.Change == AvailabilityChange.Online))
+        {
+            await Task.Delay(20, TestContext.Current.CancellationToken);
+        }
+
+        sut.For(cameraId).Should().Contain(new AvailabilityEntry(Nine, AvailabilityChange.Online));
+        await sut.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task History_Older_Than_The_Recordings_Kept_Is_Dropped()
+    {
+        var cameraId = Guid.NewGuid();
+        var file = Path.Combine(dataPath, "availability", cameraId.ToString("N") + ".jsonl");
+        AvailabilityLog.Append(file, new AvailabilityEntry(Nine.AddDays(-90), AvailabilityChange.Online));
+        AvailabilityLog.Append(file, new AvailabilityEntry(Nine.AddDays(-80), AvailabilityChange.Offline));
+        AvailabilityLog.Append(file, new AvailabilityEntry(Nine.AddDays(-2), AvailabilityChange.Online));
+        var settings = Substitute.For<IApplicationSettingsService>();
+        settings.Recording.Returns(new RecordingSettings { Cleanup = { RecordingRetentionDays = 30 } });
+        using var sut = Service(settings);
+
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        AvailabilityLog.Read(file).Select(e => e.Time).Should().Equal(Nine.AddDays(-80), Nine.AddDays(-2));
+    }
+
     // A long startup delay: the tests call DoWorkAsync themselves.
-    private AvailabilityHistoryService Service()
+    private AvailabilityHistoryService Service(IApplicationSettingsService? settings = null)
         => new(
             NullLogger<AvailabilityHistoryService>.Instance,
             new AvailabilityHistoryServiceOptions { StartupDelaySeconds = ushort.MaxValue },
             recordingService,
             new ServerDataPaths(dataPath),
-            time);
+            time,
+            settings);
 }
