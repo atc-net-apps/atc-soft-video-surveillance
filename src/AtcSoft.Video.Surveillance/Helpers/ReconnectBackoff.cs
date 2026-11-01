@@ -23,6 +23,12 @@ public static class ReconnectBackoff
     public static readonly TimeSpan DefaultMaxDelay = TimeSpan.FromMinutes(15);
 
     /// <summary>
+    /// Ceiling for cameras (2 minutes): a camera that comes back after a power cut or a network
+    /// outage is seen again within two minutes, while a dead one is tried 30 times an hour.
+    /// </summary>
+    public static readonly TimeSpan CameraMaxDelay = TimeSpan.FromMinutes(2);
+
+    /// <summary>
     /// Returns the delay before the <paramref name="consecutiveFailures"/>
     /// reconnect attempt, doubling on each failure and capped at
     /// <paramref name="maxDelay"/>.

@@ -2111,10 +2111,11 @@ public partial class CameraTile : IDisposable
 
         reconnectAttemptCount++;
 
-        // Exponential backoff: base delay doubles each consecutive failure, capped at 15 min.
+        // Exponential backoff: base delay doubles each consecutive failure, capped at 2 minutes (a camera that is back is seen again soon).
         var delay = ReconnectBackoff.ComputeDelay(
             reconnectAttemptCount,
-            TimeSpan.FromSeconds(GetEffectiveReconnectDelaySeconds()));
+            TimeSpan.FromSeconds(GetEffectiveReconnectDelaySeconds()),
+            ReconnectBackoff.CameraMaxDelay);
 
         LogAutoReconnectScheduled(Camera.Display.DisplayName, (int)delay.TotalSeconds);
 
