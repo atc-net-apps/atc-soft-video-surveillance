@@ -173,7 +173,7 @@ public sealed partial class RecordingsViewModel : ViewModelBase
                 {
                     Recordings = new ObservableCollection<RecordingEntryViewModel>(
                         apiRecordings
-                            .Select(r => new RecordingEntryViewModel(r, apiBaseUri, session?.MediaToken))
+                            .Select(r => new RecordingEntryViewModel(r, apiBaseUri, () => session?.MediaToken))
                             .OrderByDescending(r => r.RecordingTime));
                 }
                 else

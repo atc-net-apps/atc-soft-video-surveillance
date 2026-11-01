@@ -97,6 +97,5 @@ public sealed class RecordingsViewModelCameraFilterTests
                 HasThumbnail: false,
                 InProgress: false,
                 ThumbnailPath: null),
-            ApiBaseUrl,
-            mediaToken: null);
+            ApiBaseUrl);
 }
