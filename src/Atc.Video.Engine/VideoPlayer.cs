@@ -44,6 +44,11 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     private Remuxer? liveRemuxer;
     private FrameEncoder? frameEncoder;
     private AudioEncoder? audioEncoder;
+
+    // The last packets of the run, for a recording to start from (none for a source that is encoded).
+    // Guarded by encoderLock.
+    private PacketHistory? history;
+    private TimeSpan recordingPreRoll;
     private volatile bool recordAudio;
     private volatile bool transcodeToH264;
 
@@ -145,6 +150,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         options ??= new StreamOptions();
         recordAudio = options.RecordAudio;
         transcodeToH264 = options.TranscodeRecordingToH264;
+        recordingPreRoll = options.RecordingPreRoll;
         var runCts = new CancellationTokenSource();
         demuxCts = runCts;
 
@@ -185,7 +191,25 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         SetState(PlayerState.Stopped);
     }
 
+    public DateTime? FindRecordingStart(TimeSpan preRoll)
+    {
+        lock (encoderLock)
+        {
+            return history?.FindStart(preRoll, DateTime.UtcNow);
+        }
+    }
+
     public void StartRecording(string outputFilePath)
+        => StartRecordingFrom(outputFilePath, startFromUtc: null);
+
+    public void StartRecording(
+        string outputFilePath,
+        DateTime startFromUtc)
+        => StartRecordingFrom(outputFilePath, startFromUtc);
+
+    private void StartRecordingFrom(
+        string outputFilePath,
+        DateTime? startFromUtc)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -231,6 +255,13 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 {
                     DisposeUnlessShared(sound);
                     throw;
+                }
+
+                if (startFromUtc is { } from && history is not null)
+                {
+                    var recorder = remuxer;
+                    var timeBase = source.VideoTimeBase;
+                    history.WriteFrom(from, packet => recorder.WritePacket((AVPacket*)packet, timeBase));
                 }
             }
         }
@@ -824,6 +855,17 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             localDecoder.Open(localDemuxer.VideoCodecParameters, threadCount, hwDeviceCtx);
             LogDecoderOpened(source, localDecoder.IsHardwareAccelerated);
 
+            // A run keeps its own packets: none from a run before (another stream, perhaps
+            // another codec) can go into a file of this one.
+            var runHistory = FrameEncoder.IsNeededFor(localDemuxer.VideoCodecParameters->codec_id, transcodeToH264)
+                ? null
+                : new PacketHistory(recordingPreRoll);
+            lock (encoderLock)
+            {
+                history?.Dispose();
+                history = runHistory;
+            }
+
             demuxer = localDemuxer;
             decoder = localDecoder;
             runDecoder = localDecoder;
@@ -892,6 +934,8 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             recordingHasSound = false;
             remuxer?.Dispose();
             remuxer = null;
+            history?.Dispose();
+            history = null;
 
             // The runs take turns, so the decoder in the field is this run's: the one it opened, or one
             // that replaced it after it failed (disposed here; the first is disposed by the run).
@@ -1078,6 +1122,10 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             {
                 liveRemuxer.WritePacket(demuxer!.CurrentPacket, demuxer.VideoTimeBase);
             }
+
+            // Kept after it was written: a recording started from the history has every packet
+            // once, either from it or from here.
+            history?.Add(demuxer!.CurrentPacket, DateTime.UtcNow);
         }
 
         // The packet is in the recording already: a decoder that fails costs the picture (and the

@@ -161,10 +161,13 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             return false;
         }
 
+        // A motion recording starts a few seconds before the motion, any other at the last key
+        // frame: the file, its session and its index are named by when its first picture came.
+        var startUtc = pipeline.FindRecordingStart(startedByMotion ? RecordingPreRoll.Motion : TimeSpan.Zero);
         string filePath;
         try
         {
-            filePath = GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera));
+            filePath = GenerateRecordingFilename(camera, GetEffectiveRecordingFormat(camera), startUtc ?? DateTime.UtcNow);
 
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -172,7 +175,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
                 Directory.CreateDirectory(directory);
             }
 
-            pipeline.StartRecording(filePath);
+            RecordingPreRoll.Start(pipeline, filePath, startUtc);
         }
         catch
         {
@@ -180,7 +183,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             throw;
         }
 
-        var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: !startedByMotion);
+        var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: !startedByMotion, startUtc);
         sessions[camera.Id] = session;
 
         if (borrowed)
@@ -420,6 +423,13 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
     public string GenerateRecordingFilename(
         CameraConfiguration camera,
         string format)
+        => GenerateRecordingFilename(camera, format, DateTime.UtcNow);
+
+    // Named by the time (UTC) of the file's first picture.
+    private string GenerateRecordingFilename(
+        CameraConfiguration camera,
+        string format,
+        DateTime startUtc)
     {
         ArgumentNullException.ThrowIfNull(camera);
 
@@ -427,7 +437,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         return UniqueFilename.EnsureUnique(RecordingPathHelper.BuildRecordingPath(
             GetEffectiveRecordingPath(camera),
             RecordingPathHelper.GetCameraFolderName(camera.Display.DisplayName, camera.Id),
-            DateTime.UtcNow,
+            startUtc,
             format,
             RecordingLayoutOptions.From(settingsService.Recording)));
     }

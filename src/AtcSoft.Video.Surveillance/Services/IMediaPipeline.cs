@@ -40,9 +40,30 @@ public interface IMediaPipeline : IDisposable
     void Close();
 
     /// <summary>
+    /// Finds where a recording started now would begin: a key frame the pipeline already has, at
+    /// least <paramref name="preRoll"/> back (see <see cref="Helpers.RecordingPreRoll"/>). Name the
+    /// file and its session by the time, and start with
+    /// <see cref="StartRecording(string, DateTime)"/>.
+    /// </summary>
+    /// <param name="preRoll">How far back the recording should start.</param>
+    /// <returns>When (UTC) that key frame arrived, or <see langword="null"/> when the pipeline keeps none (start with <see cref="StartRecording(string)"/>, the file then begins at the next key frame).</returns>
+    DateTime? FindRecordingStart(TimeSpan preRoll)
+        => null;
+
+    /// <summary>
     /// Starts recording the stream to a file.
     /// </summary>
     void StartRecording(string outputFilePath);
+
+    /// <summary>
+    /// Starts recording from the key frame <see cref="FindRecordingStart"/> found.
+    /// </summary>
+    /// <param name="outputFilePath">The file to write.</param>
+    /// <param name="startFromUtc">The time <see cref="FindRecordingStart"/> returned.</param>
+    void StartRecording(
+        string outputFilePath,
+        DateTime startFromUtc)
+        => StartRecording(outputFilePath);
 
     /// <summary>
     /// Stops the current recording.
@@ -55,7 +76,7 @@ public interface IMediaPipeline : IDisposable
     /// that packets arriving mid-switch land in either the previous or the
     /// new segment — never the close/open gap.
     /// Default implementation falls back to <see cref="StopRecording"/>
-    /// followed by <see cref="StartRecording"/>; override for atomicity.
+    /// followed by <see cref="StartRecording(string)"/>; override for atomicity.
     /// </summary>
     void SwitchRecording(string newOutputFilePath)
     {

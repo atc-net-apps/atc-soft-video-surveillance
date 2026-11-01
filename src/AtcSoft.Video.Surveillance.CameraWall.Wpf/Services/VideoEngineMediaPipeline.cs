@@ -66,6 +66,7 @@ public sealed class VideoEngineMediaPipeline : IMediaPipeline
             InputFormat = MapInputFormat(locator.InputFormat),
             RawDeviceSpec = locator.RawDeviceSpec,
             RecordAudio = locator.IncludesAudio,
+            RecordingPreRoll = AtcSoft.Video.Surveillance.Helpers.RecordingPreRoll.Motion,
             VideoSize = locator.VideoSize,
             FrameRate = locator.FrameRate,
             PixelFormat = locator.PixelFormat,
@@ -90,10 +91,23 @@ public sealed class VideoEngineMediaPipeline : IMediaPipeline
     }
 
     /// <inheritdoc />
+    public DateTime? FindRecordingStart(TimeSpan preRoll)
+        => player.FindRecordingStart(preRoll);
+
+    /// <inheritdoc />
     public void StartRecording(string outputFilePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputFilePath);
         player.StartRecording(outputFilePath);
+    }
+
+    /// <inheritdoc />
+    public void StartRecording(
+        string outputFilePath,
+        DateTime startFromUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputFilePath);
+        player.StartRecording(outputFilePath, startFromUtc);
     }
 
     /// <inheritdoc />

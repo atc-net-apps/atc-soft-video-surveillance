@@ -68,10 +68,35 @@ public interface IVideoPlayer : IDisposable
     void Close();
 
     /// <summary>
+    /// Finds where a recording started now would begin: the key frame it
+    /// already has at least <paramref name="preRoll"/> back (or the oldest
+    /// it kept). Pass the time to
+    /// <see cref="StartRecording(string, DateTime)"/>, and name the file by
+    /// it: it is when the file's first picture arrived.
+    /// </summary>
+    /// <param name="preRoll">How far back the recording should start; at most <see cref="StreamOptions.RecordingPreRoll"/>.</param>
+    /// <returns>The time (UTC) the key frame arrived, or <see langword="null"/> when the player has none kept (a recording then starts at the next key frame).</returns>
+    DateTime? FindRecordingStart(TimeSpan preRoll)
+        => null;
+
+    /// <summary>
     /// Starts recording the current stream to a file.
     /// </summary>
     /// <param name="outputFilePath">The output file path (extension determines container format).</param>
     void StartRecording(string outputFilePath);
+
+    /// <summary>
+    /// Starts recording from a key frame the player already has: the one
+    /// <see cref="FindRecordingStart"/> found, which arrived at
+    /// <paramref name="startFromUtc"/>. Without it (gone or never kept), as
+    /// <see cref="StartRecording(string)"/>.
+    /// </summary>
+    /// <param name="outputFilePath">The output file path (extension determines container format).</param>
+    /// <param name="startFromUtc">The time <see cref="FindRecordingStart"/> returned.</param>
+    void StartRecording(
+        string outputFilePath,
+        DateTime startFromUtc)
+        => StartRecording(outputFilePath);
 
     /// <summary>
     /// Stops the current recording.
@@ -83,7 +108,7 @@ public interface IVideoPlayer : IDisposable
     /// Packets arriving from the demux thread between Close and Open are
     /// not silently dropped — they land in either the previous or the new
     /// segment. If no recording is currently active, behaves like
-    /// <see cref="StartRecording"/>.
+    /// <see cref="StartRecording(string)"/>.
     /// </summary>
     void SwitchRecording(string newOutputFilePath);
 
@@ -137,7 +162,7 @@ public interface IVideoPlayer : IDisposable
     /// Sets the clockwise rotation applied to the live video, snapshots, and
     /// (via container metadata) any active or future recording.
     /// Safe to call before <see cref="Open"/> or while playing; the next
-    /// processed frame and any subsequent <see cref="StartRecording"/> reflect
+    /// processed frame and any subsequent <see cref="StartRecording(string)"/> reflect
     /// the new value.
     /// </summary>
     void SetRotation(VideoRotation rotation);

@@ -129,7 +129,8 @@ public partial class RecordingService : IRecordingService, IDisposable
         }
 
         var format = GetEffectiveRecordingFormat(camera);
-        var filePath = GenerateRecordingFilename(camera, format);
+        var startUtc = pipeline.FindRecordingStart(TimeSpan.Zero);
+        var filePath = GenerateRecordingFilename(camera, format, startUtc ?? DateTime.UtcNow);
 
         try
         {
@@ -141,10 +142,10 @@ public partial class RecordingService : IRecordingService, IDisposable
             }
 
             // Start recording via media pipeline
-            pipeline.StartRecording(filePath);
+            RecordingPreRoll.Start(pipeline, filePath, startUtc);
 
             // Create session
-            var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: true);
+            var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: true, startUtc);
             if (!sessions.TryAdd(camera.Id, session))
             {
                 pipeline.StopRecording();
@@ -292,7 +293,10 @@ public partial class RecordingService : IRecordingService, IDisposable
         }
 
         var format = GetEffectiveRecordingFormat(camera);
-        var filePath = GenerateRecordingFilename(camera, format);
+
+        // From a few seconds before the motion: the moment it was seen is in the file.
+        var startUtc = pipeline.FindRecordingStart(RecordingPreRoll.Motion);
+        var filePath = GenerateRecordingFilename(camera, format, startUtc ?? DateTime.UtcNow);
 
         try
         {
@@ -304,10 +308,10 @@ public partial class RecordingService : IRecordingService, IDisposable
             }
 
             // Start recording via media pipeline
-            pipeline.StartRecording(filePath);
+            RecordingPreRoll.Start(pipeline, filePath, startUtc);
 
             // Create session
-            var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: false)
+            var session = new RecordingSession(camera.Id, camera.Display.DisplayName, filePath, isManualRecording: false, startUtc)
             {
                 LastMotionTime = DateTime.UtcNow,
             };
@@ -379,13 +383,20 @@ public partial class RecordingService : IRecordingService, IDisposable
     public string GenerateRecordingFilename(
         CameraConfiguration camera,
         string format)
+        => GenerateRecordingFilename(camera, format, DateTime.UtcNow);
+
+    // Named by the time (UTC) of the file's first picture, as local time.
+    private string GenerateRecordingFilename(
+        CameraConfiguration camera,
+        string format,
+        DateTime startUtc)
     {
         ArgumentNullException.ThrowIfNull(camera);
 
         return UniqueFilename.EnsureUnique(RecordingPathHelper.BuildRecordingPath(
             GetEffectiveRecordingPath(camera),
             RecordingPathHelper.GetCameraFolderName(camera.Display.DisplayName, camera.Id),
-            DateTime.Now,
+            startUtc.ToLocalTime(),
             format,
             RecordingLayoutOptions.From(settingsService.Recording)));
     }

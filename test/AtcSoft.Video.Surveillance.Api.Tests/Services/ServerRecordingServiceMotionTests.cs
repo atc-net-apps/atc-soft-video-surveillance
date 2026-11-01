@@ -62,6 +62,32 @@ public sealed class ServerRecordingServiceMotionTests : IDisposable
     }
 
     [Fact]
+    public void A_Motion_Recording_Starts_Before_The_Motion_And_Is_Named_By_Its_First_Picture()
+    {
+        // Before, the file began at the first key frame after the motion was seen, and its name,
+        // session and index began at the moment it was asked for.
+        var firstPicture = new DateTime(2026, 11, 1, 10, 15, 30, 250, DateTimeKind.Utc);
+        pipeline.FindRecordingStart(RecordingPreRoll.Motion).Returns(firstPicture);
+
+        sut.TriggerMotionRecording(camera, pipeline).Should().BeTrue();
+
+        pipeline.Received(1).StartRecording(Arg.Is<string>(p => p.Contains("20261101_101530_250", StringComparison.Ordinal)), firstPicture);
+        pipeline.DidNotReceive().StartRecording(Arg.Any<string>());
+        sut.GetSession(camera.Id)!.StartTime.Should().Be(firstPicture, "the activity index starts with the session");
+    }
+
+    [Fact]
+    public void A_Pipeline_That_Keeps_Nothing_Starts_At_The_Next_Key_Frame_Named_By_Now()
+    {
+        var before = DateTime.UtcNow;
+
+        sut.TriggerMotionRecording(camera, pipeline).Should().BeTrue();
+
+        pipeline.Received(1).StartRecording(Arg.Any<string>());
+        sut.GetSession(camera.Id)!.StartTime.Should().BeOnOrAfter(before);
+    }
+
+    [Fact]
     public void More_Motion_During_A_Motion_Recording_Does_Not_Start_Another()
     {
         sut.TriggerMotionRecording(camera, pipeline);

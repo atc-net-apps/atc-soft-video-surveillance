@@ -1727,6 +1727,7 @@ public partial class CameraTile : IDisposable
             InputFormat = MapInputFormat(locator.InputFormat),
             RawDeviceSpec = locator.RawDeviceSpec,
             RecordAudio = locator.IncludesAudio,
+            RecordingPreRoll = AtcSoft.Video.Surveillance.Helpers.RecordingPreRoll.Motion,
             TranscodeRecordingToH264 = TranscodeVideoCodec == VideoTranscodeCodec.H264,
             VideoSize = locator.VideoSize,
             FrameRate = locator.FrameRate,

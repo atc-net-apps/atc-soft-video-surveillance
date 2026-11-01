@@ -43,6 +43,41 @@ public sealed class RecordingServiceMotionTests : IDisposable
         pipeline.Received().StopRecording();
     }
 
+    [Fact]
+    public void A_Motion_Recording_Starts_Before_The_Motion_And_Is_Named_By_Its_First_Picture()
+    {
+        var camera = new CameraConfiguration();
+        camera.Display.DisplayName = "Garden";
+        cameras.Add(camera);
+        var firstPicture = DateTime.UtcNow.AddSeconds(-5);
+        var pipeline = Substitute.For<IMediaPipeline>();
+        pipeline.FindRecordingStart(AtcSoft.Video.Surveillance.Helpers.RecordingPreRoll.Motion).Returns(firstPicture);
+        using var sut = CreateSut(postMotionSeconds: 30);
+
+        sut.TriggerMotionRecording(camera, pipeline).Should().BeTrue();
+
+        var name = firstPicture.ToLocalTime().ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
+        pipeline.Received(1).StartRecording(Arg.Is<string>(p => p.Contains(name, StringComparison.Ordinal)), firstPicture);
+        sut.GetSession(camera.Id)!.StartTime.Should().Be(firstPicture, "the activity index starts with the session");
+    }
+
+    [Fact]
+    public void A_Manual_Recording_Starts_At_The_Last_Key_Frame()
+    {
+        var camera = new CameraConfiguration();
+        camera.Display.DisplayName = "Garden";
+        cameras.Add(camera);
+        var lastKeyFrame = DateTime.UtcNow.AddSeconds(-1);
+        var pipeline = Substitute.For<IMediaPipeline>();
+        pipeline.FindRecordingStart(TimeSpan.Zero).Returns(lastKeyFrame);
+        using var sut = CreateSut(postMotionSeconds: 30);
+
+        sut.StartRecording(camera, pipeline).Should().BeTrue();
+
+        pipeline.Received(1).StartRecording(Arg.Any<string>(), lastKeyFrame);
+        sut.GetSession(camera.Id)!.StartTime.Should().Be(lastKeyFrame);
+    }
+
     private RecordingService CreateSut(int postMotionSeconds)
     {
         var settings = Substitute.For<IApplicationSettingsService>();
