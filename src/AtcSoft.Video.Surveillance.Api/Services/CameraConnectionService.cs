@@ -32,6 +32,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     private readonly IRecordingIntents? recordingIntents;
     private readonly ConcurrentDictionary<Guid, IMediaPipeline> managedPipelines = new();
     private readonly ConcurrentDictionary<Guid, BackoffState> backoffs = new();
+    private readonly ConcurrentDictionary<Guid, Lock> startGates = new();
 
     // Cameras whose pipeline was given to the recording service by the
     // record-on-connect path. Only for those does "not recording" mean the
@@ -177,6 +178,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         LogForgettingCamera(cameraId);
         recordingIntents?.Drop(cameraId);
         CloseEverything(cameraId);
+        startGates.TryRemove(cameraId, out _);
     }
 
     /// <inheritdoc />
@@ -822,25 +824,86 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
         try
         {
-            if (StartRecordingOnConnect(camera, pipeline))
+            if (TryStartOnConnect(camera, pipeline) == OnConnectStart.Started)
             {
-                recordingOnConnect[camera.Id] = 0;
                 LogRecordingOnConnectStartedFallback(camera.Id, camera.Display.DisplayName);
-                return;
-            }
-
-            // Another path (REST) won the race and is already
-            // recording. Our pipeline isn't owned by the recording service
-            // — drop it so we don't leak two demuxers per camera. A hosted
-            // camera has only this pipeline, whoever records on it.
-            if (!Hosts(camera))
-            {
-                ScheduleDeferredDisposal(camera.Id);
             }
         }
         catch (Exception ex)
         {
             LogStartRecordingFallbackFailed(ex, camera.Id, camera.Display.DisplayName);
+        }
+    }
+
+    // Runs on the thread pool once a pipeline recorded on connect plays.
+    private void StartRecordingAfterConnect(
+        Guid cameraId,
+        IMediaPipeline pipeline)
+    {
+        // The camera may have been edited or deleted meanwhile.
+        if (storageService.GetCameraById(cameraId) is not { } camera ||
+            !ShouldRecordContinuously(camera))
+        {
+            return;
+        }
+
+        try
+        {
+            if (TryStartOnConnect(camera, pipeline) == OnConnectStart.Started)
+            {
+                LogRecordingOnConnectStarted(camera.Id, camera.Display.DisplayName);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogStartRecordingAfterConnectFailed(ex, camera.Id, camera.Display.DisplayName);
+            ScheduleDeferredDisposal(camera.Id);
+        }
+    }
+
+    // Starts the recording of a camera recorded on connect on the pipeline
+    // kept for it. One start at a time per camera, so the periodic pass and a
+    // connect never both start it (the loser would close the winner's pipeline).
+    private OnConnectStart TryStartOnConnect(
+        CameraConfiguration camera,
+        IMediaPipeline pipeline)
+    {
+        lock (startGates.GetOrAdd(camera.Id, _ => new Lock()))
+        {
+            if (!managedPipelines.TryGetValue(camera.Id, out var current) ||
+                !ReferenceEquals(current, pipeline))
+            {
+                // Replaced or closed meanwhile.
+                return OnConnectStart.Gone;
+            }
+
+            if (recordingService.IsRecording(camera.Id))
+            {
+                return OnConnectStart.RecordedAlready;
+            }
+
+            if (StartRecordingOnConnect(camera, pipeline))
+            {
+                recordingOnConnect[camera.Id] = 0;
+                return OnConnectStart.Started;
+            }
+
+            if (!recordingService.IsRecording(camera.Id))
+            {
+                // Refused (no room on the disk): the pipeline stays open, and
+                // the next pass tries again without opening the camera anew.
+                return OnConnectStart.Refused;
+            }
+
+            // Someone else (a recording started through the API) got there
+            // first, on a pipeline of its own: this one is not needed. A
+            // hosted camera has only this pipeline, whoever records on it.
+            if (!Hosts(camera))
+            {
+                ScheduleDeferredDisposal(camera.Id);
+            }
+
+            return OnConnectStart.RecordedAlready;
         }
     }
 
@@ -898,33 +961,11 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                 return;
             }
 
-            try
-            {
-                if (StartRecordingOnConnect(camera, pipeline))
-                {
-                    recordingOnConnect[camera.Id] = 0;
-                    LogRecordingOnConnectStarted(camera.Id, camera.Display.DisplayName);
-                    return;
-                }
-
-                // Race lost: another caller started this camera between the
-                // IsRecording check above and here. Our pipeline isn't owned
-                // by the recording service — schedule disposal (deferred to
-                // the ThreadPool because we're on the demux thread). A
-                // hosted camera has only this pipeline, whoever records on it.
-                if (!Hosts(camera))
-                {
-                    ScheduleDeferredDisposal(camera.Id);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogStartRecordingAfterConnectFailed(ex, camera.Id, camera.Display.DisplayName);
-
-                // Defer disposal — this handler runs on the demux thread,
-                // and Dispose joins that thread (self-join deadlock).
-                ScheduleDeferredDisposal(camera.Id);
-            }
+            // Not on this thread: it reads the camera's packets, and starting a
+            // recording may wait for the disk-space guard (which may walk the
+            // archive on a full disk). Packets read late are packets lost.
+            var cameraId = camera.Id;
+            ThreadPool.QueueUserWorkItem(_ => StartRecordingAfterConnect(cameraId, pipeline));
         }
         else if (e.NewState == ConnectionState.Disconnected)
         {
@@ -994,6 +1035,14 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             updated.ConsecutiveFailures,
             backoffSeconds,
             updated.NextAttemptUtc);
+    }
+
+    private enum OnConnectStart
+    {
+        Started,
+        RecordedAlready,
+        Refused,
+        Gone,
     }
 
     private sealed class BackoffState

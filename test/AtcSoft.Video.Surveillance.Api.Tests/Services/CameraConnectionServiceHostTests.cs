@@ -267,6 +267,7 @@ public sealed class CameraConnectionServiceHostTests : IDisposable
         await sut.DoWorkAsync(TestContext.Current.CancellationToken);
 
         RaiseConnected();
+        await SettleStartAsync();
 
         recordingService.Received(1).StartRecordingOnSharedPipeline(camera, pipeline);
         recordingService.DidNotReceiveWithAnyArgs().StartRecording(default!, default!);
@@ -304,6 +305,7 @@ public sealed class CameraConnectionServiceHostTests : IDisposable
         recordingService.StartRecordingOnSharedPipeline(camera, pipeline).Returns(true);
         await sut.DoWorkAsync(TestContext.Current.CancellationToken);
         RaiseConnected();
+        await SettleStartAsync();
 
         // The recording service has given the recording up already.
         pipeline.IsRecordingActive.Returns(false);
@@ -344,6 +346,7 @@ public sealed class CameraConnectionServiceHostTests : IDisposable
         recordingService.StartRecording(camera, pipeline).Returns(true);
         await sut.DoWorkAsync(TestContext.Current.CancellationToken);
         RaiseConnected();
+        await SettleStartAsync();
         recordingService.IsRecording(camera.Id).Returns(true);
         recordingService.When(r => r.StopRecording(camera.Id)).Do(_ => recordingService.IsRecording(camera.Id).Returns(false));
 
@@ -354,6 +357,20 @@ public sealed class CameraConnectionServiceHostTests : IDisposable
         recordingService.Received(1).StopRecording(camera.Id);
         pipelineFactory.Received(2).Create(camera);
         second.Dispose();
+    }
+
+    // A recording on connect is started on the thread pool, not on the
+    // pipeline's own thread: wait until it was asked for, or a moment passed.
+    private async Task SettleStartAsync()
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (DateTime.UtcNow < deadline &&
+               !recordingService.ReceivedCalls().Any(c => c.GetMethodInfo().Name.StartsWith("StartRecording", StringComparison.Ordinal)))
+        {
+            await Task.Delay(10);
+        }
+
+        await Task.Delay(50);
     }
 
     private void RaiseConnected()

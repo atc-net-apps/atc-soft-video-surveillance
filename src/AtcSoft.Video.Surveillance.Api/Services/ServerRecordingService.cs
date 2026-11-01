@@ -328,7 +328,16 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
     // keeps. When that space cannot be read, it may not.
     private bool MayRecord()
     {
-        if (!settingsService.Recording.Cleanup.EnableDiskSpaceGuard)
+        var cleanup = settingsService.Recording.Cleanup;
+        if (!cleanup.EnableDiskSpaceGuard)
+        {
+            return true;
+        }
+
+        // The common case: the volume has the room, read in one call without
+        // the guard's lock, so a start never waits for the clean-up's walk.
+        var minFree = (long)cleanup.MinFreeSpaceMb * 1024L * 1024L;
+        if (ReadFreeBytes(settingsService.Recording.RecordingPath) is { } free && free >= minFree)
         {
             return true;
         }
@@ -336,6 +345,20 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         var result = ReclaimDiskSpace();
         return result != DiskSpaceGuardResult.None &&
                result.StateOf(settingsService.Recording.RecordingPath) is DiskSpaceVolumeState.Ok or DiskSpaceVolumeState.Reclaimed;
+    }
+
+    private long? ReadFreeBytes(string path)
+    {
+        try
+        {
+            var reader = diskSpaceGuard.Reader;
+            var volume = reader.GetVolume(path);
+            return volume is null ? null : reader.GetFreeBytes(volume);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
     }
 
     /// <inheritdoc/>

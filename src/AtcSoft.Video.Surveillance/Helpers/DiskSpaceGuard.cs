@@ -121,32 +121,48 @@ public sealed class DiskSpaceGuard
             return Empty();
         }
 
+        // The walk is made before the lock is taken: a recording that starts meanwhile
+        // (which asks the guard for room) does not wait for it.
+        var errors = new List<MediaCleanupRunError>();
+        var extensions = new HashSet<string>(recordingExtensions, StringComparer.OrdinalIgnoreCase);
+        var recordings = new List<FileInfo>();
+        foreach (var folder in RecordingRoots.Collect(null, recordingFolders).Where(Directory.Exists))
+        {
+            try
+            {
+                recordings.AddRange(Directory
+                    .EnumerateFiles(folder, "*.*", SearchOption.AllDirectories)
+                    .Where(f => extensions.Contains(Path.GetExtension(f)))
+                    .Select(f => new FileInfo(f)));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                errors.Add(new MediaCleanupRunError(folder, ex));
+            }
+        }
+
+        // Sizes and times are read with the walk too; a file gone meanwhile counts for nothing.
+        var sized = new List<(FileInfo File, long Length, DateTime LastWriteUtc)>(recordings.Count);
+        foreach (var file in recordings)
+        {
+            try
+            {
+                sized.Add((file, file.Length, file.LastWriteTimeUtc));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Deleted or moved since the walk.
+            }
+        }
+
         lock (gate)
         {
-            var errors = new List<MediaCleanupRunError>();
-            var extensions = new HashSet<string>(recordingExtensions, StringComparer.OrdinalIgnoreCase);
-            var recordings = new List<FileInfo>();
-            foreach (var folder in RecordingRoots.Collect(null, recordingFolders).Where(Directory.Exists))
-            {
-                try
-                {
-                    recordings.AddRange(Directory
-                        .EnumerateFiles(folder, "*.*", SearchOption.AllDirectories)
-                        .Where(f => extensions.Contains(Path.GetExtension(f)))
-                        .Select(f => new FileInfo(f)));
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    errors.Add(new MediaCleanupRunError(folder, ex));
-                }
-            }
-
-            var total = recordings.Sum(f => f.Length);
+            var total = sized.Sum(f => f.Length);
             var deleted = new List<string>();
             var deletedThumbnails = new List<string>();
             long freed = 0;
             var request = new DiskSpaceGuardRequest(recordingFolders, null, 0, protectedPaths, recordingExtensions, []);
-            foreach (var file in recordings.Where(f => !protectedPaths.Contains(f.FullName)).OrderBy(f => f.LastWriteTimeUtc))
+            foreach (var (file, length, _) in sized.Where(f => !protectedPaths.Contains(f.File.FullName)).OrderBy(f => f.LastWriteUtc))
             {
                 if (total - freed <= maxBytes)
                 {
@@ -155,6 +171,14 @@ public sealed class DiskSpaceGuard
 
                 try
                 {
+                    file.Refresh();
+                    if (!file.Exists)
+                    {
+                        // Gone since the walk: what it took is free already.
+                        freed += length;
+                        continue;
+                    }
+
                     var size = file.Length;
                     file.Delete();
                     deleted.Add(file.FullName);
@@ -186,6 +210,8 @@ public sealed class DiskSpaceGuard
 
         if (free.Value >= request.MinFreeBytes)
         {
+            // The volume recovered: the list of what could go is not kept (a FileInfo per file).
+            candidateLists.Remove(volume);
             return new DiskSpaceVolumeResult(volume, folders, DiskSpaceVolumeState.Ok, free, Empty());
         }
 
