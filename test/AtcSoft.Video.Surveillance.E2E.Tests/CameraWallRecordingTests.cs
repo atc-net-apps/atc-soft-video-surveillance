@@ -3,7 +3,7 @@ namespace AtcSoft.Video.Surveillance.E2E;
 /// <summary>
 /// CameraWall records three cameras while a person looks around: the recordings browser, and another
 /// layout with one of the cameras and back. Full screen is not here: its button is in the tile's overlay
-/// window, which UI Automation does not reach (see docs/e2e-smoke-tests.md). Each camera's recording goes on the whole time, in one
+/// window, which UI Automation does not reach (see https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/E2E-Smoke-Tests). Each camera's recording goes on the whole time, in one
 /// file, and the app keeps answering.
 /// </summary>
 [Collection(E2ETestGroup.Name)]

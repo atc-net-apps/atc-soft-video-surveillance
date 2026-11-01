@@ -2,7 +2,7 @@
 
   <!-- A developer tool for tuning motion detection: plays a storybook or a recording through
        the real detector and the real box overlay, with the truth and the score. Never shipped,
-       not translated. See docs/motion-detection-storybook.md. -->
+       not translated. See https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Motion-Detection-Storybook. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>

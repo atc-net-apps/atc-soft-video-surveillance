@@ -31,7 +31,7 @@ A professional video surveillance platform for live monitoring of multiple RTSP/
 - **Network Scanner** - Auto-discover cameras on the local network (integrated in Add Camera dialog)
 - **Test Connection** - Validate camera connectivity before saving
 - **Multiple Protocols** - RTSP, HTTP, and HTTPS support with configurable ports and paths
-- **USB / Webcam Support** - Mix DirectShow / UVC USB cameras with IP cameras in the same grid (Windows). Devices are enumerated via Media Foundation; hot-plug events surface via WMI so unplugged devices transition cleanly to a `DeviceUnplugged` state instead of thrashing in a reconnect loop. See [`docs/usb-cameras.md`](docs/usb-cameras.md).
+- **USB / Webcam Support** - Mix DirectShow / UVC USB cameras with IP cameras in the same grid (Windows). Devices are enumerated via Media Foundation; hot-plug events surface via WMI so unplugged devices transition cleanly to a `DeviceUnplugged` state instead of thrashing in a reconnect loop. See [[USB-Cameras in the wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/USB-Cameras)](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/USB-Cameras).
 - **Per-Camera Overrides** - Override any application-level setting on a per-camera basis (connection, display, performance, recording, motion detection)
 
 ### 🔴 Recording
@@ -137,13 +137,6 @@ AtcSoft.Video.Surveillance/
 │   ├── AtcSoft.Video.Surveillance.Wpf.Core.Tests/  # ✅ xUnit v3 tests for Wpf.Core
 │   ├── AtcSoft.Video.Surveillance.Api.Tests/        # ✅ xUnit v3 tests for API
 │   └── Atc.Video.Engine.Tests/                  # ✅ xUnit v3 tests for Atc.Video.Engine
-│
-├── docs/                        # 📚 System documentation
-│   ├── architecture.md          # 🏛️ Architecture diagrams and assembly details
-│   ├── disk-space-guard.md      # 💾 Disk space guard
-│   ├── motion-detection.md      # 🏃 Motion detection setup guide
-│   ├── settings.md              # ⚙️ Complete settings reference
-│   └── usb-cameras.md           # 🎥 USB camera support
 │
 └── plans/                       # 🗺️ Roadmaps and plans (not system documentation)
     ├── roadmap.md               # 🗺️ Roadmap home: every area, its status and what is next

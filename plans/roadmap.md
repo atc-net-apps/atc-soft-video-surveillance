@@ -2,7 +2,7 @@
 
 The one list of what is still open. Consolidated on **2026-10-19**: every item was checked against the code, and the plans of finished areas were deleted (they are in the git history; the last commit that has them is the one before the consolidation).
 
-How things work today is in [`docs/`](../docs/) and in CLAUDE.md. This folder holds plans only.
+How things work today is in the [wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki) and in CLAUDE.md. This folder holds plans only.
 
 *Last updated: 2026-11-01*
 
@@ -27,7 +27,7 @@ Sizes: **S** an hour or two, **M** a day, **L** several days.
 |---|---|
 | **Push and see CI green on generator 3.0.1** | The build left the local package for the released Atc.Rest.Api.SourceGenerator 3.0.1 on 2026-10-27; nothing of the v3 work has been through CI yet. Generator findings go to its `issues/feedback-from-VideoSurveillance.md` |
 | The hands-on checks below | Much of what was built since 2026-10-12 has unit, host and E2E tests but has not been looked at with real cameras |
-| Run the E2E smoke tests before a release | `ATCSOFT_E2E=1 dotnet test test/AtcSoft.Video.Surveillance.E2E.Tests` (see [`docs/e2e-smoke-tests.md`](../docs/e2e-smoke-tests.md)) |
+| Run the E2E smoke tests before a release | `ATCSOFT_E2E=1 dotnet test test/AtcSoft.Video.Surveillance.E2E.Tests` (see [[E2E-Smoke-Tests in the wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/E2E-Smoke-Tests)](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/E2E-Smoke-Tests)) |
 
 ---
 
@@ -37,7 +37,7 @@ Sizes: **S** an hour or two, **M** a day, **L** several days.
 |---|---|:--:|---|
 | 🟥 Bounding boxes and activity timeline | [roadmap-boundingbox.md](roadmap-boundingbox.md) | ✅ | Built: storybook harness, the new detector with tracking, track ids on the wire, the activity index beside every recording (`GET /recordings/activity`), the activity timeline under the player in all three clients. Built too: the server timeline (`GET /timeline`) and a Timeline view of every camera in the web and WPF clients. Built too: gaps tell their reason (offline, not recording, disk full, server down). Built too: *play all from here* in both API clients, and CameraWall's own Timeline window over its folders. Built too: *play events only*. Built too: sparklines in the recordings lists, and *Analyse recording* for older recordings in all three apps. Built too: grey frames from the engine, and ignore and watch zones in the detector, stored with each camera and drawn on a snapshot in all three apps, an event in its watch zone's colour on the timeline, and the timeline's zoom and hover with a picture of the moment (preview pictures of every recording), events close together joined. Built too: `sample/BoundingBoxWpfApp` with a deterministic clock and its FlaUI walk. Built too: strong wind taken in, *Analyse recording*'s 3 s warm-up, and the feedback loop (reviews of real recordings, verdicts from a right-click on the timeline in all three apps, the corpus test, the settings sweep), and the sample's debug layers, tuning panel and live clock. Done 2026-10-28; rain on a real camera and the first reviewed recordings are hands-on checks below; AI detection is planned in [AI support](roadmap-AI-support.md) |
 | 🧠 AI support (object labels on motion tracks) | [roadmap-AI-support.md](roadmap-AI-support.md) | ⬜ | Planned: an `IObjectDetector` seam, in-process ONNX first (permissive model), a CodeProject.AI-compatible HTTP client second; labels on tracks, the activity index, the timeline, webhooks and `GET /events`; per-camera classes and minimum score. Takes over the bounding-box plan's phase 10 |
-| 🧪 24/7 soak | [`docs/soak-test.md`](../docs/soak-test.md) | ⬜ | The procedure has never been run |
+| 🧪 24/7 soak | [[Soak-Test in the wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Soak-Test)](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Soak-Test) | ⬜ | The procedure has never been run |
 | 🐳 Install anywhere (server installer, Docker, Linux, NAS) | [Platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support) | ⬜ | Today only CameraWall and the desktop client have installers (Windows x64, framework-dependent); the server is built and started by hand and the web client is hosted by hand. Planned, in order: (1) a server installer: `UseWindowsService`, the MSI installs it as a service with a firewall rule and a URL setting, published in the release; (2) the server serves the web client (`UseBlazorFrameworkFiles`, `MapFallbackToFile`; hls.js bundled instead of the CDN, so a LAN without internet works); (3) the server on Linux: `FFmpegRuntime.ReadVersions` reads `lib*.so.N` and `lib*.N.dylib` (only `*.dll` today, so the server exits on Linux), a Linux FFmpeg 9 shared build, the Windows project referenced only on Windows, `Storage__DataPath` required (CommonApplicationData is `/usr/share`), secret files `chmod 600`, CI on Linux; (4) a multi-arch Docker image (`amd64`, `arm64`) on GHCR with a compose file, `/health` as health check; (5) NAS guides checked on real devices: UGREEN (UGOS Pro Docker), Synology (Container Manager), then QNAP, Unraid, TrueNAS; (6) motion detection, the activity index, thumbnails and previews without GDI+ on Linux. The wiki's install guides mark each of these as coming |
 
 ---
@@ -52,7 +52,7 @@ Nothing here needs a camera or a person. Each item says how it can be tested.
 |---|---|---|
 | A message for a stored USB device that is not plugged in (`UsbDeviceMissing`) | No key or message exists; the picker may already cover it | Unit on the dialog view model |
 | A rate limit on starting a recording or a stream | Neither has `x-ratelimit-*`. A second start only adds a lease, so it may not be needed | Host test |
-| Remote-access notes (VPN, reverse proxy) in the docs | Nothing in `docs/` | — |
+| Remote-access notes (VPN, reverse proxy) in the wiki | Only a line in the server install guide | — |
 | A severity filter and an unread badge for notifications in the client | Only time, title, message and type columns | Unit and E2E |
 | A theme toggle in the ribbon | Only in the settings dialog | E2E |
 | Spike: RTSP `SET_PARAMETER` as keep-alive (new in FFmpeg 9) | Not tried | Engine test with the live test stream |
@@ -70,7 +70,7 @@ Nothing here needs a camera or a person. Each item says how it can be tested.
 | Webhook management in the WPF client | Web client only; whether it is wanted is open | E2E |
 | Inline rename and drag-reorder in the client's camera and layout lists | Both grids are read-only | E2E |
 | FFmpeg timeouts and probe sizes as settings; stream-health counters (packet loss, read errors) | Constants in `Demuxer` (15 s open, 10 s read) and `VideoPlayer` | Unit |
-| Privacy and permission messages for a USB camera Windows refuses | Only documented in `docs/usb-cameras.md` | Unit for the message mapping |
+| Privacy and permission messages for a USB camera Windows refuses | Only documented in [USB-Cameras in the wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/USB-Cameras) | Unit for the message mapping |
 | USB counters in the stats panel | None | Unit |
 | Measure the swscale backends of FFmpeg 9 on the software-decode path | Not measured | Engine benchmark |
 | Event stream: push the storage status and the progress of a folder reorganisation instead of polling | The client polls `GET /settings/storage` every 30 s | Host test on `GET /events` |
@@ -118,7 +118,7 @@ Built and tested, but not closed without hands, eyes or hardware.
 | Boxes at 0 / 90 / 180 / 270° in the grid and full screen; rotation after a setting change and a tile swap; snapshots and thumbnails upright | A real camera |
 | Record, browse, play and delete in each of the four folder layouts; an old flat archive; midnight rollover | The app and some recording time |
 | USB: unplug and replug in CameraWall (recording resumes within 5 s); recording with sound | Two USB cameras |
-| "Show in Full Screen" on a CameraWall tile: through UI Automation it stayed disabled on a connected HTTP camera ([E2E notes](../docs/e2e-smoke-tests.md#left-out-on-purpose)) | The app and a camera |
+| "Show in Full Screen" on a CameraWall tile: through UI Automation it stayed disabled on a connected HTTP camera ([E2E notes](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/E2E-Smoke-Tests#left-out-on-purpose)) | The app and a camera |
 | The client's live grid draws motion boxes | The server client and a camera that moves |
 | The new motion detector and the activity index on real cameras: a person, a car, a tree in the wind, a change of light; a `.activity.jsonl` beside each recording in both apps, with motion where something moved; the CPU cost of analysing every recorded camera | Cameras and some recording time |
 | The grid sizes, filters, disk indicators and unplugged text in both desktop apps; the keyboard shortcuts; the camera dialog's drop-downs | A look at the apps |
@@ -130,7 +130,7 @@ Built and tested, but not closed without hands, eyes or hardware.
 | The disk-space guard on a really full disk and on a network share | A small disk; a share |
 | The event stream through a reverse proxy for longer than its idle timeout | A proxy |
 | The browser's six HTTP/1.1 connections per origin: one event stream plus the HLS requests of a 3×3 live view | The web client and nine cameras |
-| The 24/7 soak ([procedure](../docs/soak-test.md)) | A machine, three cameras and a day |
+| The 24/7 soak ([procedure](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Soak-Test)) | A machine, three cameras and a day |
 | The web client's E2E walk (`ATCSOFT_E2E=1`, `WebClientSmokeTests`) on a steady network, then the whole E2E suite after the timeline verdicts and the sweep. On 2026-10-28 every step passed but the walk failed: a USB network adapter without a cable ("Ethernet 3", Realtek USB GbE #2) came and went every ten seconds, and Edge dropped its downloads on each change (`ERR_NETWORK_CHANGED`) | A network cable in the dock, or the adapter unplugged |
 | The motion detector in wind and rain on live cameras: the balcony through the cat net, the trees seen through the kitchen window (not helped by the wind fix), a camera in rain (no footage yet) | Cameras on a windy and a rainy day |
 | *Analyse recording*'s 3 s warm-up on a recording that motion started: the timeline should show the event from 3 s on, with no wrong boxes in the first seconds | A motion-triggered recording |
@@ -153,5 +153,5 @@ Built and tested, but not closed without hands, eyes or hardware.
 - **This page is the list of what is open.** An area gets a plan file of its own (`roadmap-<area>.md`) when it needs design and decisions; its open items are listed here too.
 - **Every area plan has** a phase table with a status per phase, a "Decisions" section, and a "To verify by hand" section when something needs hardware or eyes.
 - **Update this page in the same change** that closes or opens an item.
-- **When an area is finished**, what still matters moves to `docs/` or CLAUDE.md, its open items move here, and the plan file is deleted. The git history keeps it.
-- **How things work today** is documentation, not a plan: it belongs in [`docs/`](../docs/).
+- **When an area is finished**, what still matters moves to the [wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki) or CLAUDE.md, its open items move here, and the plan file is deleted. The git history keeps it.
+- **How things work today** is documentation, not a plan: it belongs in the [wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki).
