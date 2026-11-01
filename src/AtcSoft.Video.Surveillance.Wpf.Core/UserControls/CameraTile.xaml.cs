@@ -236,6 +236,9 @@ public partial class CameraTile : IDisposable
     private bool markedForRemoval;
     private bool stopRecordingOnDispose;
     private bool restartRecordingOnConnect;
+
+    // This tile's camera was parked with its motion watching left running.
+    private bool parkedWatchingMotion;
     private Window? subscribedWindow;
     private CameraGrid? registeredWithGrid;
     private bool isReconnecting;
@@ -835,7 +838,11 @@ public partial class CameraTile : IDisposable
             }
 
             // Stop motion detection
-            StopMotionDetection();
+            // (not for a camera parked with its watching running: the parking stops it when it lets go).
+            if (!parkedWatchingMotion)
+            {
+                StopMotionDetection();
+            }
 
             // Unsubscribe from services
             if (recordingService is not null)
@@ -1665,7 +1672,18 @@ public partial class CameraTile : IDisposable
             Player is null ||
             recordingService is null ||
             registeredWithGrid?.ParkedPlayers is not { } parking ||
-            !recordingService.IsRecordingOrResuming(Camera.Id))
+            Camera is null)
+        {
+            return false;
+        }
+
+        // A camera that records on motion is parked too, recording or not, with its watching left
+        // running: its motion is recorded while another layout is shown (MotionRecordingCoordinator).
+        var cameraId = Camera.Id;
+        var watchesMotion = GetEffectiveEnableRecordingOnMotion() &&
+                            motionDetectionService is not null &&
+                            motionDetectionService.IsDetectionActive(cameraId);
+        if (!watchesMotion && !recordingService.IsRecordingOrResuming(cameraId))
         {
             return false;
         }
@@ -1676,7 +1694,16 @@ public partial class CameraTile : IDisposable
         var options = BuildStreamOptions(Camera);
 
         Player.StateChanged -= OnPlayerStateChanged;
-        parking.Park(Camera.Id, Player, mediaPipeline, recordingService, player => player.Open(uri, options));
+        var motion = motionDetectionService;
+        parking.Park(
+            cameraId,
+            Player,
+            mediaPipeline,
+            recordingService,
+            player => player.Open(uri, options),
+            keepWhileIdle: watchesMotion,
+            onRelease: watchesMotion ? () => motion!.StopDetection(cameraId) : null);
+        parkedWatchingMotion = watchesMotion;
         LogPlayerParked(Camera.Display.DisplayName);
 
         // The parking has them now: this tile lets go without closing them.

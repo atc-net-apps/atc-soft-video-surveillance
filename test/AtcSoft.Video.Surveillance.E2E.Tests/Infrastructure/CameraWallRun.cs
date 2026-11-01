@@ -24,11 +24,13 @@ internal sealed class CameraWallRun : IDisposable
     /// <param name="environment">More environment variables for the app, such as a limited FFmpeg search.</param>
     /// <param name="liveCameraCount">How many live cameras the layout has (each its own test pattern).</param>
     /// <param name="recordOnConnect">Whether each camera records as soon as it connects.</param>
+    /// <param name="recordOnMotion">Whether each camera records on motion (the test pattern moves all the time).</param>
     /// <param name="secondLayout">Whether there is a second layout, <see cref="SecondLayoutName"/>, with only the first live camera.</param>
     public CameraWallRun(
         IReadOnlyDictionary<string, string>? environment = null,
         int liveCameraCount = 1,
         bool recordOnConnect = false,
+        bool recordOnMotion = false,
         bool secondLayout = false)
     {
         // A folder of its own for each run: seeding adds to the cameras a folder has, and a run that
@@ -49,7 +51,7 @@ internal sealed class CameraWallRun : IDisposable
         }
 
         HasLiveCamera = liveCameras.Count > 0;
-        Seed(liveCameras.Select(c => c.Port).ToList(), recordOnConnect, secondLayout);
+        Seed(liveCameras.Select(c => c.Port).ToList(), recordOnConnect, recordOnMotion, secondLayout);
 
         var process = ChildProcess.Start(
             E2ESettings.CameraWallExe,
@@ -95,6 +97,7 @@ internal sealed class CameraWallRun : IDisposable
     private void Seed(
         IReadOnlyList<int> livePorts,
         bool recordOnConnect,
+        bool recordOnMotion,
         bool secondLayout)
     {
         var settings = new ApplicationSettingsService(Path.Combine(DataFolder, "settings.json"));
@@ -102,10 +105,10 @@ internal sealed class CameraWallRun : IDisposable
         settings.General.ConnectCamerasOnStartup = true;
         settings.Recording.RecordingPath = Path.Combine(DataFolder, "recordings");
         settings.Recording.EnableRecordingOnConnect = recordOnConnect;
-        settings.Recording.EnableRecordingOnMotion = false;
+        settings.Recording.EnableRecordingOnMotion = recordOnMotion;
         settings.CameraDisplay.SnapshotPath = Path.Combine(DataFolder, "snapshots");
         settings.Advanced.EnableDebugLogging = true;
-        settings.Advanced.EnableDiagnostics = recordOnConnect;
+        settings.Advanced.EnableDiagnostics = recordOnConnect || recordOnMotion;
         settings.Advanced.LogPath = LogFolder;
         settings.Save();
 

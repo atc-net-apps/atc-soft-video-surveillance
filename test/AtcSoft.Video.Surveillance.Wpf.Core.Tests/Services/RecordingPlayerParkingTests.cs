@@ -65,6 +65,29 @@ public sealed class RecordingPlayerParkingTests
     }
 
     [Fact]
+    public void A_Camera_Watched_For_Motion_Stays_Parked_Between_Its_Recordings_And_Its_Watching_Stops_With_The_Parking()
+    {
+        var stoppedWatching = 0;
+        var sut = new RecordingPlayerParking(posted.Add, Schedule);
+        sut.Park(Camera, player, pipeline, recording, keepWhileIdle: true, onRelease: () => stoppedWatching++);
+
+        // A motion recording ends: the camera waits for the next motion, parked.
+        recording.IsRecording(Camera).Returns(false);
+        recording.IsRecordingOrResuming(Camera).Returns(false);
+        recording.RecordingStateChanged += Raise.EventWith(new RecordingStateChangedEventArgs(Camera, RecordingState.RecordingPostMotion, RecordingState.Idle));
+        RunPosted();
+
+        sut.IsParked(Camera).Should().BeTrue("it is watched for motion while no tile shows it");
+        player.DidNotReceive().Dispose();
+        stoppedWatching.Should().Be(0);
+
+        sut.Dispose();
+
+        stoppedWatching.Should().Be(1, "the watching stops before the player is closed");
+        player.Received(1).Dispose();
+    }
+
+    [Fact]
     public void A_Segment_Switch_Keeps_The_Player_Parked()
     {
         using var sut = new RecordingPlayerParking(posted.Add, Schedule);

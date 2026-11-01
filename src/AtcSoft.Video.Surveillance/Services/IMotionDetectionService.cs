@@ -62,6 +62,14 @@ public interface IMotionDetectionService
     /// <param name="cameraId">The camera.</param>
     bool IsIndexing(Guid cameraId);
 
+    /// <summary>
+    /// Gets the pipeline a camera is watched for motion on, so a recording on motion can be made from
+    /// it; <see langword="null"/> when the camera is not watched for motion.
+    /// </summary>
+    /// <param name="cameraId">The camera.</param>
+    /// <returns>The pipeline, or <see langword="null"/>.</returns>
+    IMediaPipeline? FindPipeline(Guid cameraId) => null;
+
     bool IsMotionDetected(Guid cameraId);
 
     IReadOnlyList<BoundingBox> GetLastBoundingBoxes(Guid cameraId);

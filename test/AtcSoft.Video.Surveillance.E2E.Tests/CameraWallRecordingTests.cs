@@ -173,6 +173,41 @@ public sealed class CameraWallRecordingTests
     }
 
     [Fact]
+    public void A_Camera_That_Records_On_Motion_Goes_On_Recording_Motion_While_No_Layout_Shows_It()
+    {
+        E2ESettings.SkipUnlessEnabled();
+        if (TestCameras.FFmpegTool is null)
+        {
+            Assert.Skip("The FFmpeg command-line tool is needed for the live test cameras.");
+        }
+
+        // The test pattern moves all the time: both cameras record on motion once they are watched.
+        using var run = new CameraWallRun(liveCameraCount: 2, recordOnMotion: true, secondLayout: true);
+        var app = run.App;
+        var main = app.WaitForWindowTitled(CameraWallRun.MainWindowTitle, DesktopApp.StartTimeout);
+        var recordings = Path.Combine(run.DataFolder, "recordings");
+        app.Find(main, "Connected  2", ControlType.Text, TimeSpan.FromSeconds(30));
+        WaitForRecordings(app, recordings, 2);
+
+        // The second layout shows only the first camera. Before, the second camera's watching
+        // stopped with its tile, and its motion recording ended after the post-motion time (10 s).
+        ShowLayout(app, main, FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_2, "Cameras  1");
+        Thread.Sleep(TimeSpan.FromSeconds(25));
+
+        app.Process.HasExited.Should().BeFalse("CameraWall is still running");
+        Ongoing(recordings).Should().HaveCount(2, "the camera no layout shows goes on recording its motion");
+        Directory.EnumerateFiles(recordings, "*.*", SearchOption.AllDirectories)
+            .Where(f => f.Contains(CameraWallRun.LiveCameraName(1), StringComparison.OrdinalIgnoreCase) &&
+                        (f.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".mkv", StringComparison.OrdinalIgnoreCase)))
+            .Where(RecordingPathHelper.IsBeingWritten)
+            .Should().ContainSingle("the second camera's recording is the one going on");
+
+        var closed = app.CloseApp(main);
+        closed.Should().BeTrue("CameraWall closes when its main window closes");
+        LogFindings.AssertClean(run.LogFolder, "CameraWall");
+    }
+
+    [Fact]
     public void A_Camera_That_Hangs_Is_Noticed_In_Seconds_And_Its_Recording_Goes_On()
     {
         E2ESettings.SkipUnlessEnabled();

@@ -110,6 +110,9 @@ public partial class CameraWallApp
                 // An activity index beside every recording, for the timelines (shared with the server).
                 services.AddHostedService<ActivityIndexService>();
 
+                // Motion turned into recordings for every camera that records on motion, shown or not.
+                services.AddHostedService<AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.MotionRecordingCoordinator>();
+
                 // The preview pictures of each recording that ends, shown under the mouse on its timeline.
                 services.AddSingleton<AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.RecordingPreviewService>();
                 services.AddSingleton<IRecordingPreviews>(sp => sp.GetRequiredService<AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.RecordingPreviewService>());

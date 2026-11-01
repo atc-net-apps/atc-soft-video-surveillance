@@ -72,12 +72,19 @@ public sealed class RecordingPlayerParking : IDisposable
     /// Opens the camera's stream on the player again (blocking; run in the background) when it
     /// ended. <see langword="null"/> lets the player go when its stream ends.
     /// </param>
+    /// <param name="keepWhileIdle">
+    /// Keeps the player parked between recordings: a camera that records on motion is watched while
+    /// no tile shows it.
+    /// </param>
+    /// <param name="onRelease">Runs when the parking lets the player go, before it is closed (stopping the camera's motion watching).</param>
     public void Park(
         Guid cameraId,
         IVideoPlayer player,
         IMediaPipeline? pipeline,
         IRecordingService recordingService,
-        Action<IVideoPlayer>? reopen = null)
+        Action<IVideoPlayer>? reopen = null,
+        bool keepWhileIdle = false,
+        Action? onRelease = null)
     {
         ArgumentNullException.ThrowIfNull(player);
         ArgumentNullException.ThrowIfNull(recordingService);
@@ -85,7 +92,11 @@ public sealed class RecordingPlayerParking : IDisposable
 
         Release(cameraId);
 
-        var entry = new Parked(cameraId, player, pipeline, recordingService, reopen, this);
+        var entry = new Parked(cameraId, player, pipeline, recordingService, reopen, this)
+        {
+            KeepWhileIdle = keepWhileIdle,
+            OnRelease = onRelease,
+        };
         parked[cameraId] = entry;
         player.StateChanged += entry.OnPlayerStateChanged;
         recordingService.RecordingStateChanged += entry.OnRecordingStateChanged;
@@ -134,6 +145,7 @@ public sealed class RecordingPlayerParking : IDisposable
         }
 
         entry.Unsubscribe();
+        RunOnRelease(entry);
         entry.RecordingService.StopRecording(cameraId);
         entry.Pipeline?.Dispose();
         entry.Player.Dispose();
@@ -175,7 +187,7 @@ public sealed class RecordingPlayerParking : IDisposable
             return;
         }
 
-        if (!entry.RecordingService.IsRecordingOrResuming(entry.CameraId))
+        if (!entry.KeepWhileIdle && !entry.RecordingService.IsRecordingOrResuming(entry.CameraId))
         {
             Release(entry.CameraId);
             return;
@@ -198,6 +210,19 @@ public sealed class RecordingPlayerParking : IDisposable
             case PlayerState.Stopped:
                 ScheduleReopen(entry);
                 break;
+        }
+    }
+
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "The player is closed whatever stopping the watching does.")]
+    private static void RunOnRelease(Parked entry)
+    {
+        try
+        {
+            entry.OnRelease?.Invoke();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // The player is closed next; its watching ends with it.
         }
     }
 
@@ -293,6 +318,10 @@ public sealed class RecordingPlayerParking : IDisposable
         public IRecordingService RecordingService { get; } = recordingService;
 
         public Action<IVideoPlayer>? Reopen { get; } = reopen;
+
+        public bool KeepWhileIdle { get; init; }
+
+        public Action? OnRelease { get; init; }
 
         public int FailedAttempts { get; set; }
 
