@@ -218,6 +218,24 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         RemoveViewer(cameraId, lease.Session);
     }
 
+    /// <inheritdoc />
+    public void EndStream(Guid cameraId)
+    {
+        if (sessions.TryGetValue(cameraId, out var session))
+        {
+            ReapSession(cameraId, session);
+        }
+
+        // Its leases are no longer current: they go now rather than at the next sweep.
+        foreach (var (leaseId, lease) in leases)
+        {
+            if (lease.CameraId == cameraId)
+            {
+                leases.TryRemove(leaseId, out _);
+            }
+        }
+    }
+
     private static bool IsReadyToPlay(string playlistPath)
         => File.Exists(playlistPath) &&
            Directory.EnumerateFiles(Path.GetDirectoryName(playlistPath)!, "*.ts").Any();
@@ -395,12 +413,13 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
             }
         }
 
-        // A stream nobody watches any more, or one that ended by itself (its
-        // FFmpeg exited when the camera rebooted), is stopped.
+        // A stream nobody watches any more, one that ended by itself (its
+        // FFmpeg exited when the camera rebooted), or one of a camera that was
+        // deleted, is stopped.
         var cutoff = now.UtcDateTime - InactivityTimeout;
         foreach (var (cameraId, session) in sessions)
         {
-            if (session.LastActivityUtc < cutoff || session.HasExited)
+            if (session.LastActivityUtc < cutoff || session.HasExited || storage.GetCameraById(cameraId) is null)
             {
                 ReapSession(cameraId, session);
             }

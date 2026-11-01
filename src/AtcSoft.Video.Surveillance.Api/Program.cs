@@ -269,6 +269,7 @@ try
     builder.Services.AddSingleton<CameraConnectionService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<CameraConnectionService>());
     builder.Services.AddSingleton<ICameraPipelineHost>(sp => sp.GetRequiredService<CameraConnectionService>());
+    builder.Services.AddSingleton<ICameraRuntime>(sp => sp.GetRequiredService<CameraConnectionService>());
 
     // Periodic disk-retention enforcement; without this, continuous server
     // recording fills the disk and crashes the host.

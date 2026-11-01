@@ -79,4 +79,7 @@ public sealed partial class CameraConnectionService
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Closing camera {CameraId}: nothing uses it any more")]
     private partial void LogClosingUnusedCamera(Guid cameraId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Camera {CameraId} was deleted: its recording is stopped and its pipeline closed")]
+    private partial void LogForgettingCamera(Guid cameraId);
 }

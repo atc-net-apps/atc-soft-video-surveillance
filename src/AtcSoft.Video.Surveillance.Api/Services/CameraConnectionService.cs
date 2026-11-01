@@ -14,7 +14,7 @@ namespace AtcSoft.Video.Surveillance.Api.Services;
 /// pipeline kept here, and the camera is closed when nothing needs it.
 /// </para>
 /// </summary>
-public sealed partial class CameraConnectionService : BackgroundServiceBase<CameraConnectionService>, ICameraPipelineHost
+public sealed partial class CameraConnectionService : BackgroundServiceBase<CameraConnectionService>, ICameraPipelineHost, ICameraRuntime
 {
     // A watched camera is not recording most of the time, so "not recording"
     // cannot tell that its pipeline died. Silence can: a camera that plays
@@ -169,6 +169,34 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     }
 
     /// <inheritdoc />
+    public void Forget(Guid cameraId)
+    {
+        LogForgettingCamera(cameraId);
+
+        motionDetectionService.StopDetection(cameraId);
+
+        try
+        {
+            recordingService.StopRecording(cameraId);
+        }
+        catch (Exception ex)
+        {
+            LogStopRecordingShutdownError(ex, cameraId);
+        }
+
+        lock (pipelineGate)
+        {
+            pipelineUses.Remove(cameraId);
+        }
+
+        // Closes the pipeline whoever used it; a recording that owned it has
+        // closed it already, and closing it again does no harm.
+        ScheduleDeferredDisposal(cameraId);
+        recordingOnConnect.TryRemove(cameraId, out _);
+        backoffs.TryRemove(cameraId, out _);
+    }
+
+    /// <inheritdoc />
     public override Task DoWorkAsync(CancellationToken stoppingToken)
     {
         // Reap any session whose pipeline has died — including ones started
@@ -179,6 +207,8 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
         var cameras = storageService.GetAllCameras();
         var appDefault = settingsService.Recording.EnableRecordingOnConnect;
+
+        ForgetDeletedCameras(cameras);
 
         foreach (var camera in cameras)
         {
@@ -372,6 +402,26 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
         managedPipelines.Clear();
         base.Dispose();
+    }
+
+    // A camera deleted while a pass was running, or by a path that did not
+    // say so, is let go here: a recording of a camera that is gone would
+    // never be segmented, and grow until its disk is full.
+    private void ForgetDeletedCameras(
+        IReadOnlyList<CameraConfiguration> cameras)
+    {
+        var known = cameras.Select(c => c.Id).ToHashSet();
+        var gone = managedPipelines.Keys
+            .Concat(recordingService.GetActiveSessions().Select(s => s.CameraId))
+            .Concat(backoffs.Keys)
+            .Where(id => !known.Contains(id))
+            .Distinct()
+            .ToList();
+
+        foreach (var cameraId in gone)
+        {
+            Forget(cameraId);
+        }
     }
 
     private bool ShouldWatchForMotion(CameraConfiguration camera)
