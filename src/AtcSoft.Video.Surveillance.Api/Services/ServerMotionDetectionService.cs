@@ -480,9 +480,25 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
             var token = context.Cts.Token;
             using var timer = new PeriodicTimer(GetInterval(context.Settings), timeProvider);
 
+            // One picture that cannot be analysed is skipped, and the next one is tried: an error
+            // used to end the loop while the camera still counted as watched, so nothing started it
+            // again. Logged at most once a minute while it goes on.
+            var lastLogged = DateTimeOffset.MinValue;
             while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false))
             {
-                await AnalyzeOnceAsync(cameraId, token).ConfigureAwait(false);
+                try
+                {
+                    await AnalyzeOnceAsync(cameraId, token).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not (OperationCanceledException or ObjectDisposedException or OutOfMemoryException))
+                {
+                    var now = timeProvider.GetUtcNow();
+                    if (now - lastLogged >= TimeSpan.FromMinutes(1))
+                    {
+                        lastLogged = now;
+                        LogMotionDetectionLoopError(ex, cameraId);
+                    }
+                }
             }
         }
         catch (OperationCanceledException)
