@@ -28,7 +28,10 @@ public partial class RecordingService : IRecordingService, IDisposable
     private readonly DiskSpaceGuard diskSpaceGuard;
     private readonly ConcurrentDictionary<Guid, RecordingSession> sessions = new();
     private readonly ConcurrentDictionary<Guid, IMediaPipeline> pipelines = new();
-    private readonly ConcurrentDictionary<Guid, DispatcherTimer> postMotionTimers = new();
+
+    // One timer per motion recording, on the thread pool: it ends the recording once motion has
+    // stayed away, whichever thread started it (a DispatcherTimer only ticks on the UI thread).
+    private readonly ConcurrentDictionary<Guid, Timer> postMotionTimers = new();
     private readonly ConcurrentDictionary<Guid, DateTime> recordingCooldowns = new();
 
     // Recordings this service stopped by itself (a write that failed, a full disk): they start
@@ -918,34 +921,31 @@ public partial class RecordingService : IRecordingService, IDisposable
         // Stop existing timer if any
         StopPostMotionTimer(cameraId);
 
-        var timer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(1),
-        };
-
-        // Catches all exceptions; an unhandled exception in a DispatcherTimer.Tick
-        // handler crashes the WPF dispatcher.
-        timer.Tick += (_, _) =>
-        {
-            try
+        // Catches all exceptions: one escaping a timer callback ends the process.
+        var timer = new Timer(
+            _ =>
             {
-                CheckPostMotionState(cameraId, postMotionSeconds);
-            }
-            catch (Exception ex)
-            {
-                LogPostMotionTickFailed(ex, ResolveCameraName(cameraId));
-            }
-        };
+                try
+                {
+                    CheckPostMotionState(cameraId, postMotionSeconds);
+                }
+                catch (Exception ex)
+                {
+                    LogPostMotionTickFailed(ex, ResolveCameraName(cameraId));
+                }
+            },
+            state: null,
+            dueTime: TimeSpan.FromSeconds(1),
+            period: TimeSpan.FromSeconds(1));
 
         postMotionTimers[cameraId] = timer;
-        timer.Start();
     }
 
     private void StopPostMotionTimer(Guid cameraId)
     {
         if (postMotionTimers.TryRemove(cameraId, out var timer))
         {
-            timer.Stop();
+            timer.Dispose();
         }
     }
 
