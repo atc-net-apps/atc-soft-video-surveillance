@@ -192,6 +192,18 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
         connectionStates.Received(1).Report(camera.Id, ConnectionState.Disconnected);
     }
 
+    [Fact]
+    public void A_Motion_End_Raised_After_The_Pipeline_Was_Removed_Still_Ends_The_Motion_Recording()
+    {
+        // No pipeline is kept for the camera: it was just removed, and stopping
+        // the detection raises the end afterwards.
+        recordingService.GetSession(camera.Id).Returns(new RecordingSession(camera.Id, "Front Door", "a.mkv", isManualRecording: false));
+
+        RaiseMotion(active: false);
+
+        recordingService.Received(1).StopRecording(camera.Id);
+    }
+
     private async Task ConnectAsync()
     {
         await sut.DoWorkAsync(TestContext.Current.CancellationToken);

@@ -802,14 +802,16 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         object? sender,
         MotionDetectedEventArgs e)
     {
-        if (!managedPipelines.TryGetValue(e.CameraId, out var pipeline))
-        {
-            return;
-        }
-
+        // An end is handled even when the pipeline is already gone: closing a camera
+        // removes its pipeline first, then stops the detection, which ends the motion.
         if (!e.IsMotionActive)
         {
             StopMotionRecording(e.CameraId);
+            return;
+        }
+
+        if (!managedPipelines.TryGetValue(e.CameraId, out var pipeline))
+        {
             return;
         }
 
