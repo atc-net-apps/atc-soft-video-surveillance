@@ -40,6 +40,11 @@ internal sealed unsafe class FrameEncoder : IDisposable
     private AVPixelFormat encodedFormat;
     private long frameDuration;
     private long lastPts = AV_NOPTS_VALUE;
+
+    // Added to the camera's clock after it jumped (a resync, a wrap), so the pictures go on one
+    // after the last: an encoder refuses a time that goes back, and every picture after a jump
+    // back was left out.
+    private long shift;
     private long lastKeyFramePts = AV_NOPTS_VALUE;
     private bool keyFrameRequested;
     private bool disposed;
@@ -391,7 +396,18 @@ internal sealed unsafe class FrameEncoder : IDisposable
 
         // The camera's own clock is kept: the recorder sets each file's
         // start, and sound recorded next to the picture is on the same clock.
-        return av_rescale_q(sourcePts, sourceTimeBase, TimeBase);
+        // A jump in it (more than 5 s back or a minute forward) is re-based to
+        // the next picture, as the recorder does for copied packets.
+        var pts = av_rescale_q(sourcePts, sourceTimeBase, TimeBase) + shift;
+        if (lastPts != AV_NOPTS_VALUE &&
+            (pts < lastPts - (5L * TimeBase.Den) || pts > lastPts + (60L * TimeBase.Den)))
+        {
+            var next = lastPts + Math.Max(frameDuration, 1);
+            shift += next - pts;
+            pts = next;
+        }
+
+        return pts;
     }
 
     private void Convert(AVFrame* frame)
