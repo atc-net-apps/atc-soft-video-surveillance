@@ -22,4 +22,10 @@ public sealed partial class StreamingService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "HLS stream reaper failed to dispose session for camera {CameraId}")]
     private partial void LogHlsStreamReapFailed(Exception ex, Guid cameraId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No job object for the live-stream FFmpeg processes ({Reason}); one may outlive the server if it is killed, and is then ended at the next start")]
+    private partial void LogProcessJobUnavailable(string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The live-stream FFmpeg process of camera {CameraId} could not be put in the server's job ({Reason})")]
+    private partial void LogProcessNotInJob(Guid cameraId, string reason);
 }

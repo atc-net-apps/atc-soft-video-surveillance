@@ -30,6 +30,7 @@ global using AtcSoft.Video.Surveillance.Helpers.MotionDetection;
 global using AtcSoft.Video.Surveillance.Models;
 global using AtcSoft.Video.Surveillance.Models.Settings;
 global using AtcSoft.Video.Surveillance.Services;
+global using AtcSoft.Video.Surveillance.Windows.Diagnostics;
 
 global using Microsoft.AspNetCore.Authentication;
 global using Microsoft.AspNetCore.Authentication.JwtBearer;
