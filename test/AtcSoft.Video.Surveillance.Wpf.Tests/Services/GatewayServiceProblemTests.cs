@@ -55,4 +55,36 @@ public sealed class GatewayServiceProblemTests
 
         (await delete.Should().ThrowAsync<HttpRequestException>()).Which.Message.Should().Contain("503");
     }
+
+    [Fact]
+    public async Task A_Change_That_Times_Out_Is_An_Error_The_View_Models_Catch()
+    {
+        // A timeout or a resilience rejection is no HttpRequestException of its own:
+        // the generated client turns it into a result, and the gateway into this error.
+        using var server = new GatewayTestServer(_ => throw new TaskCanceledException("The request timed out."));
+
+        var start = () => server.Gateway.StartRecordingAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        (await start.Should().ThrowAsync<HttpRequestException>()).Which.Message.Should().Be("The server could not be reached");
+    }
+
+    [Fact]
+    public async Task A_Read_That_Times_Out_Is_Nothing_Read()
+    {
+        using var server = new GatewayTestServer(_ => throw new TaskCanceledException("The request timed out."));
+
+        var cameras = await server.Gateway.GetCamerasAsync(TestContext.Current.CancellationToken);
+
+        cameras.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_Snapshot_That_Times_Out_Is_No_Picture()
+    {
+        using var server = new GatewayTestServer(_ => throw new TaskCanceledException("The request timed out."));
+
+        var picture = await server.Gateway.CaptureSnapshotAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        picture.Should().BeNull();
+    }
 }

@@ -281,6 +281,13 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
                 .GetCamerasAsync()
                 .ConfigureAwait(false);
 
+            // The server could not be reached: the wall stays as it is, and its
+            // tiles start their streams again by themselves.
+            if (cameras is null)
+            {
+                return;
+            }
+
             var showConnectionTypeIcon = await IsConnectionTypeIconEnabledAsync().ConfigureAwait(false);
 
             await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -288,7 +295,7 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
                 // Stop & dispose existing tiles
                 StopAndDisposeTiles();
 
-                if (cameras is null || cameras.Length == 0)
+                if (cameras.Length == 0)
                 {
                     GridRows = 0;
                     GridColumns = 0;
@@ -322,31 +329,15 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
             var tiles = await Application.Current.Dispatcher.InvokeAsync(() => CameraTiles.ToList());
             foreach (var tile in tiles)
             {
-                try
-                {
-                    await tile.StartStreamAsync().ConfigureAwait(false);
-                }
-                catch (HttpRequestException)
-                {
-                    // Per-tile stream start failed (the server refused it, with
-                    // its reason, or could not be reached) — the tile shows
-                    // "No Stream". A single tile failing must not abort the rest
-                    // of the live-view load.
-                }
+                // A tile whose stream cannot start (the server refused it, timed
+                // out or could not be reached) tries again by itself; it never
+                // holds up the other tiles.
+                await tile.StartStreamOrRetryLaterAsync().ConfigureAwait(false);
             }
         }
         catch (HttpRequestException)
         {
-            var app = Application.Current;
-            if (app is not null)
-            {
-                await app.Dispatcher.InvokeAsync(() =>
-                {
-                    StopAndDisposeTiles();
-                    GridRows = 0;
-                    GridColumns = 0;
-                });
-            }
+            // The server could not be reached: the wall stays as it is.
         }
         finally
         {

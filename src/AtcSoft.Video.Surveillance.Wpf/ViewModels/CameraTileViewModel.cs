@@ -610,12 +610,16 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
             retryTimer = null;
         }
 
-        _ = TryStartStreamForRetryAsync();
+        _ = StartStreamOrRetryLaterAsync();
     }
 
-    private async Task TryStartStreamForRetryAsync()
+    /// <summary>
+    /// Starts the stream; one that cannot start now (the server refused it,
+    /// timed out or could not be reached) is tried again later. Never throws.
+    /// </summary>
+    public async Task StartStreamOrRetryLaterAsync()
     {
-        if (disposed || stoppedByUser)
+        if (disposed)
         {
             return;
         }

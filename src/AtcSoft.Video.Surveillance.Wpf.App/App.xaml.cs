@@ -73,6 +73,7 @@ public partial class App
 
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainUnhandledException;
         Current.DispatcherUnhandledException += ApplicationOnDispatcherUnhandledException;
+        TaskScheduler.UnobservedTaskException += TaskSchedulerOnUnobservedTaskException;
         base.OnStartup(e);
 
         // Binding errors always go to the log (and so to Aspire and the E2E smoke tests);
@@ -112,12 +113,41 @@ public partial class App
             return;
         }
 
-        LogDispatcherUnhandledException(exceptionMessage);
-
-        ShowFatalErrorDialog(exceptionMessage, Translations.DispatcherUnhandledException);
+        // The client may be left on a wall for weeks: one failure on the UI thread
+        // neither closes it nor waits for someone to close a dialog. It is logged
+        // and named in the status bar, and the app goes on.
+        if (logger is not null)
+        {
+            LogDispatcherUnhandledException(exceptionMessage);
+        }
+        else
+        {
+            Log.Error(args.Exception, "Dispatcher Unhandled Exception: {Message}", exceptionMessage);
+        }
 
         args.Handled = true;
-        Shutdown(-1);
+
+        // Before the main window is up the start-up itself failed: nothing to go on with.
+        if (MainWindow is not AtcSoft.Video.Surveillance.Wpf.App.MainWindow)
+        {
+            ShowFatalErrorDialog(exceptionMessage, Translations.DispatcherUnhandledException);
+            Shutdown(-1);
+            return;
+        }
+
+        if (host?.Services.GetService<MainWindowViewModel>() is { } mainViewModel)
+        {
+            mainViewModel.StatusText = $"{Translations.DispatcherUnhandledException}: {args.Exception.Message}";
+        }
+    }
+
+    private static void TaskSchedulerOnUnobservedTaskException(
+        object? sender,
+        UnobservedTaskExceptionEventArgs args)
+    {
+        // A failed task nobody waited for: logged, and the app goes on.
+        Log.Warning(args.Exception, "Unobserved task exception");
+        args.SetObserved();
     }
 
     /// <summary>
