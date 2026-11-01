@@ -15,7 +15,12 @@ internal sealed unsafe class Remuxer : IDisposable
     // behind.
     private const int WriteQueueCapacity = 1000;
 
-    private readonly Lock syncLock = new();
+    // Two locks, so the thread that reads the camera never waits for the disk: stateLock guards
+    // what WritePacket needs (the file being open, its clock, the queue), ioLock guards the
+    // muxer's writes. The writer takes only ioLock for each packet; opening, switching and
+    // closing take both, stateLock first, so no packet lands in the wrong file.
+    private readonly Lock stateLock = new();
+    private readonly Lock ioLock = new();
 
     // BlockingCollection (not Channel) because the surrounding class is
     // `unsafe` and cannot host `await`. The writer thread waits for
@@ -67,10 +72,13 @@ internal sealed unsafe class Remuxer : IDisposable
         int rotationDegrees = 0,
         AVCodecParameters* audioCodecpar = null)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            OpenLocked(outputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
-            EnsureWriterRunning();
+            lock (ioLock)
+            {
+                OpenLocked(outputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
+                EnsureWriterRunning();
+            }
         }
     }
 
@@ -86,10 +94,13 @@ internal sealed unsafe class Remuxer : IDisposable
         AVRational inputTimeBase,
         AVCodecParameters* audioCodecpar = null)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            OpenLocked(playlistPath, codecpar, inputTimeBase, rotationDegrees: 0, audioCodecpar, live: true);
-            EnsureWriterRunning();
+            lock (ioLock)
+            {
+                OpenLocked(playlistPath, codecpar, inputTimeBase, rotationDegrees: 0, audioCodecpar, live: true);
+                EnsureWriterRunning();
+            }
         }
     }
 
@@ -98,9 +109,12 @@ internal sealed unsafe class Remuxer : IDisposable
     /// </summary>
     public void Flush()
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            DrainQueueLocked();
+            lock (ioLock)
+            {
+                DrainQueueLocked();
+            }
         }
     }
 
@@ -118,10 +132,13 @@ internal sealed unsafe class Remuxer : IDisposable
         int rotationDegrees = 0,
         AVCodecParameters* audioCodecpar = null)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            CloseLocked();
-            OpenLocked(newOutputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
+            lock (ioLock)
+            {
+                CloseLocked();
+                OpenLocked(newOutputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
+            }
         }
     }
 
@@ -340,7 +357,7 @@ internal sealed unsafe class Remuxer : IDisposable
         AVPacket* srcPacket,
         AVRational srcTimeBase)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
             if (outputCtx is null)
             {
@@ -404,7 +421,7 @@ internal sealed unsafe class Remuxer : IDisposable
                 // disk write used to block the demux thread; on a slow
                 // drive (cleanup pass on the same disk, network share
                 // hiccup) that backed up the RTSP buffer and dropped
-                // frames upstream. The writer drains under syncLock so
+                // frames upstream. The writer writes under ioLock only, so
                 // CloseLocked can flush before changing outputCtx.
                 if (TryEnqueueDropOldest((nint)clonedPkt))
                 {
@@ -431,7 +448,7 @@ internal sealed unsafe class Remuxer : IDisposable
         AVPacket* srcPacket,
         AVRational srcTimeBase)
     {
-        lock (syncLock)
+        lock (stateLock)
         {
             if (outputCtx is null || !hasAudio || !receivedKeyframe || srcPacket->pts == AV_NOPTS_VALUE)
             {
@@ -499,7 +516,7 @@ internal sealed unsafe class Remuxer : IDisposable
     }
 
     // Started lazily on first Open and stopped in Dispose. Writes the
-    // queued packets to the current outputCtx under syncLock. CloseLocked
+    // queued packets to the current outputCtx under ioLock. CloseLocked
     // drains synchronously before closing the muxer, so packets are never
     // written to a stale outputCtx.
     private void EnsureWriterRunning()
@@ -548,7 +565,7 @@ internal sealed unsafe class Remuxer : IDisposable
 
     private bool WriteNextQueuedPacket()
     {
-        lock (syncLock)
+        lock (ioLock)
         {
             if (!writeQueue.TryTake(out var ptr))
             {
@@ -565,7 +582,7 @@ internal sealed unsafe class Remuxer : IDisposable
         }
     }
 
-    // Must be called while holding syncLock. Writes every queued packet to
+    // Must be called while holding both locks. Writes every queued packet to
     // the current outputCtx (or just frees them if outputCtx is null).
     private void DrainQueueLocked()
     {
@@ -580,7 +597,7 @@ internal sealed unsafe class Remuxer : IDisposable
         }
     }
 
-    // Must be called while holding syncLock with an open output. After a write that ends the
+    // Must be called while holding ioLock with an open output. After a write that ends the
     // file, the rest is dropped: the recording reports the error instead of claiming to run.
     private void WriteLocked(AVPacket* pkt)
     {
@@ -605,9 +622,12 @@ internal sealed unsafe class Remuxer : IDisposable
 
     public void Close()
     {
-        lock (syncLock)
+        lock (stateLock)
         {
-            CloseLocked();
+            lock (ioLock)
+            {
+                CloseLocked();
+            }
         }
     }
 
@@ -620,7 +640,7 @@ internal sealed unsafe class Remuxer : IDisposable
 
         // Flush every packet still in the queue to the current outputCtx
         // before writing the trailer. The writer task is blocked on the
-        // syncLock by us, so this drain is exclusive.
+        // ioLock by us, so this drain is exclusive.
         DrainQueueLocked();
 
         var hasPictures = receivedKeyframe;
