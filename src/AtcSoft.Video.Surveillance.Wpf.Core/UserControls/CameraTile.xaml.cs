@@ -869,8 +869,10 @@ public partial class CameraTile : IDisposable
             mediaPipeline?.Dispose();
             mediaPipeline = null;
 
-            Player?.Dispose();
+            // Let the video hosts go of it first: the player's graphics device goes with it.
+            var oldPlayer = Player;
             Player = null;
+            oldPlayer?.Dispose();
         }
 
         disposed = true;

@@ -687,7 +687,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         Close();
 
         // Ensure the demux thread has fully completed cleanup before final disposal
-        demuxThread?.Join(ThreadJoinTimeoutMs);
+        var exited = demuxThread?.Join(ThreadJoinTimeoutMs) ?? true;
         demuxThread = null;
 
         lock (captureLock)
@@ -696,6 +696,18 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             frameCapture = null;
             greyScaler?.Dispose();
             greyScaler = null;
+        }
+
+        // The player owns its graphics accelerator (a D3D11 device, its video processor and
+        // textures, FFmpeg's hardware context): it goes with the player. Not while the demux
+        // thread may still decode on it; then it is left to the process, and logged.
+        if (exited)
+        {
+            gpuAccelerator?.Dispose();
+        }
+        else if (gpuAccelerator is not null)
+        {
+            LogAcceleratorKeptForRunningThread(ThreadJoinTimeoutMs);
         }
     }
 

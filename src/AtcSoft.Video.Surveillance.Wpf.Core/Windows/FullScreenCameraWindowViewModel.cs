@@ -359,14 +359,14 @@ public sealed partial class FullScreenCameraWindowViewModel : ViewModelDialogBas
             {
                 Player.StateChanged -= OnPlayerStateChanged;
 
-                // Only dispose the player if we own it (created it ourselves)
-                // If it was borrowed from CameraTile, it will be returned and reused
+                // The window lets go of the player first (its video host detaches), then disposes
+                // it only when it made it itself; a tile's player stays with the tile.
+                var shown = Player;
+                Player = null;
                 if (ownsPlayer)
                 {
-                    Player.Dispose();
+                    shown.Dispose();
                 }
-
-                Player = null;
             }
         }
 
