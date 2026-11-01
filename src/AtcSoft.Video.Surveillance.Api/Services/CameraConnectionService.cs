@@ -21,6 +21,9 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // sends packets all the time.
     private static readonly TimeSpan WatchedCameraSilenceLimit = TimeSpan.FromSeconds(30);
 
+    // A recording that ran this long before it failed was not failing all along.
+    private static readonly TimeSpan RecordingRanWell = TimeSpan.FromMinutes(5);
+
     private readonly ICameraStorageService storageService;
     private readonly IApplicationSettingsService settingsService;
     private readonly IRecordingService recordingService;
@@ -33,6 +36,11 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     private readonly ConcurrentDictionary<Guid, IMediaPipeline> managedPipelines = new();
     private readonly ConcurrentDictionary<Guid, BackoffState> backoffs = new();
     private readonly ConcurrentDictionary<Guid, Lock> startGates = new();
+
+    // When the server last started each camera's recording on connect, and how
+    // its recordings that could write nothing back off.
+    private readonly ConcurrentDictionary<Guid, DateTime> recordingStarts = new();
+    private readonly ConcurrentDictionary<Guid, BackoffState> writeFailures = new();
 
     // Cameras whose pipeline was given to the recording service by the
     // record-on-connect path. Only for those does "not recording" mean the
@@ -179,7 +187,15 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         recordingIntents?.Drop(cameraId);
         CloseEverything(cameraId);
         startGates.TryRemove(cameraId, out _);
+        recordingStarts.TryRemove(cameraId, out _);
+        writeFailures.TryRemove(cameraId, out _);
     }
+
+    /// <inheritdoc />
+    public IMediaPipeline? FindPlayingPipeline(Guid cameraId)
+        => managedPipelines.TryGetValue(cameraId, out var pipeline) && !HasStoppedPlaying(pipeline)
+            ? pipeline
+            : null;
 
     /// <inheritdoc />
     public void Reopen(Guid cameraId)
@@ -195,6 +211,9 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         // via REST, which CCM doesn't track in managedPipelines.
         // Without this, a single network blip on an API-started recording
         // leaves the session "Recording" forever with no recovery.
+        // Why a recording on connect stopped writing is read first: the
+        // reaper closes the pipeline that knows.
+        var writeErrors = ReadWriteErrors();
         recordingService.ReapInactiveSessions();
 
         var cameras = storageService.GetAllCameras();
@@ -297,6 +316,8 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                         // from outside) and only the reference here lingers.
                         if (!existingPipeline.IsRecordingActive)
                         {
+                            NoteRecordingEnded(camera, writeErrors.GetValueOrDefault(camera.Id) ?? ReadWriteError(existingPipeline));
+
                             if (recordingService.IsRecording(camera.Id))
                             {
                                 recordingService.StopRecording(camera.Id);
@@ -322,16 +343,25 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                             // may be watching), and is recorded again below.
                         }
                     }
-                    else if (existingPipeline.FramesDecoded <= 0 && !recordingService.IsRecording(camera.Id))
+                    else if (HasStoppedPlaying(existingPipeline) && !recordingService.IsRecording(camera.Id))
                     {
                         // Opened a whole pass ago and still without a
-                        // picture: it is closed, and opened again below.
+                        // picture, or silent since: it is closed, and opened
+                        // again below.
                         LogDeadPipelineDetected(camera.Id, camera.Display.DisplayName);
                         ScheduleDeferredDisposal(camera.Id);
                     }
                 }
 
                 if (recordingService.IsRecording(camera.Id))
+                {
+                    continue;
+                }
+
+                // Its recording could write nothing (a share gone, a disk
+                // failing) lately: it waits, rather than start a new near-empty
+                // file every pass.
+                if (IsWaitingAfterWriteFailure(camera.Id))
                 {
                     continue;
                 }
@@ -497,6 +527,63 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         => Hosts(camera)
             ? recordingService.StartRecordingOnSharedPipeline(camera, pipeline)
             : recordingService.StartRecording(camera, pipeline);
+
+    // A recording that ran a while before it ended starts its count afresh;
+    // one that ended because it could write nothing waits before the next,
+    // longer each time (30 seconds up to 15 minutes).
+    private void NoteRecordingEnded(
+        CameraConfiguration camera,
+        string? error)
+    {
+        if (recordingStarts.TryRemove(camera.Id, out var startedAt) &&
+            DateTime.UtcNow - startedAt > RecordingRanWell)
+        {
+            writeFailures.TryRemove(camera.Id, out _);
+        }
+
+        if (string.IsNullOrEmpty(error))
+        {
+            return;
+        }
+
+        var failures = writeFailures.TryGetValue(camera.Id, out var previous) ? previous.ConsecutiveFailures + 1 : 1;
+        var delay = ReconnectBackoff.ComputeDelay(failures);
+        writeFailures[camera.Id] = new BackoffState
+        {
+            ConsecutiveFailures = failures,
+            NextAttemptUtc = DateTime.UtcNow + delay,
+        };
+        LogRecordingWriteBackoff(camera.Id, camera.Display.DisplayName, failures, (int)delay.TotalSeconds);
+    }
+
+    private Dictionary<Guid, string> ReadWriteErrors()
+    {
+        var errors = new Dictionary<Guid, string>();
+        foreach (var (cameraId, pipeline) in managedPipelines)
+        {
+            if (recordingOnConnect.ContainsKey(cameraId) && ReadWriteError(pipeline) is { Length: > 0 } error)
+            {
+                errors[cameraId] = error;
+            }
+        }
+
+        return errors;
+    }
+
+    private static string? ReadWriteError(IMediaPipeline pipeline)
+    {
+        try
+        {
+            return pipeline.RecordingError;
+        }
+        catch (ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    private bool IsWaitingAfterWriteFailure(Guid cameraId)
+        => writeFailures.TryGetValue(cameraId, out var state) && DateTime.UtcNow < state.NextAttemptUtc;
 
     private static bool HasStoppedPlaying(IMediaPipeline pipeline)
     {
@@ -882,9 +969,15 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                 return OnConnectStart.RecordedAlready;
             }
 
+            if (IsWaitingAfterWriteFailure(camera.Id))
+            {
+                return OnConnectStart.Refused;
+            }
+
             if (StartRecordingOnConnect(camera, pipeline))
             {
                 recordingOnConnect[camera.Id] = 0;
+                recordingStarts[camera.Id] = DateTime.UtcNow;
                 return OnConnectStart.Started;
             }
 

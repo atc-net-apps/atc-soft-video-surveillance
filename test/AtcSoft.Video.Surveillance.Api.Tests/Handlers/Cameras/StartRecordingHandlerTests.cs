@@ -193,6 +193,28 @@ public class StartRecordingHandlerTests
         intents.Received(1).Want(cameraId);
     }
 
+    [Fact]
+    public async Task A_Camera_The_Server_Watches_Is_Recorded_On_That_Connection_Not_A_Second_One()
+    {
+        var storage = Substitute.For<ICameraStorageService>();
+        var recordingService = Substitute.For<IRecordingService>();
+        var pipelineFactory = Substitute.For<IMediaPipelineFactory>();
+        var watching = Substitute.For<IMediaPipeline>();
+        var runtime = Substitute.For<ICameraRuntime>();
+        var intents = Substitute.For<IRecordingIntents>();
+        var camera = new CameraConfiguration { Id = Guid.NewGuid() };
+        storage.GetCameraById(camera.Id).Returns(camera);
+        runtime.FindPlayingPipeline(camera.Id).Returns(watching);
+        recordingService.StartRecordingOnSharedPipeline(camera, watching).Returns(true);
+        var handler = new StartRecordingHandler(storage, recordingService, pipelineFactory, intents: intents, runtime: runtime);
+
+        var result = await handler.ExecuteAsync(new StartRecordingParameters(camera.Id), TestContext.Current.CancellationToken);
+
+        result.Result.Should().BeOfType<Ok<RecordingStatus>>();
+        pipelineFactory.DidNotReceiveWithAnyArgs().Create(default!);
+        intents.Received(1).Want(camera.Id);
+    }
+
     private sealed class UsbScenario
     {
         public UsbScenario()

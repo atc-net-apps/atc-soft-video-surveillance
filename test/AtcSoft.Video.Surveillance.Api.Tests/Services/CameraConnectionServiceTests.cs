@@ -167,6 +167,31 @@ public sealed class CameraConnectionServiceTests
         sut.FindPipeline(camera.Id).Should().BeSameAs(pipeline);
     }
 
+    [Fact]
+    public async Task A_Recording_That_Could_Write_Nothing_Is_Not_Started_Again_At_Once()
+    {
+        // Arrange — a camera recorded on connect, whose recording then fails to write
+        var (camera, _, pipeline, recordingService, _, sut) = CreateRecordedCamera();
+        using var _ = sut;
+        pipeline.FramesDecoded.Returns(10);
+        pipeline.IsRecordingActive.Returns(true);
+        recordingService.StartRecording(camera, pipeline).Returns(true);
+        await sut.DoWorkAsync(CancellationToken.None);
+        await sut.DoWorkAsync(CancellationToken.None);
+        recordingService.Received(1).StartRecording(camera, pipeline);
+
+        pipeline.RecordingError.Returns("No space left on device");
+        pipeline.IsRecordingActive.Returns(false);
+
+        // Act — the pass that finds it dead, and the next one
+        await sut.DoWorkAsync(CancellationToken.None);
+        await sut.DoWorkAsync(CancellationToken.None);
+
+        // Assert — it waits: no new pipeline, no new recording
+        recordingService.Received(1).StartRecording(Arg.Any<CameraConfiguration>(), Arg.Any<IMediaPipeline>());
+        sut.FindPipeline(camera.Id).Should().BeNull();
+    }
+
     private static (CameraConfiguration Camera, ICameraStorageService Storage, IMediaPipeline Pipeline, IRecordingService Recordings, IMotionDetectionService Motion, CameraConnectionService Sut) CreateRecordedCamera()
     {
         var camera = new CameraConfiguration { Id = Guid.NewGuid() };

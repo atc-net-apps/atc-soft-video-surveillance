@@ -10,7 +10,8 @@ public sealed class StartRecordingHandler(
     IRecordingService recordingService,
     IMediaPipelineFactory pipelineFactory,
     ICameraPipelineHost? pipelineHost = null,
-    IRecordingIntents? intents = null) : IStartRecordingHandler
+    IRecordingIntents? intents = null,
+    ICameraRuntime? runtime = null) : IStartRecordingHandler
 {
     // Wait at most this long for the camera to reach the Connected state
     // before reporting failure. Longer than the typical RTSP open (1-3 s)
@@ -48,6 +49,15 @@ public sealed class StartRecordingHandler(
                 return StartRecordingResult.Conflict(HostedCameraRecording.Describe(outcome, ConnectionTimeout));
             }
 
+            intents?.Want(parameters.CameraId);
+            return StartRecordingResult.Ok(BuildStatus(parameters.CameraId));
+        }
+
+        // A camera the server watches already is recorded on that connection,
+        // not on a second one: many cameras allow only a few.
+        if (runtime?.FindPlayingPipeline(camera.Id) is { } playing &&
+            recordingService.StartRecordingOnSharedPipeline(camera, playing))
+        {
             intents?.Want(parameters.CameraId);
             return StartRecordingResult.Ok(BuildStatus(parameters.CameraId));
         }

@@ -22,4 +22,13 @@ public interface ICameraRuntime
     /// </summary>
     /// <param name="cameraId">The camera.</param>
     void Reopen(Guid cameraId);
+
+    /// <summary>
+    /// Gets the pipeline the server keeps open for a camera (to watch it for motion), when it
+    /// plays: a recording someone starts is made on it rather than on a second connection to
+    /// the camera, which many cameras allow only a few of.
+    /// </summary>
+    /// <param name="cameraId">The camera.</param>
+    /// <returns>The pipeline; <c>null</c> when the server keeps none open that plays.</returns>
+    IMediaPipeline? FindPlayingPipeline(Guid cameraId);
 }
