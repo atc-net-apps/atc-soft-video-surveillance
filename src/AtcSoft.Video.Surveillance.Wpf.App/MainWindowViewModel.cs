@@ -21,6 +21,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly RecordingsViewModel recordingsViewModel;
     private readonly TimelineViewModel timelineViewModel;
     private readonly NotificationHistoryViewModel notificationHistoryViewModel;
+    private readonly CameraStateCounts counts = new();
 
     private WindowState previousWindowState = WindowState.Normal;
     private WindowStyle previousWindowStyle = WindowStyle.SingleBorderWindow;
@@ -161,6 +162,9 @@ public partial class MainWindowViewModel : ViewModelBase
             });
         };
         this.eventService.OnRecordingStateChanged += OnRecordingStateChanged;
+
+        // The server could not send again what came meanwhile: the counts are read again.
+        this.eventService.OnMissedEvents += () => _ = Application.Current?.Dispatcher.InvokeAsync(LoadInitialStatsAsync);
 
         // The language changes live; CultureManager holds the handler weakly.
         CultureManager.UiCultureChanged += OnUiCultureChanged;
@@ -513,15 +517,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
             if (cameras is not null)
             {
-                ConnectedCameras = cameras.Count(c =>
-                    c.ConnectionState == CameraConnectionState.Connected);
-                ActiveRecordings = cameras.Count(c => c.IsRecording);
+                counts.Load(cameras);
+                ShowCounts();
             }
         }
         catch (HttpRequestException)
         {
-            ConnectedCameras = 0;
-            ActiveRecordings = 0;
+            // The server is away: the counts stay until it is back.
         }
     }
 
@@ -581,31 +583,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnConnectionStateChanged(ConnectionStateChangedEvent e)
     {
-        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
-        {
-            if (e.NewState == CameraConnectionState.Connected)
-            {
-                ConnectedCameras++;
-            }
-            else
-            {
-                ConnectedCameras = Math.Max(0, ConnectedCameras - 1);
-            }
-        });
+        counts.Apply(e);
+        _ = Application.Current?.Dispatcher.InvokeAsync(ShowCounts);
     }
 
     private void OnRecordingStateChanged(RecordingStateChangedEvent e)
     {
-        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
-        {
-            if (HubStates.IsRecording(e.NewState) && !HubStates.IsRecording(e.OldState))
-            {
-                ActiveRecordings++;
-            }
-            else if (!HubStates.IsRecording(e.NewState) && HubStates.IsRecording(e.OldState))
-            {
-                ActiveRecordings = Math.Max(0, ActiveRecordings - 1);
-            }
-        });
+        counts.Apply(e);
+        _ = Application.Current?.Dispatcher.InvokeAsync(ShowCounts);
+    }
+
+    private void ShowCounts()
+    {
+        ConnectedCameras = counts.Connected;
+        ActiveRecordings = counts.Recording;
     }
 }

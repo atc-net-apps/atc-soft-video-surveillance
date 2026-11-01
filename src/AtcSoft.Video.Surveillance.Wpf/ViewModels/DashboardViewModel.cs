@@ -7,6 +7,8 @@ public partial class DashboardViewModel : ViewModelBase
 {
     private readonly GatewayService gatewayService;
     private readonly SurveillanceEventService eventService;
+    private readonly CameraStateCounts counts = new();
+    private bool loadedOnce;
 
     [ObservableProperty]
     private int totalCameras;
@@ -38,11 +40,21 @@ public partial class DashboardViewModel : ViewModelBase
 
         this.eventService.OnConnectionStateChanged += OnConnectionStateChanged;
         this.eventService.OnRecordingStateChanged += OnRecordingStateChanged;
+
+        // The server could not send again what came meanwhile: the counts are read again.
+        this.eventService.OnMissedEvents += () =>
+        {
+            if (loadedOnce)
+            {
+                _ = Application.Current?.Dispatcher.InvokeAsync(() => LoadCommand.Execute(parameter: null));
+            }
+        };
     }
 
     [RelayCommand("Load")]
     private async Task LoadAsync()
     {
+        loadedOnce = true;
         IsLoading = true;
 
         try
@@ -57,19 +69,9 @@ public partial class DashboardViewModel : ViewModelBase
 
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                if (cameras is not null)
-                {
-                    TotalCameras = cameras.Length;
-                    ConnectedCameras = cameras.Count(c =>
-                        c.ConnectionState == CameraConnectionState.Connected);
-                    ActiveRecordings = cameras.Count(c => c.IsRecording);
-                }
-                else
-                {
-                    TotalCameras = 0;
-                    ConnectedCameras = 0;
-                    ActiveRecordings = 0;
-                }
+                counts.Load(cameras ?? []);
+                TotalCameras = cameras?.Length ?? 0;
+                ShowCounts();
 
                 TotalLayouts = layouts?.Length ?? 0;
             });
@@ -92,31 +94,19 @@ public partial class DashboardViewModel : ViewModelBase
 
     private void OnConnectionStateChanged(ConnectionStateChangedEvent e)
     {
-        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
-        {
-            if (e.NewState == CameraConnectionState.Connected)
-            {
-                ConnectedCameras++;
-            }
-            else
-            {
-                ConnectedCameras = Math.Max(0, ConnectedCameras - 1);
-            }
-        });
+        counts.Apply(e);
+        _ = Application.Current?.Dispatcher.InvokeAsync(ShowCounts);
     }
 
     private void OnRecordingStateChanged(RecordingStateChangedEvent e)
     {
-        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
-        {
-            if (HubStates.IsRecording(e.NewState) && !HubStates.IsRecording(e.OldState))
-            {
-                ActiveRecordings++;
-            }
-            else if (!HubStates.IsRecording(e.NewState) && HubStates.IsRecording(e.OldState))
-            {
-                ActiveRecordings = Math.Max(0, ActiveRecordings - 1);
-            }
-        });
+        counts.Apply(e);
+        _ = Application.Current?.Dispatcher.InvokeAsync(ShowCounts);
+    }
+
+    private void ShowCounts()
+    {
+        ConnectedCameras = counts.Connected;
+        ActiveRecordings = counts.Recording;
     }
 }
