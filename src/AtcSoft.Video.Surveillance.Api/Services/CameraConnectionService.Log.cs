@@ -94,4 +94,7 @@ public sealed partial class CameraConnectionService
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Handling the {State} state of camera {CameraId}'s pipeline failed")]
     private partial void LogPipelineStateHandlerFailed(Exception ex, Guid cameraId, ConnectionState state);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Camera {CameraName} ({CameraId}) dropped while it played: it is tried again now, not at the next pass")]
+    private partial void LogQuickRetry(string cameraName, Guid cameraId);
 }

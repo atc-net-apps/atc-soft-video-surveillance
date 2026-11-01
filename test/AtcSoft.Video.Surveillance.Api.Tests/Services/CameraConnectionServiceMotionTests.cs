@@ -180,6 +180,34 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Watched_Camera_That_Drops_While_Playing_Is_Opened_Again_Within_Seconds()
+    {
+        // Before, it waited for a pass after the back-off: 30 s to 2.5 minutes blind.
+        await ConnectAsync();
+
+        pipeline.ConnectionStateChanged += Raise.EventWith(new ConnectionStateChangedEventArgs(ConnectionState.Connected, ConnectionState.Error));
+
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (pipelineFactory.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(IMediaPipelineFactory.Create)) < 2 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+        }
+
+        pipelineFactory.Received(2).Create(camera);
+    }
+
+    [Fact]
+    public async Task A_Camera_That_Never_Played_Waits_For_Its_Back_Off()
+    {
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        pipeline.ConnectionStateChanged += Raise.EventWith(new ConnectionStateChangedEventArgs(ConnectionState.Connecting, ConnectionState.Error));
+        await Task.Delay(TimeSpan.FromSeconds(7), TestContext.Current.CancellationToken);
+
+        pipelineFactory.Received(1).Create(camera);
+    }
+
+    [Fact]
     public async Task A_Camera_That_Fails_Stops_Being_Watched_Before_Its_Pipeline_Is_Closed()
     {
         await ConnectAsync();

@@ -24,6 +24,9 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // A recording that ran this long before it failed was not failing all along.
     private static readonly TimeSpan RecordingRanWell = TimeSpan.FromMinutes(5);
 
+    // How soon a camera that was playing and dropped is tried again.
+    private static readonly TimeSpan QuickRetryDelay = TimeSpan.FromSeconds(5);
+
     private readonly ICameraStorageService storageService;
     private readonly IApplicationSettingsService settingsService;
     private readonly IRecordingService recordingService;
@@ -54,6 +57,12 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // still was never recorded.
     private readonly ConcurrentDictionary<Guid, byte> motionNotRecorded = new();
 
+    // A pass and a quick retry of one camera never run at once.
+    private readonly Lock passGate = new();
+
+    // Cancels the quick retries still waiting when the service stops.
+    private readonly CancellationTokenSource quickRetries = new();
+
     // What each hosted camera's pipeline is in use for, beyond what the
     // server wants with the camera itself. One entry per Acquire: the same
     // use can be held more than once (two snapshots at the same time).
@@ -61,6 +70,9 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // that might be in use.
     private readonly Dictionary<Guid, List<CameraPipelineUse>> pipelineUses = [];
     private readonly Lock pipelineGate = new();
+
+    // 1 once the quick retries were cancelled and let go (Dispose may run twice).
+    private int quickRetriesReleased;
 
     public CameraConnectionService(
         ILogger<CameraConnectionService> logger,
@@ -236,172 +248,185 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
         ForgetDeletedCameras(cameras);
 
-        foreach (var camera in cameras)
+        lock (passGate)
         {
-            if (stoppingToken.IsCancellationRequested)
+            foreach (var camera in cameras)
             {
-                break;
-            }
-
-            // The pipeline was rotated when it was created. A rotation set
-            // through the API afterwards reaches it here, so snapshots follow
-            // at once and recordings from the next segment.
-            if (managedPipelines.TryGetValue(camera.Id, out var running))
-            {
-                running.SetRotation(camera.Display.Rotation);
-            }
-
-            // Skip USB cameras whose physical device is currently
-            // unplugged. Reconnecting is impossible until the watcher
-            // reports the device back, so polling here would just
-            // reproduce the ~1 M attempts/year anti-pattern in a more
-            // expensive way (we'd actually try to open the dshow
-            // source and burn FFmpeg time on each tick).
-            if (usbLifecycle.IsUnplugged(camera.Id))
-            {
-                if (managedPipelines.ContainsKey(camera.Id))
+                if (stoppingToken.IsCancellationRequested)
                 {
-                    if (recordingService.IsRecording(camera.Id))
-                    {
-                        try
-                        {
-                            recordingService.StopRecording(camera.Id);
-                        }
-                        catch (Exception ex)
-                        {
-                            LogStopRecordingShutdownError(ex, camera.Id);
-                        }
-                    }
-
-                    ScheduleDeferredDisposal(camera.Id);
+                    break;
                 }
 
-                continue;
-            }
-
-            // Skip cameras still inside their backoff window so a
-            // persistently dead camera doesn't generate ~1 M failed attempts
-            // per year.
-            if (backoffs.TryGetValue(camera.Id, out var bs)
-                && DateTime.UtcNow < bs.NextAttemptUtc)
-            {
-                continue;
-            }
-
-            try
-            {
-                var recordOnConnect = ShouldRecordContinuously(camera, appDefault);
-                var watchForMotion = ShouldWatchForMotion(camera);
-
-                // Motion recording was turned off: the camera is no longer watched.
-                if (!watchForMotion && motionDetectionService.IsDetectionActive(camera.Id))
-                {
-                    StopWatching(camera.Id);
-                }
-
-                if (!recordOnConnect)
-                {
-                    StopRecordingOnConnect(camera);
-
-                    if (watchForMotion)
-                    {
-                        EnsureWatching(camera);
-                    }
-                    else
-                    {
-                        // The server itself wants nothing with the camera. A
-                        // recording someone started on it is theirs and is
-                        // left alone, and so is a live view.
-                        CloseUnusedOrSilent(camera);
-                        LogRecordingOnConnectDisabled(camera.Id, camera.Display.DisplayName);
-                    }
-
-                    continue;
-                }
-
-                if (managedPipelines.TryGetValue(camera.Id, out var existingPipeline))
-                {
-                    if (recordingOnConnect.ContainsKey(camera.Id))
-                    {
-                        // The pipeline was given to the recording service and
-                        // no longer produces output. Either the recording
-                        // service still has the session (it is told to stop,
-                        // which closes the pipeline), or the session is gone
-                        // already (reaped at the top of this pass, or stopped
-                        // from outside) and only the reference here lingers.
-                        if (!existingPipeline.IsRecordingActive)
-                        {
-                            NoteRecordingEnded(camera, writeErrors.GetValueOrDefault(camera.Id) ?? ReadWriteError(existingPipeline));
-
-                            if (recordingService.IsRecording(camera.Id))
-                            {
-                                recordingService.StopRecording(camera.Id);
-                            }
-
-                            recordingOnConnect.TryRemove(camera.Id, out _);
-
-                            if (!Hosts(camera))
-                            {
-                                // The recording owned the pipeline and closed it.
-                                LogDeadPipelineDetected(camera.Id, camera.Display.DisplayName);
-                                managedPipelines.TryRemove(camera.Id, out _);
-                            }
-                            else if (HasStoppedPlaying(existingPipeline))
-                            {
-                                LogDeadPipelineDetected(camera.Id, camera.Display.DisplayName);
-                                ScheduleDeferredDisposal(camera.Id);
-                                connectionStates?.Report(camera.Id, ConnectionState.Disconnected);
-                            }
-
-                            // Otherwise the recording of a hosted camera was
-                            // only stopped: its pipeline plays on (someone
-                            // may be watching), and is recorded again below.
-                        }
-                    }
-                    else if (HasStoppedPlaying(existingPipeline) && !recordingService.IsRecording(camera.Id))
-                    {
-                        // Opened a whole pass ago and still without a
-                        // picture, or silent since: it is closed, and opened
-                        // again below.
-                        LogDeadPipelineDetected(camera.Id, camera.Display.DisplayName);
-                        ScheduleDeferredDisposal(camera.Id);
-                    }
-                }
-
-                if (recordingService.IsRecording(camera.Id))
-                {
-                    continue;
-                }
-
-                // Its recording could write nothing (a share gone, a disk
-                // failing) lately: it waits, rather than start a new near-empty
-                // file every pass.
-                if (IsWaitingAfterWriteFailure(camera.Id))
-                {
-                    continue;
-                }
-
-                // Pipeline already created — try to start recording if player is now playing
-                if (managedPipelines.TryGetValue(camera.Id, out var pending))
-                {
-                    TryStartRecordingForPipeline(camera, pending);
-                    continue;
-                }
-
-                LogStartingRecordingOnConnect(camera.Id, camera.Display.DisplayName);
-
-                // Open() is non-blocking — recording starts when the player reaches Playing state
-                OpenManagedPipeline(camera);
-            }
-            catch (Exception ex)
-            {
-                LogStartRecordingFailed(ex, camera.Id, camera.Display.DisplayName);
-                RecordFailure(camera);
-                RemoveAndDisposePipeline(camera.Id);
+                ConnectCamera(camera, appDefault, writeErrors);
             }
         }
 
         return Task.CompletedTask;
+    }
+
+    // One camera's part of a pass: opened, watched, recorded or closed as its settings ask.
+    // Called under passGate.
+    private void ConnectCamera(
+        CameraConfiguration camera,
+        bool appDefault,
+        Dictionary<Guid, string> writeErrors)
+    {
+        // The pipeline was rotated when it was created. A rotation set
+        // through the API afterwards reaches it here, so snapshots follow
+        // at once and recordings from the next segment.
+        if (managedPipelines.TryGetValue(camera.Id, out var running))
+        {
+            running.SetRotation(camera.Display.Rotation);
+        }
+
+        // Skip USB cameras whose physical device is currently
+        // unplugged. Reconnecting is impossible until the watcher
+        // reports the device back, so polling here would just
+        // reproduce the ~1 M attempts/year anti-pattern in a more
+        // expensive way (we'd actually try to open the dshow
+        // source and burn FFmpeg time on each tick).
+        if (usbLifecycle.IsUnplugged(camera.Id))
+        {
+            if (managedPipelines.ContainsKey(camera.Id))
+            {
+                if (recordingService.IsRecording(camera.Id))
+                {
+                    try
+                    {
+                        recordingService.StopRecording(camera.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogStopRecordingShutdownError(ex, camera.Id);
+                    }
+                }
+
+                ScheduleDeferredDisposal(camera.Id);
+            }
+
+            return;
+        }
+
+        // Skip cameras still inside their backoff window so a
+        // persistently dead camera doesn't generate ~1 M failed attempts
+        // per year.
+        if (backoffs.TryGetValue(camera.Id, out var bs)
+            && DateTime.UtcNow < bs.NextAttemptUtc)
+        {
+            return;
+        }
+
+        try
+        {
+            var recordOnConnect = ShouldRecordContinuously(camera, appDefault);
+            var watchForMotion = ShouldWatchForMotion(camera);
+
+            // Motion recording was turned off: the camera is no longer watched.
+            if (!watchForMotion && motionDetectionService.IsDetectionActive(camera.Id))
+            {
+                StopWatching(camera.Id);
+            }
+
+            if (!recordOnConnect)
+            {
+                StopRecordingOnConnect(camera);
+
+                if (watchForMotion)
+                {
+                    EnsureWatching(camera);
+                }
+                else
+                {
+                    // The server itself wants nothing with the camera. A
+                    // recording someone started on it is theirs and is
+                    // left alone, and so is a live view.
+                    CloseUnusedOrSilent(camera);
+                    LogRecordingOnConnectDisabled(camera.Id, camera.Display.DisplayName);
+                }
+
+                return;
+            }
+
+            if (managedPipelines.TryGetValue(camera.Id, out var existingPipeline))
+            {
+                if (recordingOnConnect.ContainsKey(camera.Id))
+                {
+                    // The pipeline was given to the recording service and
+                    // no longer produces output. Either the recording
+                    // service still has the session (it is told to stop,
+                    // which closes the pipeline), or the session is gone
+                    // already (reaped at the top of this pass, or stopped
+                    // from outside) and only the reference here lingers.
+                    if (!existingPipeline.IsRecordingActive)
+                    {
+                        NoteRecordingEnded(camera, writeErrors.GetValueOrDefault(camera.Id) ?? ReadWriteError(existingPipeline));
+
+                        if (recordingService.IsRecording(camera.Id))
+                        {
+                            recordingService.StopRecording(camera.Id);
+                        }
+
+                        recordingOnConnect.TryRemove(camera.Id, out _);
+
+                        if (!Hosts(camera))
+                        {
+                            // The recording owned the pipeline and closed it.
+                            LogDeadPipelineDetected(camera.Id, camera.Display.DisplayName);
+                            managedPipelines.TryRemove(camera.Id, out _);
+                        }
+                        else if (HasStoppedPlaying(existingPipeline))
+                        {
+                            LogDeadPipelineDetected(camera.Id, camera.Display.DisplayName);
+                            ScheduleDeferredDisposal(camera.Id);
+                            connectionStates?.Report(camera.Id, ConnectionState.Disconnected);
+                        }
+
+                        // Otherwise the recording of a hosted camera was
+                        // only stopped: its pipeline plays on (someone
+                        // may be watching), and is recorded again below.
+                    }
+                }
+                else if (HasStoppedPlaying(existingPipeline) && !recordingService.IsRecording(camera.Id))
+                {
+                    // Opened a whole pass ago and still without a
+                    // picture, or silent since: it is closed, and opened
+                    // again below.
+                    LogDeadPipelineDetected(camera.Id, camera.Display.DisplayName);
+                    ScheduleDeferredDisposal(camera.Id);
+                }
+            }
+
+            if (recordingService.IsRecording(camera.Id))
+            {
+                return;
+            }
+
+            // Its recording could write nothing (a share gone, a disk
+            // failing) lately: it waits, rather than start a new near-empty
+            // file every pass.
+            if (IsWaitingAfterWriteFailure(camera.Id))
+            {
+                return;
+            }
+
+            // Pipeline already created — try to start recording if player is now playing
+            if (managedPipelines.TryGetValue(camera.Id, out var pending))
+            {
+                TryStartRecordingForPipeline(camera, pending);
+                return;
+            }
+
+            LogStartingRecordingOnConnect(camera.Id, camera.Display.DisplayName);
+
+            // Open() is non-blocking — recording starts when the player reaches Playing state
+            OpenManagedPipeline(camera);
+        }
+        catch (Exception ex)
+        {
+            LogStartRecordingFailed(ex, camera.Id, camera.Display.DisplayName);
+            RecordFailure(camera);
+            RemoveAndDisposePipeline(camera.Id);
+        }
     }
 
     /// <summary>
@@ -412,6 +437,11 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     /// </summary>
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
+        if (Volatile.Read(ref quickRetriesReleased) == 0)
+        {
+            await quickRetries.CancelAsync().ConfigureAwait(false);
+        }
+
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
 
         StopAllManagedRecordings();
@@ -438,6 +468,13 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             {
                 LogDisposePipelineError(ex, kvp.Key);
             }
+        }
+
+        // Dispose may be called more than once (the host and the container).
+        if (Interlocked.Exchange(ref quickRetriesReleased, 1) == 0)
+        {
+            quickRetries.Cancel();
+            quickRetries.Dispose();
         }
 
         managedPipelines.Clear();
@@ -1123,6 +1160,14 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         {
             LogPipelineConnectionFailed(camera.Id, camera.Display.DisplayName);
             RecordFailure(camera);
+
+            // A camera that was playing is tried again in a few seconds, not at a pass up to a
+            // minute later: until then it is neither watched nor recorded.
+            if (e.PreviousState == ConnectionState.Connected)
+            {
+                ScheduleQuickRetry(camera);
+            }
+
             StopWatching(camera.Id);
 
             // A recording on a hosted camera's pipeline does not own it and
@@ -1149,6 +1194,60 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             {
                 connectionStates?.Report(camera.Id, ConnectionState.Disconnected);
             }
+        }
+    }
+
+    // The first failure after playing is tried again after QuickRetryDelay instead of the usual
+    // back-off; a camera that fails again waits as before.
+    private void ScheduleQuickRetry(CameraConfiguration camera)
+    {
+        if (!backoffs.TryGetValue(camera.Id, out var state) || state.ConsecutiveFailures != 1)
+        {
+            return;
+        }
+
+        backoffs[camera.Id] = new BackoffState
+        {
+            ConsecutiveFailures = 1,
+            NextAttemptUtc = DateTime.UtcNow + QuickRetryDelay,
+        };
+
+        CancellationToken token;
+        try
+        {
+            token = quickRetries.Token;
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
+
+        var cameraId = camera.Id;
+        _ = Task.Delay(QuickRetryDelay, token).ContinueWith(
+            t =>
+            {
+                if (!t.IsCanceled)
+                {
+                    RetryCamera(cameraId);
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default);
+    }
+
+    private void RetryCamera(Guid cameraId)
+    {
+        var camera = storageService.GetCameraById(cameraId);
+        if (camera is null || usbLifecycle.IsUnplugged(cameraId))
+        {
+            return;
+        }
+
+        LogQuickRetry(camera.Display.DisplayName, cameraId);
+        lock (passGate)
+        {
+            ConnectCamera(camera, settingsService.Recording.EnableRecordingOnConnect, writeErrors: []);
         }
     }
 
