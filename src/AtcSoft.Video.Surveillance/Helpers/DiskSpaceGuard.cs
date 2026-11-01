@@ -301,7 +301,7 @@ public sealed class DiskSpaceGuard
 
     // The folders the deleted files were in, and the folders above them up to (not including)
     // the media folder they belong to, deepest first, while they are empty and old enough.
-    private static void RemoveEmptyFoldersOf(
+    internal static void RemoveEmptyFoldersOf(
         IEnumerable<string> deletedFiles,
         IReadOnlyList<string> mediaFolders,
         List<MediaCleanupRunError> errors)
