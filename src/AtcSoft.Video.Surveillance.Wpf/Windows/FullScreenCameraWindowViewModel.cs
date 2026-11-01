@@ -146,7 +146,7 @@ public sealed partial class FullScreenCameraWindowViewModel : ViewModelBase, IDi
         object? sender,
         PlayerStateChangedEventArgs e)
     {
-        Application.Current?.Dispatcher.Invoke(() =>
+        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
         {
             ConnectionState = e.NewState switch
             {
@@ -166,7 +166,7 @@ public sealed partial class FullScreenCameraWindowViewModel : ViewModelBase, IDi
             return;
         }
 
-        Application.Current?.Dispatcher.Invoke(() =>
+        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
         {
             ConnectionState = HubStates.ToConnectionState(e.NewState);
         });
@@ -179,7 +179,7 @@ public sealed partial class FullScreenCameraWindowViewModel : ViewModelBase, IDi
             return;
         }
 
-        Application.Current?.Dispatcher.Invoke(() =>
+        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
         {
             IsRecording = HubStates.IsRecording(e.NewState);
         });
@@ -192,7 +192,7 @@ public sealed partial class FullScreenCameraWindowViewModel : ViewModelBase, IDi
             return;
         }
 
-        Application.Current?.Dispatcher.Invoke(() =>
+        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
         {
             IsMotionDetected = e.IsMotionActive;
             AnalysisWidth = e.AnalysisWidth;

@@ -1,4 +1,5 @@
 ﻿global using System.Globalization;
+global using System.Net;
 global using System.Runtime.CompilerServices;
 
 global using AtcSoft.Video.Surveillance.Blazor.App.Logic;
@@ -6,6 +7,7 @@ global using AtcSoft.Video.Surveillance.Blazor.App.Pages.SettingsTabs;
 global using AtcSoft.Video.Surveillance.Resources;
 
 global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Time.Testing;
 
 global using VideoSurveillance.Generated;
 global using VideoSurveillance.Generated.Auth.Models;

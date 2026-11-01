@@ -187,9 +187,18 @@
         await LoadRecordingsAsync();
 
         // A recording that starts or stops comes from the server's event
-        // stream (GET /events) until the page is left.
+        // stream (GET /events) until the page is left. When the server could
+        // not send again what came meanwhile (it restarted), the list is read again.
+        EventStream.MissedEvents += OnMissedEvents;
         _ = EventStream.RunAsync(OnEventAsync, leaving.Token);
     }
+
+    private void OnMissedEvents()
+        => InvokeAsync(async () =>
+        {
+            await LoadRecordingsAsync();
+            StateHasChanged();
+        });
 
     private Task OnEventAsync(SurveillanceEvent surveillanceEvent)
     {
@@ -388,6 +397,7 @@
 
     public void Dispose()
     {
+        EventStream.MissedEvents -= OnMissedEvents;
         leaving.Cancel();
         leaving.Dispose();
     }

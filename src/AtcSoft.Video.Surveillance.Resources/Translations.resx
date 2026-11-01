@@ -2847,4 +2847,7 @@ Thumbnail:
   <data name="ErrorHandledAppGoesOn" xml:space="preserve">
     <value>Something went wrong. CameraWall goes on and keeps recording; the details are in the log.</value>
   </data>
+  <data name="StreamStoppedStartsAgain" xml:space="preserve">
+    <value>The stream stopped. It starts again by itself.</value>
+  </data>
 </root>

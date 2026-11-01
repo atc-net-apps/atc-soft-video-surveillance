@@ -18,13 +18,18 @@ var apiBaseAddress = builder.Configuration["services:api:https:0"]
 // retry sends the same one).
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<BrowserSession>();
+
+// The event stream fails when it is silent past its heartbeats (a connection
+// that died while the computer slept), so it is opened again.
+builder.Services.AddSingleton(new EventStreamWatchdog());
 builder.Services
     .AddHttpClient("VideoSurveillance-ApiClient", client =>
     {
         client.BaseAddress = new Uri(apiBaseAddress);
     })
     .AddApiCredentials((sp, credentials) => SessionCredentials.Configure(credentials, sp.GetRequiredService<BrowserSession>()))
-    .AddApiResilience();
+    .AddApiResilience()
+    .AddHttpMessageHandler(sp => new EventStreamWatchdogHandler(sp.GetRequiredService<EventStreamWatchdog>()));
 
 // Register all generated endpoints (includes IHttpMessageFactory registration)
 builder.Services.AddVideoSurveillanceEndpoints();

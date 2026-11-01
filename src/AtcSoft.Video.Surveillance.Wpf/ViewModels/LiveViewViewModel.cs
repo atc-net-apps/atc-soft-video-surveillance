@@ -15,8 +15,12 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
     private readonly IUsbCameraWatcher usbCameraWatcher;
     private readonly string apiBaseAddress;
     private readonly AtcSoft.Video.Surveillance.Services.IApplicationSettingsService? settingsService;
+    private readonly ILoggerFactory loggerFactory;
+    private readonly Lock loadLock = new();
     private bool disposed;
     private bool loadedOnce;
+    private bool loading;
+    private bool reloadWanted;
     private bool usbWatcherSubscribed;
     [ObservableProperty]
     private ObservableCollection<CameraTileViewModel> cameraTiles = [];
@@ -147,7 +151,8 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
         IVideoPlayerFactory videoPlayerFactory,
         IUsbCameraWatcher usbCameraWatcher,
         string apiBaseAddress,
-        AtcSoft.Video.Surveillance.Services.IApplicationSettingsService? settingsService = null)
+        AtcSoft.Video.Surveillance.Services.IApplicationSettingsService? settingsService = null,
+        ILoggerFactory? loggerFactory = null)
     {
         ArgumentNullException.ThrowIfNull(gatewayService);
         ArgumentNullException.ThrowIfNull(eventService);
@@ -160,6 +165,7 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
         this.usbCameraWatcher = usbCameraWatcher;
         this.apiBaseAddress = apiBaseAddress;
         this.settingsService = settingsService;
+        this.loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
         // The grid starts in the size it was last shown in.
         selectedGridPreset = ((int)GridPager.ParsePreset(
@@ -178,7 +184,7 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
     // opened yet stays unloaded.
     private void OnMissedEvents()
     {
-        if (disposed || !loadedOnce || IsLoading)
+        if (disposed || !loadedOnce)
         {
             return;
         }
@@ -266,11 +272,65 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Loads the cameras: one load at a time. A load asked for while one runs
+    /// (the view opened, F5, missed events) runs once more after it.
+    /// </summary>
     [RelayCommand("Load")]
     private async Task LoadAsync()
     {
-        loadedOnce = true;
-        IsLoading = true;
+        lock (loadLock)
+        {
+            loadedOnce = true;
+            if (loading)
+            {
+                reloadWanted = true;
+                return;
+            }
+
+            loading = true;
+        }
+
+        var loaded = false;
+        try
+        {
+            while (true)
+            {
+                await LoadOnceAsync().ConfigureAwait(false);
+
+                lock (loadLock)
+                {
+                    if (!reloadWanted || disposed)
+                    {
+                        loading = false;
+                        loaded = true;
+                        return;
+                    }
+
+                    reloadWanted = false;
+                }
+            }
+        }
+        finally
+        {
+            if (!loaded)
+            {
+                lock (loadLock)
+                {
+                    loading = false;
+                    reloadWanted = false;
+                }
+            }
+        }
+    }
+
+    // Brings the tiles in line with the server's cameras: a camera that stays
+    // keeps its tile, its player and its stream (only its lease is checked),
+    // a new one gets a tile, and one that went has its tile closed off the UI
+    // thread. A full screen window of a camera that stays goes on playing.
+    private async Task LoadOnceAsync()
+    {
+        await OnUiAsync(() => IsLoading = true).ConfigureAwait(false);
 
         try
         {
@@ -278,85 +338,107 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
                 .GetCamerasAsync()
                 .ConfigureAwait(false);
 
+            // The server could not be reached: the wall stays as it is, and its
+            // tiles start their streams again by themselves.
+            if (cameras is null || disposed)
+            {
+                return;
+            }
+
             var showConnectionTypeIcon = await IsConnectionTypeIconEnabledAsync().ConfigureAwait(false);
 
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            var added = new List<CameraTileViewModel>();
+            var kept = new List<CameraTileViewModel>();
+            var removed = new List<CameraTileViewModel>();
+            await OnUiAsync(() =>
             {
-                // Stop & dispose existing tiles
-                StopAndDisposeTiles();
-
-                if (cameras is null || cameras.Length == 0)
+                var wanted = cameras.Select(camera => camera.Id).ToHashSet();
+                foreach (var tile in CameraTiles.Where(tile => !wanted.Contains(tile.CameraId)).ToList())
                 {
-                    GridRows = 0;
-                    GridColumns = 0;
-                    return;
+                    CameraTiles.Remove(tile);
+                    removed.Add(tile);
                 }
 
-                // Create a tile per camera
-                foreach (var camera in cameras)
+                for (var index = 0; index < cameras.Length; index++)
                 {
-                    var tile = new CameraTileViewModel(videoPlayerFactory, gatewayService, eventService, apiBaseAddress)
+                    var camera = cameras[index];
+                    var tile = CameraTiles.FirstOrDefault(t => t.CameraId == camera.Id);
+                    if (tile is null)
                     {
-                        CameraId = camera.Id,
-                        DisplayName = camera.DisplayName,
-                        Description = camera.Description ?? string.Empty,
-                        ConnectionState = HubStates.ToConnectionState(camera.ConnectionState),
-                        IsRecording = camera.IsRecording,
-                        UsbDeviceId = camera.UsbDeviceId ?? string.Empty,
-                        ConnectionType = camera.ConnectionType.ToCoreConnectionType(),
-                        ShowConnectionTypeIcon = showConnectionTypeIcon,
-                        Rotation = camera.Rotation.ToCoreRotation(),
-                    };
+                        tile = new CameraTileViewModel(videoPlayerFactory, gatewayService, eventService, apiBaseAddress, logger: loggerFactory.CreateLogger<CameraTileViewModel>())
+                        {
+                            CameraId = camera.Id,
+                        };
+                        CameraTiles.Insert(index, tile);
+                        added.Add(tile);
+                    }
+                    else
+                    {
+                        var at = CameraTiles.IndexOf(tile);
+                        if (at != index)
+                        {
+                            CameraTiles.Move(at, index);
+                        }
 
-                    CameraTiles.Add(tile);
+                        kept.Add(tile);
+                    }
+
+                    tile.DisplayName = camera.DisplayName;
+                    tile.Description = camera.Description ?? string.Empty;
+                    tile.ConnectionState = HubStates.ToConnectionState(camera.ConnectionState);
+                    tile.IsRecording = camera.IsRecording;
+                    tile.UsbDeviceId = camera.UsbDeviceId ?? string.Empty;
+                    tile.ConnectionType = camera.ConnectionType.ToCoreConnectionType();
+                    tile.ShowConnectionTypeIcon = showConnectionTypeIcon;
+                    tile.Rotation = camera.Rotation.ToCoreRotation();
                 }
 
                 // Size the grid, and leave out what the filter and the page leave out
                 ApplyArrangement(wrapPages: false);
-            });
+            }).ConfigureAwait(false);
 
-            // Start all streams (off UI thread)
-            var tiles = await Application.Current.Dispatcher.InvokeAsync(() => CameraTiles.ToList());
-            foreach (var tile in tiles)
+            // Closing a player waits for its reader: off the UI thread.
+            if (removed.Count > 0)
             {
-                try
-                {
-                    await tile.StartStreamAsync().ConfigureAwait(false);
-                }
-                catch (HttpRequestException)
-                {
-                    // Per-tile stream start failed (the server refused it, with
-                    // its reason, or could not be reached) — the tile shows
-                    // "No Stream". A single tile failing must not abort the rest
-                    // of the live-view load.
-                }
+                await Task.Run(() => removed.ForEach(tile => tile.Dispose())).ConfigureAwait(false);
+            }
+
+            // A tile whose stream cannot start (the server refused it, timed
+            // out or could not be reached) tries again by itself; it never
+            // holds up the other tiles. One that stays checks its lease: a
+            // server that restarted no longer has it, and the stream starts again.
+            foreach (var tile in kept)
+            {
+                await tile.EnsureStreamAsync().ConfigureAwait(false);
+            }
+
+            foreach (var tile in added)
+            {
+                await tile.StartStreamOrRetryLaterAsync().ConfigureAwait(false);
             }
         }
         catch (HttpRequestException)
         {
-            var app = Application.Current;
-            if (app is not null)
-            {
-                await app.Dispatcher.InvokeAsync(() =>
-                {
-                    StopAndDisposeTiles();
-                    GridRows = 0;
-                    GridColumns = 0;
-                });
-            }
+            // The server could not be reached: the wall stays as it is.
         }
         finally
         {
-            // Application.Current can be null if a fatal exception triggered
-            // App.ApplicationOnDispatcherUnhandledException → Shutdown while
-            // this finally is unwinding. The app is going away anyway, so a
-            // missed IsLoading = false is harmless.
-            var app = Application.Current;
-            if (app is not null)
-            {
-                await app.Dispatcher.InvokeAsync(() => IsLoading = false);
-            }
+            await OnUiAsync(() => IsLoading = false).ConfigureAwait(false);
         }
+    }
+
+    // Runs on the UI thread, or at once where there is none (tests, or the app
+    // closing).
+    private static Task OnUiAsync(Action action)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null)
+        {
+            action();
+            return Task.CompletedTask;
+        }
+
+        return dispatcher.InvokeAsync(action).Task;
     }
 
     /// <summary>
@@ -383,7 +465,14 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
             }
         }
 
-        await Application.Current.Dispatcher.InvokeAsync(StopAndDisposeTiles);
+        // Emptied on the UI thread; the players are closed off it.
+        var removed = new List<CameraTileViewModel>();
+        await OnUiAsync(() =>
+        {
+            removed.AddRange(CameraTiles);
+            CameraTiles.Clear();
+        }).ConfigureAwait(false);
+        await Task.Run(() => removed.ForEach(tile => tile.Dispose())).ConfigureAwait(false);
     }
 
     [SuppressMessage(
@@ -403,7 +492,51 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
             tile.Rotation);
 
         var window = new FullScreenCameraWindow(viewModel);
+
+        // The window borrows the tile's player: when the tile goes (its camera
+        // was removed, or all streams were stopped), the window goes with it.
+        var following = WhenTileCloses(tile, () => _ = window.Dispatcher.InvokeAsync(window.Close));
+        window.Closed += (_, _) =>
+        {
+            following.Dispose();
+            tile.IsShownFullScreen = false;
+        };
+
+        // A camera shown full screen plays even while the grid leaves it out.
+        tile.IsShownFullScreen = true;
         window.Show();
+    }
+
+    /// <summary>
+    /// Calls <paramref name="onClosed"/> once, when the tile's player is gone
+    /// (the tile was disposed). Dispose the result to stop following.
+    /// </summary>
+    internal static IDisposable WhenTileCloses(
+        CameraTileViewModel tile,
+        Action onClosed)
+    {
+        ArgumentNullException.ThrowIfNull(tile);
+        ArgumentNullException.ThrowIfNull(onClosed);
+
+        void OnTilePropertyChanged(
+            object? sender,
+            System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (string.Equals(e.PropertyName, nameof(CameraTileViewModel.Player), StringComparison.Ordinal) && tile.Player is null)
+            {
+                tile.PropertyChanged -= OnTilePropertyChanged;
+                onClosed();
+            }
+        }
+
+        tile.PropertyChanged += OnTilePropertyChanged;
+        return new Unsubscriber(() => tile.PropertyChanged -= OnTilePropertyChanged);
+    }
+
+    private sealed class Unsubscriber(Action unsubscribe) : IDisposable
+    {
+        public void Dispose()
+            => unsubscribe();
     }
 
     public void Dispose()
@@ -437,15 +570,5 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
         }
 
         GC.SuppressFinalize(this);
-    }
-
-    private void StopAndDisposeTiles()
-    {
-        foreach (var tile in CameraTiles)
-        {
-            tile.Dispose();
-        }
-
-        CameraTiles.Clear();
     }
 }

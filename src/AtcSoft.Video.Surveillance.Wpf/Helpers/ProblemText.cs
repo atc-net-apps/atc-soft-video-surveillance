@@ -14,7 +14,13 @@ public static class ProblemText
     {
         ArgumentNullException.ThrowIfNull(response);
 
-        return (response as IEndpointResult)?.Problem?.ToDisplayText()
+        var result = response as IEndpointResult;
+        if (result?.IsTransportFailure == true)
+        {
+            return Translations.ServerCouldNotBeReached;
+        }
+
+        return result?.Problem?.ToDisplayText()
             ?? string.Format(
                 CultureInfo.CurrentCulture,
                 Translations.ServerAnswered2,

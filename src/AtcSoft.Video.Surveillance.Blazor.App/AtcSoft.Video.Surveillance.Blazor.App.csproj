@@ -33,4 +33,8 @@
     <AdditionalFiles Include=".atc-rest-api-client" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AtcSoft.Video.Surveillance.Blazor.App.Tests" />
+  </ItemGroup>
+
 </Project>

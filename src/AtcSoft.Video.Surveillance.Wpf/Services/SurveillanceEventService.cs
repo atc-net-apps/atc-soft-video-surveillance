@@ -5,10 +5,12 @@ namespace AtcSoft.Video.Surveillance.Wpf.Services;
 /// and raises each part of an event as its own event. When the stream drops, it
 /// asks again with the id of the last event it read (Last-Event-ID), so the
 /// server sends what came meanwhile; while the server cannot be reached, it
-/// waits a little longer each time.
+/// waits a little longer each time. A reading the server ends (a 401 while the
+/// session could not be renewed) starts again after the last event too.
 /// </summary>
 /// <remarks>
 /// The events are raised on the thread that reads the stream, not the UI thread.
+/// A handler that throws is logged; the others still get the event.
 /// </remarks>
 [SuppressMessage(
     "Design",
@@ -18,10 +20,15 @@ namespace AtcSoft.Video.Surveillance.Wpf.Services;
     "Design",
     "MA0046:Use EventHandler<T> to declare events",
     Justification = "Action<T> events are intentional for terse WPF consumption.")]
-public sealed class SurveillanceEventService : BackgroundServiceBase<SurveillanceEventService>
+public sealed partial class SurveillanceEventService : BackgroundServiceBase<SurveillanceEventService>
 {
     private readonly IListEventsEndpoint endpoint;
     private readonly ClientSession? session;
+
+    // Kept across readings, so one that starts again goes on after the last event.
+    private string? lastEventId;
+    private bool opened;
+    private bool failedBeforeOpening;
 
     public SurveillanceEventService(
         IListEventsEndpoint endpoint,
@@ -50,9 +57,9 @@ public sealed class SurveillanceEventService : BackgroundServiceBase<Surveillanc
     /// <summary>
     /// Raised when the stream opens and the client may have missed events:
     /// the server was not there at the start (what the client showed came from
-    /// this computer alone), or it could not send again all that came while
-    /// the stream was down (it restarted). Whoever shows the server's state
-    /// loads it again.
+    /// this computer alone), it could not send again all that came while
+    /// the stream was down (it restarted), or there was no event to go on
+    /// after. Whoever shows the server's state loads it again.
     /// </summary>
     public event Action? OnMissedEvents;
 
@@ -83,6 +90,12 @@ public sealed class SurveillanceEventService : BackgroundServiceBase<Surveillanc
     /// </summary>
     public TimeProvider Time { get; set; } = TimeProvider.System;
 
+    /// <summary>
+    /// Gets the wait before a reading the server ended starts again: long
+    /// enough for the session to be renewed after a 401.
+    /// </summary>
+    public static TimeSpan RestartDelay { get; } = ClientSession.UnavailableBackOff;
+
     /// <inheritdoc />
     public override Task DoWorkAsync(CancellationToken stoppingToken)
         => RunAsync(stoppingToken);
@@ -90,72 +103,115 @@ public sealed class SurveillanceEventService : BackgroundServiceBase<Surveillanc
     /// <summary>
     /// Reads the events until <paramref name="cancellationToken"/> is cancelled.
     /// </summary>
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "The reading must go on for as long as the app runs; a failure is logged and the reading starts again.")]
     public async Task RunAsync(CancellationToken cancellationToken)
     {
-        // The server answers a client that is not signed in with 401.
-        if (session is not null)
+        while (!cancellationToken.IsCancellationRequested)
         {
+            // The server answers a client that is not signed in with 401.
+            if (session is not null)
+            {
+                try
+                {
+                    await session.WaitUntilSignedInAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+            }
+
             try
             {
-                await session.WaitUntilSignedInAsync(cancellationToken).ConfigureAwait(false);
+                await ReadAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The app stops.
+                return;
+            }
+            catch (Exception ex)
+            {
+                LogReadingFailed(ex);
+                SetConnected(connected: false);
+            }
+
+            // The server ended the reading (a 401 after a sleep: the token ran out
+            // and could not be renewed yet). It starts again after the last event.
+            LogReadingEnded(lastEventId);
+            try
+            {
+                await Task.Delay(RestartDelay, Time, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
                 return;
             }
         }
+    }
 
-        var opened = false;
-        var failedBeforeOpening = false;
+    private async Task ReadAsync(CancellationToken cancellationToken)
+    {
         var policy = new ServerSentEventReconnectPolicy
         {
             TimeProvider = Time,
-            OnConnected = result =>
-            {
-                // The first stream may have missed what came while the server was away;
-                // a later one, what the server could not send again (it restarted).
-                var missed = opened
-                    ? (result as IListEventsEndpointResult)?.XEventsMissedHeader is > 0
-                    : failedBeforeOpening;
-                opened = true;
-                SetConnected(connected: true);
-                SetReading(true);
-                if (missed)
-                {
-                    OnMissedEvents?.Invoke();
-                }
-            },
-            OnDisconnected = (exception, status) =>
-            {
-                if (IsReading)
-                {
-                    SetReading(false);
-                }
-
-                // A stream the server ended (or the caller left) keeps the server connected.
-                if (exception is not null || status is not null)
-                {
-                    failedBeforeOpening |= !opened;
-                    SetConnected(connected: false);
-                }
-            },
+            OnConnected = OnConnected,
+            OnDisconnected = OnDisconnected,
+        };
+        var readOptions = new StreamReadOptions
+        {
+            OnEvent = info => lastEventId = info.LastEventId ?? lastEventId,
         };
 
-        try
+        await foreach (var surveillanceEvent in endpoint
+            .ReadResumingAsync(
+                new ListEventsParameters(CameraId: null, HeartbeatSeconds: EventStreamWatchdog.HeartbeatSeconds, LastEventId: lastEventId),
+                policy,
+                streamReadOptions: readOptions,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false))
         {
-            await foreach (var surveillanceEvent in endpoint
-                .ReadResumingAsync(new ListEventsParameters(CameraId: null, HeartbeatSeconds: null, LastEventId: null), policy, cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
+            if (surveillanceEvent is not null)
             {
-                if (surveillanceEvent is not null)
-                {
-                    Raise(surveillanceEvent);
-                }
+                Raise(surveillanceEvent);
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    }
+
+    private void OnConnected(IServerSentEventResult result)
+    {
+        // The first stream may have missed what came while the server was away;
+        // a later one, what the server could not send again (it restarted), or
+        // all that came meanwhile when there was no event to go on after.
+        var missed = opened
+            ? lastEventId is null || (result as IListEventsEndpointResult)?.XEventsMissedHeader is > 0
+            : failedBeforeOpening;
+        opened = true;
+        SetConnected(connected: true);
+        SetReading(true);
+        if (missed)
         {
-            // The app stops.
+            Invoke(OnMissedEvents, nameof(OnMissedEvents));
+        }
+    }
+
+    private void OnDisconnected(
+        Exception? exception,
+        System.Net.HttpStatusCode? status)
+    {
+        if (IsReading)
+        {
+            SetReading(false);
+        }
+
+        // A stream the server ended (or the caller left) keeps the server connected.
+        if (exception is not null || status is not null)
+        {
+            failedBeforeOpening |= !opened;
+            SetConnected(connected: false);
         }
     }
 
@@ -165,27 +221,81 @@ public sealed class SurveillanceEventService : BackgroundServiceBase<Surveillanc
     {
         if (surveillanceEvent.Connection is { } connection)
         {
-            OnConnectionStateChanged?.Invoke(connection);
+            Invoke(OnConnectionStateChanged, connection);
         }
 
         if (surveillanceEvent.Recording is { } recording)
         {
-            OnRecordingStateChanged?.Invoke(recording);
+            Invoke(OnRecordingStateChanged, recording);
         }
 
         if (surveillanceEvent.Motion is { } motion)
         {
-            OnMotionDetected?.Invoke(motion);
+            Invoke(OnMotionDetected, motion);
         }
 
         if (surveillanceEvent.Usb is { } usb)
         {
-            OnUsbCameraLifecycleChanged?.Invoke(usb);
+            Invoke(OnUsbCameraLifecycleChanged, usb);
         }
 
         if (surveillanceEvent.Activity is { } activity)
         {
-            OnActivityChanged?.Invoke(activity);
+            Invoke(OnActivityChanged, activity);
+        }
+    }
+
+    // Each handler on its own: one that throws neither ends the reading nor
+    // keeps the event from the others.
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "A view's handler must not end the event stream of every view.")]
+    private void Invoke<T>(
+        Action<T>? handlers,
+        T value)
+    {
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var handler in handlers.GetInvocationList().Cast<Action<T>>())
+        {
+            try
+            {
+                handler(value);
+            }
+            catch (Exception ex)
+            {
+                LogHandlerFailed(ex, typeof(T).Name);
+            }
+        }
+    }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "A view's handler must not end the event stream of every view.")]
+    private void Invoke(
+        Action? handlers,
+        string name)
+    {
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var handler in handlers.GetInvocationList().Cast<Action>())
+        {
+            try
+            {
+                handler();
+            }
+            catch (Exception ex)
+            {
+                LogHandlerFailed(ex, name);
+            }
         }
     }
 
@@ -197,12 +307,21 @@ public sealed class SurveillanceEventService : BackgroundServiceBase<Surveillanc
         }
 
         IsConnected = connected;
-        ConnectedChanged?.Invoke();
+        Invoke(ConnectedChanged, nameof(ConnectedChanged));
     }
 
     private void SetReading(bool reading)
     {
         IsReading = reading;
-        ReadingChanged?.Invoke();
+        Invoke(ReadingChanged, nameof(ReadingChanged));
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A handler of {Event} failed; the other handlers and the event stream go on")]
+    private partial void LogHandlerFailed(Exception ex, string @event);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Reading the event stream failed; it starts again")]
+    private partial void LogReadingFailed(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "The server ended the event stream; it starts again after event {LastEventId}")]
+    private partial void LogReadingEnded(string? lastEventId);
 }

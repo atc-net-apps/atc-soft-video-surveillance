@@ -111,9 +111,18 @@ else
         await LoadCamerasAsync();
 
         // The states come from the server's event stream (GET /events) until
-        // the page is left; it resumes by itself after a drop.
+        // the page is left; it resumes by itself after a drop. When the server
+        // could not send again what came meanwhile (it restarted), the list is read again.
+        EventStream.MissedEvents += OnMissedEvents;
         _ = EventStream.RunAsync(OnEventAsync, leaving.Token);
     }
+
+    private void OnMissedEvents()
+        => InvokeAsync(async () =>
+        {
+            await LoadCamerasAsync();
+            StateHasChanged();
+        });
 
     private Task OnEventAsync(SurveillanceEvent surveillanceEvent)
     {
@@ -289,6 +298,7 @@ else
 
     public void Dispose()
     {
+        EventStream.MissedEvents -= OnMissedEvents;
         leaving.Cancel();
         leaving.Dispose();
     }

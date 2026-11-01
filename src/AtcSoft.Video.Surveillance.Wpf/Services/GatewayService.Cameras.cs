@@ -193,12 +193,20 @@ public sealed partial class GatewayService
         CancellationToken cancellationToken = default)
     {
         var parameters = new CaptureSnapshotParameters(CameraId: cameraId);
-        var result = await captureSnapshotEndpoint
-            .ExecuteAsync(parameters, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            var result = await captureSnapshotEndpoint
+                .ExecuteAsync(parameters, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-        return result.IsOk
-            ? result.OkContent.Content
-            : null;
+            return result.IsOk
+                ? result.OkContent.Content
+                : null;
+        }
+        catch (Exception ex) when (ApiTransportFailure.IsTransportFailure(ex, cancellationToken))
+        {
+            // A picture is a download, which "transportFailure": "result" does not cover.
+            return null;
+        }
     }
 }

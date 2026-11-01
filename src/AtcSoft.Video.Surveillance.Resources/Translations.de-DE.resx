@@ -2847,4 +2847,7 @@ Vorschaubild:
   <data name="ErrorHandledAppGoesOn" xml:space="preserve">
     <value>Etwas ist schiefgegangen. CameraWall läuft weiter und nimmt weiter auf; die Einzelheiten stehen im Protokoll.</value>
   </data>
+  <data name="StreamStoppedStartsAgain" xml:space="preserve">
+    <value>Der Stream wurde unterbrochen. Er startet von selbst neu.</value>
+  </data>
 </root>
