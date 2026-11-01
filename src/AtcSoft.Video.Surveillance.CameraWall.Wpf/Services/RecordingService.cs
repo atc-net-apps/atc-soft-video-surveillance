@@ -804,6 +804,14 @@ public partial class RecordingService : IRecordingService, IDisposable
             return true;
         }
 
+        // A start runs on the UI thread (a tile connecting, a click). A volume with room is told by
+        // one cheap read; only a volume that is short gets the guard, which may walk the archive.
+        var minimum = (long)settingsService.Recording.Cleanup.MinFreeSpaceMb * 1024L * 1024L;
+        if (ReadFreeBytes(folder) is { } free && free >= minimum)
+        {
+            return true;
+        }
+
         var result = ReclaimDiskSpace();
         if (result == DiskSpaceGuardResult.None)
         {
@@ -811,6 +819,21 @@ public partial class RecordingService : IRecordingService, IDisposable
         }
 
         return result.StateOf(folder) is DiskSpaceVolumeState.Ok or DiskSpaceVolumeState.Reclaimed;
+    }
+
+    // The free bytes on the folder's volume, or null when they cannot be read (then the guard decides).
+    private long? ReadFreeBytes(string folder)
+    {
+        try
+        {
+            var reader = diskSpaceGuard.Reader;
+            var volume = reader.GetVolume(folder);
+            return volume is null ? null : reader.GetFreeBytes(volume);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
     }
 
     // Every folder recordings go to: the global one (or its default) and each camera's own.
