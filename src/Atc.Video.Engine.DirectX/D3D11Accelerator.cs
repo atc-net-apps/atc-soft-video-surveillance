@@ -15,6 +15,9 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
     private readonly GpuSnapshotCapture snapshotCapture;
     private readonly Lock frameLock = new();
 
+    // One snapshot at a time: they share the capture's picture and encoder.
+    private readonly Lock snapshotLock = new();
+
     // A wrapper of the decoder's texture (owned by FFmpeg: never disposed), kept while it is the same.
     [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "A non-owning wrapper of a texture FFmpeg owns; disposing it would release FFmpeg's texture.")]
     private ID3D11Texture2D? nv12Wrapper;
@@ -234,36 +237,55 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
         // CopyResource reads from it. D3D11 immediate context is single-threaded.
         // The lock is waited for a moment only: a picture that is being shown and hangs (a locked
         // session) holds it, and the caller then takes its picture from memory instead.
-        if (!frameLock.TryEnter(SnapshotLockWait))
+        // The picture is read under frameLock; the PNG is encoded after it is let go, so the
+        // pictures to show are not held up by the encoding. snapshotLock keeps two snapshots from
+        // sharing the capture's picture.
+        lock (snapshotLock)
         {
-            return null;
-        }
-
-        try
-        {
-            if (latestBgraTexture is null || latestWidth <= 0 || latestHeight <= 0)
+            if (!frameLock.TryEnter(SnapshotLockWait))
             {
                 return null;
             }
 
-            d3d11Device.EnterContext();
             try
             {
-                return snapshotCapture.Capture(latestBgraTexture, latestWidth, latestHeight);
+                if (latestBgraTexture is null || latestWidth <= 0 || latestHeight <= 0)
+                {
+                    return null;
+                }
+
+                d3d11Device.EnterContext();
+                try
+                {
+                    if (!snapshotCapture.Read(latestBgraTexture, latestWidth, latestHeight))
+                    {
+                        return null;
+                    }
+                }
+                finally
+                {
+                    d3d11Device.LeaveContext();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogGpuSnapshotCaptureFailed(ex);
+                return null;
             }
             finally
             {
-                d3d11Device.LeaveContext();
+                frameLock.Exit();
             }
-        }
-        catch (Exception ex)
-        {
-            LogGpuSnapshotCaptureFailed(ex);
-            return null;
-        }
-        finally
-        {
-            frameLock.Exit();
+
+            try
+            {
+                return snapshotCapture.Encode();
+            }
+            catch (Exception ex)
+            {
+                LogGpuSnapshotCaptureFailed(ex);
+                return null;
+            }
         }
     }
 
@@ -302,7 +324,12 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
             latestBgraTexture = null;
         }
 
-        snapshotCapture.Dispose();
+        // A snapshot encoding its picture finishes first.
+        lock (snapshotLock)
+        {
+            snapshotCapture.Dispose();
+        }
+
         cpuUploader.Dispose();
         renderer.Dispose();
         hwAccelContext.Dispose();

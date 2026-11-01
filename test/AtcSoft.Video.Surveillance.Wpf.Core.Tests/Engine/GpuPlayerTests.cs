@@ -50,6 +50,11 @@ public sealed class GpuPlayerTests
             pictures.Should().OnlyContain(p => p.Width == 160 && p.Height == 90 && p.Pixels.Length == 160 * 90);
             pictures.Should().Contain(p => p.Pixels.Distinct().Count() > 10, "the test pattern is in the pictures");
             player.State.Should().Be(PlayerState.Playing, "copying pictures back did not hold up decoding");
+
+            // Snapshots from the card, two at once: read under the picture's lock, encoded after it.
+            var snapshots = await Task.WhenAll(player.CaptureFrameAsync(cancellationToken), player.CaptureFrameAsync(cancellationToken));
+            snapshots.Should().OnlyContain(png => png != null && png.Length > 1000);
+            snapshots.Select(png => PngSize(png!)).Should().AllBeEquivalentTo((1280, 720), "each is the whole picture");
         }
         finally
         {
@@ -57,6 +62,11 @@ public sealed class GpuPlayerTests
             Stop(camera);
         }
     }
+
+    // A PNG's size is in its header: width and height, big-endian, from byte 16.
+    private static (int Width, int Height) PngSize(byte[] png)
+        => (System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16, 4)),
+            System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20, 4)));
 
     private static string RequireFFmpeg()
     {
