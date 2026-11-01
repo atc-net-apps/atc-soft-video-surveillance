@@ -321,6 +321,7 @@ public partial class App
         try
         {
             var gatewayService = host.Services.GetRequiredService<GatewayService>();
+            coordinator.LoadCameras = () => gatewayService.GetCamerasAsync();
             var cameras = await gatewayService.GetCamerasAsync().ConfigureAwait(true);
             coordinator.UpdateCameraNameCache(cameras);
         }
