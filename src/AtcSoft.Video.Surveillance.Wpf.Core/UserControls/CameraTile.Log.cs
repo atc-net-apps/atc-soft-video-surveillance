@@ -49,4 +49,7 @@ public partial class CameraTile
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Snapshot capture or save failed")]
     private partial void LogSnapshotFailed(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Stopping the recording of {CameraName} failed")]
+    private partial void LogStopRecordingFailed(Exception ex, string cameraName);
 }

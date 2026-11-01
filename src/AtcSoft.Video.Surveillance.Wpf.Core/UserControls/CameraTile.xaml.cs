@@ -2795,7 +2795,22 @@ public partial class CameraTile : IDisposable
             return;
         }
 
-        recordingService.StopRecording(Camera.Id);
+        // Closing the file (the last packets, the index at its end) can take a moment on a slow disk:
+        // not on the UI thread. The tile follows the state change it raises.
+        var service = recordingService;
+        var cameraId = Camera.Id;
+        var name = Camera.Display.DisplayName;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                service.StopRecording(cameraId);
+            }
+            catch (Exception ex)
+            {
+                LogStopRecordingFailed(ex, name);
+            }
+        });
     }
 
     private void OnServiceRecordingStateChanged(
