@@ -258,8 +258,18 @@ public class DialogService : IDialogService
         var boundingBoxThickness = overrides?.MotionDetection.BoundingBox.Thickness ?? motionDetection.BoundingBox.Thickness;
         var boundingBoxSmoothing = overrides?.MotionDetection.BoundingBox.Smoothing ?? motionDetection.BoundingBox.Smoothing;
 
-        // Borrow player from source tile for instant display (no reconnection delay)
-        var borrowedPlayer = sourceTile?.LendPlayer();
+        // The window shows the tile's own player (no second connection, no reconnect delay). The
+        // tile keeps it: it goes on recording with it, checks it and reconnects it, and when it
+        // gets another player the window follows. A tile without a player: the window opens its own.
+        var sharedPlayer = sourceTile?.Player;
+        FullScreenCameraWindowViewModel? shown = null;
+        void OnTilePlayerChanged(object? sender, IVideoPlayer? newPlayer)
+            => shown?.FollowSharedPlayer(newPlayer);
+
+        if (sourceTile is not null)
+        {
+            sourceTile.PlayerChanged += OnTilePlayerChanged;
+        }
 
         try
         {
@@ -276,10 +286,11 @@ public class DialogService : IDialogService
                 boundingBoxThickness,
                 boundingBoxSmoothing,
                 motionDetectionService,
-                borrowedPlayer,
+                sharedPlayer,
                 videoPlayerFactory,
                 overrides?.CameraDisplay.ShowOverlayConnectionTypeIcon ?? display.ShowOverlayConnectionTypeIcon,
                 overrides?.CameraDisplay.ConnectionTypeIconPlacement ?? display.ConnectionTypeIconPlacement);
+            shown = viewModel;
             using var window = new FullScreenCameraWindow(viewModel);
             window.Owner = Application.Current.MainWindow;
 
@@ -287,10 +298,9 @@ public class DialogService : IDialogService
         }
         finally
         {
-            // Return the borrowed player to the source tile
-            if (sourceTile is not null && borrowedPlayer is not null)
+            if (sourceTile is not null)
             {
-                sourceTile.ReturnPlayer(borrowedPlayer);
+                sourceTile.PlayerChanged -= OnTilePlayerChanged;
             }
         }
     }

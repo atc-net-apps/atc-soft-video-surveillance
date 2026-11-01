@@ -53,11 +53,8 @@ public partial class CameraTile : IDisposable
     [DependencyProperty(PropertyChangedCallback = nameof(OnCameraDescriptionChanged))]
     private string cameraDescription = string.Empty;
 
-    [DependencyProperty]
+    [DependencyProperty(PropertyChangedCallback = nameof(OnPlayerPropertyChanged))]
     private IVideoPlayer? player;
-
-    [DependencyProperty(DefaultValue = false)]
-    private bool isPlayerLent;
 
     [DependencyProperty(DefaultValue = HorizontalAlignment.Left)]
     private HorizontalAlignment overlayHorizontalAlignment;
@@ -726,38 +723,10 @@ public partial class CameraTile : IDisposable
     }
 
     /// <summary>
-    /// Lends the player to another control (e.g., fullscreen window).
-    /// The player is removed from this tile and the tile shows a placeholder.
+    /// Occurs when the tile gets another player (a reconnect after a screen unlock, a camera
+    /// change): a full-screen view of the camera follows it. Raised on the UI thread.
     /// </summary>
-    /// <returns>The player instance, or null if no player is available.</returns>
-    public IVideoPlayer? LendPlayer()
-    {
-        if (Player is null || IsPlayerLent)
-        {
-            return null;
-        }
-
-        var lentPlayer = Player;
-        Player = null;
-        IsPlayerLent = true;
-        return lentPlayer;
-    }
-
-    /// <summary>
-    /// Returns a previously lent player to this tile.
-    /// </summary>
-    /// <param name="returnedPlayer">The player to return.</param>
-    public void ReturnPlayer(IVideoPlayer? returnedPlayer)
-    {
-        if (returnedPlayer is null)
-        {
-            IsPlayerLent = false;
-            return;
-        }
-
-        Player = returnedPlayer;
-        IsPlayerLent = false;
-    }
+    public event EventHandler<IVideoPlayer?>? PlayerChanged;
 
     /// <summary>
     /// Reconnects the camera stream.
@@ -1161,6 +1130,16 @@ public partial class CameraTile : IDisposable
             {
                 overlay.IsDeviceBusy = busy;
             }
+        }
+    }
+
+    private static void OnPlayerPropertyChanged(
+        DependencyObject d,
+        DependencyPropertyChangedEventArgs e)
+    {
+        if (d is CameraTile tile)
+        {
+            tile.PlayerChanged?.Invoke(tile, e.NewValue as IVideoPlayer);
         }
     }
 
@@ -1634,7 +1613,6 @@ public partial class CameraTile : IDisposable
     private bool TryParkPlayer()
     {
         if (stopRecordingOnDispose ||
-            IsPlayerLent ||
             Camera is null ||
             Player is null ||
             recordingService is null ||
