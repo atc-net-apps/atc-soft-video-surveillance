@@ -16,12 +16,12 @@ public sealed partial class WebhookRegistry : IWebhookRegistry
     };
 
     private readonly Lock sync = new();
-    private readonly string filePath;
     private readonly IWebhookSender sender;
     private readonly SecretProtector secrets;
     private readonly ILogger<WebhookRegistry> logger;
     private readonly List<Entry> configured;
     private readonly List<Entry> stored;
+    private readonly ServerDataFile dataFile;
 
     // The receivers with a usable address, as the dispatcher asks for them
     // at every event. Rebuilt when a receiver is added, changed or removed.
@@ -45,7 +45,6 @@ public sealed partial class WebhookRegistry : IWebhookRegistry
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         ArgumentNullException.ThrowIfNull(options);
 
-        this.filePath = filePath;
         this.sender = sender;
         this.secrets = secrets;
         this.logger = logger;
@@ -69,7 +68,9 @@ public sealed partial class WebhookRegistry : IWebhookRegistry
             LogInvalidEndpoint(invalid.LogName);
         }
 
-        stored = SafeJsonFile.TryRead<List<Entry>>(filePath, FileOptions) ?? [];
+        // A file that cannot be read is never taken for a missing one.
+        dataFile = new ServerDataFile(filePath, logger);
+        stored = dataFile.Read<List<Entry>>(FileOptions) ?? [];
         var plainCount = UnprotectSecrets();
         RebuildActive();
 
@@ -312,10 +313,7 @@ public sealed partial class WebhookRegistry : IWebhookRegistry
             })
             .ToList();
 
-        if (!SafeJsonFile.TryWrite(filePath, protectedEntries, FileOptions))
-        {
-            LogSaveFailed(filePath);
-        }
+        dataFile.TryWrite(protectedEntries, FileOptions);
     }
 
     [SuppressMessage(

@@ -46,15 +46,32 @@ public sealed class CachedRecordingDurationProviderTests : IDisposable
     }
 
     [Fact]
-    public void A_Length_That_Cannot_Be_Read_Is_Null_And_Not_Remembered()
+    public void A_Length_That_Cannot_Be_Read_Is_Remembered_Until_The_File_Changes()
     {
-        // A file that is still being finished may be readable a moment later.
+        // A damaged file is not opened again at every listing; one that is
+        // still being finished changes, and is read again then.
         using var sut = Create(TimeSpan.Zero);
 
         sut.GetDuration(file).Should().BeNull();
         sut.GetDuration(file).Should().BeNull();
+        probes.Should().Be(1);
 
+        File.WriteAllBytes(file, [1, 2, 3, 4, 5]);
+        sut.GetDuration(file).Should().BeNull();
         probes.Should().Be(2);
+    }
+
+    [Fact]
+    public void A_Size_And_Time_From_The_Walk_Are_Used_Without_Looking_At_The_File_Again()
+    {
+        using var sut = Create(TimeSpan.FromSeconds(30));
+        var info = new FileInfo(file);
+        sut.GetDuration(file, info.Length, info.LastWriteTimeUtc).Should().Be(TimeSpan.FromSeconds(30));
+
+        File.Delete(file);
+
+        sut.GetDuration(file, info.Length, info.LastWriteTimeUtc).Should().Be(TimeSpan.FromSeconds(30));
+        probes.Should().Be(1);
     }
 
     [Fact]

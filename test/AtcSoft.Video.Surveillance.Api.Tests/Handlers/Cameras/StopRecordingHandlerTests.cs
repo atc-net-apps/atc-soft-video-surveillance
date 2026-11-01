@@ -12,7 +12,8 @@ public class StopRecordingHandlerTests
         var camera = new CameraConfiguration { Id = cameraId };
         storage.GetCameraById(cameraId).Returns(camera);
         recordingService.GetRecordingState(cameraId).Returns(RecordingState.Idle);
-        var handler = new StopRecordingHandler(storage, recordingService);
+        var intents = Substitute.For<IRecordingIntents>();
+        var handler = new StopRecordingHandler(storage, recordingService, intents);
 
         // Act
         var result = await handler.ExecuteAsync(
@@ -25,6 +26,7 @@ public class StopRecordingHandlerTests
         okResult.Value!.CameraId.Should().Be(cameraId);
         okResult.Value.State.Should().Be(RecordingStatusState.Idle);
         recordingService.Received(1).StopRecording(cameraId);
+        intents.Received(1).Drop(cameraId);
     }
 
     [Fact]

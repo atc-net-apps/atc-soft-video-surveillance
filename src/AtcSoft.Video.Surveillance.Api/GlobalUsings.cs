@@ -11,9 +11,11 @@ global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Nodes;
 global using System.Text.Json.Serialization;
+global using System.Threading.Channels;
 
 global using Atc.Hosting;
 global using Atc.Video.Engine;
+global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Settings;
 global using AtcSoft.Video.Surveillance.Api.Domain.Events;
 global using AtcSoft.Video.Surveillance.Api.Domain.Mapping;
 global using AtcSoft.Video.Surveillance.Api.Domain.Security;
@@ -30,6 +32,7 @@ global using AtcSoft.Video.Surveillance.Helpers.MotionDetection;
 global using AtcSoft.Video.Surveillance.Models;
 global using AtcSoft.Video.Surveillance.Models.Settings;
 global using AtcSoft.Video.Surveillance.Services;
+global using AtcSoft.Video.Surveillance.Windows.Diagnostics;
 
 global using Microsoft.AspNetCore.Authentication;
 global using Microsoft.AspNetCore.Authentication.JwtBearer;

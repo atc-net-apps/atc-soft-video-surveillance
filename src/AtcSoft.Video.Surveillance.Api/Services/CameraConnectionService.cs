@@ -14,12 +14,15 @@ namespace AtcSoft.Video.Surveillance.Api.Services;
 /// pipeline kept here, and the camera is closed when nothing needs it.
 /// </para>
 /// </summary>
-public sealed partial class CameraConnectionService : BackgroundServiceBase<CameraConnectionService>, ICameraPipelineHost
+public sealed partial class CameraConnectionService : BackgroundServiceBase<CameraConnectionService>, ICameraPipelineHost, ICameraRuntime
 {
     // A watched camera is not recording most of the time, so "not recording"
     // cannot tell that its pipeline died. Silence can: a camera that plays
     // sends packets all the time.
     private static readonly TimeSpan WatchedCameraSilenceLimit = TimeSpan.FromSeconds(30);
+
+    // A recording that ran this long before it failed was not failing all along.
+    private static readonly TimeSpan RecordingRanWell = TimeSpan.FromMinutes(5);
 
     private readonly ICameraStorageService storageService;
     private readonly IApplicationSettingsService settingsService;
@@ -29,8 +32,15 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     private readonly IMotionDetectionService motionDetectionService;
     private readonly CameraConnectionTypeAutoDetector? connectionTypeAutoDetector;
     private readonly ICameraConnectionStateSink? connectionStates;
+    private readonly IRecordingIntents? recordingIntents;
     private readonly ConcurrentDictionary<Guid, IMediaPipeline> managedPipelines = new();
     private readonly ConcurrentDictionary<Guid, BackoffState> backoffs = new();
+    private readonly ConcurrentDictionary<Guid, Lock> startGates = new();
+
+    // When the server last started each camera's recording on connect, and how
+    // its recordings that could write nothing back off.
+    private readonly ConcurrentDictionary<Guid, DateTime> recordingStarts = new();
+    private readonly ConcurrentDictionary<Guid, BackoffState> writeFailures = new();
 
     // Cameras whose pipeline was given to the recording service by the
     // record-on-connect path. Only for those does "not recording" mean the
@@ -57,7 +67,8 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         IUsbCameraLifecycleCoordinator usbLifecycle,
         IMotionDetectionService motionDetectionService,
         CameraConnectionTypeAutoDetector? connectionTypeAutoDetector = null,
-        ICameraConnectionStateSink? connectionStates = null)
+        ICameraConnectionStateSink? connectionStates = null,
+        IRecordingIntents? recordingIntents = null)
         : base(logger, options, healthService)
     {
         this.storageService = storageService;
@@ -68,6 +79,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         this.motionDetectionService = motionDetectionService;
         this.connectionTypeAutoDetector = connectionTypeAutoDetector;
         this.connectionStates = connectionStates;
+        this.recordingIntents = recordingIntents;
 
         this.motionDetectionService.MotionDetected += OnMotionDetected;
         this.recordingService.RecordingStateChanged += OnRecordingStateChanged;
@@ -169,16 +181,53 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     }
 
     /// <inheritdoc />
+    public void Forget(Guid cameraId)
+    {
+        LogForgettingCamera(cameraId);
+        recordingIntents?.Drop(cameraId);
+        CloseEverything(cameraId);
+        startGates.TryRemove(cameraId, out _);
+        recordingStarts.TryRemove(cameraId, out _);
+        writeFailures.TryRemove(cameraId, out _);
+    }
+
+    /// <summary>
+    /// Gets when a camera that could not be opened is tried next.
+    /// </summary>
+    /// <param name="cameraId">The camera.</param>
+    /// <returns>The time, in UTC; <c>null</c> when the camera is not waiting.</returns>
+    public DateTime? GetNextAttemptUtc(Guid cameraId)
+        => backoffs.TryGetValue(cameraId, out var state) ? state.NextAttemptUtc : null;
+
+    /// <inheritdoc />
+    public IMediaPipeline? FindPlayingPipeline(Guid cameraId)
+        => managedPipelines.TryGetValue(cameraId, out var pipeline) && !HasStoppedPlaying(pipeline)
+            ? pipeline
+            : null;
+
+    /// <inheritdoc />
+    public void Reopen(Guid cameraId)
+    {
+        LogReopeningCamera(cameraId);
+        CloseEverything(cameraId);
+    }
+
+    /// <inheritdoc />
     public override Task DoWorkAsync(CancellationToken stoppingToken)
     {
         // Reap any session whose pipeline has died — including ones started
         // via REST, which CCM doesn't track in managedPipelines.
         // Without this, a single network blip on an API-started recording
         // leaves the session "Recording" forever with no recovery.
+        // Why a recording on connect stopped writing is read first: the
+        // reaper closes the pipeline that knows.
+        var writeErrors = ReadWriteErrors();
         recordingService.ReapInactiveSessions();
 
         var cameras = storageService.GetAllCameras();
         var appDefault = settingsService.Recording.EnableRecordingOnConnect;
+
+        ForgetDeletedCameras(cameras);
 
         foreach (var camera in cameras)
         {
@@ -234,7 +283,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
             try
             {
-                var recordOnConnect = RecordingPolicyHelper.ShouldRecordOnConnect(camera, appDefault);
+                var recordOnConnect = ShouldRecordContinuously(camera, appDefault);
                 var watchForMotion = ShouldWatchForMotion(camera);
 
                 // Motion recording was turned off: the camera is no longer watched.
@@ -245,6 +294,8 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
                 if (!recordOnConnect)
                 {
+                    StopRecordingOnConnect(camera);
+
                     if (watchForMotion)
                     {
                         EnsureWatching(camera);
@@ -273,6 +324,8 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                         // from outside) and only the reference here lingers.
                         if (!existingPipeline.IsRecordingActive)
                         {
+                            NoteRecordingEnded(camera, writeErrors.GetValueOrDefault(camera.Id) ?? ReadWriteError(existingPipeline));
+
                             if (recordingService.IsRecording(camera.Id))
                             {
                                 recordingService.StopRecording(camera.Id);
@@ -298,16 +351,25 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                             // may be watching), and is recorded again below.
                         }
                     }
-                    else if (existingPipeline.FramesDecoded <= 0 && !recordingService.IsRecording(camera.Id))
+                    else if (HasStoppedPlaying(existingPipeline) && !recordingService.IsRecording(camera.Id))
                     {
                         // Opened a whole pass ago and still without a
-                        // picture: it is closed, and opened again below.
+                        // picture, or silent since: it is closed, and opened
+                        // again below.
                         LogDeadPipelineDetected(camera.Id, camera.Display.DisplayName);
                         ScheduleDeferredDisposal(camera.Id);
                     }
                 }
 
                 if (recordingService.IsRecording(camera.Id))
+                {
+                    continue;
+                }
+
+                // Its recording could write nothing (a share gone, a disk
+                // failing) lately: it waits, rather than start a new near-empty
+                // file every pass.
+                if (IsWaitingAfterWriteFailure(camera.Id))
                 {
                     continue;
                 }
@@ -374,6 +436,88 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         base.Dispose();
     }
 
+    // Stops the camera's recording and closes its pipeline, whoever uses it.
+    private void CloseEverything(Guid cameraId)
+    {
+        motionDetectionService.StopDetection(cameraId);
+
+        try
+        {
+            recordingService.StopRecording(cameraId);
+        }
+        catch (Exception ex)
+        {
+            LogStopRecordingShutdownError(ex, cameraId);
+        }
+
+        lock (pipelineGate)
+        {
+            pipelineUses.Remove(cameraId);
+        }
+
+        // Closes the pipeline whoever used it; a recording that owned it has
+        // closed it already, and closing it again does no harm.
+        ScheduleDeferredDisposal(cameraId);
+        recordingOnConnect.TryRemove(cameraId, out _);
+        backoffs.TryRemove(cameraId, out _);
+    }
+
+    // A camera deleted while a pass was running, or by a path that did not
+    // say so, is let go here: a recording of a camera that is gone would
+    // never be segmented, and grow until its disk is full.
+    private void ForgetDeletedCameras(
+        IReadOnlyList<CameraConfiguration> cameras)
+    {
+        var known = cameras.Select(c => c.Id).ToHashSet();
+        var gone = managedPipelines.Keys
+            .Concat(recordingService.GetActiveSessions().Select(s => s.CameraId))
+            .Concat(backoffs.Keys)
+            .Where(id => !known.Contains(id))
+            .Distinct()
+            .ToList();
+
+        foreach (var cameraId in gone)
+        {
+            Forget(cameraId);
+        }
+    }
+
+    // Recorded for as long as it plays: on connect by the settings, or
+    // because someone started a recording of it and has not stopped it.
+    private bool ShouldRecordContinuously(CameraConfiguration camera)
+        => ShouldRecordContinuously(camera, settingsService.Recording.EnableRecordingOnConnect);
+
+    private bool ShouldRecordContinuously(
+        CameraConfiguration camera,
+        bool appDefault)
+        => RecordingPolicyHelper.ShouldRecordOnConnect(camera, appDefault) ||
+           recordingIntents?.IsWanted(camera.Id) == true;
+
+    // A recording the server started because the camera was to be recorded
+    // on connect stops when it no longer is (the setting was turned off, or
+    // the camera is now recorded on motion only). One someone started on
+    // their own is left alone.
+    private void StopRecordingOnConnect(CameraConfiguration camera)
+    {
+        if (!recordingOnConnect.TryRemove(camera.Id, out _))
+        {
+            return;
+        }
+
+        LogRecordingOnConnectTurnedOff(camera.Id, camera.Display.DisplayName);
+        if (recordingService.IsRecording(camera.Id))
+        {
+            recordingService.StopRecording(camera.Id);
+        }
+
+        // The recording owned the pipeline and closed it; a hosted camera's
+        // pipeline plays on for whoever watches it.
+        if (!Hosts(camera))
+        {
+            ScheduleDeferredDisposal(camera.Id);
+        }
+    }
+
     private bool ShouldWatchForMotion(CameraConfiguration camera)
         => MotionDetectionPolicy.ShouldRecordOnMotion(camera, settingsService.Recording.EnableRecordingOnMotion);
 
@@ -381,7 +525,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // else uses it.
     private bool ServerKeepsOpen(CameraConfiguration camera)
         => ShouldWatchForMotion(camera) ||
-           RecordingPolicyHelper.ShouldRecordOnConnect(camera, settingsService.Recording.EnableRecordingOnConnect);
+           ShouldRecordContinuously(camera);
 
     // A hosted camera's pipeline stays here whoever records on it, so that
     // stopping the recording does not close it under a viewer.
@@ -392,6 +536,63 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             ? recordingService.StartRecordingOnSharedPipeline(camera, pipeline)
             : recordingService.StartRecording(camera, pipeline);
 
+    // A recording that ran a while before it ended starts its count afresh;
+    // one that ended because it could write nothing waits before the next,
+    // longer each time (30 seconds up to 15 minutes).
+    private void NoteRecordingEnded(
+        CameraConfiguration camera,
+        string? error)
+    {
+        if (recordingStarts.TryRemove(camera.Id, out var startedAt) &&
+            DateTime.UtcNow - startedAt > RecordingRanWell)
+        {
+            writeFailures.TryRemove(camera.Id, out _);
+        }
+
+        if (string.IsNullOrEmpty(error))
+        {
+            return;
+        }
+
+        var failures = writeFailures.TryGetValue(camera.Id, out var previous) ? previous.ConsecutiveFailures + 1 : 1;
+        var delay = ReconnectBackoff.ComputeDelay(failures);
+        writeFailures[camera.Id] = new BackoffState
+        {
+            ConsecutiveFailures = failures,
+            NextAttemptUtc = DateTime.UtcNow + delay,
+        };
+        LogRecordingWriteBackoff(camera.Id, camera.Display.DisplayName, failures, (int)delay.TotalSeconds);
+    }
+
+    private Dictionary<Guid, string> ReadWriteErrors()
+    {
+        var errors = new Dictionary<Guid, string>();
+        foreach (var (cameraId, pipeline) in managedPipelines)
+        {
+            if (recordingOnConnect.ContainsKey(cameraId) && ReadWriteError(pipeline) is { Length: > 0 } error)
+            {
+                errors[cameraId] = error;
+            }
+        }
+
+        return errors;
+    }
+
+    private static string? ReadWriteError(IMediaPipeline pipeline)
+    {
+        try
+        {
+            return pipeline.RecordingError;
+        }
+        catch (ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    private bool IsWaitingAfterWriteFailure(Guid cameraId)
+        => writeFailures.TryGetValue(cameraId, out var state) && DateTime.UtcNow < state.NextAttemptUtc;
+
     private static bool HasStoppedPlaying(IMediaPipeline pipeline)
     {
         var lastPacket = pipeline.LastPacketUtc;
@@ -401,12 +602,35 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
     private IMediaPipeline OpenManagedPipeline(CameraConfiguration camera)
     {
+        // Opened as the camera is now: an edit made while a pass was running
+        // (which reads the cameras once) is not opened with the old address.
+        camera = storageService.GetCameraById(camera.Id) ?? camera;
         var pipeline = pipelineFactory.Create(camera);
         managedPipelines[camera.Id] = pipeline;
 
-        var capturedCamera = camera;
+        var cameraId = camera.Id;
         pipeline.ConnectionStateChanged += (_, e) =>
-            OnManagedPipelineConnected(capturedCamera, e);
+        {
+            // Runs on the pipeline's own thread: nothing may unwind into it.
+            try
+            {
+                // A pipeline that was replaced or closed meanwhile (the camera
+                // was edited or deleted) speaks for nobody any more; the camera
+                // is read as it is now, not as it was when it was opened.
+                if (!managedPipelines.TryGetValue(cameraId, out var current) ||
+                    !ReferenceEquals(current, pipeline) ||
+                    storageService.GetCameraById(cameraId) is not { } latest)
+                {
+                    return;
+                }
+
+                OnManagedPipelineConnected(latest, e);
+            }
+            catch (Exception ex)
+            {
+                LogPipelineStateHandlerFailed(ex, cameraId, e.NewState);
+            }
+        };
 
         return pipeline;
     }
@@ -588,7 +812,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             var camera = storageService.GetCameraById(e.CameraId);
             if (camera is null ||
                 !ShouldWatchForMotion(camera) ||
-                RecordingPolicyHelper.ShouldRecordOnConnect(camera, settingsService.Recording.EnableRecordingOnConnect))
+                ShouldRecordContinuously(camera))
             {
                 return;
             }
@@ -698,25 +922,92 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
         try
         {
-            if (StartRecordingOnConnect(camera, pipeline))
+            if (TryStartOnConnect(camera, pipeline) == OnConnectStart.Started)
             {
-                recordingOnConnect[camera.Id] = 0;
                 LogRecordingOnConnectStartedFallback(camera.Id, camera.Display.DisplayName);
-                return;
-            }
-
-            // Another path (REST) won the race and is already
-            // recording. Our pipeline isn't owned by the recording service
-            // — drop it so we don't leak two demuxers per camera. A hosted
-            // camera has only this pipeline, whoever records on it.
-            if (!Hosts(camera))
-            {
-                ScheduleDeferredDisposal(camera.Id);
             }
         }
         catch (Exception ex)
         {
             LogStartRecordingFallbackFailed(ex, camera.Id, camera.Display.DisplayName);
+        }
+    }
+
+    // Runs on the thread pool once a pipeline recorded on connect plays.
+    private void StartRecordingAfterConnect(
+        Guid cameraId,
+        IMediaPipeline pipeline)
+    {
+        // The camera may have been edited or deleted meanwhile.
+        if (storageService.GetCameraById(cameraId) is not { } camera ||
+            !ShouldRecordContinuously(camera))
+        {
+            return;
+        }
+
+        try
+        {
+            if (TryStartOnConnect(camera, pipeline) == OnConnectStart.Started)
+            {
+                LogRecordingOnConnectStarted(camera.Id, camera.Display.DisplayName);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogStartRecordingAfterConnectFailed(ex, camera.Id, camera.Display.DisplayName);
+            ScheduleDeferredDisposal(camera.Id);
+        }
+    }
+
+    // Starts the recording of a camera recorded on connect on the pipeline
+    // kept for it. One start at a time per camera, so the periodic pass and a
+    // connect never both start it (the loser would close the winner's pipeline).
+    private OnConnectStart TryStartOnConnect(
+        CameraConfiguration camera,
+        IMediaPipeline pipeline)
+    {
+        lock (startGates.GetOrAdd(camera.Id, _ => new Lock()))
+        {
+            if (!managedPipelines.TryGetValue(camera.Id, out var current) ||
+                !ReferenceEquals(current, pipeline))
+            {
+                // Replaced or closed meanwhile.
+                return OnConnectStart.Gone;
+            }
+
+            if (recordingService.IsRecording(camera.Id))
+            {
+                return OnConnectStart.RecordedAlready;
+            }
+
+            if (IsWaitingAfterWriteFailure(camera.Id))
+            {
+                return OnConnectStart.Refused;
+            }
+
+            if (StartRecordingOnConnect(camera, pipeline))
+            {
+                recordingOnConnect[camera.Id] = 0;
+                recordingStarts[camera.Id] = DateTime.UtcNow;
+                return OnConnectStart.Started;
+            }
+
+            if (!recordingService.IsRecording(camera.Id))
+            {
+                // Refused (no room on the disk): the pipeline stays open, and
+                // the next pass tries again without opening the camera anew.
+                return OnConnectStart.Refused;
+            }
+
+            // Someone else (a recording started through the API) got there
+            // first, on a pipeline of its own: this one is not needed. A
+            // hosted camera has only this pipeline, whoever records on it.
+            if (!Hosts(camera))
+            {
+                ScheduleDeferredDisposal(camera.Id);
+            }
+
+            return OnConnectStart.RecordedAlready;
         }
     }
 
@@ -756,7 +1047,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             }
 
             // A camera that is only watched is not recorded until it moves.
-            if (!RecordingPolicyHelper.ShouldRecordOnConnect(camera, settingsService.Recording.EnableRecordingOnConnect))
+            if (!ShouldRecordContinuously(camera))
             {
                 connectionStates?.Report(camera.Id, ConnectionState.Connected);
                 return;
@@ -774,33 +1065,11 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                 return;
             }
 
-            try
-            {
-                if (StartRecordingOnConnect(camera, pipeline))
-                {
-                    recordingOnConnect[camera.Id] = 0;
-                    LogRecordingOnConnectStarted(camera.Id, camera.Display.DisplayName);
-                    return;
-                }
-
-                // Race lost: another caller started this camera between the
-                // IsRecording check above and here. Our pipeline isn't owned
-                // by the recording service — schedule disposal (deferred to
-                // the ThreadPool because we're on the demux thread). A
-                // hosted camera has only this pipeline, whoever records on it.
-                if (!Hosts(camera))
-                {
-                    ScheduleDeferredDisposal(camera.Id);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogStartRecordingAfterConnectFailed(ex, camera.Id, camera.Display.DisplayName);
-
-                // Defer disposal — this handler runs on the demux thread,
-                // and Dispose joins that thread (self-join deadlock).
-                ScheduleDeferredDisposal(camera.Id);
-            }
+            // Not on this thread: it reads the camera's packets, and starting a
+            // recording may wait for the disk-space guard (which may walk the
+            // archive on a full disk). Packets read late are packets lost.
+            var cameraId = camera.Id;
+            ThreadPool.QueueUserWorkItem(_ => StartRecordingAfterConnect(cameraId, pipeline));
         }
         else if (e.NewState == ConnectionState.Disconnected)
         {
@@ -832,7 +1101,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             // that was only watched, or is hosted, has nobody else to say
             // it is gone.
             if (Hosts(camera) ||
-                !RecordingPolicyHelper.ShouldRecordOnConnect(camera, settingsService.Recording.EnableRecordingOnConnect))
+                !ShouldRecordContinuously(camera))
             {
                 connectionStates?.Report(camera.Id, ConnectionState.Disconnected);
             }
@@ -846,12 +1115,15 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // extra storage lookup on the hot path.
     private void RecordFailure(CameraConfiguration camera)
     {
+        // A camera is tried at least every two minutes: every minute it is
+        // not, nothing is recorded or watched.
+        var maxDelay = ReconnectBackoff.CameraMaxDelay;
         var updated = backoffs.AddOrUpdate(
             camera.Id,
             _ => new BackoffState
             {
                 ConsecutiveFailures = 1,
-                NextAttemptUtc = DateTime.UtcNow + ReconnectBackoff.ComputeDelay(1),
+                NextAttemptUtc = DateTime.UtcNow + ReconnectBackoff.ComputeDelay(1, maxDelay: maxDelay),
             },
             (_, prev) =>
             {
@@ -859,7 +1131,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                 return new BackoffState
                 {
                     ConsecutiveFailures = next,
-                    NextAttemptUtc = DateTime.UtcNow + ReconnectBackoff.ComputeDelay(next),
+                    NextAttemptUtc = DateTime.UtcNow + ReconnectBackoff.ComputeDelay(next, maxDelay: maxDelay),
                 };
             });
 
@@ -870,6 +1142,14 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             updated.ConsecutiveFailures,
             backoffSeconds,
             updated.NextAttemptUtc);
+    }
+
+    private enum OnConnectStart
+    {
+        Started,
+        RecordedAlready,
+        Refused,
+        Gone,
     }
 
     private sealed class BackoffState

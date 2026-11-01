@@ -31,8 +31,9 @@ public sealed class GetRecordingActivityHandler(
             return Task.FromResult(GetRecordingActivityResult.NotFound("There is no such recording."));
         }
 
-        // A recording from before the index, or one the index could not be written for.
-        if (ActivityLogReader.Read(RecordingPathHelper.BuildActivityPath(videoPath)) is not { } log)
+        // A recording from before the index, one the index could not be written for, or one
+        // whose index cannot be read right now (held by a backup or a virus scanner).
+        if (TryRead(RecordingPathHelper.BuildActivityPath(videoPath)) is not { } log)
         {
             return Task.FromResult(GetRecordingActivityResult.Ok(
                 new RecordingActivity(HasIndex: false, IsBeingAnalysed: analyses?.Contains(videoPath) == true, DurationSeconds: 0, Buckets: [], StartedAt: null)));
@@ -47,5 +48,18 @@ public sealed class GetRecordingActivityHandler(
             DurationSeconds: duration,
             Buckets: [.. buckets.Select(b => new RecordingActivityBucket(Level: b.Level, Tracks: b.Tracks, IsAnalysed: b.IsAnalysed, Zones: b.Zones.Count > 0 ? [.. b.Zones] : null))],
             StartedAt: log.Start)));
+    }
+
+    private static AtcSoft.Video.Surveillance.Models.ActivityLog? TryRead(
+        string activityPath)
+    {
+        try
+        {
+            return ActivityLogReader.Read(activityPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 }

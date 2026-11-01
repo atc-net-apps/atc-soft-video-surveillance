@@ -118,4 +118,21 @@ public sealed class TimelineGapsTests : IDisposable
             new AvailabilityEntry(Nine.AddMinutes(1), AvailabilityChange.Offline));
         AvailabilityLog.Read(Path.Combine(folder, "missing.jsonl")).Should().BeEmpty();
     }
+
+    [Fact]
+    public void Trimming_Drops_What_Is_Older_But_Keeps_The_State_At_The_Start()
+    {
+        var path = Path.Combine(folder, "availability", "trim.jsonl");
+        AvailabilityLog.Append(path, new AvailabilityEntry(Nine.AddDays(-40), AvailabilityChange.Online));
+        AvailabilityLog.Append(path, new AvailabilityEntry(Nine.AddDays(-35), AvailabilityChange.Offline));
+        AvailabilityLog.Append(path, new AvailabilityEntry(Nine.AddDays(-1), AvailabilityChange.Online));
+
+        var dropped = AvailabilityLog.Trim(path, Nine.AddDays(-31));
+
+        dropped.Should().Be(1);
+        AvailabilityLog.Read(path).Should().Equal(
+            new AvailabilityEntry(Nine.AddDays(-35), AvailabilityChange.Offline),
+            new AvailabilityEntry(Nine.AddDays(-1), AvailabilityChange.Online));
+        AvailabilityLog.Trim(path, Nine.AddDays(-31)).Should().Be(0);
+    }
 }

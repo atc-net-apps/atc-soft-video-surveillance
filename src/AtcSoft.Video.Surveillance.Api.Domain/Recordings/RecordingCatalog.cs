@@ -12,8 +12,6 @@ public static class RecordingCatalog
     // Hidden and system files too, as Directory.EnumerateFiles finds them.
     private static readonly EnumerationOptions TopLevel = new() { AttributesToSkip = default };
 
-    private static readonly EnumerationOptions Recursive = new() { AttributesToSkip = default, RecurseSubdirectories = true };
-
     /// <summary>
     /// Finds the recordings.
     /// </summary>
@@ -110,26 +108,73 @@ public static class RecordingCatalog
         Guid? cameraId,
         Dictionary<string, AtcSoft.Video.Surveillance.Models.CameraConfiguration> camerasByFolderName)
     {
-        IEnumerable<FileInfo> files;
+        var found = new List<FileInfo>();
         if (cameraId is not null)
         {
             var folder = camerasByFolderName.FirstOrDefault(c => c.Value.Id == cameraId).Key;
-            var cameraFolder = folder is null ? null : new DirectoryInfo(Path.Combine(root.FullName, folder));
-            files = cameraFolder is { Exists: true }
-                ? cameraFolder.EnumerateFiles("*", Recursive)
-                : [];
+            if (folder is not null)
+            {
+                Walk(new DirectoryInfo(Path.Combine(root.FullName, folder)), found);
+            }
         }
         else
         {
-            files = root
-                .EnumerateFiles("*", TopLevel)
-                .Concat(root
-                    .EnumerateDirectories("*", TopLevel)
-                    .Where(d => !d.Name.Equals(RecordingPathHelper.ThumbnailsFolderName, StringComparison.OrdinalIgnoreCase))
-                    .SelectMany(d => d.EnumerateFiles("*", Recursive)));
+            AddVideos(root, found);
+            foreach (var directory in SubDirectories(root)
+                         .Where(d => !d.Name.Equals(RecordingPathHelper.ThumbnailsFolderName, StringComparison.OrdinalIgnoreCase)))
+            {
+                Walk(directory, found);
+            }
         }
 
-        return files.Where(f => VideoExtensions.Contains(f.Extension, StringComparer.OrdinalIgnoreCase));
+        return found;
+    }
+
+    // Folder by folder: one that is removed, or cannot be read, while the walk runs (a day folder
+    // the clean-up deletes) is left out, and never fails the whole listing.
+    private static void Walk(
+        DirectoryInfo folder,
+        List<FileInfo> found)
+    {
+        var stack = new Stack<DirectoryInfo>();
+        stack.Push(folder);
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            AddVideos(current, found);
+            foreach (var sub in SubDirectories(current))
+            {
+                stack.Push(sub);
+            }
+        }
+    }
+
+    private static void AddVideos(
+        DirectoryInfo folder,
+        List<FileInfo> found)
+    {
+        try
+        {
+            found.AddRange(folder
+                .EnumerateFiles("*", TopLevel)
+                .Where(f => VideoExtensions.Contains(f.Extension, StringComparer.OrdinalIgnoreCase)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Gone or unreadable meanwhile.
+        }
+    }
+
+    private static List<DirectoryInfo> SubDirectories(DirectoryInfo folder)
+    {
+        try
+        {
+            return [.. folder.EnumerateDirectories("*", TopLevel)];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
     }
 
     /// <summary>

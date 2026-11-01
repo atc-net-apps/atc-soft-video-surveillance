@@ -1,12 +1,18 @@
 namespace AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Cameras;
 
 /// <summary>
-/// Handler business logic for the UpdateCamera operation. A camera being analysed takes its new
-/// motion zones at once (edited, or turned with the picture).
+/// Handler business logic for the UpdateCamera operation. The update is made on a copy, which
+/// then takes the stored camera's place: a recording, a pipeline or a save that reads the camera
+/// meanwhile sees it either as it was or as it is, never half-updated. A camera being analysed
+/// takes its new motion zones at once (edited, or turned with the picture). A change to how the
+/// camera is reached or recorded (address, sign-in, stream options, recording codec) closes what
+/// runs for it, which is opened again with the new settings.
 /// </summary>
 public sealed class UpdateCameraHandler(
     ICameraStorageService storage,
-    IMotionDetectionService? motionDetection = null) : IUpdateCameraHandler
+    IMotionDetectionService? motionDetection = null,
+    ICameraRuntime? runtime = null,
+    ILiveStreamService? liveStreams = null) : IUpdateCameraHandler
 {
     public Task<UpdateCameraResult> ExecuteAsync(
         UpdateCameraParameters parameters,
@@ -20,8 +26,6 @@ public sealed class UpdateCameraHandler(
             return Task.FromResult(UpdateCameraResult.NotFound($"Camera {parameters.CameraId} not found."));
         }
 
-        // Checked on a copy first, so a refused update leaves the stored camera as it was;
-        // an accepted one is then applied to the stored camera itself.
         var updated = camera.Clone();
         updated.ApplyUpdate(parameters.Request);
         if (CameraSourceCheck.Problem(updated) is { } problem)
@@ -29,11 +33,16 @@ public sealed class UpdateCameraHandler(
             return Task.FromResult(UpdateCameraResult.BadRequest(problem));
         }
 
-        camera.ApplyUpdate(parameters.Request);
-        storage.AddOrUpdateCamera(camera);
+        storage.AddOrUpdateCamera(updated);
         storage.Save();
-        motionDetection?.UseZones(camera.Id, camera.MotionZones);
+        motionDetection?.UseZones(updated.Id, updated.MotionZones);
 
-        return Task.FromResult(UpdateCameraResult.Ok(camera.ToApiModel()));
+        if (CameraPipelineChange.NeedsReopen(camera, updated))
+        {
+            runtime?.Reopen(updated.Id);
+            liveStreams?.EndStream(updated.Id);
+        }
+
+        return Task.FromResult(UpdateCameraResult.Ok(updated.ToApiModel()));
     }
 }

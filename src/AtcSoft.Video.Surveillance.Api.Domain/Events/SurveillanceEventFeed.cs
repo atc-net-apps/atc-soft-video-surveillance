@@ -49,6 +49,20 @@ public sealed class SurveillanceEventFeed
     }
 
     /// <summary>
+    /// Gets how many subscribers the feed has.
+    /// </summary>
+    public int SubscriberCount
+    {
+        get
+        {
+            lock (gate)
+            {
+                return subscribers.Count;
+            }
+        }
+    }
+
+    /// <summary>
     /// Subscribes to the feed: what the replay buffer has after <paramref name="lastSequence"/>,
     /// how many events after it it no longer has, and every event from then on.
     /// An id this run of the feed did not give (the server restarted) gets everything

@@ -25,8 +25,10 @@ public class UpdateCameraHandlerTests
         var okResult = result.Result.Should().BeOfType<Ok<Camera>>().Subject;
         okResult.Value.Should().NotBeNull();
         okResult.Value!.DisplayName.Should().Be("New Name");
-        storage.Received(1).AddOrUpdateCamera(camera);
-        storage.Received(1).Save();
+
+        // A copy takes the stored camera's place; the one others hold is left as it was.
+        storage.Received(1).AddOrUpdateCamera(Arg.Is<CameraConfiguration>(c => c.Id == cameraId && c.Display.DisplayName == "New Name" && !ReferenceEquals(c, camera)));
+        camera.Display.DisplayName.Should().Be("Old Name");
     }
 
     [Fact]
@@ -146,9 +148,13 @@ public class UpdateCameraHandlerTests
             ConnectionType = ApiCameraConnectionType.Usb,
         };
 
+        CameraConfiguration? stored = null;
+        storage.When(s => s.AddOrUpdateCamera(Arg.Any<CameraConfiguration>())).Do(call => stored = call.Arg<CameraConfiguration>());
+
         var result = await handler.ExecuteAsync(new UpdateCameraParameters(cameraId, request), CancellationToken.None);
 
         result.Result.Should().BeOfType<Ok<Camera>>();
+        camera = stored!;
         camera.Connection.Source.Should().Be(AtcSoft.Video.Surveillance.Enums.CameraSource.Usb);
         camera.Connection.Usb!.DeviceId.Should().Be("usb#vid_046d&pid_085e");
         camera.Connection.Usb.FriendlyName.Should().Be("Logitech BRIO");
@@ -179,6 +185,46 @@ public class UpdateCameraHandlerTests
         motion.Received(1).UseZones(
             camera.Id,
             Arg.Is<IReadOnlyList<CoreMotionZone>>(z => z.Single().Points[0] == new CoreZonePoint(0.9, 0.8)));
+    }
+
+    [Fact]
+    public async Task A_New_Address_Closes_What_Runs_For_The_Camera_So_It_Is_Opened_Again_With_It()
+    {
+        var (storage, cameraId, runtime, streams, handler) = CreateWithRuntime();
+
+        await handler.ExecuteAsync(
+            new UpdateCameraParameters(cameraId, MinimalUpdate("Cam") with { IpAddress = "10.0.0.99" }),
+            CancellationToken.None);
+
+        runtime.Received(1).Reopen(cameraId);
+        streams.Received(1).EndStream(cameraId);
+        storage.Received(1).AddOrUpdateCamera(Arg.Is<CameraConfiguration>(c => c.Connection.IpAddress == "10.0.0.99"));
+    }
+
+    [Fact]
+    public async Task A_New_Name_Or_Connection_Type_Leaves_What_Runs_Alone()
+    {
+        var (_, cameraId, runtime, streams, handler) = CreateWithRuntime();
+
+        await handler.ExecuteAsync(
+            new UpdateCameraParameters(cameraId, MinimalUpdate("Renamed") with { ConnectionType = ApiCameraConnectionType.Wifi, StreamUseLowLatencyMode = null, StreamMaxLatencyMs = 0, UsbCaptureAudio = null }),
+            CancellationToken.None);
+
+        runtime.DidNotReceive().Reopen(Arg.Any<Guid>());
+        streams.DidNotReceive().EndStream(Arg.Any<Guid>());
+    }
+
+    private static (ICameraStorageService Storage, Guid CameraId, ICameraRuntime Runtime, ILiveStreamService Streams, UpdateCameraHandler Handler) CreateWithRuntime()
+    {
+        var storage = Substitute.For<ICameraStorageService>();
+        var cameraId = Guid.NewGuid();
+        var camera = new CameraConfiguration { Id = cameraId };
+        camera.Display.DisplayName = "Cam";
+        camera.Connection.IpAddress = "10.0.0.1";
+        storage.GetCameraById(cameraId).Returns(camera);
+        var runtime = Substitute.For<ICameraRuntime>();
+        var streams = Substitute.For<ILiveStreamService>();
+        return (storage, cameraId, runtime, streams, new UpdateCameraHandler(storage, motionDetection: null, runtime, streams));
     }
 
     private static UpdateCameraRequest MinimalUpdate(string displayName)

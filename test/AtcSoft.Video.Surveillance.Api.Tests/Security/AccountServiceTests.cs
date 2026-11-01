@@ -103,6 +103,21 @@ public sealed class AccountServiceTests : IDisposable
     }
 
     [Fact]
+    public void A_User_Keeps_A_Limited_Number_Of_Sessions_And_Loses_The_Oldest()
+    {
+        var sut = CreateSetUpSut();
+        var sessions = new List<AccountSession>();
+        for (var i = 0; i <= AccountService.MaxSessionsPerUser; i++)
+        {
+            sessions.Add(sut.SignIn(AdminName, AdminPassword)!);
+            time.Advance(TimeSpan.FromSeconds(1));
+        }
+
+        sut.Refresh(sessions[0].RefreshToken).Should().BeNull("the session used least lately ended");
+        sut.Refresh(sessions[^1].RefreshToken).Should().NotBeNull();
+    }
+
+    [Fact]
     public void A_Refresh_Token_Is_Replaced_By_A_New_One_That_Renews_The_Session()
     {
         var sut = CreateSetUpSut();

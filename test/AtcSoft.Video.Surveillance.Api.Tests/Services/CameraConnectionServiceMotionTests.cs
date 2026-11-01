@@ -196,6 +196,21 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
     {
         await sut.DoWorkAsync(TestContext.Current.CancellationToken);
         pipeline.ConnectionStateChanged += Raise.EventWith(new ConnectionStateChangedEventArgs(ConnectionState.Connecting, ConnectionState.Connected));
+        await SettleStartAsync();
+    }
+
+    // A recording on connect is started on the thread pool, not on the
+    // pipeline's own thread: wait until it was asked for, or a moment passed.
+    private async Task SettleStartAsync()
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (DateTime.UtcNow < deadline &&
+               !recordingService.ReceivedCalls().Any(c => c.GetMethodInfo().Name.StartsWith("StartRecording", StringComparison.Ordinal)))
+        {
+            await Task.Delay(10);
+        }
+
+        await Task.Delay(50);
     }
 
     private void RaiseMotion(bool active)

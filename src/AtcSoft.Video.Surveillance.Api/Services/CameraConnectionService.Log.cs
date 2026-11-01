@@ -79,4 +79,19 @@ public sealed partial class CameraConnectionService
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Closing camera {CameraId}: nothing uses it any more")]
     private partial void LogClosingUnusedCamera(Guid cameraId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Camera {CameraId} was deleted: its recording is stopped and its pipeline closed")]
+    private partial void LogForgettingCamera(Guid cameraId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The recording of camera {CameraId} ({CameraName}) could write nothing ({Failures} time(s) in a row); the next is started in {Seconds} seconds")]
+    private partial void LogRecordingWriteBackoff(Guid cameraId, string cameraName, int failures, int seconds);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Camera {CameraId} ({CameraName}) is no longer recorded on connect: the recording the server started is stopped")]
+    private partial void LogRecordingOnConnectTurnedOff(Guid cameraId, string cameraName);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "How camera {CameraId} is reached or recorded changed: it is closed, and opened again with the new settings")]
+    private partial void LogReopeningCamera(Guid cameraId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Handling the {State} state of camera {CameraId}'s pipeline failed")]
+    private partial void LogPipelineStateHandlerFailed(Exception ex, Guid cameraId, ConnectionState state);
 }

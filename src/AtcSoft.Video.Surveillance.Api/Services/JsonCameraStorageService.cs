@@ -19,6 +19,7 @@ public sealed partial class JsonCameraStorageService : ICameraStorageService
     private readonly string storagePath;
     private readonly SecretProtector secrets;
     private readonly ILogger<JsonCameraStorageService> logger;
+    private readonly ServerDataFile file;
 
     // All access to data.Cameras / data.Layouts goes through this lock.
     // Without it, CameraConnectionService / handlers iterating GetAllCameras()
@@ -27,15 +28,18 @@ public sealed partial class JsonCameraStorageService : ICameraStorageService
     // outside the lock without blocking writers.
     private readonly Lock dataLock = new();
     private CameraStorageData data = new();
+    private bool unsaved;
 
     public JsonCameraStorageService(
         string storagePath,
         SecretProtector secrets,
-        ILogger<JsonCameraStorageService> logger)
+        ILogger<JsonCameraStorageService> logger,
+        int lockedAttempts = ServerDataFile.DefaultLockedAttempts)
     {
         this.storagePath = storagePath;
         this.secrets = secrets;
         this.logger = logger;
+        file = new ServerDataFile(storagePath, logger, lockedAttempts);
         Load();
     }
 
@@ -188,18 +192,42 @@ public sealed partial class JsonCameraStorageService : ICameraStorageService
     /// <inheritdoc/>
     public void Save()
     {
+        // Every change is saved as it is made; this only saves what could not be.
         lock (dataLock)
         {
-            SaveLocked();
+            if (unsaved)
+            {
+                SaveLocked();
+            }
         }
     }
 
     /// <inheritdoc/>
     public void Load()
     {
-        var node = SafeJsonFile.TryRead<JsonNode>(storagePath, JsonOptions);
-        var plainCount = node is null ? 0 : UnprotectPasswords(node);
-        var loaded = node?.Deserialize<CameraStorageData>(JsonOptions);
+        // A file that cannot be read (corrupt, locked, or holding a value this
+        // version does not know) is never taken for a missing one: the backup is
+        // tried, the file is copied aside, and nothing is saved over a file that
+        // could not be kept.
+        var plainCount = 0;
+        var loaded = file.Read(json =>
+        {
+            var node = JsonNode.Parse(json);
+            if (node is null)
+            {
+                return null;
+            }
+
+            plainCount = UnprotectPasswords(node);
+            return node.Deserialize<CameraStorageData>(JsonOptions);
+        });
+
+        // Passwords counted in a file that then could not be read were never loaded.
+        if (loaded is null)
+        {
+            plainCount = 0;
+        }
+
         lock (dataLock)
         {
             if (loaded is not null)
@@ -227,16 +255,25 @@ public sealed partial class JsonCameraStorageService : ICameraStorageService
     // don't have to acquire-release-reacquire when they need to persist.
     private void SaveLocked()
     {
-        var node = JsonSerializer.SerializeToNode(data, JsonOptions)!;
-        foreach (var authentication in Authentications(node))
+        JsonNode node;
+        try
         {
-            authentication[PasswordProperty] = secrets.Protect(authentication[PasswordProperty]?.GetValue<string>());
+            node = JsonSerializer.SerializeToNode(data, JsonOptions)!;
+            foreach (var authentication in Authentications(node))
+            {
+                authentication[PasswordProperty] = secrets.Protect(authentication[PasswordProperty]?.GetValue<string>());
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or JsonException or System.Security.Cryptography.CryptographicException)
+        {
+            // A change is never lost to a failed save: it stays in memory, and
+            // the next change or Save writes it.
+            LogStorageSerializeFailed(ex, storagePath);
+            unsaved = true;
+            return;
         }
 
-        if (!SafeJsonFile.TryWrite(storagePath, node, JsonOptions))
-        {
-            LogStorageSaveFailed(new IOException("Atomic save failed"), storagePath);
-        }
+        unsaved = !file.TryWrite(node, JsonOptions);
     }
 
     // Reads the passwords in a file as it was read; returns how many were

@@ -48,36 +48,59 @@ public sealed partial class CameraConnectionTypeAutoDetector
         var userName = camera.Authentication.UserName;
         var password = camera.Authentication.Password;
 
+        // Nobody waits for the task, so nothing may escape it.
         return Task.Run(async () =>
         {
-            var detected = await detector
-                .DetectAsync(ipAddress, userName, password)
-                .ConfigureAwait(false);
-
-            if (detected == CameraConnectionType.None)
+            try
             {
-                return;
+                await ProbeAsync(cameraId, ipAddress, userName, password).ConfigureAwait(false);
             }
-
-            // Re-read: the camera may have been edited while we probed.
-            var current = storage.GetCameraById(cameraId);
-            if (current is null)
+            catch (Exception ex)
             {
-                return;
+                LogProbeFailed(ex, cameraId);
             }
-
-            var updated = CameraConnectionTypeHelper.ApplyDetected(current.Connection.ConnectionType, detected, isExplicit: false);
-            if (updated == current.Connection.ConnectionType)
-            {
-                return;
-            }
-
-            current.Connection.ConnectionType = updated;
-            storage.AddOrUpdateCamera(current);
-            LogDetected(current.Display.DisplayName, cameraId, updated);
         });
+    }
+
+    private async Task ProbeAsync(
+        Guid cameraId,
+        string ipAddress,
+        string? userName,
+        string? password)
+    {
+        var detected = await detector
+            .DetectAsync(ipAddress, userName, password)
+            .ConfigureAwait(false);
+
+        if (detected == CameraConnectionType.None)
+        {
+            return;
+        }
+
+        // Re-read: the camera may have been edited while we probed.
+        var current = storage.GetCameraById(cameraId);
+        if (current is null)
+        {
+            return;
+        }
+
+        var updated = CameraConnectionTypeHelper.ApplyDetected(current.Connection.ConnectionType, detected, isExplicit: false);
+        if (updated == current.Connection.ConnectionType)
+        {
+            return;
+        }
+
+        // A copy takes the stored camera's place: whoever reads the stored one
+        // meanwhile never sees it change under them.
+        var changed = current.Clone();
+        changed.Connection.ConnectionType = updated;
+        storage.AddOrUpdateCamera(changed);
+        LogDetected(changed.Display.DisplayName, cameraId, updated);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Detected connection type {ConnectionType} for camera '{DisplayName}' ({CameraId})")]
     private partial void LogDetected(string displayName, Guid cameraId, CameraConnectionType connectionType);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The connection type of camera {CameraId} could not be detected")]
+    private partial void LogProbeFailed(Exception ex, Guid cameraId);
 }

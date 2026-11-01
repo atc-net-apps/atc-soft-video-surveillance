@@ -33,6 +33,7 @@ public sealed class ServerDataPaths
         var folder = Path.GetDirectoryName(SettingsPath)!;
         WebhooksPath = Path.Combine(folder, "webhooks.json");
         AccountsPath = Path.Combine(folder, "accounts.json");
+        RecordingIntentsPath = Path.Combine(folder, "recording-intents.json");
         SetupCodePath = Path.Combine(folder, "setup-code.txt");
         SigningKeyPath = Path.Combine(folder, "signing.key");
         AuditLogPath = Path.Combine(folder, "audit.log");
@@ -66,6 +67,12 @@ public sealed class ServerDataPaths
     /// sessions. It lies next to the settings file.
     /// </summary>
     public string AccountsPath { get; }
+
+    /// <summary>
+    /// Gets the path of the file with the cameras someone asked to record and has not asked to
+    /// stop, so their recordings go on after a drop or a restart. It lies next to the settings file.
+    /// </summary>
+    public string RecordingIntentsPath { get; }
 
     /// <summary>
     /// Gets the path of the file with the one-time code that creates the

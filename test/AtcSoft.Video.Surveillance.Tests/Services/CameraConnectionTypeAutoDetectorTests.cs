@@ -11,8 +11,12 @@ public class CameraConnectionTypeAutoDetectorTests
 
         await sut.OnCameraConnectedAsync(camera);
 
-        camera.Connection.ConnectionType.Should().Be(CameraConnectionType.Wifi);
-        storage.Received(1).AddOrUpdateCamera(camera);
+        // Stored as a copy: the camera others hold does not change under them.
+        camera.Connection.ConnectionType.Should().Be(CameraConnectionType.None);
+        storage.Received(1).AddOrUpdateCamera(Arg.Is<CameraConfiguration>(c =>
+            c.Id == camera.Id &&
+            c.Connection.ConnectionType == CameraConnectionType.Wifi &&
+            !ReferenceEquals(c, camera)));
     }
 
     [Fact]

@@ -3,7 +3,7 @@ namespace AtcSoft.Video.Surveillance.Api.Services;
 /// <summary>
 /// JSON file-based implementation of <see cref="IApplicationSettingsService"/> for the server edition.
 /// </summary>
-public sealed partial class JsonApplicationSettingsService : IApplicationSettingsService
+public sealed partial class JsonApplicationSettingsService : IApplicationSettingsService, ISettingsBatch
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -14,6 +14,13 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
 
     private readonly string storagePath;
     private readonly ILogger<JsonApplicationSettingsService> logger;
+    private readonly ServerDataFile file;
+
+    // Saves are made one at a time (they share the temp file), and a batch
+    // holds them back until it ends.
+    private readonly Lock saveLock = new();
+    private int batchDepth;
+    private bool savePending;
     private ApplicationSettings appSettings = new();
 
     public JsonApplicationSettingsService(
@@ -24,13 +31,21 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
 
     public JsonApplicationSettingsService(
         string storagePath,
-        ILogger<JsonApplicationSettingsService> logger)
+        ILogger<JsonApplicationSettingsService> logger,
+        int lockedAttempts = ServerDataFile.DefaultLockedAttempts)
     {
         this.storagePath = storagePath;
         this.logger = logger;
+        file = new ServerDataFile(storagePath, logger, lockedAttempts);
         EnsureSettingsFileExists();
         Load();
     }
+
+    /// <summary>
+    /// Gets a value indicating whether the settings file existed but could not be read, so the
+    /// server runs on the default settings: nothing is deleted by age or size on them.
+    /// </summary>
+    public bool IsUnreadable => file.Outcome == JsonFileReadOutcome.Unreadable;
 
     /// <inheritdoc/>
     public GeneralSettings General => appSettings.General;
@@ -150,7 +165,10 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
     /// <inheritdoc/>
     public void Load()
     {
-        var loaded = SafeJsonFile.TryRead<ApplicationSettings>(storagePath, JsonOptions);
+        // A file that cannot be read is never taken for a missing one: the
+        // backup is tried, the file is copied aside, and nothing is saved over
+        // a file that could not be kept.
+        var loaded = file.Read<ApplicationSettings>(JsonOptions);
         if (loaded is not null)
         {
             appSettings = loaded;
@@ -165,15 +183,48 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
     /// <inheritdoc/>
     public void Save()
     {
-        if (!SafeJsonFile.TryWrite(storagePath, appSettings, JsonOptions))
+        lock (saveLock)
         {
-            LogSettingsSaveFailed(new IOException("Atomic save failed"), storagePath);
+            if (batchDepth > 0)
+            {
+                savePending = true;
+                return;
+            }
+
+            file.TryWrite(appSettings, JsonOptions);
+        }
+    }
+
+    /// <inheritdoc/>
+    public IDisposable BeginBatch()
+    {
+        lock (saveLock)
+        {
+            batchDepth++;
+        }
+
+        return new Batch(this);
+    }
+
+    private void EndBatch()
+    {
+        lock (saveLock)
+        {
+            batchDepth--;
+            if (batchDepth > 0 || !savePending)
+            {
+                return;
+            }
+
+            savePending = false;
+            file.TryWrite(appSettings, JsonOptions);
         }
     }
 
     private void EnsureSettingsFileExists()
     {
-        if (File.Exists(storagePath))
+        // Only on a first start: a missing file with a backup is read from the backup.
+        if (File.Exists(storagePath) || File.Exists(storagePath + ".bak"))
         {
             return;
         }
@@ -185,6 +236,19 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
         else
         {
             LogDefaultSettingsCreateFailed(new IOException("Atomic save failed"), storagePath);
+        }
+    }
+
+    private sealed class Batch(JsonApplicationSettingsService owner) : IDisposable
+    {
+        private int disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref disposed, 1) == 0)
+            {
+                owner.EndBatch();
+            }
         }
     }
 }

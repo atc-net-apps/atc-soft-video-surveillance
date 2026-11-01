@@ -47,6 +47,19 @@ if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("OTEL_EXPORTER
 
 Log.Logger = loggerConfig.CreateLogger();
 
+// An exception nothing caught ends the process: it is written, and the log flushed, first.
+// A faulted task nobody awaited is written, and does not end it.
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+{
+    Log.Fatal(e.ExceptionObject as Exception, "Unhandled exception; the server is ending: {IsTerminating}", e.IsTerminating);
+    Log.CloseAndFlush();
+};
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    Log.Error(e.Exception, "A background task failed and nobody observed it");
+    e.SetObserved();
+};
+
 try
 {
     var builder = WebApplication.CreateBuilder(hostArgs);
@@ -98,6 +111,8 @@ try
         dataPaths.RelocateDefaults(settingsService);
         return settingsService;
     });
+    builder.Services.AddSingleton<ISettingsBatch>(sp =>
+        (JsonApplicationSettingsService)sp.GetRequiredService<IApplicationSettingsService>());
     builder.Services.AddSingleton<RecordingsFileProvider>();
     builder.Services.AddSingleton<IRecordingDurationProvider, CachedRecordingDurationProvider>();
 
@@ -225,7 +240,10 @@ try
     builder.Services.AddHostedService<SurveillanceEventBroadcaster>();
 
     // An activity index beside every recording, for the timelines.
-    builder.Services.AddSingleton(new ActivitySummaryCache());
+    // A summary is about 17 KB: at most 12,000 (some 200 MB) are kept, a week of
+    // ten-minute recordings of ten cameras, so a long run cannot grow it to most
+    // of a gigabyte. A timeline over more recordings than that reads them again.
+    builder.Services.AddSingleton(new ActivitySummaryCache(capacity: 5000, maximumCapacity: 12_000));
     builder.Services.AddSingleton(new ActivitySparklineCache());
     builder.Services.AddSingleton(new ActivityIndexServiceOptions());
     builder.Services.AddSingleton<ActivityIndexService>();
@@ -269,6 +287,12 @@ try
     builder.Services.AddSingleton<CameraConnectionService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<CameraConnectionService>());
     builder.Services.AddSingleton<ICameraPipelineHost>(sp => sp.GetRequiredService<CameraConnectionService>());
+    builder.Services.AddSingleton<ICameraRuntime>(sp => sp.GetRequiredService<CameraConnectionService>());
+
+    // The recordings someone started: they go on after a drop or a restart.
+    builder.Services.AddSingleton<IRecordingIntents>(sp => new RecordingIntents(
+        sp.GetRequiredService<ServerDataPaths>().RecordingIntentsPath,
+        sp.GetRequiredService<ILogger<RecordingIntents>>()));
 
     // Periodic disk-retention enforcement; without this, continuous server
     // recording fills the disk and crashes the host.

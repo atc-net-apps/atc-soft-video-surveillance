@@ -63,6 +63,7 @@ public sealed class SecretFileTests : IDisposable
 
         File.ReadAllText(path).Should().Be("new");
         Accounts(new FileInfo(path).GetAccessControl()).Should().NotContain(Users);
+        Directory.GetFiles(folder).Should().ContainSingle("the new text is moved over the old file, nothing is left beside it");
     }
 
     [Fact]

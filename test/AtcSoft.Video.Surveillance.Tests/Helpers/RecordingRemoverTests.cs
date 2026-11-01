@@ -44,6 +44,23 @@ public sealed class RecordingRemoverTests : IDisposable
     }
 
     [Fact]
+    public void The_Day_Folder_A_Removed_Recording_Leaves_Empty_Goes_And_Other_Folders_Are_Not_Looked_At()
+    {
+        var video = Write("Garden", "2026-10-12", "Garden_20261012_101500_000.mkv");
+        var dayFolder = Path.GetDirectoryName(video)!;
+        var elsewhere = Directory.CreateDirectory(Path.Combine(root, "Front Door", "2026-10-11")).FullName;
+        var longAgo = DateTime.UtcNow.AddHours(-1);
+        Directory.SetCreationTimeUtc(dayFolder, longAgo);
+        Directory.SetCreationTimeUtc(elsewhere, longAgo);
+
+        RecordingRemover.Remove(root, "Garden/2026-10-12/Garden_20261012_101500_000.mkv", NoneActive)
+            .Should().Be(RecordingRemovalOutcome.Removed);
+
+        Directory.Exists(dayFolder).Should().BeFalse();
+        Directory.Exists(elsewhere).Should().BeTrue("the clean-up sweeps the rest; a deletion walks no more than its own folders");
+    }
+
+    [Fact]
     public void A_Recording_Is_Removed_With_Its_Activity_Index()
     {
         Write("Front Door", "Front Door_20261012_101500_000.mkv");
