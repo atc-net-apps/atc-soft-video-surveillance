@@ -1,7 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Wpf.Core.Services;
 
-using System.IO;
-
 /// <summary>
 /// A cameras file that cannot be read at start-up (locked by a backup or a virus scanner, damaged)
 /// is never taken for no cameras: before, the app started without cameras and the next save wrote

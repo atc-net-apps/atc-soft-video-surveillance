@@ -16,7 +16,8 @@ public static class SystemReport
     /// </summary>
     /// <param name="folders">The folders whose disks matter (recordings, snapshots, logs).</param>
     /// <returns>The sections, in order.</returns>
-    public static IReadOnlyList<SystemReportSection> Collect(IEnumerable<string> folders)
+    public static IReadOnlyList<SystemReportSection> Collect(
+        IEnumerable<string> folders)
     {
         ArgumentNullException.ThrowIfNull(folders);
 
@@ -153,7 +154,8 @@ public static class SystemReport
         return entries;
     }
 
-    private static List<KeyValuePair<string, string>> Disks(IEnumerable<string> folders)
+    private static List<KeyValuePair<string, string>> Disks(
+        IEnumerable<string> folders)
     {
         var entries = new List<KeyValuePair<string, string>>();
         foreach (var folder in folders.Where(f => !string.IsNullOrWhiteSpace(f)).Distinct(StringComparer.OrdinalIgnoreCase))
@@ -202,13 +204,13 @@ public static class SystemReport
         var output = RunPowerCfg($"/query SCHEME_CURRENT SUB_SLEEP {setting}");
         var match = output is null
             ? null
-            : Regex.Match(output, "Current AC Power Setting Index:\\s*0x([0-9a-fA-F]+)", RegexOptions.None, TimeSpan.FromSeconds(1));
+            : Regex.Match(output, "Current AC Power Setting Index:\\s*0x(?<seconds>[0-9a-fA-F]+)", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
         if (match is not { Success: true })
         {
             return NotAvailable;
         }
 
-        var seconds = long.Parse(match.Groups[1].Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var seconds = long.Parse(match.Groups["seconds"].Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
         return seconds == 0
             ? "never"
             : string.Create(CultureInfo.InvariantCulture, $"{seconds / 60} minutes (recordings stop while the PC sleeps)");
@@ -238,15 +240,8 @@ public static class SystemReport
         Func<ManagementObject, string> describe)
     {
         using var searcher = new ManagementObjectSearcher(query);
-        foreach (var item in searcher.Get().Cast<ManagementObject>())
-        {
-            using (item)
-            {
-                return describe(item);
-            }
-        }
-
-        return NotAvailable;
+        using var item = searcher.Get().Cast<ManagementObject>().FirstOrDefault();
+        return item is null ? NotAvailable : describe(item);
     }
 
     [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "A probe that fails is reported; it never fails the report.")]

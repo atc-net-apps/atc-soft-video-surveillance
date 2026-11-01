@@ -27,6 +27,7 @@ internal sealed class CameraWallRun : IDisposable
     /// <param name="recordOnMotion">Whether each camera records on motion (the test pattern moves all the time).</param>
     /// <param name="secondLayout">Whether there is a second layout, <see cref="SecondLayoutName"/>, with only the first live camera.</param>
     /// <param name="startOnSecondLayout">Whether the app starts with the second layout, so the other cameras never have a tile.</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The run owns the cameras it starts and stops them in Dispose.")]
     public CameraWallRun(
         IReadOnlyDictionary<string, string>? environment = null,
         int liveCameraCount = 1,
@@ -176,7 +177,8 @@ internal sealed class CameraWallRun : IDisposable
         storage.Save();
     }
 
-    private static IEnumerable<(string Name, int Port)> Cameras(IReadOnlyList<int> livePorts)
+    private static IEnumerable<(string Name, int Port)> Cameras(
+        IReadOnlyList<int> livePorts)
     {
         for (var i = 0; i < livePorts.Count; i++)
         {

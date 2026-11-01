@@ -8,8 +8,6 @@ public class RecordingEntry : INotifyPropertyChanged
     // The list shows thumbnails small; the full picture is read only for the preview.
     private const int ThumbnailDecodeWidth = 320;
 
-    private bool isDurationPending;
-
     // The thumbnail as the list shows it, read once: the grid asks for it again at every redraw.
     private BitmapImage? thumbnailImage;
     private string? thumbnailImagePath;
@@ -51,11 +49,7 @@ public class RecordingEntry : INotifyPropertyChanged
     /// Gets a value indicating whether the length is still being read: the list shows the recording
     /// at once and its length when the file has been probed.
     /// </summary>
-    public bool IsDurationPending
-    {
-        get => isDurationPending;
-        init => isDurationPending = value;
-    }
+    public bool IsDurationPending { get; private set; }
 
     /// <summary>
     /// Gets the recording's activity for the sparkline in the list, or <see langword="null"/> for a
@@ -145,25 +139,25 @@ public class RecordingEntry : INotifyPropertyChanged
         };
 
     /// <summary>
-    /// The recording has ended: the entry becomes that of an ordinary
-    /// recording, with the size and length the finished file has. Its
-    /// thumbnail was written when the recording stopped.
-    /// </summary>
-    /// <param name="fileSizeBytes">The size of the finished file.</param>
-    /// <param name="duration">The length of the recording.</param>
-    /// <summary>
     /// Sets the length read from the file.
     /// </summary>
     /// <param name="duration">The length of the recording.</param>
     public void SetDuration(TimeSpan duration)
     {
         Duration = duration;
-        isDurationPending = false;
+        IsDurationPending = false;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Duration)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDurationPending)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FormattedDuration)));
     }
 
+    /// <summary>
+    /// The recording has ended: the entry becomes that of an ordinary
+    /// recording, with the size and length the finished file has. Its
+    /// thumbnail was written when the recording stopped.
+    /// </summary>
+    /// <param name="fileSizeBytes">The size of the finished file.</param>
+    /// <param name="duration">The length of the recording.</param>
     public void MarkFinished(
         long fileSizeBytes,
         TimeSpan duration)
@@ -171,7 +165,7 @@ public class RecordingEntry : INotifyPropertyChanged
         FileSizeBytes = fileSizeBytes;
         Duration = duration;
         IsBeingRecorded = false;
-        isDurationPending = false;
+        IsDurationPending = false;
         thumbnailImage = null;
         thumbnailImagePath = null;
 
@@ -195,7 +189,7 @@ public class RecordingEntry : INotifyPropertyChanged
     public string FormattedDuration
         => IsBeingRecorded
             ? Translations.RecordingInProgress
-            : isDurationPending ? string.Empty : FormatDuration(Duration);
+            : IsDurationPending ? string.Empty : FormatDuration(Duration);
 
     /// <summary>
     /// Gets the formatted recording time string.

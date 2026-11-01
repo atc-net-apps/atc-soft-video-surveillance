@@ -32,11 +32,6 @@ internal sealed partial class LiveTestCamera : IDisposable
         => port;
 
     /// <summary>
-    /// Takes the camera off the network for a while, as a camera that reboots or loses its link:
-    /// the stream ends at once and the camera answers nothing until the time is up.
-    /// </summary>
-    /// <param name="downFor">How long the camera is gone.</param>
-    /// <summary>
     /// Makes the camera hang: it keeps the connection open but sends nothing for a while, as a camera
     /// that freezes or a network path that dies without closing. Then it goes on.
     /// </summary>
@@ -62,6 +57,11 @@ internal sealed partial class LiveTestCamera : IDisposable
             TaskScheduler.Default);
     }
 
+    /// <summary>
+    /// Takes the camera off the network for a while, as a camera that reboots or loses its link:
+    /// the stream ends at once and the camera answers nothing until the time is up.
+    /// </summary>
+    /// <param name="downFor">How long the camera is gone.</param>
     public void DropOut(TimeSpan downFor)
     {
         lock (gate)
@@ -100,9 +100,11 @@ internal sealed partial class LiveTestCamera : IDisposable
     }
 
     [System.Runtime.InteropServices.LibraryImport("ntdll.dll")]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
     private static partial int NtSuspendProcess(nint process);
 
     [System.Runtime.InteropServices.LibraryImport("ntdll.dll")]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
     private static partial int NtResumeProcess(nint process);
 
     private static void Kill(Process? process)

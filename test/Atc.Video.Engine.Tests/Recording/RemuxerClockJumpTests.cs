@@ -33,7 +33,8 @@ public sealed unsafe class RemuxerClockJumpTests : IDisposable
     [Theory]
     [InlineData(-8_589_934_592L)]
     [InlineData(3_600L * 90_000)]
-    public void A_Jump_In_The_Cameras_Clock_Is_Recorded_As_The_Next_Picture(long jump)
+    public void A_Jump_In_The_Cameras_Clock_Is_Recorded_As_The_Next_Picture(
+        long jump)
     {
         TestEngine.Require();
         var path = Path.Combine(directory, "jump.mkv");

@@ -10,7 +10,8 @@ public sealed class CameraConfigurationUnchangedSaveTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Copying_An_Unchanged_Camera_Reports_No_Change_That_Restarts_The_Stream(bool usb)
+    public void Copying_An_Unchanged_Camera_Reports_No_Change_That_Restarts_The_Stream(
+        bool usb)
     {
         var camera = new CameraConfiguration();
         camera.Display.DisplayName = "Door";

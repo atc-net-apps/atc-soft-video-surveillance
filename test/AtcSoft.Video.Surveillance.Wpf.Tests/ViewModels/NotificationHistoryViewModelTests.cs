@@ -1,7 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Wpf.ViewModels;
 
-using AtcSoft.Video.Surveillance.Wpf.Models;
-
 /// <summary>
 /// The history is filtered by kind with chips: none ticked shows every kind, and each chip counts its kind.
 /// </summary>
@@ -48,6 +46,7 @@ public sealed class NotificationHistoryViewModelTests
         => Entry(NotificationEventType.RecordingStopped).TypeText
             .Should().Be(Translations.RecordingStoppedNotification);
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The event service and the coordinator live as long as the test; they hold nothing to release.")]
     private static (NotificationHistoryViewModel Sut, System.Collections.ObjectModel.ObservableCollection<NotificationEntry> History) Create()
     {
         var eventService = new SurveillanceEventService(

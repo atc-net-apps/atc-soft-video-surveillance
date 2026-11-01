@@ -453,11 +453,10 @@ else
             return;
         }
 
-        _ = RestartAfterAsync(cameraId, wait, leaving.Token);
+        _ = RestartAfterAsync(wait, leaving.Token);
     }
 
     private async Task RestartAfterAsync(
-        Guid cameraId,
         TimeSpan wait,
         CancellationToken cancellationToken)
     {

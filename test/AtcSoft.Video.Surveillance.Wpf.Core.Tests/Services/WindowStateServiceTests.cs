@@ -1,8 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Wpf.Core.Services;
 
-using System.IO;
-using System.Windows;
-
 /// <summary>
 /// A main window opens where and as big as it was left, from a file of its app's own.
 /// </summary>

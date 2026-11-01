@@ -18,7 +18,7 @@ public sealed class RecordingSegmentationServicePassTests
     {
         recording.EnforceDiskSpaceGuard().Returns(_ => throw new IOException("The drive went away"));
         recording.GetActiveSessions().Returns([]);
-        var sut = new RecordingSegmentationService(NullLogger<RecordingSegmentationService>.Instance, settings, recording);
+        using var sut = new RecordingSegmentationService(NullLogger<RecordingSegmentationService>.Instance, settings, recording);
 
         await sut.DoWorkAsync(TestContext.Current.CancellationToken);
 
@@ -30,7 +30,7 @@ public sealed class RecordingSegmentationServicePassTests
     public async Task Each_Pass_Is_Stamped()
     {
         recording.GetActiveSessions().Returns([]);
-        var sut = new RecordingSegmentationService(NullLogger<RecordingSegmentationService>.Instance, settings, recording);
+        using var sut = new RecordingSegmentationService(NullLogger<RecordingSegmentationService>.Instance, settings, recording);
         sut.LastPassUtc.Should().BeNull("no pass yet");
 
         await sut.DoWorkAsync(TestContext.Current.CancellationToken);

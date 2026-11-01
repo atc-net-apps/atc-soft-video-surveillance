@@ -80,7 +80,7 @@ public sealed class CameraWallRecordingTests
         var recordings = Path.Combine(run.DataFolder, "recordings");
         app.Find(main, "Connected  1", ControlType.Text, TimeSpan.FromSeconds(30));
         var first = WaitForRecordings(app, recordings, 1).Files.Single();
-        Thread.Sleep(Pause);
+        RealTime.Wait(Pause);
 
         // The camera reboots: gone for 20 s, then back.
         run.LiveCameras[0].DropOut(TimeSpan.FromSeconds(20));
@@ -99,13 +99,13 @@ public sealed class CameraWallRecordingTests
             }
 
             app.Process.HasExited.Should().BeFalse("CameraWall is still running");
-            Thread.Sleep(1000);
+            RealTime.Wait(1000);
         }
 
         ongoing.Should().ContainSingle().Which.Should().NotBe(first, "the recording goes on in a new file after the camera came back");
         RecordingPathHelper.IsBeingWritten(first).Should().BeFalse("the file of before the drop is finished");
         var newFile = ongoing[0];
-        Thread.Sleep(Pause);
+        RealTime.Wait(Pause);
         Ongoing(recordings).Should().Equal([newFile], "the new file keeps being written");
 
         var closed = app.CloseApp(main);
@@ -152,7 +152,7 @@ public sealed class CameraWallRecordingTests
             }
 
             app.Process.HasExited.Should().BeFalse("CameraWall is still running");
-            Thread.Sleep(1000);
+            RealTime.Wait(1000);
         }
 
         ongoing.Should().HaveCount(2, "both cameras record");
@@ -192,7 +192,7 @@ public sealed class CameraWallRecordingTests
         // The second layout shows only the first camera. Before, the second camera's watching
         // stopped with its tile, and its motion recording ended after the post-motion time (10 s).
         ShowLayout(app, main, FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_2, "Cameras  1");
-        Thread.Sleep(TimeSpan.FromSeconds(25));
+        RealTime.Wait(TimeSpan.FromSeconds(25));
 
         app.Process.HasExited.Should().BeFalse("CameraWall is still running");
         Ongoing(recordings).Should().HaveCount(2, "the camera no layout shows goes on recording its motion");
@@ -251,7 +251,7 @@ public sealed class CameraWallRecordingTests
         var recordings = Path.Combine(run.DataFolder, "recordings");
         app.Find(main, "Connected  1", ControlType.Text, TimeSpan.FromSeconds(30));
         var first = WaitForRecordings(app, recordings, 1).Files.Single();
-        Thread.Sleep(Pause);
+        RealTime.Wait(Pause);
 
         // The camera hangs for 40 s: the connection stays open and nothing comes.
         run.LiveCameras[0].Hang(TimeSpan.FromSeconds(40));
@@ -270,7 +270,7 @@ public sealed class CameraWallRecordingTests
             }
 
             app.Process.HasExited.Should().BeFalse("CameraWall is still running");
-            Thread.Sleep(1000);
+            RealTime.Wait(1000);
         }
 
         ongoing.Should().ContainSingle().Which.Should().NotBe(first, "the recording goes on in a new file after the camera answers again");
@@ -310,7 +310,7 @@ public sealed class CameraWallRecordingTests
                 throw app.Fail($"{count} recordings did not start; being written: {ongoing.Count}.");
             }
 
-            Thread.Sleep(500);
+            RealTime.Wait(500);
         }
     }
 
@@ -322,7 +322,7 @@ public sealed class CameraWallRecordingTests
         (List<string> Files, DateTime At) started,
         string when)
     {
-        Thread.Sleep(Pause);
+        RealTime.Wait(Pause);
         app.Process.HasExited.Should().BeFalse($"CameraWall is still running {when}");
         Ongoing(recordings).Should().Equal(started.Files, $"each camera's recording goes on {when}");
     }
@@ -335,8 +335,10 @@ public sealed class CameraWallRecordingTests
         FlaUI.Core.WindowsAPI.VirtualKeyShort key,
         string statusText)
     {
-        for (var attempt = 1; ; attempt++)
+        var attempt = 0;
+        while (true)
         {
+            attempt++;
             main.Focus();
             FlaUI.Core.Input.Keyboard.TypeSimultaneously(FlaUI.Core.WindowsAPI.VirtualKeyShort.CONTROL, key);
             try

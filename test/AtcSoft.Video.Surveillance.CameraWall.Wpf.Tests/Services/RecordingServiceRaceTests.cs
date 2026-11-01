@@ -47,7 +47,7 @@ public sealed class RecordingServiceRaceTests : IDisposable
         sut.StartRecording(camera, pipeline).Should().BeTrue();
 
         var segmenting = Task.Run(() => sut.SegmentRecording(camera.Id), TestContext.Current.CancellationToken);
-        inSwitch.Wait(TimeSpan.FromSeconds(5)).Should().BeTrue();
+        inSwitch.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).Should().BeTrue();
         var stopping = Task.Run(() => sut.StopRecording(camera.Id), TestContext.Current.CancellationToken);
         await Task.Delay(300, TestContext.Current.CancellationToken);
         release.Set();

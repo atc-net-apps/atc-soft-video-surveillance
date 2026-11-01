@@ -62,13 +62,10 @@ public sealed class RecordingGrowthWatch
             var stalledFor = now - before.LastGrowth;
             var isStalled = stalledFor >= stallAfter;
             seen[recording.CameraId] = before with { Length = recording.Length, IsStalled = isStalled };
-            result.Add(new RecordingGrowth(
-                recording,
-                growth,
-                isStalled
-                    ? before.IsStalled ? RecordingGrowthState.StillStalled : RecordingGrowthState.Stalled
-                    : RecordingGrowthState.Waiting,
-                stalledFor));
+            var state = isStalled
+                ? before.IsStalled ? RecordingGrowthState.StillStalled : RecordingGrowthState.Stalled
+                : RecordingGrowthState.Waiting;
+            result.Add(new RecordingGrowth(recording, growth, state, stalledFor));
         }
 
         // A recording that ended is forgotten: when the camera records again, it starts over.

@@ -1,12 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Wpf.Core.Engine;
 
-using System.Diagnostics;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
-using Atc.Video.Engine.Capture;
-using Atc.Video.Engine.DirectX;
-
 /// <summary>
 /// The player on the graphics card, as CameraWall runs it: the stream decoded by D3D11VA (FFmpeg
 /// takes the device's lock, as our picture work does), and pictures for motion analysis copied back
@@ -94,10 +87,10 @@ public sealed class GpuPlayerTests
         return tool!;
     }
 
-    private static Process StartCamera(
+    private static System.Diagnostics.Process StartCamera(
         string tool,
         int port)
-        => Process.Start(new ProcessStartInfo
+        => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
             FileName = tool,
             Arguments =
@@ -115,7 +108,7 @@ public sealed class GpuPlayerTests
         return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
-    private static void Stop(Process process)
+    private static void Stop(System.Diagnostics.Process process)
     {
         try
         {

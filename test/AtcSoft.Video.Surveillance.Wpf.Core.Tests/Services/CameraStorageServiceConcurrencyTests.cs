@@ -1,7 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Wpf.Core.Services;
 
-using System.IO;
-
 /// <summary>
 /// The UI changes the cameras while the recording and segmentation workers read them on other
 /// threads: a read never fails because of a change, and what it got is not changed under it.

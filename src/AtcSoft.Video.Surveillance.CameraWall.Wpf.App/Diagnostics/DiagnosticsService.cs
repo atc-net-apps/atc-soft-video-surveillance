@@ -47,7 +47,7 @@ public sealed partial class DiagnosticsService : BackgroundServiceBase<Diagnosti
     private string Folder => Path.Combine(options.LogPath, "diagnostics");
 
     /// <inheritdoc />
-    public override async Task StartAsync(CancellationToken cancellationToken)
+    public override Task StartAsync(CancellationToken cancellationToken)
     {
         if (options.Enabled)
         {
@@ -73,15 +73,23 @@ public sealed partial class DiagnosticsService : BackgroundServiceBase<Diagnosti
             lastSampleUtc = DateTime.UtcNow;
         }
 
-        await base.StartAsync(cancellationToken).ConfigureAwait(false);
+        return base.StartAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    public override Task StopAsync(CancellationToken cancellationToken)
     {
         uiWatch?.Dispose();
         uiWatch = null;
-        await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        return base.StopAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override void Dispose()
+    {
+        uiWatch?.Dispose();
+        uiWatch = null;
+        base.Dispose();
     }
 
     /// <inheritdoc />
@@ -105,7 +113,8 @@ public sealed partial class DiagnosticsService : BackgroundServiceBase<Diagnosti
         return Task.CompletedTask;
     }
 
-    private static DiagnosticsServiceOptions Park(DiagnosticsServiceOptions options)
+    private static DiagnosticsServiceOptions Park(
+        DiagnosticsServiceOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 

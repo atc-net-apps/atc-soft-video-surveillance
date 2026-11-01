@@ -139,6 +139,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     /// <remarks>
     /// A list, not a query: the grid's column filters filter the collection view of a list.
     /// </remarks>
+    [SuppressMessage("Major Code Smell", "S2365:Properties should not make collection or array copies", Justification = "A list, not a query: the grid's column filters filter the collection view of a list, made again when the filters change.")]
     public IReadOnlyList<RecordingEntry> FilteredRecordings
     {
         get
@@ -443,7 +444,9 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         CloseRequested?.Invoke(this, new DialogClosedEventArgs(dialogResult: true));
     }
 
-    private void OnSelectedCameraFiltersChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnSelectedCameraFiltersChanged(
+        object? sender,
+        NotifyCollectionChangedEventArgs e)
         => OnFilterChanged();
 
     private void OnSelectedDayFilterChanged()

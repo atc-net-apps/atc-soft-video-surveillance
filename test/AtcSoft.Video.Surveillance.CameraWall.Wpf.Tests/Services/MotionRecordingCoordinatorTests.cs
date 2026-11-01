@@ -27,7 +27,7 @@ public sealed class MotionRecordingCoordinatorTests
     [Fact]
     public void Motion_Of_A_Camera_That_Records_On_Motion_Is_Recorded_From_The_Pipeline_It_Is_Watched_On()
     {
-        var sut = CreateSut();
+        using var sut = CreateSut();
 
         sut.RecordMotion(camera.Id).Should().BeTrue();
 
@@ -38,7 +38,7 @@ public sealed class MotionRecordingCoordinatorTests
     public void Motion_Of_A_Camera_That_Does_Not_Record_On_Motion_Is_Not_Recorded()
     {
         settings.Recording.Returns(new RecordingSettings { EnableRecordingOnMotion = false });
-        var sut = CreateSut();
+        using var sut = CreateSut();
 
         sut.RecordMotion(camera.Id).Should().BeFalse();
 
@@ -49,7 +49,7 @@ public sealed class MotionRecordingCoordinatorTests
     public void Motion_Of_A_Camera_That_Is_Not_Watched_Is_Not_Recorded()
     {
         motion.FindPipeline(camera.Id).Returns((IMediaPipeline?)null);
-        var sut = CreateSut();
+        using var sut = CreateSut();
 
         sut.RecordMotion(camera.Id).Should().BeFalse();
     }

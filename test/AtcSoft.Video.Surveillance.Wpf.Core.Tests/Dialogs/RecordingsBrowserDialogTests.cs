@@ -49,7 +49,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
             var dialog = new RecordingsBrowserDialog(viewModel, recording => playedRecording = recording);
             dialog.Closed += (_, _) => closed = true;
 
-            viewModel.SelectedRecording = viewModel.FilteredRecordings.Last();
+            viewModel.SelectedRecording = viewModel.FilteredRecordings[^1];
             viewModel.PlayCommand.Execute(parameter: null);
 
             played = playedRecording?.FileName;

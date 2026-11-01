@@ -11,15 +11,12 @@ global using System.Windows;
 global using System.Windows.Input;
 global using System.Windows.Threading;
 
-global using Atc;
 global using Atc.DependencyInjection;
 global using Atc.Helpers;
 global using Atc.Hosting;
 global using Atc.Video.Engine;
 global using Atc.Video.Engine.DirectX;
-global using Atc.Wpf.Components.Dialogs;
 global using Atc.Wpf.Components.Notifications;
-global using Atc.Wpf.Forms.Dialogs;
 global using Atc.Wpf.Notifications;
 global using Atc.Wpf.Theming.Helpers;
 global using Atc.Wpf.Translation;
@@ -31,6 +28,7 @@ global using AtcSoft.Video.Surveillance.Enums;
 global using AtcSoft.Video.Surveillance.Models.Settings;
 
 global using AtcSoft.Video.Surveillance.Resources;
+global using AtcSoft.Video.Surveillance.Windows.Diagnostics;
 global using AtcSoft.Video.Surveillance.Wpf.Core;
 global using AtcSoft.Video.Surveillance.Wpf.Core.Diagnostics;
 global using AtcSoft.Video.Surveillance.Wpf.Core.Dialogs;
@@ -39,7 +37,6 @@ global using AtcSoft.Video.Surveillance.Wpf.Core.Helpers;
 global using AtcSoft.Video.Surveillance.Wpf.Core.Models;
 global using AtcSoft.Video.Surveillance.Wpf.Core.Services;
 global using AtcSoft.Video.Surveillance.Wpf.Core.UserControls;
-global using AtcSoft.Video.Surveillance.Windows.Diagnostics;
 
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;

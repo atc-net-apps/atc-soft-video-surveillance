@@ -1,7 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Wpf.Core.Services;
 
-using AtcSoft.Video.Surveillance.Events;
-
 /// <summary>
 /// A recording camera's player goes on without a tile while it is parked, and is let go when
 /// nothing needs it any more.
@@ -12,10 +10,10 @@ public sealed class RecordingPlayerParkingTests
 
     private readonly List<Action> posted = [];
     private readonly List<(TimeSpan Delay, Action Action)> scheduled = [];
-    private int cancelled;
     private readonly IVideoPlayer player = Substitute.For<IVideoPlayer>();
     private readonly IMediaPipeline pipeline = Substitute.For<IMediaPipeline>();
     private readonly IRecordingService recording = Substitute.For<IRecordingService>();
+    private int cancelled;
 
     public RecordingPlayerParkingTests()
     {
@@ -25,6 +23,7 @@ public sealed class RecordingPlayerParkingTests
     }
 
     [Fact]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The parking hands back the substitutes the test gave it.")]
     public void A_Parked_Player_Is_Taken_Back_As_It_Is()
     {
         using var sut = new RecordingPlayerParking(posted.Add, Schedule);
@@ -40,6 +39,7 @@ public sealed class RecordingPlayerParkingTests
     }
 
     [Fact]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Nothing is handed back.")]
     public void A_Camera_Without_A_Parked_Player_Has_Nothing_To_Take()
     {
         using var sut = new RecordingPlayerParking(posted.Add, Schedule);

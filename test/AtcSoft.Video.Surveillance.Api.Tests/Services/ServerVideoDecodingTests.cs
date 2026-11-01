@@ -1,9 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Api.Tests.Services;
 
-using AtcSoft.Video.Surveillance.Api.Services;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
-
 /// <summary>
 /// The server decodes on the processor unless decoding on the graphics card is asked for.
 /// </summary>

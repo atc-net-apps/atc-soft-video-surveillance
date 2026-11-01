@@ -120,6 +120,7 @@ public sealed partial class RecordingsViewModel : ViewModelBase
     /// <remarks>
     /// A list, not a query: the grid's column filters filter the collection view of a list.
     /// </remarks>
+    [SuppressMessage("Major Code Smell", "S2365:Properties should not make collection or array copies", Justification = "A list, not a query: the grid's column filters filter the collection view of a list, made again when the filters change.")]
     public IReadOnlyList<RecordingEntryViewModel> FilteredRecordings
     {
         get
@@ -296,7 +297,9 @@ public sealed partial class RecordingsViewModel : ViewModelBase
             : null;
     }
 
-    private void OnSelectedCameraFiltersChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnSelectedCameraFiltersChanged(
+        object? sender,
+        NotifyCollectionChangedEventArgs e)
         => OnFilterChanged();
 
     private void OnFilterChanged()

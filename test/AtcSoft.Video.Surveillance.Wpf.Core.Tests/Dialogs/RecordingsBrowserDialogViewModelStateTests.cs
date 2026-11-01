@@ -35,7 +35,7 @@ public sealed class RecordingsBrowserDialogViewModelStateTests : IDisposable
         first.SelectedCameraFilters.Add("Garden");
         first.SelectedDayFilter = "_ALL_";
         first.SelectedTimeFilter = "18_24";
-        first.SelectedRecording = first.FilteredRecordings.Last();
+        first.SelectedRecording = first.FilteredRecordings[^1];
         var state = first.CaptureState();
 
         // Act
@@ -51,7 +51,7 @@ public sealed class RecordingsBrowserDialogViewModelStateTests : IDisposable
             "Garden_20261012_230000_000.mkv",
             "Garden_20261012_220000_000.mkv");
         reopened.SelectedRecording!.FileName.Should().Be("Garden_20261012_220000_000.mkv");
-        reopened.SelectedRecording.Should().BeSameAs(reopened.FilteredRecordings.Last(), "the grid selects by instance");
+        reopened.SelectedRecording.Should().BeSameAs(reopened.FilteredRecordings[^1], "the grid selects by instance");
     }
 
     [Fact]

@@ -263,7 +263,9 @@ public class DialogService : IDialogService
         // gets another player the window follows. A tile without a player: the window opens its own.
         var sharedPlayer = sourceTile?.Player;
         FullScreenCameraWindowViewModel? shown = null;
-        void OnTilePlayerChanged(object? sender, IVideoPlayer? newPlayer)
+        void OnTilePlayerChanged(
+            object? sender,
+            IVideoPlayer? newPlayer)
             => shown?.FollowSharedPlayer(newPlayer);
 
         if (sourceTile is not null)

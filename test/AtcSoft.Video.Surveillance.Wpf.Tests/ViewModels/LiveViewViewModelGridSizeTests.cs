@@ -1,8 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Wpf.ViewModels;
 
-using AtcSoft.Video.Surveillance.Models.Settings;
-using AtcSoft.Video.Surveillance.Services;
-
 /// <summary>
 /// The grid size is picked with segments: a segment's place is the size
 /// (0 automatic, then one to four cameras along a side), remembered for the next start.
@@ -20,7 +17,7 @@ public sealed class LiveViewViewModelGridSizeTests
             Substitute.For<IListEventsEndpoint>(),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<SurveillanceEventService>.Instance,
             new SurveillanceEventServiceOptions());
-        var sut = new LiveViewViewModel(
+        using var sut = new LiveViewViewModel(
             server.Gateway,
             eventService,
             Substitute.For<IVideoPlayerFactory>(),
@@ -48,7 +45,7 @@ public sealed class LiveViewViewModelGridSizeTests
             Substitute.For<IListEventsEndpoint>(),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<SurveillanceEventService>.Instance,
             new SurveillanceEventServiceOptions());
-        var sut = new LiveViewViewModel(
+        using var sut = new LiveViewViewModel(
             server.Gateway,
             eventService,
             Substitute.For<IVideoPlayerFactory>(),

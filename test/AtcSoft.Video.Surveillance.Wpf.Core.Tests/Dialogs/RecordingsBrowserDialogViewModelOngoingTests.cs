@@ -135,7 +135,7 @@ public sealed class RecordingsBrowserDialogViewModelOngoingTests : IDisposable
         var listRebuilt = false;
         sut.PropertyChanged += (_, e) => listRebuilt |= e.PropertyName == nameof(RecordingsBrowserDialogViewModel.FilteredRecordings);
 
-        writer!.Write(new byte[2048]);
+        await writer!.WriteAsync(new byte[2048], TestContext.Current.CancellationToken);
         await writer!.DisposeAsync();
         writer = null;
         (await sut.UpdateOngoingRecordingsAsync()).Should().BeTrue();

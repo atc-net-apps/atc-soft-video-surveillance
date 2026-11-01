@@ -17,7 +17,7 @@ public sealed partial class CameraWallManager
     {
         // Once the tiles the layout let go have parked their players (they go when they are
         // unloaded, after the layout is applied): a camera parked by its tile is not opened twice.
-        CameraGrid?.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, WatchNow);
+        _ = CameraGrid?.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, WatchNow);
     }
 
     private void WatchNow()

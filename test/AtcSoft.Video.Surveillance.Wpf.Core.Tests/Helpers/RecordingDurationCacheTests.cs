@@ -1,7 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Wpf.Core.Helpers;
 
-using System.IO;
-
 /// <summary>
 /// A recording's length is read from the file once, and again only when the file changed.
 /// </summary>
@@ -64,7 +62,9 @@ public sealed class RecordingDurationCacheTests : IDisposable
         return TimeSpan.FromSeconds(new FileInfo(path).Length);
     }
 
-    private string Write(string name, int bytes)
+    private string Write(
+        string name,
+        int bytes)
     {
         var path = Path.Combine(folder, name);
         File.WriteAllBytes(path, new byte[bytes]);
