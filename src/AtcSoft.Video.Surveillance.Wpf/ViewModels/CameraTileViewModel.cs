@@ -243,6 +243,13 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
             .StartStreamAsync(CameraId)
             .ConfigureAwait(false);
 
+        // The tile went while the server started the stream: the lease goes back.
+        if (disposed)
+        {
+            await streams.StopStreamAsync(CameraId, lease.LeaseId).ConfigureAwait(false);
+            return;
+        }
+
         Guid? previous;
         lock (leaseLock)
         {
@@ -288,6 +295,34 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         ArgumentNullException.ThrowIfNull(tiles);
 
         return Task.WhenAll(tiles.Select(tile => tile.StopStreamAsync()));
+    }
+
+    /// <summary>
+    /// Makes sure the stream runs, after the live view was loaded again: a
+    /// lease the server no longer has (it restarted) starts the stream again,
+    /// and a tile waiting to start again does so now. Never throws.
+    /// </summary>
+    public async Task EnsureStreamAsync()
+    {
+        if (disposed || stoppedByUser)
+        {
+            return;
+        }
+
+        bool hasLease;
+        lock (leaseLock)
+        {
+            hasLease = leaseId is not null;
+        }
+
+        if (hasLease && !IsRetryScheduled)
+        {
+            await RenewLeaseAsync().ConfigureAwait(false);
+            return;
+        }
+
+        CancelStreamRetry();
+        await StartStreamOrRetryLaterAsync().ConfigureAwait(false);
     }
 
     /// <summary>
