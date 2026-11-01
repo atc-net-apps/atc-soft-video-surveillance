@@ -8,14 +8,16 @@ namespace AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Cameras;
 /// <see cref="ICameraPipelineHost"/> keeps, which someone may be watching
 /// or recording on. Nor is a camera being recorded: its picture is taken
 /// from the recording, so a camera that allows few sessions is not opened
-/// a second time.
+/// a second time; nor is a camera the server watches for motion: its
+/// picture is taken from the pipeline that watches it.
 /// </summary>
 public sealed class CaptureSnapshotHandler(
     ICameraStorageService storage,
     IMediaPipelineFactory pipelineFactory,
     IApplicationSettingsService settingsService,
     ICameraPipelineHost? pipelineHost = null,
-    IRecordingService? recordings = null) : ICaptureSnapshotHandler
+    IRecordingService? recordings = null,
+    ICameraRuntime? runtime = null) : ICaptureSnapshotHandler
 {
     // A camera that is still connecting usually has a picture a few seconds later.
     private const int RetryAfterSeconds = 5;
@@ -44,6 +46,11 @@ public sealed class CaptureSnapshotHandler(
         if (await CaptureFromRecordingAsync(camera.Id, cancellationToken).ConfigureAwait(false) is { } recorded)
         {
             return await SaveAsync(recorded, camera, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (await CaptureFromAsync(runtime?.FindPlayingPipeline(camera.Id), cancellationToken).ConfigureAwait(false) is { } watched)
+        {
+            return await SaveAsync(watched, camera, cancellationToken).ConfigureAwait(false);
         }
 
         using var pipeline = pipelineFactory.Create(camera);
@@ -98,18 +105,24 @@ public sealed class CaptureSnapshotHandler(
 
     // The pipeline belongs to the recording and is never closed here. A recording that stops
     // meanwhile, or gives no picture, leaves the camera to be opened as usual.
-    private async Task<byte[]?> CaptureFromRecordingAsync(
+    private Task<byte[]?> CaptureFromRecordingAsync(
         Guid cameraId,
         CancellationToken cancellationToken)
+        => CaptureFromAsync(recordings?.FindPipeline(cameraId), cancellationToken);
+
+    // A pipeline someone else owns: never closed here. One closed meanwhile gives no picture.
+    private static async Task<byte[]?> CaptureFromAsync(
+        IMediaPipeline? pipeline,
+        CancellationToken cancellationToken)
     {
-        if (recordings?.FindPipeline(cameraId) is not { } recording)
+        if (pipeline is null)
         {
             return null;
         }
 
         try
         {
-            return await recording.CaptureFrameAsync(cancellationToken).ConfigureAwait(false);
+            return await pipeline.CaptureFrameAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (ObjectDisposedException)
         {
