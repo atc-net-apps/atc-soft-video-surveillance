@@ -42,6 +42,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
             {
                 SelectedCameraFilters = ["Garden"],
             };
+            WpfTestThread.WaitFor(viewModel.Loading);
 
             RecordingEntry? playedRecording = null;
             var closed = false;
@@ -83,6 +84,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
         var error = WpfTestThread.Run(() =>
         {
             var viewModel = new RecordingsBrowserDialogViewModel(settingsService);
+            WpfTestThread.WaitFor(viewModel.Loading);
             var closed = false;
             var dialog = new RecordingsBrowserDialog(
                 viewModel,
@@ -119,6 +121,7 @@ public sealed class RecordingsBrowserDialogTests : IDisposable
         var error = WpfTestThread.Run(() =>
         {
             var viewModel = new RecordingsBrowserDialogViewModel(settingsService);
+            WpfTestThread.WaitFor(viewModel.Loading);
             var dialog = new RecordingsBrowserDialog(viewModel, recording => played = recording.FileName);
             viewModel.SelectedRecording = viewModel.FilteredRecordings.Single();
 

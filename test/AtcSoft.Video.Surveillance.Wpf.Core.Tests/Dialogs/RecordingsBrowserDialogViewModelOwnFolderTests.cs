@@ -25,22 +25,24 @@ public sealed class RecordingsBrowserDialogViewModelOwnFolderTests : IDisposable
     }
 
     [Fact]
-    public void Recordings_In_A_Cameras_Own_Folder_Are_Listed()
+    public async Task Recordings_In_A_Cameras_Own_Folder_Are_Listed()
     {
         Touch(Global, "Front Door", "Front Door_20261012_101500_000.mkv");
         Touch(Own, "Garden", "Garden_20261012_111500_000.mkv");
 
         using var viewModel = Create();
+        await viewModel.Loading;
 
         viewModel.FilteredRecordings.Select(r => r.CameraName).Should().BeEquivalentTo("Front Door", "Garden");
         viewModel.CameraFilters.Select(f => f.Key).Should().Contain("Garden");
     }
 
     [Fact]
-    public void A_Recording_In_A_Cameras_Own_Folder_Is_Deleted_There()
+    public async Task A_Recording_In_A_Cameras_Own_Folder_Is_Deleted_There()
     {
         var video = Touch(Own, "Garden", "Garden_20261012_111500_000.mkv");
         using var viewModel = Create();
+        await viewModel.Loading;
         viewModel.SelectedRecording = viewModel.FilteredRecordings.Single();
 
         viewModel.DeleteCommand.Execute(null);

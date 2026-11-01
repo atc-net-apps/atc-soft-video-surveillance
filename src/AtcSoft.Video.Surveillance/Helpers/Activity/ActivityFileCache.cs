@@ -74,7 +74,18 @@ internal sealed class ActivityFileCache<T>
             return kept.Value;
         }
 
-        var value = read(path);
+        T? value;
+        try
+        {
+            value = read(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Locked by a writer, deleted mid-read, no access: no index this time. Not kept, so
+            // the next look reads it again.
+            return null;
+        }
+
         entries[path] = new Entry(info.Length, info.LastWriteTimeUtc, value) { LastUsed = used };
         Trim();
         return value;

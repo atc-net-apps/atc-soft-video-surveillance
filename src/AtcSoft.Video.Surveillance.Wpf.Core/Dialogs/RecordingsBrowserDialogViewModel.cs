@@ -52,8 +52,15 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         this.cameraByFolder = cameraByFolder;
         selectedCameraFilters.CollectionChanged += OnSelectedCameraFiltersChanged;
 
-        LoadRecordings();
+        // The archive is read in the background: the dialog opens at once, and the list fills in.
+        Loading = LoadRecordingsAsync();
     }
+
+    /// <summary>
+    /// Gets the newest reading of the list (opening, Refresh, after an analysis). It completes once
+    /// the list shows what it read.
+    /// </summary>
+    public Task Loading { get; private set; }
 
     /// <summary>
     /// Gets or sets the app's previews in the making: a recording played without preview pictures
@@ -207,12 +214,24 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     /// Applies filters and a selection from an earlier browser. Whatever no
     /// longer exists is skipped: a camera without recordings is left out (none
     /// left means all cameras), and a deleted recording leaves nothing selected.
+    /// While the list is still being read, the state is applied once it is in.
     /// </summary>
     /// <param name="state">The state to apply.</param>
     public void RestoreState(RecordingsBrowserState state)
     {
         ArgumentNullException.ThrowIfNull(state);
 
+        if (!Loading.IsCompleted)
+        {
+            pendingState = state;
+            return;
+        }
+
+        ApplyState(state);
+    }
+
+    private void ApplyState(RecordingsBrowserState state)
+    {
         SelectedCameraFilters = [.. state.CameraFilters.Where(CameraFilters.ContainsKey)];
 
         if (DayFilterItems.ContainsKey(state.DayFilter))
@@ -238,33 +257,71 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     /// this every few seconds, so nobody has to press Refresh.
     /// </summary>
     /// <returns><see langword="true"/> when something in the list changed.</returns>
-    public bool UpdateOngoingRecordings()
+    /// <remarks>
+    /// The folders are read in the background; the list changes on the calling (UI) thread. A look
+    /// while the list is being read, or while the last look is still going, is skipped.
+    /// </remarks>
+    public async Task<bool> UpdateOngoingRecordingsAsync()
     {
-        var roots = GetRecordingRoots();
-        if (roots.Count == 0)
+        if (updating || !Loading.IsCompleted || stopping.IsCancellationRequested)
         {
             return false;
         }
 
+        updating = true;
+        try
+        {
+            var version = loadVersion;
+            var basePath = GetRecordingsBasePath();
+            var cameraPaths = GetCameraRecordingPaths();
+            List<string> ongoing = [.. Recordings.Where(r => r.IsBeingRecorded).Select(r => r.FilePath)];
+            var known = new HashSet<string>(Recordings.Select(r => r.FilePath), StringComparer.OrdinalIgnoreCase);
+            var cancellationToken = stopping.Token;
+
+            var (endedFiles, started) = await Task.Run(
+                () => (ReadEnded(ongoing, cancellationToken), ReadEntries(basePath, cameraPaths, known, cancellationToken)),
+                cancellationToken).ConfigureAwait(true);
+
+            // A new reading replaced the list meanwhile, or the browser closed.
+            if (version != loadVersion || stopping.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            return ApplyOngoingChanges(endedFiles, started);
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        finally
+        {
+            updating = false;
+        }
+    }
+
+    private bool ApplyOngoingChanges(
+        IReadOnlyList<(string FilePath, long Length, TimeSpan Duration)> endedFiles,
+        IReadOnlyList<RecordingEntry> startedEntries)
+    {
         // Ended: the row stays the same row, so the list keeps its place.
         var ended = false;
-        foreach (var entry in Recordings.Where(r => r.IsBeingRecorded).ToList())
+        foreach (var (filePath, length, duration) in endedFiles)
         {
-            if (!File.Exists(entry.FilePath) || RecordingPathHelper.IsBeingWritten(entry.FilePath))
+            var entry = Recordings.FirstOrDefault(r =>
+                r.IsBeingRecorded && string.Equals(r.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            if (entry is null)
             {
                 continue;
             }
 
-            entry.MarkFinished(new FileInfo(entry.FilePath).Length, Durations.Get(entry.FilePath));
+            entry.MarkFinished(length, duration);
             ended = true;
         }
 
         // Started: a file the list does not have yet.
         var known = new HashSet<string>(Recordings.Select(r => r.FilePath), StringComparer.OrdinalIgnoreCase);
-        var started = EnumerateRecordingFiles(roots)
-            .Where(f => !known.Contains(f.FilePath))
-            .Select(f => CreateEntry(f.FilePath, f.CameraName, f.Root))
-            .ToList();
+        var started = startedEntries.Where(e => known.Add(e.FilePath)).ToList();
 
         if (started.Count > 0)
         {
@@ -299,7 +356,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     [RelayCommand]
     private void Refresh()
     {
-        LoadRecordings();
+        Loading = LoadRecordingsAsync();
     }
 
     [RelayCommand]
@@ -484,7 +541,8 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
 
             // Its events get preview tiles of their own now.
             Previews?.TryEnqueue(recording.FilePath);
-            LoadRecordings();
+            Loading = LoadRecordingsAsync();
+            await Loading.ConfigureAwait(true);
             SelectedRecording = Recordings.FirstOrDefault(r => string.Equals(r.FilePath, recording.FilePath, StringComparison.OrdinalIgnoreCase));
             StatusMessage = Translations.RecordingAnalysed;
         }
@@ -533,26 +591,33 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private void LoadRecordings()
+    // Reads the archive in the background (a large one is thousands of files, each with its
+    // activity index) and shows it when it is in. A newer reading wins over an older one.
+    private async Task LoadRecordingsAsync()
     {
+        if (stopping.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var version = ++loadVersion;
         IsLoading = true;
-        StatusMessage = string.Empty;
+        StatusMessage = Translations.Loading;
 
         try
         {
-            var roots = GetRecordingRoots();
+            var basePath = GetRecordingsBasePath();
+            var cameraPaths = GetCameraRecordingPaths();
+            var cancellationToken = stopping.Token;
 
-            if (roots.Count == 0)
+            var entries = await Task.Run(
+                () => ReadEntries(basePath, cameraPaths, skip: null, cancellationToken),
+                cancellationToken).ConfigureAwait(true);
+
+            if (version != loadVersion || stopping.IsCancellationRequested)
             {
-                Recordings.Clear();
-                UpdateCameraFilters();
-                StatusMessage = Translations.NoRecordingsFound;
                 return;
             }
-
-            var entries = EnumerateRecordingFiles(roots)
-                .Select(f => CreateEntry(f.FilePath, f.CameraName, f.Root))
-                .ToList();
 
             // Sort by date descending (newest first)
             Recordings = new ObservableCollection<RecordingEntry>(
@@ -561,10 +626,23 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
             UpdateCameraFilters();
             UpdateStatusMessage();
             FillDurations(Recordings);
+
+            if (pendingState is { } state)
+            {
+                pendingState = null;
+                ApplyState(state);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The browser was closed.
         }
         finally
         {
-            IsLoading = false;
+            if (version == loadVersion)
+            {
+                IsLoading = false;
+            }
         }
     }
 
@@ -601,17 +679,70 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
             cancellationToken);
     }
 
+    // The entries of every recording in the folders, except those in skip. Runs in the background.
+    private static List<RecordingEntry> ReadEntries(
+        string basePath,
+        IReadOnlyList<string?> cameraPaths,
+        HashSet<string>? skip,
+        CancellationToken cancellationToken)
+    {
+        var entries = new List<RecordingEntry>();
+        foreach (var root in RecordingRoots.Collect(basePath, cameraPaths).Where(Directory.Exists))
+        {
+            foreach (var (filePath, cameraName) in EnumerateRecordingFiles(root))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (skip?.Contains(filePath) == true)
+                {
+                    continue;
+                }
+
+                if (CreateEntry(filePath, cameraName, root) is { } entry)
+                {
+                    entries.Add(entry);
+                }
+            }
+        }
+
+        return entries;
+    }
+
+    // The ongoing recordings that have ended, with their length. Runs in the background.
+    private static List<(string FilePath, long Length, TimeSpan Duration)> ReadEnded(
+        IReadOnlyList<string> ongoing,
+        CancellationToken cancellationToken)
+    {
+        var ended = new List<(string FilePath, long Length, TimeSpan Duration)>();
+        foreach (var filePath in ongoing)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var info = new FileInfo(filePath);
+                if (!info.Exists || RecordingPathHelper.IsBeingWritten(filePath))
+                {
+                    continue;
+                }
+
+                ended.Add((filePath, info.Length, Durations.Get(filePath)));
+            }
+            catch (Exception ex) when (IsFileSystemError(ex))
+            {
+                // Gone or locked: the next look sees it.
+            }
+        }
+
+        return ended;
+    }
+
     // Each folder below a root is a camera. Its recordings may sit
     // directly in it or in a folder per day, so the whole camera folder is
-    // searched. The thumbnails folder holds no recordings.
-    private static IEnumerable<(string FilePath, string CameraName, string Root)> EnumerateRecordingFiles(
-        IEnumerable<string> roots)
-        => roots.SelectMany(root => EnumerateRecordingFiles(root).Select(f => (f.FilePath, f.CameraName, root)));
-
+    // searched. The thumbnails folder holds no recordings. A folder that goes away while it is
+    // read (the cleanup deleting a day), or cannot be read, ends its part of the walk.
     private static IEnumerable<(string FilePath, string CameraName)> EnumerateRecordingFiles(
         string basePath)
     {
-        foreach (var cameraFolder in Directory.GetDirectories(basePath))
+        foreach (var cameraFolder in WhileReadable(() => Directory.EnumerateDirectories(basePath)))
         {
             var cameraName = Path.GetFileName(cameraFolder);
             if (cameraName.Equals(RecordingPathHelper.ThumbnailsFolderName, StringComparison.OrdinalIgnoreCase))
@@ -619,13 +750,59 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
                 continue;
             }
 
-            foreach (var file in Directory.EnumerateFiles(cameraFolder, "*.*", SearchOption.AllDirectories)
+            foreach (var file in WhileReadable(() => Directory.EnumerateFiles(cameraFolder, "*.*", AllFilesBelow))
                 .Where(IsVideoFile))
             {
                 yield return (file, cameraName);
             }
         }
     }
+
+    private static readonly EnumerationOptions AllFilesBelow = new()
+    {
+        RecurseSubdirectories = true,
+        IgnoreInaccessible = true,
+    };
+
+    private static IEnumerable<string> WhileReadable(
+        Func<IEnumerable<string>> enumerate)
+    {
+        IEnumerator<string> items;
+        try
+        {
+            items = enumerate().GetEnumerator();
+        }
+        catch (Exception ex) when (IsFileSystemError(ex))
+        {
+            yield break;
+        }
+
+        using (items)
+        {
+            while (true)
+            {
+                bool more;
+                try
+                {
+                    more = items.MoveNext();
+                }
+                catch (Exception ex) when (IsFileSystemError(ex))
+                {
+                    more = false;
+                }
+
+                if (!more)
+                {
+                    yield break;
+                }
+
+                yield return items.Current;
+            }
+        }
+    }
+
+    private static bool IsFileSystemError(Exception ex)
+        => ex is IOException or UnauthorizedAccessException;
 
     // A recording that is still being made has no length yet, and probing
     // it only makes FFmpeg report a broken file.
@@ -640,12 +817,37 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     private readonly CancellationTokenSource stopping = new();
     private CancellationTokenSource? durationFill;
 
-    private static RecordingEntry CreateEntry(
+    // Which reading of the list is the newest; an older one that ends later is dropped.
+    private int loadVersion;
+
+    // A look for ended and started recordings is going on.
+    private bool updating;
+
+    // Filters and a selection to apply once the list is in.
+    private RecordingsBrowserState? pendingState;
+
+    // Null for a file that went away or cannot be read while the list is read.
+    private static RecordingEntry? CreateEntry(
         string filePath,
         string cameraName,
         string basePath)
     {
-        var info = new FileInfo(filePath);
+        try
+        {
+            return CreateEntryOf(new FileInfo(filePath), cameraName, basePath);
+        }
+        catch (Exception ex) when (IsFileSystemError(ex))
+        {
+            return null;
+        }
+    }
+
+    private static RecordingEntry CreateEntryOf(
+        FileInfo info,
+        string cameraName,
+        string basePath)
+    {
+        var filePath = info.FullName;
         var recordingTime = RecordingPathHelper.TryParseTimestamp(info.Name, out var timestamp)
             ? timestamp
             : info.CreationTime;
@@ -660,11 +862,9 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         return entry.WithActivity(Sparklines.Get(RecordingPathHelper.BuildActivityPath(filePath)));
     }
 
-    // The global folder and each camera's own folder, each once, that exist.
-    private List<string> GetRecordingRoots()
-        => RecordingRoots.Collect(GetRecordingsBasePath(), cameraRecordingPaths?.Invoke() ?? [])
-            .Where(Directory.Exists)
-            .ToList();
+    // Each camera's own recording folder, read on the UI thread for the background reading.
+    private List<string?> GetCameraRecordingPaths()
+        => [.. cameraRecordingPaths?.Invoke() ?? []];
 
     private string GetRecordingsBasePath()
         => !string.IsNullOrEmpty(settingsService.Recording.RecordingPath)

@@ -57,6 +57,32 @@ public sealed class ActivitySparklineTests
     }
 
     [Fact]
+    public void An_Index_That_Cannot_Be_Read_Now_Has_No_Sparkline_And_Is_Read_Again_Later()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "atcsoft-sparkline-" + Guid.NewGuid().ToString("N") + ".activity.jsonl");
+        try
+        {
+            var start = DateTimeOffset.UnixEpoch;
+            using (var index = ActivityLogWriter.Create(path, start))
+            {
+                index.Add(start, new MotionDetectorResult(true, MotionHoldChange.None, 55, []));
+            }
+
+            var cache = new ActivitySparklineCache();
+            using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                cache.Get(path).Should().BeNull("another program has the index locked");
+            }
+
+            cache.Get(path)!.Max().Should().Be(55, "the failed read was not kept");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void Without_An_Index_There_Is_No_Sparkline()
         => ActivitySparkline.From(null).Should().BeNull();
 
