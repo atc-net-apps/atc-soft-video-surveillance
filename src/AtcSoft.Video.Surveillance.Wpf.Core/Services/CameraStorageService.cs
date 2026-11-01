@@ -20,6 +20,9 @@ public partial class CameraStorageService : ICameraStorageService
 
     private readonly string storagePath;
     private readonly ILogger<CameraStorageService> logger;
+    // The UI changes the cameras; the recording, segmentation and diagnostics workers read them on
+    // other threads. Every use of the data goes through this lock, and reads hand out copies.
+    private readonly Lock gate = new();
     private CameraStorageData data = new();
 
     /// <summary>
@@ -50,107 +53,149 @@ public partial class CameraStorageService : ICameraStorageService
     /// <inheritdoc/>
     public Guid? StartupLayoutId
     {
-        get => data.StartupLayoutId;
+        get
+        {
+            lock (gate)
+            {
+                return data.StartupLayoutId;
+            }
+        }
+
         set
         {
-            data.StartupLayoutId = value;
-            Save();
+            lock (gate)
+            {
+                data.StartupLayoutId = value;
+                Save();
+            }
         }
     }
 
     /// <inheritdoc/>
     public IReadOnlyList<CameraConfiguration> GetAllCameras()
-        => data.Cameras.AsReadOnly();
+    {
+        lock (gate)
+        {
+            return [.. data.Cameras];
+        }
+    }
 
     /// <inheritdoc/>
     public CameraConfiguration? GetCameraById(Guid id)
-        => data.Cameras.Find(c => c.Id == id);
+    {
+        lock (gate)
+        {
+            return data.Cameras.Find(c => c.Id == id);
+        }
+    }
 
     /// <inheritdoc/>
     public void AddOrUpdateCamera(CameraConfiguration camera)
     {
-        ArgumentNullException.ThrowIfNull(camera);
-
-        var existingIndex = data.Cameras.FindIndex(c => c.Id == camera.Id);
-        if (existingIndex >= 0)
+        lock (gate)
         {
-            data.Cameras[existingIndex] = camera;
-        }
-        else
-        {
-            data.Cameras.Add(camera);
-        }
+            ArgumentNullException.ThrowIfNull(camera);
 
-        Save();
+            var existingIndex = data.Cameras.FindIndex(c => c.Id == camera.Id);
+            if (existingIndex >= 0)
+            {
+                data.Cameras[existingIndex] = camera;
+            }
+            else
+            {
+                data.Cameras.Add(camera);
+            }
+
+            Save();
+        }
     }
 
     /// <inheritdoc/>
     public bool DeleteCamera(Guid id)
     {
-        var camera = data.Cameras.Find(c => c.Id == id);
-        if (camera is null)
+        lock (gate)
         {
-            return false;
+            var camera = data.Cameras.Find(c => c.Id == id);
+            if (camera is null)
+            {
+                return false;
+            }
+
+            data.Cameras.Remove(camera);
+
+            // Remove camera from all layouts
+            foreach (var layout in data.Layouts)
+            {
+                layout.Items.RemoveAll(item => item.CameraId == id);
+            }
+
+            Save();
+            return true;
         }
-
-        data.Cameras.Remove(camera);
-
-        // Remove camera from all layouts
-        foreach (var layout in data.Layouts)
-        {
-            layout.Items.RemoveAll(item => item.CameraId == id);
-        }
-
-        Save();
-        return true;
     }
 
     /// <inheritdoc/>
     public IReadOnlyList<CameraLayout> GetAllLayouts()
-        => data.Layouts.AsReadOnly();
+    {
+        lock (gate)
+        {
+            return [.. data.Layouts];
+        }
+    }
 
     /// <inheritdoc/>
     public CameraLayout? GetLayoutById(Guid id)
-        => data.Layouts.Find(l => l.Id == id);
+    {
+        lock (gate)
+        {
+            return data.Layouts.Find(l => l.Id == id);
+        }
+    }
 
     /// <inheritdoc/>
     public void AddOrUpdateLayout(CameraLayout layout)
     {
-        ArgumentNullException.ThrowIfNull(layout);
-
-        var existingIndex = data.Layouts.FindIndex(l => l.Id == layout.Id);
-        if (existingIndex >= 0)
+        lock (gate)
         {
-            layout.ModifiedAt = DateTime.UtcNow;
-            data.Layouts[existingIndex] = layout;
-        }
-        else
-        {
-            data.Layouts.Add(layout);
-        }
+            ArgumentNullException.ThrowIfNull(layout);
 
-        Save();
+            var existingIndex = data.Layouts.FindIndex(l => l.Id == layout.Id);
+            if (existingIndex >= 0)
+            {
+                layout.ModifiedAt = DateTime.UtcNow;
+                data.Layouts[existingIndex] = layout;
+            }
+            else
+            {
+                data.Layouts.Add(layout);
+            }
+
+            Save();
+        }
     }
 
     /// <inheritdoc/>
     public bool DeleteLayout(Guid id)
     {
-        var layout = data.Layouts.Find(l => l.Id == id);
-        if (layout is null)
+        lock (gate)
         {
-            return false;
+            var layout = data.Layouts.Find(l => l.Id == id);
+            if (layout is null)
+            {
+                return false;
+            }
+
+            data.Layouts.Remove(layout);
+
+            // Clear startup layout if deleted
+            if (data.StartupLayoutId == id)
+            {
+                data.StartupLayoutId = null;
+            }
+
+            Save();
+            return true;
         }
-
-        data.Layouts.Remove(layout);
-
-        // Clear startup layout if deleted
-        if (data.StartupLayoutId == id)
-        {
-            data.StartupLayoutId = null;
-        }
-
-        Save();
-        return true;
     }
 
     /// <inheritdoc/>
@@ -160,12 +205,15 @@ public partial class CameraStorageService : ICameraStorageService
     /// </remarks>
     public void Save()
     {
-        var json = JsonSerializer.SerializeToNode(data, JsonOptions);
-        _ = TransformPasswords(json, StoredSecret.Protect);
-
-        if (json is null || !SafeJsonFile.TryWrite(storagePath, json, JsonOptions))
+        lock (gate)
         {
-            LogSaveFailed(storagePath);
+            var json = JsonSerializer.SerializeToNode(data, JsonOptions);
+            _ = TransformPasswords(json, StoredSecret.Protect);
+
+            if (json is null || !SafeJsonFile.TryWrite(storagePath, json, JsonOptions))
+            {
+                LogSaveFailed(storagePath);
+            }
         }
     }
 
@@ -176,21 +224,24 @@ public partial class CameraStorageService : ICameraStorageService
     /// </remarks>
     public void Load()
     {
-        var json = SafeJsonFile.TryRead<JsonNode>(storagePath, JsonOptions);
-        if (json is null)
+        lock (gate)
         {
-            data = new CameraStorageData();
-            return;
-        }
+            var json = SafeJsonFile.TryRead<JsonNode>(storagePath, JsonOptions);
+            if (json is null)
+            {
+                data = new CameraStorageData();
+                return;
+            }
 
-        var hadPlainPasswords = HasPlainPassword(json);
-        _ = TransformPasswords(json, StoredSecret.Unprotect);
-        data = json.Deserialize<CameraStorageData>(JsonOptions) ?? new CameraStorageData();
+            var hadPlainPasswords = HasPlainPassword(json);
+            _ = TransformPasswords(json, StoredSecret.Unprotect);
+            data = json.Deserialize<CameraStorageData>(JsonOptions) ?? new CameraStorageData();
 
-        if (hadPlainPasswords)
-        {
-            Save();
-            Save();
+            if (hadPlainPasswords)
+            {
+                Save();
+                Save();
+            }
         }
     }
 
