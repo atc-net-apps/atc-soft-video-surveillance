@@ -93,6 +93,22 @@ public sealed class GetRecordingActivityHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Recording_Whose_Index_Is_Held_By_Another_Program_Is_Answered_Without_It()
+    {
+        using (var writer = ActivityLogWriter.Create(RecordingPathHelper.BuildActivityPath(video), Start))
+        {
+            writer.Add(Start, Quiet(1));
+        }
+
+        // A backup or a virus scanner holds the index.
+        using var held = new FileStream(RecordingPathHelper.BuildActivityPath(video), FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+        var activity = await OkAsync("Garden/Garden_20261019_101500_000.mp4", buckets: null, durationSeconds: 60);
+
+        activity.HasIndex.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task A_Recording_Being_Analysed_Says_So_And_One_Whose_Analysis_Ended_Without_An_Index_Does_Not()
     {
         var analyses = Substitute.For<IRecordingAnalyses>();

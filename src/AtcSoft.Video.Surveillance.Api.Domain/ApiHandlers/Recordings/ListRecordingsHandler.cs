@@ -33,7 +33,7 @@ public sealed class ListRecordingsHandler(
                 0,
                 files.Count,
                 new ParallelOptions { CancellationToken = cancellationToken },
-                i => activity[i] = sparklines.Get(RecordingPathHelper.BuildActivityPath(files[i].FullPath)));
+                i => activity[i] = TryGetSparkline(sparklines, RecordingPathHelper.BuildActivityPath(files[i].FullPath)));
         }
 
         var recordings = files
@@ -42,6 +42,22 @@ public sealed class ListRecordingsHandler(
             .ToList();
 
         return Task.FromResult(ListRecordingsResult.Ok(recordings));
+    }
+
+    // One index that cannot be read (held, or its folder removed meanwhile) is left out; it
+    // never fails the whole listing.
+    private static IReadOnlyList<int>? TryGetSparkline(
+        ActivitySparklineCache cache,
+        string activityPath)
+    {
+        try
+        {
+            return cache.Get(activityPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private Recording ToRecording(

@@ -175,23 +175,25 @@ public sealed class CachedRecordingDurationProvider : IRecordingDurationProvider
             return;
         }
 
-        _ = Task.Run(() =>
+        _ = Task.Run(SweepGone, CancellationToken.None);
+    }
+
+    private void SweepGone()
+    {
+        try
         {
-            try
+            foreach (var path in cache.Keys)
             {
-                foreach (var path in cache.Keys)
+                if (!File.Exists(path))
                 {
-                    if (!File.Exists(path))
-                    {
-                        cache.TryRemove(path, out _);
-                    }
+                    cache.TryRemove(path, out _);
                 }
             }
-            finally
-            {
-                Volatile.Write(ref sweepAt, Math.Max(1024, cache.Count * 2));
-            }
-        }, CancellationToken.None);
+        }
+        finally
+        {
+            Volatile.Write(ref sweepAt, Math.Max(1024, cache.Count * 2));
+        }
     }
 
     private bool TryTakeBudget()
