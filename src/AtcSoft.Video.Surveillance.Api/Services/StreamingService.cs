@@ -585,6 +585,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         private bool pipelineStreamStarted;
         private bool pipelineFailed;
         private bool closed;
+        private volatile bool processStopped;
         private int viewerCount;
         private long lastActivityUtcTicks;
 
@@ -639,7 +640,21 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
             {
                 if (process is not null)
                 {
-                    return process.HasExited;
+                    // A process that was stopped and disposed (by a viewer
+                    // leaving, or the sweep) cannot be asked any more.
+                    if (processStopped)
+                    {
+                        return true;
+                    }
+
+                    try
+                    {
+                        return process.HasExited;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return true;
+                    }
                 }
 
                 lock (pipelineStreamLock)
@@ -829,6 +844,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
             }
             finally
             {
+                processStopped = true;
                 process.Dispose();
             }
         }
