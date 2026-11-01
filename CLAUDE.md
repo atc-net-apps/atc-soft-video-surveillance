@@ -3,6 +3,13 @@
 ## Project Overview
 A multi-assembly video surveillance platform with a WPF desktop app and a headless REST API server (live events over Server-Sent Events), sharing a common Core library. Uses RTSP/HTTP protocols with Atc.Video.Engine (in-process FFmpeg) for video on both WPF and server.
 
+## Documentation: the wiki
+All user and developer documentation lives in the [wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki) (local clone: `D:\Code\atc-net-apps\atc-soft-video-surveillance.wiki`); the repo has no `docs/` folder. **The wiki must always match what the code does and what is shipped:**
+- A change that adds, changes or removes a feature, a setting, an API operation, a supported platform, an install step or anything else a user sees updates the matching wiki page as part of the same work. A removed feature leaves the wiki too.
+- The install guides (`Install-CameraWall`, `Install-Video-Surveillance`) and `Platform-Support` say only what a user can do with the latest release: ✅ available, 🛠️ possible for technical users, 🔜 coming. When a coming item ships (a server installer, Docker, Linux, a NAS guide), its marks change in the same change, and the roadmap with it.
+- A new page goes into `_Sidebar.md`, `Home.md` and the README's documentation table.
+- Wiki commits go in the wiki repo, separately; the user pushes them. After a push, check the anchor links on the live pages: a heading that starts with 🖥️ or 🗄️ keeps a hidden character in its anchor (`#%EF%B8%8F-…`).
+
 ## Solution Structure
 - `AtcSoft.Video.Surveillance` - Shared library: models, enums, events, service interfaces, helpers (net10.0, no WPF)
 - `AtcSoft.Video.Surveillance.Resources` - The texts of every client: `Translations.resx` in US English (neutral), `en-GB`, `da-DK`, `de-DE` (net10.0, no WPF, published)
