@@ -459,7 +459,8 @@ public partial class App
                     sp.GetRequiredService<IVideoPlayerFactory>(),
                     sp.GetRequiredService<AtcSoft.Video.Surveillance.Services.IUsbCameraWatcher>(),
                     apiBaseAddress,
-                    sp.GetService<AtcSoft.Video.Surveillance.Services.IApplicationSettingsService>()));
+                    sp.GetService<AtcSoft.Video.Surveillance.Services.IApplicationSettingsService>(),
+                    sp.GetService<ILoggerFactory>()));
                 services.AddSingleton(sp => new RecordingsViewModel(
                     sp.GetRequiredService<GatewayService>(),
                     new Uri(apiBaseAddress),

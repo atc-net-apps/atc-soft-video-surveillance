@@ -15,7 +15,11 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
 
     private readonly IStreamLeaseGateway streams;
     private readonly SurveillanceEventService eventService;
+    private readonly TimeProvider time;
+    private readonly ILogger logger;
     private readonly Lock leaseLock = new();
+    private readonly Lock playerLock = new();
+    private readonly Lock retryLock = new();
     private readonly string apiBaseAddress;
     private Guid? leaseId;
     private TimeSpan renewInterval = TimeSpan.FromSeconds(30);
@@ -129,15 +133,15 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
     private IVideoPlayer? player;
 
     private bool isStreaming;
-    private DispatcherTimer? heartbeatTimer;
+    private ITimer? heartbeatTimer;
 
-    // Auto-recover: when the HLS player drops (e.g. server reaped a stale
-    // session, transient network blip, FFmpeg restart), retry StartStream
-    // up to MaxStreamRetries times instead of leaving the tile stuck on
-    // Disconnected. userStopInProgress suppresses the retry loop when the
-    // stop was initiated by us (StopStreamAsync / Dispose).
-    private bool userStopInProgress;
-    private DispatcherTimer? retryTimer;
+    // Auto-recover: when the HLS player fails (the server ended the stream,
+    // a read timed out, the lease ran out), the stream is started again on a
+    // new lease instead of leaving the tile on "Connection failed".
+    // stoppedByUser suppresses it after StopStreamAsync.
+    private bool stoppedByUser;
+    private ITimer? retryTimer;
+    private int retryGeneration;
     private int retryAttempt;
 
     private void ApplyRotation()
@@ -147,7 +151,9 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         IVideoPlayerFactory videoPlayerFactory,
         IStreamLeaseGateway streams,
         SurveillanceEventService eventService,
-        string apiBaseAddress)
+        string apiBaseAddress,
+        TimeProvider? time = null,
+        ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(videoPlayerFactory);
         ArgumentNullException.ThrowIfNull(streams);
@@ -156,6 +162,8 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         this.streams = streams;
         this.eventService = eventService;
         this.apiBaseAddress = apiBaseAddress;
+        this.time = time ?? TimeProvider.System;
+        this.logger = logger ?? NullLogger.Instance;
 
         Player = videoPlayerFactory.Create();
         Player.StateChanged += OnPlayerStateChanged;
@@ -199,11 +207,28 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Gets a value indicating whether a new start of the stream is waiting
+    /// (after the player failed, or the server could not start it).
+    /// </summary>
+    internal bool IsRetryScheduled
+    {
+        get
+        {
+            lock (retryLock)
+            {
+                return retryTimer is not null;
+            }
+        }
+    }
+
+    /// <summary>
     /// Takes a lease on the camera's stream and plays it.
     /// </summary>
     /// <exception cref="HttpRequestException">The server refused, with its reason, or could not be reached.</exception>
     public async Task StartStreamAsync()
     {
+        stoppedByUser = false;
+
         var lease = await streams
             .StartStreamAsync(CameraId)
             .ConfigureAwait(false);
@@ -230,11 +255,14 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
 
     public Task StopStreamAsync()
     {
-        userStopInProgress = true;
+        stoppedByUser = true;
         CancelStreamRetry();
-        Player?.Close();
+        lock (playerLock)
+        {
+            Player?.Close();
+        }
 
-        _ = Application.Current?.Dispatcher.InvokeAsync(() => IsStreaming = false);
+        OnUi(() => IsStreaming = false);
 
         return TakeLease() is { } lease
             ? streams.StopStreamAsync(CameraId, lease)
@@ -282,11 +310,18 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         {
             await StartStreamAsync().ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        catch (Exception ex) when (IsStartFailure(ex))
         {
-            _ = Application.Current?.Dispatcher.InvokeAsync(ScheduleStreamRetry);
+            LogStreamStartFailed(ex, CameraId);
+            ScheduleStreamRetry();
         }
     }
+
+    // What a start of the stream fails with: the server refused or could not be
+    // reached, the call timed out, or the resilience pipeline turned it away.
+    private static bool IsStartFailure(Exception ex)
+        => ex is HttpRequestException or InvalidOperationException or OperationCanceledException or TimeoutException
+            or Polly.ExecutionRejectedException;
 
     private Guid? TakeLease(Guid? only = null)
     {
@@ -314,6 +349,7 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         }
 
         disposed = true;
+        CancelStreamRetry();
 
         eventService.OnConnectionStateChanged -= OnHubConnectionStateChanged;
         eventService.OnRecordingStateChanged -= OnHubRecordingStateChanged;
@@ -333,30 +369,40 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
             recordingTimer = null;
         }
 
-        if (heartbeatTimer is not null)
+        heartbeatTimer?.Dispose();
+        heartbeatTimer = null;
+
+        lock (playerLock)
         {
-            heartbeatTimer.Stop();
-            heartbeatTimer.Tick -= OnHeartbeatTimerTick;
-            heartbeatTimer = null;
+            if (Player is not null)
+            {
+                Player.StateChanged -= OnPlayerStateChanged;
+                Player.Dispose();
+                Player = null;
+            }
+        }
+    }
+
+    // Runs on the UI thread, or at once where there is none (tests).
+    private static void OnUi(Action action)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null)
+        {
+            action();
+            return;
         }
 
-        if (retryTimer is not null)
-        {
-            retryTimer.Stop();
-            retryTimer.Tick -= OnRetryTimerTick;
-            retryTimer = null;
-        }
-
-        if (Player is not null)
-        {
-            Player.StateChanged -= OnPlayerStateChanged;
-            Player.Dispose();
-            Player = null;
-        }
+        _ = dispatcher.InvokeAsync(action);
     }
 
     private void Play(string playlistUrl)
     {
+        if (disposed)
+        {
+            return;
+        }
+
         var fullUrl = $"{apiBaseAddress.TrimEnd('/')}{playlistUrl}";
         var uri = new Uri(fullUrl);
         var options = new StreamOptions
@@ -365,22 +411,52 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
             HardwareAcceleration = true,
         };
 
-        _ = Task.Run(() =>
+        // Off the UI thread: opening waits for the last stream's reader to end.
+        _ = Task.Run(() => Open(uri, options));
+    }
+
+    [SuppressMessage(
+        "Design",
+        "CA1031:Do not catch general exception types",
+        Justification = "Whatever the player throws, the tile tries again later; it must not end the app.")]
+    private void Open(
+        Uri uri,
+        StreamOptions options)
+    {
+        lock (playerLock)
         {
+            var current = Player;
+            if (disposed || stoppedByUser || current is null)
+            {
+                return;
+            }
+
             try
             {
-                Player?.Open(uri, options);
-            }
-            catch
-            {
-                // State will be updated via StateChanged
-            }
-        });
+                // The player opens only from Stopped. One that failed (the stream
+                // ended, a read timed out, the lease ran out) or still plays an
+                // older lease is closed first; its Stopped starts nothing.
+                if (current.State != PlayerState.Stopped)
+                {
+                    current.Close();
+                }
 
-        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
+                current.Open(uri, options);
+            }
+            catch (Exception ex)
+            {
+                LogPlayerOpenFailed(ex, CameraId);
+                ScheduleStreamRetry();
+                return;
+            }
+        }
+
+        OnUi(() =>
         {
-            retryAttempt = 0;
-            IsStreaming = true;
+            if (!disposed && !stoppedByUser)
+            {
+                IsStreaming = true;
+            }
         });
     }
 
@@ -388,9 +464,27 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         object? sender,
         PlayerStateChangedEventArgs e)
     {
-        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
+        var newState = e.NewState;
+
+        // Only the player's own failure starts the stream again. Stopped comes
+        // from Close alone: the user stopped, or the tile is opening again.
+        if (newState == PlayerState.Error)
         {
-            ConnectionState = e.NewState switch
+            LogPlayerFailed(CameraId, e.ErrorMessage);
+            OnUi(() => IsStreaming = false);
+            ScheduleStreamRetry();
+        }
+        else if (newState == PlayerState.Playing)
+        {
+            lock (retryLock)
+            {
+                retryAttempt = 0;
+            }
+        }
+
+        OnUi(() =>
+        {
+            ConnectionState = newState switch
             {
                 PlayerState.Playing => ConnectionState.Connected,
                 PlayerState.Opening => ConnectionState.Connecting,
@@ -398,19 +492,6 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
                 PlayerState.Error => ConnectionState.ConnectionFailed,
                 _ => ConnectionState.Disconnected,
             };
-
-            if (e.NewState is PlayerState.Stopped or PlayerState.Error)
-            {
-                var wasStreaming = IsStreaming;
-                IsStreaming = false;
-
-                if (wasStreaming && !userStopInProgress && !disposed)
-                {
-                    ScheduleStreamRetry();
-                }
-
-                userStopInProgress = false;
-            }
         });
     }
 
@@ -479,69 +560,62 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
     // to Disconnected. One missed renewal (a Wi-Fi blip, a GC pause) is safe.
     private void UpdateHeartbeatTimer(bool nowStreaming)
     {
-        if (nowStreaming)
-        {
-            if (heartbeatTimer is null)
-            {
-                heartbeatTimer = new DispatcherTimer
-                {
-                    Interval = renewInterval,
-                };
-                heartbeatTimer.Tick += OnHeartbeatTimerTick;
-            }
-
-            heartbeatTimer.Start();
-        }
-        else
-        {
-            heartbeatTimer?.Stop();
-        }
+        heartbeatTimer?.Dispose();
+        heartbeatTimer = nowStreaming && !disposed
+            ? time.CreateTimer(OnHeartbeatDue, state: null, renewInterval, renewInterval)
+            : null;
     }
 
-    private void OnHeartbeatTimerTick(
-        object? sender,
-        EventArgs e)
+    private void OnHeartbeatDue(object? state)
         => _ = RenewLeaseAsync();
 
     private void ScheduleStreamRetry()
     {
-        if (retryAttempt >= MaxStreamRetries)
+        lock (retryLock)
         {
-            return;
-        }
-
-        retryAttempt++;
-
-        if (retryTimer is null)
-        {
-            retryTimer = new DispatcherTimer
+            if (disposed || stoppedByUser || retryAttempt >= MaxStreamRetries)
             {
-                Interval = StreamRetryDelay,
-            };
-            retryTimer.Tick += OnRetryTimerTick;
-        }
+                return;
+            }
 
-        retryTimer.Stop();
-        retryTimer.Start();
+            retryAttempt++;
+            retryGeneration++;
+            retryTimer?.Dispose();
+            retryTimer = time.CreateTimer(OnRetryDue, retryGeneration, StreamRetryDelay, Timeout.InfiniteTimeSpan);
+        }
     }
 
     private void CancelStreamRetry()
     {
-        retryTimer?.Stop();
-        retryAttempt = 0;
+        lock (retryLock)
+        {
+            retryGeneration++;
+            retryTimer?.Dispose();
+            retryTimer = null;
+            retryAttempt = 0;
+        }
     }
 
-    private void OnRetryTimerTick(
-        object? sender,
-        EventArgs e)
+    private void OnRetryDue(object? state)
     {
-        retryTimer?.Stop();
+        lock (retryLock)
+        {
+            // A retry cancelled or replaced meanwhile does not run.
+            if (state is not int generation || generation != retryGeneration || retryTimer is null)
+            {
+                return;
+            }
+
+            retryTimer.Dispose();
+            retryTimer = null;
+        }
+
         _ = TryStartStreamForRetryAsync();
     }
 
     private async Task TryStartStreamForRetryAsync()
     {
-        if (disposed || userStopInProgress)
+        if (disposed || stoppedByUser)
         {
             return;
         }
@@ -550,11 +624,12 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         {
             await StartStreamAsync().ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or HttpRequestException)
+        catch (Exception ex) when (IsStartFailure(ex))
         {
-            // The server refused or is down: schedule another attempt directly,
-            // since the player won't transition state without our doing.
-            _ = Application.Current?.Dispatcher.InvokeAsync(ScheduleStreamRetry);
+            // The server refused or could not be reached: try again later,
+            // since the player does not change state without a stream.
+            LogStreamStartFailed(ex, CameraId);
+            ScheduleStreamRetry();
         }
     }
 

@@ -51,6 +51,7 @@ global using AtcSoft.Video.Surveillance.Wpf.Windows;
 global using ControlzEx.Theming;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Logging;
+global using Microsoft.Extensions.Logging.Abstractions;
 global using VideoSurveillance.Generated;
 global using VideoSurveillance.Generated.ApiKeys.Client;
 global using VideoSurveillance.Generated.ApiKeys.Endpoints.Interfaces;

@@ -15,6 +15,7 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
     private readonly IUsbCameraWatcher usbCameraWatcher;
     private readonly string apiBaseAddress;
     private readonly AtcSoft.Video.Surveillance.Services.IApplicationSettingsService? settingsService;
+    private readonly ILoggerFactory loggerFactory;
     private bool disposed;
     private bool loadedOnce;
     private bool usbWatcherSubscribed;
@@ -147,7 +148,8 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
         IVideoPlayerFactory videoPlayerFactory,
         IUsbCameraWatcher usbCameraWatcher,
         string apiBaseAddress,
-        AtcSoft.Video.Surveillance.Services.IApplicationSettingsService? settingsService = null)
+        AtcSoft.Video.Surveillance.Services.IApplicationSettingsService? settingsService = null,
+        ILoggerFactory? loggerFactory = null)
     {
         ArgumentNullException.ThrowIfNull(gatewayService);
         ArgumentNullException.ThrowIfNull(eventService);
@@ -160,6 +162,7 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
         this.usbCameraWatcher = usbCameraWatcher;
         this.apiBaseAddress = apiBaseAddress;
         this.settingsService = settingsService;
+        this.loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
         // The grid starts in the size it was last shown in.
         selectedGridPreset = ((int)GridPager.ParsePreset(
@@ -295,7 +298,7 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
                 // Create a tile per camera
                 foreach (var camera in cameras)
                 {
-                    var tile = new CameraTileViewModel(videoPlayerFactory, gatewayService, eventService, apiBaseAddress)
+                    var tile = new CameraTileViewModel(videoPlayerFactory, gatewayService, eventService, apiBaseAddress, logger: loggerFactory.CreateLogger<CameraTileViewModel>())
                     {
                         CameraId = camera.Id,
                         DisplayName = camera.DisplayName,
