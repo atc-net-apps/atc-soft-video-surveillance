@@ -69,6 +69,9 @@ internal sealed unsafe class Remuxer : IDisposable
 
     private Thread? writerThread;
 
+    // A switch to the next file that waits for a key frame (see SwitchTo). Guarded by stateLock.
+    private PendingSwitch? pendingSwitch;
+
     public bool IsOpen => outputCtx is not null;
 
     /// <summary>
@@ -91,6 +94,8 @@ internal sealed unsafe class Remuxer : IDisposable
     {
         lock (stateLock)
         {
+            pendingSwitch?.Dispose();
+            pendingSwitch = null;
             lock (ioLock)
             {
                 OpenLocked(outputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
@@ -136,11 +141,11 @@ internal sealed unsafe class Remuxer : IDisposable
     }
 
     /// <summary>
-    /// Atomically closes the current output file and opens
-    /// <paramref name="newOutputPath"/>. Holding the lock across both
-    /// operations means packets arriving from the demux thread mid-switch
-    /// either land in the previous segment or the new one — they are
-    /// never silently dropped in the close/open gap.
+    /// Moves the recording on to <paramref name="newOutputPath"/>. A file has to start with a key
+    /// frame, so the switch is made at the next one: until then packets go on into the current
+    /// file, and none are lost between the two (before, everything up to the next key frame was
+    /// dropped from the new file: seconds every hour). A file without pictures yet, or one that
+    /// can take no more, is switched at once.
     /// </summary>
     public void SwitchTo(
         string newOutputPath,
@@ -151,6 +156,14 @@ internal sealed unsafe class Remuxer : IDisposable
     {
         lock (stateLock)
         {
+            pendingSwitch?.Dispose();
+            pendingSwitch = null;
+            if (outputCtx is not null && receivedKeyframe && writeError is null)
+            {
+                pendingSwitch = new PendingSwitch(newOutputPath, codecpar, inputTimeBase, rotationDegrees, audioCodecpar);
+                return;
+            }
+
             lock (ioLock)
             {
                 CloseLocked();
@@ -382,6 +395,11 @@ internal sealed unsafe class Remuxer : IDisposable
             }
 
             var isKeyframe = (srcPacket->flags & PktFlags.Key) != PktFlags.None;
+            if (isKeyframe && pendingSwitch is { } next && !SwitchAtKeyFrame(next))
+            {
+                return;
+            }
+
             if (!receivedKeyframe)
             {
                 if (!isKeyframe)
@@ -553,6 +571,33 @@ internal sealed unsafe class Remuxer : IDisposable
         return correction;
     }
 
+    // Called under stateLock with a key frame in hand: the current file is closed and the next one
+    // opened, and the key frame is its first picture. False when the next file could not be opened
+    // (the recording then reports why, and takes no more packets).
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Runs on the thread that reads the camera; a failure is reported through WriteError.")]
+    private bool SwitchAtKeyFrame(PendingSwitch next)
+    {
+        pendingSwitch = null;
+        using (next)
+        {
+            try
+            {
+                lock (ioLock)
+                {
+                    CloseLocked();
+                    OpenLocked(next.Path, next.Video, next.TimeBase, next.Rotation, next.Audio);
+                }
+
+                return true;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                writeError = ex.Message;
+                return false;
+            }
+        }
+    }
+
     // BlockingCollection has no native drop-oldest mode; emulate it by
     // attempting a non-blocking add and, on failure, draining the oldest
     // queued packet (freeing it) before retrying once.
@@ -685,6 +730,8 @@ internal sealed unsafe class Remuxer : IDisposable
     {
         lock (stateLock)
         {
+            pendingSwitch?.Dispose();
+            pendingSwitch = null;
             lock (ioLock)
             {
                 CloseLocked();
@@ -764,5 +811,67 @@ internal sealed unsafe class Remuxer : IDisposable
         writeQueue.Dispose();
         packetQueued.Dispose();
         writerThread = null;
+    }
+
+    // The next file of a switch that waits for a key frame, with its own copies of the codec
+    // parameters: the caller's may be gone by then.
+    private sealed class PendingSwitch : IDisposable
+    {
+        private AVCodecParameters* video;
+        private AVCodecParameters* audio;
+
+        public PendingSwitch(
+            string path,
+            AVCodecParameters* video,
+            AVRational timeBase,
+            int rotation,
+            AVCodecParameters* audio)
+        {
+            Path = path;
+            TimeBase = timeBase;
+            Rotation = rotation;
+            this.video = Copy(video);
+            this.audio = Copy(audio);
+        }
+
+        public string Path { get; }
+
+        public AVRational TimeBase { get; }
+
+        public int Rotation { get; }
+
+        public AVCodecParameters* Video => video;
+
+        public AVCodecParameters* Audio => audio;
+
+        public void Dispose()
+        {
+            if (video is not null)
+            {
+                avcodec_parameters_free(ref video);
+            }
+
+            if (audio is not null)
+            {
+                avcodec_parameters_free(ref audio);
+            }
+        }
+
+        private static AVCodecParameters* Copy(AVCodecParameters* source)
+        {
+            if (source is null)
+            {
+                return null;
+            }
+
+            var copy = avcodec_parameters_alloc();
+            if (avcodec_parameters_copy(copy, source) < 0)
+            {
+                avcodec_parameters_free(ref copy);
+                throw new InvalidOperationException("The codec parameters of the next file could not be copied.");
+            }
+
+            return copy;
+        }
     }
 }

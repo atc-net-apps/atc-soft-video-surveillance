@@ -76,6 +76,26 @@ public sealed unsafe class RemuxerPacketLossTests : IDisposable
         counts.Should().AllSatisfy(count => count.Should().Be((PacketsPerFile, PacketsPerFile)));
     }
 
+    [Fact]
+    public void No_Picture_Is_Lost_When_The_File_Changes_Between_Two_Key_Frames()
+    {
+        // A key frame every 25 packets; the next file is asked for 5 packets after one. Before, the
+        // new file dropped everything up to the next key frame: 20 pictures here, seconds every hour.
+        TestEngine.Require();
+        var before = Path.Combine(directory, "gop-a.mkv");
+        var after = Path.Combine(directory, "gop-b.mkv");
+        using var remuxer = new Remuxer();
+        Open(remuxer, before, switchTo: false);
+
+        WritePackets(remuxer, first: 0, count: 30, keyEvery: 25);
+        Open(remuxer, after, switchTo: true);
+        WritePackets(remuxer, first: 30, count: 50, keyEvery: 25);
+        remuxer.Close();
+
+        (CountPackets(before) + CountPackets(after)).Should().Be(80, "every picture is in one of the two files");
+        CountPackets(before).Should().Be(50, "the first file runs on to the next key frame");
+    }
+
     private static void Open(
         Remuxer remuxer,
         string path,
@@ -108,6 +128,13 @@ public sealed unsafe class RemuxerPacketLossTests : IDisposable
     private static void WritePackets(
         Remuxer remuxer,
         int first)
+        => WritePackets(remuxer, first, PacketsPerFile, keyEvery: 1);
+
+    private static void WritePackets(
+        Remuxer remuxer,
+        int first,
+        int count,
+        int keyEvery)
     {
         var packet = av_packet_alloc();
         try
@@ -115,10 +142,9 @@ public sealed unsafe class RemuxerPacketLossTests : IDisposable
             // The recorder copies packets without looking inside them.
             av_new_packet(packet, 64).Should().Be(0);
             new Span<byte>(packet->data, packet->size).Clear();
-            packet->flags = PktFlags.Key;
-
-            for (var i = first; i < first + PacketsPerFile; i++)
+            for (var i = first; i < first + count; i++)
             {
+                packet->flags = i % keyEvery == 0 ? PktFlags.Key : PktFlags.None;
                 packet->pts = i;
                 packet->dts = i;
                 remuxer.WritePacket(packet, TimeBase);
