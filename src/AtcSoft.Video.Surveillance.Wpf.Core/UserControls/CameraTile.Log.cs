@@ -26,7 +26,7 @@ public partial class CameraTile
     [LoggerMessage(Level = LogLevel.Information, Message = "Tile loaded: '{CameraName}' (window={WindowState}, isAncestor={WindowIsAncestor})")]
     private partial void LogTileLoaded(string cameraName, string windowState, bool windowIsAncestor);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Tile unloaded: '{CameraName}' (state={ConnectionState}, isLoaded={IsLoaded}, window={WindowState}, isAncestor={WindowIsAncestor}, parent={ParentType})")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tile unloaded: '{CameraName}' (state={ConnectionState}, isLoaded={IsLoaded}, window={WindowState}, isAncestor={WindowIsAncestor}, parent={ParentType})")]
     private partial void LogTileUnloaded(string cameraName, string connectionState, bool isLoaded, string windowState, bool windowIsAncestor, string parentType);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tile disposing: '{CameraName}' (state={ConnectionState})")]
