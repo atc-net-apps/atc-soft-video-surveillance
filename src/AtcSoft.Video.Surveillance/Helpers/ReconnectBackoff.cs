@@ -23,6 +23,12 @@ public static class ReconnectBackoff
     public static readonly TimeSpan DefaultMaxDelay = TimeSpan.FromMinutes(15);
 
     /// <summary>
+    /// Ceiling for a camera's reconnect backoff (2 minutes): a camera that comes back is seen
+    /// within that, and a recording missing for it is never longer.
+    /// </summary>
+    public static readonly TimeSpan CameraMaxDelay = TimeSpan.FromMinutes(2);
+
+    /// <summary>
     /// Returns the delay before the <paramref name="consecutiveFailures"/>
     /// reconnect attempt, doubling on each failure and capped at
     /// <paramref name="maxDelay"/>.
