@@ -15,6 +15,7 @@ internal sealed class LiveTestCamera : IDisposable
     private readonly Lock gate = new();
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "The loop disposes each process when it ends; this only points at the running one.")]
     private Process? current;
+    private DateTime backAtUtc = DateTime.MinValue;
 
     public LiveTestCamera(
         string ffmpeg,
@@ -29,6 +30,20 @@ internal sealed class LiveTestCamera : IDisposable
 
     public int Port
         => port;
+
+    /// <summary>
+    /// Takes the camera off the network for a while, as a camera that reboots or loses its link:
+    /// the stream ends at once and the camera answers nothing until the time is up.
+    /// </summary>
+    /// <param name="downFor">How long the camera is gone.</param>
+    public void DropOut(TimeSpan downFor)
+    {
+        lock (gate)
+        {
+            backAtUtc = DateTime.UtcNow + downFor;
+            Kill(current);
+        }
+    }
 
     public void Dispose()
     {
@@ -99,8 +114,9 @@ internal sealed class LiveTestCamera : IDisposable
                 process.Dispose();
             }
 
-            // The client went away; listen again for the next one.
-            await Task.Delay(200, CancellationToken.None);
+            // The client went away; listen again for the next one, or once the camera is back.
+            var away = backAtUtc - DateTime.UtcNow;
+            await Task.Delay(away > TimeSpan.FromMilliseconds(200) ? away : TimeSpan.FromMilliseconds(200), CancellationToken.None);
         }
     }
 

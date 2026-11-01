@@ -30,7 +30,7 @@ public sealed class CameraWallRecordingTests
 
         // The status bar counts the connected cameras.
         app.Find(main, $"Connected  {CameraCount}", ControlType.Text, TimeSpan.FromSeconds(30));
-        var started = WaitForRecordings(app, recordings);
+        var started = WaitForRecordings(app, recordings, CameraCount);
 
         // The recordings browser, open for a few of its refreshes.
         DesktopApp.Press(app.Find(main, "View", ControlType.TabItem));
@@ -68,6 +68,56 @@ public sealed class CameraWallRecordingTests
         LogFindings.AssertClean(run.LogFolder, "CameraWall");
     }
 
+    [Fact]
+    public void A_Recording_Goes_On_In_A_New_File_When_Its_Camera_Comes_Back_After_Dropping_Out()
+    {
+        E2ESettings.SkipUnlessEnabled();
+        if (TestCameras.FFmpegTool is null)
+        {
+            Assert.Skip("The FFmpeg command-line tool is needed for the live test cameras.");
+        }
+
+        using var run = new CameraWallRun(liveCameraCount: 1, recordOnConnect: true);
+        var app = run.App;
+        var main = app.WaitForWindowTitled(CameraWallRun.MainWindowTitle, DesktopApp.StartTimeout);
+        var recordings = Path.Combine(run.DataFolder, "recordings");
+        app.Find(main, "Connected  1", ControlType.Text, TimeSpan.FromSeconds(30));
+        var first = WaitForRecordings(app, recordings, 1).Files.Single();
+        Thread.Sleep(Pause);
+
+        // The camera reboots: gone for 20 s, then back.
+        run.LiveCameras[0].DropOut(TimeSpan.FromSeconds(20));
+        var droppedAt = Stopwatch.StartNew();
+
+        // The file it was writing ends, and once the camera is back a new one is written: well
+        // before the next hourly segment.
+        var deadline = TimeSpan.FromSeconds(20) + TimeSpan.FromSeconds(90);
+        List<string> ongoing = [];
+        while (droppedAt.Elapsed < deadline)
+        {
+            ongoing = Ongoing(recordings);
+            if (ongoing.Count == 1 && !string.Equals(ongoing[0], first, StringComparison.OrdinalIgnoreCase))
+            {
+                break;
+            }
+
+            app.Process.HasExited.Should().BeFalse("CameraWall is still running");
+            Thread.Sleep(1000);
+        }
+
+        ongoing.Should().ContainSingle().Which.Should().NotBe(first, "the recording goes on in a new file after the camera came back");
+        RecordingPathHelper.IsBeingWritten(first).Should().BeFalse("the file of before the drop is finished");
+        var newFile = ongoing[0];
+        Thread.Sleep(Pause);
+        Ongoing(recordings).Should().Equal([newFile], "the new file keeps being written");
+
+        var closed = app.CloseApp(main);
+        closed.Should().BeTrue("CameraWall closes when its main window closes");
+        DurationOf(first).Should().BeGreaterThan(TimeSpan.Zero, "the file of before the drop is playable");
+        DurationOf(newFile).Should().BeGreaterThan(TimeSpan.Zero, "the file of after the drop is playable");
+        LogFindings.AssertClean(run.LogFolder, "CameraWall");
+    }
+
     // The recordings being written: those whose file a recorder has open.
     private static List<string> Ongoing(string recordings)
         => Directory.Exists(recordings)
@@ -80,20 +130,21 @@ public sealed class CameraWallRecordingTests
 
     private static (List<string> Files, DateTime At) WaitForRecordings(
         DesktopApp app,
-        string recordings)
+        string recordings,
+        int count)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(60);
         while (true)
         {
             var ongoing = Ongoing(recordings);
-            if (ongoing.Count >= CameraCount)
+            if (ongoing.Count >= count)
             {
                 return (ongoing, DateTime.UtcNow);
             }
 
             if (DateTime.UtcNow > deadline)
             {
-                throw app.Fail($"{CameraCount} recordings did not start; being written: {ongoing.Count}.");
+                throw app.Fail($"{count} recordings did not start; being written: {ongoing.Count}.");
             }
 
             Thread.Sleep(500);

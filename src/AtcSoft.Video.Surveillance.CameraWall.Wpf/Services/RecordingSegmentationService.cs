@@ -74,6 +74,10 @@ public partial class RecordingSegmentationService : BackgroundServiceBase<Record
         // recordings are protected even when hourly segmentation is disabled.
         recordingService.EnforceDiskSpaceGuard();
 
+        // A recording whose file ended (the stream dropped and came back, a write failed, a full
+        // disk) starts again here instead of at the next segment.
+        recordingService.ResumeRecordings();
+
         var settings = settingsService.Recording;
         var enabled = settings.EnableHourlySegmentation;
 

@@ -2066,6 +2066,14 @@ public partial class CameraTile : IDisposable
                 LogRecordingOnConnectStarting(Camera.Display.DisplayName);
                 recordingService.StartRecording(Camera, mediaPipeline);
             }
+            else if (recordingService is not null &&
+                     Camera is not null &&
+                     RecordingState != RecordingState.Idle)
+            {
+                // Still recording, but the engine ended the file when the stream dropped:
+                // a new file starts now rather than at the next segment.
+                recordingService.ResumeRecording(Camera.Id);
+            }
             else if (GetEffectiveEnableRecordingOnConnect() && Camera is not null)
             {
                 LogRecordingOnConnectSkipped(Camera.Display.DisplayName, mediaPipeline is not null, recordingService is not null, RecordingState);

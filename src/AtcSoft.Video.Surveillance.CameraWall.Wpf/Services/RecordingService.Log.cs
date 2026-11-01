@@ -67,4 +67,16 @@ public partial class RecordingService
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Not enough free space where camera '{CameraName}' records, or it cannot be read: the recording is not started")]
     private partial void LogDiskSpaceGateFailed(string cameraName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The recording file of camera '{CameraName}' ended while its camera sends pictures (the stream dropped and came back, or a write failed): a new file starts now. Ended: {FilePath}")]
+    private partial void LogRecordingFileEnded(string cameraName, string filePath);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Recording of camera '{CameraName}' stopped because {Reason}; it starts again in {Seconds:0} s")]
+    private partial void LogRecordingStoppedForNow(string cameraName, string reason, double seconds);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Recording of camera '{CameraName}' started again after it stopped because {Reason} (attempt {Attempt})")]
+    private partial void LogRecordingRestarted(string cameraName, string reason, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Recording of camera '{CameraName}' could not start again (stopped because {Reason}, attempt {Attempt}); next try in {Seconds:0} s")]
+    private partial void LogRecordingRestartFailed(string cameraName, string reason, int attempt, double seconds);
 }

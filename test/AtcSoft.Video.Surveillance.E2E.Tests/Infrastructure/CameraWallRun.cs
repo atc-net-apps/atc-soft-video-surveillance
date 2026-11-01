@@ -63,6 +63,12 @@ internal sealed class CameraWallRun : IDisposable
 
     public bool HasLiveCamera { get; }
 
+    /// <summary>
+    /// Gets the live cameras, in the order of their names (<see cref="LiveCameraName"/>).
+    /// </summary>
+    public IReadOnlyList<LiveTestCamera> LiveCameras
+        => liveCameras;
+
     public DesktopApp App { get; }
 
     public void Dispose()

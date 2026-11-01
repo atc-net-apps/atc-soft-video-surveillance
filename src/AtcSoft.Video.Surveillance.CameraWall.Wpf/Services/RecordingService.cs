@@ -11,6 +11,13 @@ public partial class RecordingService : IRecordingService, IDisposable
     // setting exceeds a few minutes, so 24h is a wide safety margin.
     private static readonly TimeSpan CooldownEntryMaxAge = TimeSpan.FromHours(24);
 
+    // A camera whose last packet is older than this does not send pictures now.
+    private static readonly TimeSpan PacketsAreFresh = TimeSpan.FromSeconds(10);
+
+    // A recording the service stopped by itself is tried again after this, doubling up to the maximum.
+    private static readonly TimeSpan RestartFirstDelay = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RestartMaxDelay = TimeSpan.FromMinutes(5);
+
     private static readonly string[] RecordingFileExtensions = [".mp4", ".mkv", ".avi"];
     private static readonly string[] SnapshotFileExtensions = [".png", ".jpg", ".jpeg", ".bmp"];
 
@@ -23,6 +30,10 @@ public partial class RecordingService : IRecordingService, IDisposable
     private readonly ConcurrentDictionary<Guid, IMediaPipeline> pipelines = new();
     private readonly ConcurrentDictionary<Guid, DispatcherTimer> postMotionTimers = new();
     private readonly ConcurrentDictionary<Guid, DateTime> recordingCooldowns = new();
+
+    // Recordings this service stopped by itself (a write that failed, a full disk): they start
+    // again, with back-off, while their camera sends pictures, until a person stops them.
+    private readonly ConcurrentDictionary<Guid, StoppedRecording> stoppedForNow = new();
     private bool disposed;
 
     /// <summary>
@@ -46,6 +57,11 @@ public partial class RecordingService : IRecordingService, IDisposable
         this.cameraStorageService = cameraStorageService ?? throw new ArgumentNullException(nameof(cameraStorageService));
         this.diskSpaceGuard = diskSpaceGuard ?? new DiskSpaceGuard(FreeSpaceReader.Default);
     }
+
+    /// <summary>
+    /// Gets the clock the restart back-off and the freshness of a camera's pictures are measured with.
+    /// </summary>
+    internal TimeProvider Time { get; init; } = TimeProvider.System;
 
     /// <inheritdoc/>
     public event EventHandler<RecordingStateChangedEventArgs>? RecordingStateChanged;
@@ -149,6 +165,9 @@ public partial class RecordingService : IRecordingService, IDisposable
         Justification = "Pipeline is owned and disposed by CameraTile; this service only holds a non-owning reference for the recording lifetime.")]
     public void StopRecording(Guid cameraId)
     {
+        // Stopped on purpose (a person, the tile going, the app closing): not started again.
+        stoppedForNow.TryRemove(cameraId, out _);
+
         // Stop thumbnail capture first (generates thumbnail with captured frames)
         thumbnailService.StopCapture(cameraId);
 
@@ -404,7 +423,7 @@ public partial class RecordingService : IRecordingService, IDisposable
             if (ReclaimDiskSpace().StateOf(newFilePath) == DiskSpaceVolumeState.StillShort)
             {
                 LogDiskSpaceGuardStoppingRecordings(1);
-                StopRecording(cameraId);
+                StopForNow(cameraId, "the disk is short of space");
                 return false;
             }
 
@@ -496,10 +515,114 @@ public partial class RecordingService : IRecordingService, IDisposable
         LogDiskSpaceGuardStoppingRecordings(shortSessions.Count);
         foreach (var session in shortSessions)
         {
-            StopRecording(session.CameraId);
+            StopForNow(session.CameraId, "the disk is short of space");
         }
 
         return true;
+    }
+
+    /// <inheritdoc/>
+    public int ResumeRecordings()
+    {
+        var resumed = 0;
+
+        // A recording whose file ended while its camera sends pictures again (the stream dropped
+        // and came back, a write failed): a new file, now, not at the next segment.
+        foreach (var session in sessions.Values.ToList())
+        {
+            if (pipelines.TryGetValue(session.CameraId, out var pipeline) &&
+                !pipeline.IsRecordingActive &&
+                IsSendingPictures(pipeline) &&
+                ResumeRecording(session.CameraId))
+            {
+                resumed++;
+            }
+        }
+
+        // A recording this service stopped by itself starts again once it may.
+        var now = Time.GetUtcNow().UtcDateTime;
+        foreach (var (cameraId, stopped) in stoppedForNow.ToList())
+        {
+            if (sessions.ContainsKey(cameraId))
+            {
+                // Started again by something else (the tile reconnecting, a person).
+                stoppedForNow.TryRemove(cameraId, out _);
+                continue;
+            }
+
+            if (now < stopped.NextAttemptUtc || !IsSendingPictures(stopped.Pipeline))
+            {
+                continue;
+            }
+
+            var camera = cameraStorageService.GetCameraById(cameraId);
+            if (camera is null)
+            {
+                stoppedForNow.TryRemove(cameraId, out _);
+                continue;
+            }
+
+            if (StartRecording(camera, stopped.Pipeline))
+            {
+                stoppedForNow.TryRemove(cameraId, out _);
+                LogRecordingRestarted(stopped.CameraName, stopped.Reason, stopped.Attempts + 1);
+                resumed++;
+                continue;
+            }
+
+            var attempts = stopped.Attempts + 1;
+            var delay = TimeSpan.FromSeconds(Math.Min(
+                RestartMaxDelay.TotalSeconds,
+                RestartFirstDelay.TotalSeconds * Math.Pow(2, Math.Min(attempts, 10))));
+            stoppedForNow[cameraId] = stopped with { Attempts = attempts, NextAttemptUtc = now + delay };
+            LogRecordingRestartFailed(stopped.CameraName, stopped.Reason, attempts, delay.TotalSeconds);
+        }
+
+        return resumed;
+    }
+
+    /// <inheritdoc/>
+    public bool ResumeRecording(Guid cameraId)
+    {
+        if (!sessions.TryGetValue(cameraId, out var session) ||
+            !pipelines.TryGetValue(cameraId, out var pipeline) ||
+            pipeline.IsRecordingActive)
+        {
+            return false;
+        }
+
+        // The engine ends the file when the stream ends; the session goes on. The next segment
+        // starts a new file (the switch starts one when none is open).
+        LogRecordingFileEnded(session.CameraName, session.CurrentFilePath);
+        return SegmentRecording(cameraId);
+    }
+
+    // Pictures arrive: the stream is up and a recording can be written.
+    private bool IsSendingPictures(IMediaPipeline pipeline)
+        => pipeline.LastPacketUtc > DateTime.MinValue &&
+           Time.GetUtcNow().UtcDateTime - pipeline.LastPacketUtc < PacketsAreFresh;
+
+    // Stops a recording the service has to stop (a write that failed, a full disk), and keeps it
+    // to start again: only a person, the tile or the app closing ends a recording for good.
+    private void StopForNow(
+        Guid cameraId,
+        string reason)
+    {
+        var session = GetSession(cameraId);
+        var pipeline = FindPipeline(cameraId);
+        StopRecording(cameraId);
+
+        // A motion recording is not started again: the next motion starts one.
+        if (session is { IsManualRecording: true } && pipeline is not null)
+        {
+            stoppedForNow[cameraId] = new StoppedRecording(
+                session.CameraName,
+                pipeline,
+                reason,
+                Attempts: 0,
+                NextAttemptUtc: Time.GetUtcNow().UtcDateTime + RestartFirstDelay);
+            LogRecordingStoppedForNow(session.CameraName, reason, RestartFirstDelay.TotalSeconds);
+        }
     }
 
     private bool StopRecordingsThatCannotWrite()
@@ -510,7 +633,7 @@ public partial class RecordingService : IRecordingService, IDisposable
             if (pipeline.RecordingError is { Length: > 0 } error && sessions.TryGetValue(cameraId, out var session))
             {
                 LogRecordingWriteFailed(session.CameraName, error);
-                StopRecording(cameraId);
+                StopForNow(cameraId, "a write failed: " + error);
                 stopped = true;
             }
         }
@@ -778,6 +901,13 @@ public partial class RecordingService : IRecordingService, IDisposable
 
     // Bounds recordingCooldowns over weeks of motion events. Iterating
     // ConcurrentDictionary is safe; TryRemove is atomic.
+    private sealed record StoppedRecording(
+        string CameraName,
+        IMediaPipeline Pipeline,
+        string Reason,
+        int Attempts,
+        DateTime NextAttemptUtc);
+
     private void PruneStaleCooldowns()
     {
         var cutoff = DateTime.UtcNow - CooldownEntryMaxAge;

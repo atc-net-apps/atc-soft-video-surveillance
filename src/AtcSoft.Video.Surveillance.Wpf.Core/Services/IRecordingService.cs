@@ -70,6 +70,22 @@ public interface IRecordingService : IActiveRecordings
     bool SegmentRecording(Guid cameraId);
 
     /// <summary>
+    /// Keeps recordings going: a recording whose file ended while its camera sends pictures again
+    /// gets a new file, and one the service stopped by itself (a write that failed, a full disk)
+    /// starts again, with back-off. Called every tick of the segmentation worker.
+    /// </summary>
+    /// <returns>How many recordings were resumed.</returns>
+    int ResumeRecordings() => 0;
+
+    /// <summary>
+    /// Starts a new file for a camera's recording when its file ended but the recording goes on
+    /// (the stream dropped and came back).
+    /// </summary>
+    /// <param name="cameraId">The camera.</param>
+    /// <returns>True when a new file was started.</returns>
+    bool ResumeRecording(Guid cameraId) => false;
+
+    /// <summary>
     /// Checks disk space mid-recording. Attempts to reclaim space; if the
     /// drive is still below the guard threshold after reclaim, stops all
     /// active recordings to prevent disk exhaustion.
