@@ -12,6 +12,8 @@ internal sealed class CameraWallRun : IDisposable
     public const string LayoutName = "E2E";
     public const string SecondLayoutName = "E2E B";
 
+    private static int runs;
+
     /// <summary>
     /// The cameras' password; it must never be in cameras.json in plain text.
     /// </summary>
@@ -29,7 +31,10 @@ internal sealed class CameraWallRun : IDisposable
         bool recordOnConnect = false,
         bool secondLayout = false)
     {
-        DataFolder = E2ESettings.NewFolder("camera-wall");
+        // A folder of its own for each run: seeding adds to the cameras a folder has, and a run that
+        // met the cameras of the run before it waited for cameras that were not its own.
+        var run = Interlocked.Increment(ref runs);
+        DataFolder = E2ESettings.NewFolder(run == 1 ? "camera-wall" : "camera-wall-" + run.ToString(CultureInfo.InvariantCulture));
         LogFolder = Path.Combine(DataFolder, "logs");
 
         for (var i = 0; i < liveCameraCount; i++)
