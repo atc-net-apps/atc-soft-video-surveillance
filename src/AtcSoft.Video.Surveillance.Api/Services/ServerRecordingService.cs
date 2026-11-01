@@ -30,6 +30,11 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
 
     // When each camera's last motion recording stopped, for the cooldown.
     private readonly ConcurrentDictionary<Guid, DateTimeOffset> motionRecordingStops = new();
+
+    // One gate per camera: starting, stopping and switching a camera's recording happen one at a
+    // time (the detector's loop, the segment worker, the reaper, the REST calls all do them), so a
+    // stop cannot land between reading a session and switching its file.
+    private readonly ConcurrentDictionary<Guid, Lock> cameraGates = new();
     private readonly ConcurrentDictionary<Guid, RecordingSession> sessions = new();
     private readonly ConcurrentDictionary<Guid, IMediaPipeline> pipelines = new();
 
@@ -123,6 +128,18 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         ArgumentNullException.ThrowIfNull(camera);
         ArgumentNullException.ThrowIfNull(pipeline);
 
+        lock (GateOf(camera.Id))
+        {
+            return StartRecordingCore(camera, pipeline, borrowed, startedByMotion);
+        }
+    }
+
+    private bool StartRecordingCore(
+        CameraConfiguration camera,
+        IMediaPipeline pipeline,
+        bool borrowed,
+        bool startedByMotion)
+    {
         if (sessions.ContainsKey(camera.Id))
         {
             return false;
@@ -202,11 +219,19 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
     }
 
     /// <inheritdoc/>
+    public void StopRecording(Guid cameraId)
+    {
+        lock (GateOf(cameraId))
+        {
+            StopRecordingCore(cameraId);
+        }
+    }
+
     [SuppressMessage(
         "Reliability",
         "CA2000:Dispose objects before losing scope",
         Justification = "Pipeline is unconditionally disposed inside the TryRemove block via the explicit Dispose() call.")]
-    public void StopRecording(Guid cameraId)
+    private void StopRecordingCore(Guid cameraId)
     {
         if (!sessions.TryRemove(cameraId, out var session))
         {
@@ -286,6 +311,16 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         ArgumentNullException.ThrowIfNull(camera);
         ArgumentNullException.ThrowIfNull(pipeline);
 
+        lock (GateOf(camera.Id))
+        {
+            return TriggerMotionRecordingCore(camera, pipeline);
+        }
+    }
+
+    private bool TriggerMotionRecordingCore(
+        CameraConfiguration camera,
+        IMediaPipeline pipeline)
+    {
         // Already recording, whoever started it: the motion is in it.
         if (sessions.TryGetValue(camera.Id, out var running))
         {
@@ -409,6 +444,14 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
     /// <inheritdoc/>
     public bool SegmentRecording(Guid cameraId)
     {
+        lock (GateOf(cameraId))
+        {
+            return SegmentRecordingCore(cameraId);
+        }
+    }
+
+    private bool SegmentRecordingCore(Guid cameraId)
+    {
         if (!sessions.TryGetValue(cameraId, out var session))
         {
             return false;
@@ -486,6 +529,9 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         LogSegmented(session.CameraName, cameraId, newFilePath);
         return true;
     }
+
+    private Lock GateOf(Guid cameraId)
+        => cameraGates.GetOrAdd(cameraId, _ => new Lock());
 
     /// <inheritdoc/>
     public IReadOnlyList<RecordingSession> GetActiveSessions()
