@@ -22,8 +22,28 @@ public sealed class ListRecordingsHandler(
         ArgumentNullException.ThrowIfNull(parameters);
 
         var recordingPath = settingsService.Recording.RecordingPath;
-        var files = RecordingCatalog
+
+        // The span and the limit are applied before the lengths and the activity are read: a client
+        // that asks for the newest few, or a day, costs no reads for the rest of the archive.
+        IEnumerable<RecordingFile> found = RecordingCatalog
             .Find(recordingPath, cameraStorageService.GetAllCameras(), recordingService.GetActiveSessions(), parameters.CameraId, DateTimeOffset.UtcNow);
+        if (parameters.From is { } from)
+        {
+            found = found.Where(f => f.StartedAt >= from);
+        }
+
+        if (parameters.To is { } to)
+        {
+            found = found.Where(f => f.StartedAt < to);
+        }
+
+        found = found.OrderByDescending(f => f.StartedAt);
+        if (parameters.Limit is { } limit)
+        {
+            found = found.Take(limit);
+        }
+
+        var files = found.ToList();
 
         // A cold listing reads many indexes: in parallel, as the timeline does.
         var activity = new IReadOnlyList<int>?[files.Count];

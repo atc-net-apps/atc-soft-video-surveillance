@@ -264,9 +264,23 @@
         {
             await Task.Delay(1000);
             reloadPending = false;
-            await LoadRecordingsAsync();
+            await RefreshNewestAsync();
             StateHasChanged();
         });
+    }
+
+    // Only the newest recordings are asked for and put in place; the rest of the list stays.
+    private async Task RefreshNewestAsync()
+    {
+        var since = RecordingListPatch.Since(recordings, DateTimeOffset.UtcNow);
+        var recent = await Gateway.GetRecordingsAsync(from: since);
+        if (recent is null)
+        {
+            return;
+        }
+
+        recordings = RecordingListPatch.Merge(recordings, recent, since);
+        ApplyFilter();
     }
 
     private async Task PlayRecordingAsync(Recording? recording)
