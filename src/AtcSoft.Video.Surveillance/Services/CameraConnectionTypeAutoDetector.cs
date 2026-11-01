@@ -90,9 +90,12 @@ public sealed partial class CameraConnectionTypeAutoDetector
             return;
         }
 
-        current.Connection.ConnectionType = updated;
-        storage.AddOrUpdateCamera(current);
-        LogDetected(current.Display.DisplayName, cameraId, updated);
+        // A copy takes the stored camera's place: whoever reads the stored one
+        // meanwhile never sees it change under them.
+        var changed = current.Clone();
+        changed.Connection.ConnectionType = updated;
+        storage.AddOrUpdateCamera(changed);
+        LogDetected(changed.Display.DisplayName, cameraId, updated);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Detected connection type {ConnectionType} for camera '{DisplayName}' ({CameraId})")]

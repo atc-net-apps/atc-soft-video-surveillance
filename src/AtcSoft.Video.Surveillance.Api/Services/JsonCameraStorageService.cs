@@ -28,6 +28,7 @@ public sealed partial class JsonCameraStorageService : ICameraStorageService
     // outside the lock without blocking writers.
     private readonly Lock dataLock = new();
     private CameraStorageData data = new();
+    private bool unsaved;
 
     public JsonCameraStorageService(
         string storagePath,
@@ -191,9 +192,13 @@ public sealed partial class JsonCameraStorageService : ICameraStorageService
     /// <inheritdoc/>
     public void Save()
     {
+        // Every change is saved as it is made; this only saves what could not be.
         lock (dataLock)
         {
-            SaveLocked();
+            if (unsaved)
+            {
+                SaveLocked();
+            }
         }
     }
 
@@ -250,13 +255,25 @@ public sealed partial class JsonCameraStorageService : ICameraStorageService
     // don't have to acquire-release-reacquire when they need to persist.
     private void SaveLocked()
     {
-        var node = JsonSerializer.SerializeToNode(data, JsonOptions)!;
-        foreach (var authentication in Authentications(node))
+        JsonNode node;
+        try
         {
-            authentication[PasswordProperty] = secrets.Protect(authentication[PasswordProperty]?.GetValue<string>());
+            node = JsonSerializer.SerializeToNode(data, JsonOptions)!;
+            foreach (var authentication in Authentications(node))
+            {
+                authentication[PasswordProperty] = secrets.Protect(authentication[PasswordProperty]?.GetValue<string>());
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or JsonException or System.Security.Cryptography.CryptographicException)
+        {
+            // A change is never lost to a failed save: it stays in memory, and
+            // the next change or Save writes it.
+            LogStorageSerializeFailed(ex, storagePath);
+            unsaved = true;
+            return;
         }
 
-        file.TryWrite(node, JsonOptions);
+        unsaved = !file.TryWrite(node, JsonOptions);
     }
 
     // Reads the passwords in a file as it was read; returns how many were

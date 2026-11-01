@@ -2,6 +2,9 @@ namespace AtcSoft.Video.Surveillance.Api.Services;
 
 public sealed partial class JsonCameraStorageService
 {
+    [LoggerMessage(Level = LogLevel.Error, Message = "The cameras could not be written for {Path}; they are kept in memory and saved with the next change")]
+    private partial void LogStorageSerializeFailed(Exception ex, string path);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Loaded {CameraCount} cameras and {LayoutCount} layouts from {Path}")]
     private partial void LogStorageLoaded(int cameraCount, int layoutCount, string path);
 

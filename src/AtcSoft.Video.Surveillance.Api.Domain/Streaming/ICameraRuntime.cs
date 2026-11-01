@@ -13,4 +13,13 @@ public interface ICameraRuntime
     /// </summary>
     /// <param name="cameraId">The camera.</param>
     void Forget(Guid cameraId);
+
+    /// <summary>
+    /// How a camera is reached or recorded changed (address, sign-in, stream options, codec):
+    /// its recording is stopped and its pipeline closed, and both are opened again with the new
+    /// settings at the next check, as the server's recording policy and a recording someone
+    /// started ask for.
+    /// </summary>
+    /// <param name="cameraId">The camera.</param>
+    void Reopen(Guid cameraId);
 }

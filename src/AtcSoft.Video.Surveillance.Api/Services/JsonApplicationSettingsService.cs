@@ -3,7 +3,7 @@ namespace AtcSoft.Video.Surveillance.Api.Services;
 /// <summary>
 /// JSON file-based implementation of <see cref="IApplicationSettingsService"/> for the server edition.
 /// </summary>
-public sealed partial class JsonApplicationSettingsService : IApplicationSettingsService
+public sealed partial class JsonApplicationSettingsService : IApplicationSettingsService, ISettingsBatch
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -15,6 +15,12 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
     private readonly string storagePath;
     private readonly ILogger<JsonApplicationSettingsService> logger;
     private readonly ServerDataFile file;
+
+    // Saves are made one at a time (they share the temp file), and a batch
+    // holds them back until it ends.
+    private readonly Lock saveLock = new();
+    private int batchDepth;
+    private bool savePending;
     private ApplicationSettings appSettings = new();
 
     public JsonApplicationSettingsService(
@@ -177,7 +183,42 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
     /// <inheritdoc/>
     public void Save()
     {
-        file.TryWrite(appSettings, JsonOptions);
+        lock (saveLock)
+        {
+            if (batchDepth > 0)
+            {
+                savePending = true;
+                return;
+            }
+
+            file.TryWrite(appSettings, JsonOptions);
+        }
+    }
+
+    /// <inheritdoc/>
+    public IDisposable BeginBatch()
+    {
+        lock (saveLock)
+        {
+            batchDepth++;
+        }
+
+        return new Batch(this);
+    }
+
+    private void EndBatch()
+    {
+        lock (saveLock)
+        {
+            batchDepth--;
+            if (batchDepth > 0 || !savePending)
+            {
+                return;
+            }
+
+            savePending = false;
+            file.TryWrite(appSettings, JsonOptions);
+        }
     }
 
     private void EnsureSettingsFileExists()
@@ -195,6 +236,19 @@ public sealed partial class JsonApplicationSettingsService : IApplicationSetting
         else
         {
             LogDefaultSettingsCreateFailed(new IOException("Atomic save failed"), storagePath);
+        }
+    }
+
+    private sealed class Batch(JsonApplicationSettingsService owner) : IDisposable
+    {
+        private int disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref disposed, 1) == 0)
+            {
+                owner.EndBatch();
+            }
         }
     }
 }

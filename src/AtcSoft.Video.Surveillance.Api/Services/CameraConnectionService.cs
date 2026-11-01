@@ -172,28 +172,14 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     public void Forget(Guid cameraId)
     {
         LogForgettingCamera(cameraId);
+        CloseEverything(cameraId);
+    }
 
-        motionDetectionService.StopDetection(cameraId);
-
-        try
-        {
-            recordingService.StopRecording(cameraId);
-        }
-        catch (Exception ex)
-        {
-            LogStopRecordingShutdownError(ex, cameraId);
-        }
-
-        lock (pipelineGate)
-        {
-            pipelineUses.Remove(cameraId);
-        }
-
-        // Closes the pipeline whoever used it; a recording that owned it has
-        // closed it already, and closing it again does no harm.
-        ScheduleDeferredDisposal(cameraId);
-        recordingOnConnect.TryRemove(cameraId, out _);
-        backoffs.TryRemove(cameraId, out _);
+    /// <inheritdoc />
+    public void Reopen(Guid cameraId)
+    {
+        LogReopeningCamera(cameraId);
+        CloseEverything(cameraId);
     }
 
     /// <inheritdoc />
@@ -404,6 +390,32 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         base.Dispose();
     }
 
+    // Stops the camera's recording and closes its pipeline, whoever uses it.
+    private void CloseEverything(Guid cameraId)
+    {
+        motionDetectionService.StopDetection(cameraId);
+
+        try
+        {
+            recordingService.StopRecording(cameraId);
+        }
+        catch (Exception ex)
+        {
+            LogStopRecordingShutdownError(ex, cameraId);
+        }
+
+        lock (pipelineGate)
+        {
+            pipelineUses.Remove(cameraId);
+        }
+
+        // Closes the pipeline whoever used it; a recording that owned it has
+        // closed it already, and closing it again does no harm.
+        ScheduleDeferredDisposal(cameraId);
+        recordingOnConnect.TryRemove(cameraId, out _);
+        backoffs.TryRemove(cameraId, out _);
+    }
+
     // A camera deleted while a pass was running, or by a path that did not
     // say so, is let go here: a recording of a camera that is gone would
     // never be segmented, and grow until its disk is full.
@@ -454,17 +466,27 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         var pipeline = pipelineFactory.Create(camera);
         managedPipelines[camera.Id] = pipeline;
 
-        var capturedCamera = camera;
+        var cameraId = camera.Id;
         pipeline.ConnectionStateChanged += (_, e) =>
         {
             // Runs on the pipeline's own thread: nothing may unwind into it.
             try
             {
-                OnManagedPipelineConnected(capturedCamera, e);
+                // A pipeline that was replaced or closed meanwhile (the camera
+                // was edited or deleted) speaks for nobody any more; the camera
+                // is read as it is now, not as it was when it was opened.
+                if (!managedPipelines.TryGetValue(cameraId, out var current) ||
+                    !ReferenceEquals(current, pipeline) ||
+                    storageService.GetCameraById(cameraId) is not { } latest)
+                {
+                    return;
+                }
+
+                OnManagedPipelineConnected(latest, e);
             }
             catch (Exception ex)
             {
-                LogPipelineStateHandlerFailed(ex, capturedCamera.Id, e.NewState);
+                LogPipelineStateHandlerFailed(ex, cameraId, e.NewState);
             }
         };
 

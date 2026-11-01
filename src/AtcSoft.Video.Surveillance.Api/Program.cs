@@ -111,6 +111,8 @@ try
         dataPaths.RelocateDefaults(settingsService);
         return settingsService;
     });
+    builder.Services.AddSingleton<ISettingsBatch>(sp =>
+        (JsonApplicationSettingsService)sp.GetRequiredService<IApplicationSettingsService>());
     builder.Services.AddSingleton<RecordingsFileProvider>();
     builder.Services.AddSingleton<IRecordingDurationProvider, CachedRecordingDurationProvider>();
 

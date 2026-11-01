@@ -52,6 +52,38 @@ public sealed class JsonApplicationSettingsServiceTests : IDisposable
         Directory.GetFiles(folder, "settings.json.unreadable-*").Should().ContainSingle();
     }
 
+    [Fact]
+    public void Saves_In_A_Batch_Are_Written_Once_When_It_Ends()
+    {
+        var sut = CreateSut();
+        var before = File.GetLastWriteTimeUtc(FilePath);
+        File.SetLastWriteTimeUtc(FilePath, before.AddMinutes(-5));
+        var marked = File.GetLastWriteTimeUtc(FilePath);
+
+        using (sut.BeginBatch())
+        {
+            sut.Recording.RecordingPath = Path.Combine(folder, "archive");
+            sut.SaveRecording(sut.Recording);
+            sut.SaveGeneral(sut.General);
+
+            File.GetLastWriteTimeUtc(FilePath).Should().Be(marked, "nothing is written while the batch runs");
+        }
+
+        File.GetLastWriteTimeUtc(FilePath).Should().BeAfter(marked);
+        CreateSut().Recording.RecordingPath.Should().Be(Path.Combine(folder, "archive"));
+    }
+
+    [Fact]
+    public async Task Saves_From_Several_Threads_All_Land()
+    {
+        var sut = CreateSut();
+
+        await Task.WhenAll(Enumerable.Range(0, 20).Select(i => Task.Run(() => sut.Save())));
+
+        File.Exists(FilePath + ".tmp").Should().BeFalse();
+        CreateSut().IsUnreadable.Should().BeFalse();
+    }
+
     private JsonApplicationSettingsService CreateSut()
         => new(FilePath, NullLogger<JsonApplicationSettingsService>.Instance, lockedAttempts: 2);
 }
