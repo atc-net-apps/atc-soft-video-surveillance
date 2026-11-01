@@ -15,6 +15,10 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
     private readonly GpuSnapshotCapture snapshotCapture;
     private readonly Lock frameLock = new();
 
+    // A wrapper of the decoder's texture (owned by FFmpeg: never disposed), kept while it is the same.
+    [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "A non-owning wrapper of a texture FFmpeg owns; disposing it would release FFmpeg's texture.")]
+    private ID3D11Texture2D? nv12Wrapper;
+
     // How long a snapshot waits for the picture (see CaptureSnapshot).
     private static readonly TimeSpan SnapshotLockWait = TimeSpan.FromSeconds(2);
 
@@ -72,6 +76,7 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
 
         try
         {
+            d3d11Device.EnterContext();
             try
             {
                 if (srcFormat == AVPixelFormat.D3d11)
@@ -85,6 +90,7 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
             }
             finally
             {
+                d3d11Device.LeaveContext();
                 frameLock.Exit();
             }
 
@@ -113,7 +119,13 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
 
         // Wrap the FFmpeg-owned texture pointer as a Vortice COM object.
         // Do NOT dispose — the texture is owned by FFmpeg's HW frames context.
-        var nv12Texture = new ID3D11Texture2D(texturePtr);
+        // The decoder writes into the same texture array all along: one wrapper while it does.
+        if (nv12Wrapper is null || nv12Wrapper.NativePointer != texturePtr)
+        {
+            nv12Wrapper = new ID3D11Texture2D(texturePtr);
+        }
+
+        var nv12Texture = nv12Wrapper;
 
         // Use the frame's display dimensions, not the texture's allocated size.
         // HEVC decoders pad the texture height up to the next CTU multiple
@@ -205,7 +217,15 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
                 return null;
             }
 
-            return snapshotCapture.Capture(latestBgraTexture, latestWidth, latestHeight);
+            d3d11Device.EnterContext();
+            try
+            {
+                return snapshotCapture.Capture(latestBgraTexture, latestWidth, latestHeight);
+            }
+            finally
+            {
+                d3d11Device.LeaveContext();
+            }
         }
         catch (Exception ex)
         {
@@ -226,8 +246,16 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
         // bypass the renderer, so the uploader rotates those.
         lock (frameLock)
         {
-            renderer.SetRotation(rotation);
-            cpuUploader.SetRotation(rotation);
+            d3d11Device.EnterContext();
+            try
+            {
+                renderer.SetRotation(rotation);
+                cpuUploader.SetRotation(rotation);
+            }
+            finally
+            {
+                d3d11Device.LeaveContext();
+            }
         }
     }
 
