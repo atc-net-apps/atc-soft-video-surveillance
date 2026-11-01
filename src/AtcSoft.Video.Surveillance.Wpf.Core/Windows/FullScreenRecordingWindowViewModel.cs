@@ -872,7 +872,11 @@ public sealed partial class FullScreenRecordingWindowViewModel : ViewModelDialog
             {
                 mediaElement.MediaOpened -= OnMediaOpened;
                 mediaElement.MediaEnded -= OnMediaEnded;
+                // Stop leaves the file open until the element is collected, so a recording just
+                // watched could not be deleted or cleaned up; Close lets go of it.
                 mediaElement.Stop();
+                mediaElement.Close();
+                mediaElement.Source = null;
                 mediaElement = null;
             }
         }
