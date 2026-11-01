@@ -29,6 +29,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     private readonly IMotionDetectionService motionDetectionService;
     private readonly CameraConnectionTypeAutoDetector? connectionTypeAutoDetector;
     private readonly ICameraConnectionStateSink? connectionStates;
+    private readonly IRecordingIntents? recordingIntents;
     private readonly ConcurrentDictionary<Guid, IMediaPipeline> managedPipelines = new();
     private readonly ConcurrentDictionary<Guid, BackoffState> backoffs = new();
 
@@ -57,7 +58,8 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         IUsbCameraLifecycleCoordinator usbLifecycle,
         IMotionDetectionService motionDetectionService,
         CameraConnectionTypeAutoDetector? connectionTypeAutoDetector = null,
-        ICameraConnectionStateSink? connectionStates = null)
+        ICameraConnectionStateSink? connectionStates = null,
+        IRecordingIntents? recordingIntents = null)
         : base(logger, options, healthService)
     {
         this.storageService = storageService;
@@ -68,6 +70,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         this.motionDetectionService = motionDetectionService;
         this.connectionTypeAutoDetector = connectionTypeAutoDetector;
         this.connectionStates = connectionStates;
+        this.recordingIntents = recordingIntents;
 
         this.motionDetectionService.MotionDetected += OnMotionDetected;
         this.recordingService.RecordingStateChanged += OnRecordingStateChanged;
@@ -172,6 +175,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     public void Forget(Guid cameraId)
     {
         LogForgettingCamera(cameraId);
+        recordingIntents?.Drop(cameraId);
         CloseEverything(cameraId);
     }
 
@@ -250,7 +254,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
             try
             {
-                var recordOnConnect = RecordingPolicyHelper.ShouldRecordOnConnect(camera, appDefault);
+                var recordOnConnect = ShouldRecordContinuously(camera, appDefault);
                 var watchForMotion = ShouldWatchForMotion(camera);
 
                 // Motion recording was turned off: the camera is no longer watched.
@@ -261,6 +265,8 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
                 if (!recordOnConnect)
                 {
+                    StopRecordingOnConnect(camera);
+
                     if (watchForMotion)
                     {
                         EnsureWatching(camera);
@@ -436,6 +442,42 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
         }
     }
 
+    // Recorded for as long as it plays: on connect by the settings, or
+    // because someone started a recording of it and has not stopped it.
+    private bool ShouldRecordContinuously(CameraConfiguration camera)
+        => ShouldRecordContinuously(camera, settingsService.Recording.EnableRecordingOnConnect);
+
+    private bool ShouldRecordContinuously(
+        CameraConfiguration camera,
+        bool appDefault)
+        => RecordingPolicyHelper.ShouldRecordOnConnect(camera, appDefault) ||
+           recordingIntents?.IsWanted(camera.Id) == true;
+
+    // A recording the server started because the camera was to be recorded
+    // on connect stops when it no longer is (the setting was turned off, or
+    // the camera is now recorded on motion only). One someone started on
+    // their own is left alone.
+    private void StopRecordingOnConnect(CameraConfiguration camera)
+    {
+        if (!recordingOnConnect.TryRemove(camera.Id, out _))
+        {
+            return;
+        }
+
+        LogRecordingOnConnectTurnedOff(camera.Id, camera.Display.DisplayName);
+        if (recordingService.IsRecording(camera.Id))
+        {
+            recordingService.StopRecording(camera.Id);
+        }
+
+        // The recording owned the pipeline and closed it; a hosted camera's
+        // pipeline plays on for whoever watches it.
+        if (!Hosts(camera))
+        {
+            ScheduleDeferredDisposal(camera.Id);
+        }
+    }
+
     private bool ShouldWatchForMotion(CameraConfiguration camera)
         => MotionDetectionPolicy.ShouldRecordOnMotion(camera, settingsService.Recording.EnableRecordingOnMotion);
 
@@ -443,7 +485,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     // else uses it.
     private bool ServerKeepsOpen(CameraConfiguration camera)
         => ShouldWatchForMotion(camera) ||
-           RecordingPolicyHelper.ShouldRecordOnConnect(camera, settingsService.Recording.EnableRecordingOnConnect);
+           ShouldRecordContinuously(camera);
 
     // A hosted camera's pipeline stays here whoever records on it, so that
     // stopping the recording does not close it under a viewer.
@@ -670,7 +712,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             var camera = storageService.GetCameraById(e.CameraId);
             if (camera is null ||
                 !ShouldWatchForMotion(camera) ||
-                RecordingPolicyHelper.ShouldRecordOnConnect(camera, settingsService.Recording.EnableRecordingOnConnect))
+                ShouldRecordContinuously(camera))
             {
                 return;
             }
@@ -838,7 +880,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             }
 
             // A camera that is only watched is not recorded until it moves.
-            if (!RecordingPolicyHelper.ShouldRecordOnConnect(camera, settingsService.Recording.EnableRecordingOnConnect))
+            if (!ShouldRecordContinuously(camera))
             {
                 connectionStates?.Report(camera.Id, ConnectionState.Connected);
                 return;
@@ -914,7 +956,7 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             // that was only watched, or is hosted, has nobody else to say
             // it is gone.
             if (Hosts(camera) ||
-                !RecordingPolicyHelper.ShouldRecordOnConnect(camera, settingsService.Recording.EnableRecordingOnConnect))
+                !ShouldRecordContinuously(camera))
             {
                 connectionStates?.Report(camera.Id, ConnectionState.Disconnected);
             }

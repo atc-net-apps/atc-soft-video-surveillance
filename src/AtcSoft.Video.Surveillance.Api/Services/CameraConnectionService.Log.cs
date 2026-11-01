@@ -83,6 +83,9 @@ public sealed partial class CameraConnectionService
     [LoggerMessage(Level = LogLevel.Information, Message = "Camera {CameraId} was deleted: its recording is stopped and its pipeline closed")]
     private partial void LogForgettingCamera(Guid cameraId);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Camera {CameraId} ({CameraName}) is no longer recorded on connect: the recording the server started is stopped")]
+    private partial void LogRecordingOnConnectTurnedOff(Guid cameraId, string cameraName);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "How camera {CameraId} is reached or recorded changed: it is closed, and opened again with the new settings")]
     private partial void LogReopeningCamera(Guid cameraId);
 

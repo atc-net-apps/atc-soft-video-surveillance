@@ -85,6 +85,88 @@ public sealed class CameraConnectionServiceTests
         sut.FindPipeline(camera.Id).Should().BeNull();
     }
 
+    [Fact]
+    public async Task Turning_Record_On_Connect_Off_Stops_The_Recording_The_Server_Started()
+    {
+        // Arrange — a camera recorded on connect, recording on the server's pipeline
+        var camera = new CameraConfiguration { Id = Guid.NewGuid() };
+        camera.Display.DisplayName = "Cam";
+        camera.Connection.IpAddress = "10.0.0.1";
+        var storage = Substitute.For<ICameraStorageService>();
+        storage.GetAllCameras().Returns([camera]);
+        var recordingSettings = new RecordingSettings { EnableRecordingOnConnect = true };
+        var settings = Substitute.For<IApplicationSettingsService>();
+        settings.Recording.Returns(recordingSettings);
+        settings.MotionDetection.Returns(new MotionDetectionSettings());
+        var pipeline = Substitute.For<IMediaPipeline>();
+        pipeline.FramesDecoded.Returns(10);
+        pipeline.IsRecordingActive.Returns(true);
+        var pipelineFactory = Substitute.For<IMediaPipelineFactory>();
+        pipelineFactory.Create(camera).Returns(pipeline);
+        var recordingService = Substitute.For<IRecordingService>();
+        recordingService.GetActiveSessions().Returns([]);
+        recordingService.StartRecording(camera, pipeline).Returns(true);
+
+        using var sut = new CameraConnectionService(
+            NullLogger<CameraConnectionService>.Instance,
+            new CameraConnectionServiceOptions(),
+            Substitute.For<IBackgroundServiceHealthService>(),
+            storage,
+            settings,
+            recordingService,
+            pipelineFactory,
+            Substitute.For<IUsbCameraLifecycleCoordinator>(),
+            Substitute.For<IMotionDetectionService>());
+
+        await sut.DoWorkAsync(CancellationToken.None);
+        await sut.DoWorkAsync(CancellationToken.None);
+        recordingService.Received(1).StartRecording(camera, pipeline);
+        recordingService.IsRecording(camera.Id).Returns(true);
+
+        // Act
+        recordingSettings.EnableRecordingOnConnect = false;
+        await sut.DoWorkAsync(CancellationToken.None);
+
+        // Assert
+        recordingService.Received(1).StopRecording(camera.Id);
+        sut.FindPipeline(camera.Id).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_Recording_Someone_Started_Is_Opened_Again_After_It_Dropped_Without_Record_On_Connect()
+    {
+        // Arrange — record-on-connect is off, but someone asked for the camera to be recorded
+        var (camera, _, pipeline, recordingService, _, _) = CreateRecordedCamera();
+        var storage = Substitute.For<ICameraStorageService>();
+        storage.GetAllCameras().Returns([camera]);
+        var settings = Substitute.For<IApplicationSettingsService>();
+        settings.Recording.Returns(new RecordingSettings { EnableRecordingOnConnect = false });
+        settings.MotionDetection.Returns(new MotionDetectionSettings());
+        var pipelineFactory = Substitute.For<IMediaPipelineFactory>();
+        pipelineFactory.Create(camera).Returns(pipeline);
+        var intents = Substitute.For<IRecordingIntents>();
+        intents.IsWanted(camera.Id).Returns(true);
+
+        using var sut = new CameraConnectionService(
+            NullLogger<CameraConnectionService>.Instance,
+            new CameraConnectionServiceOptions(),
+            Substitute.For<IBackgroundServiceHealthService>(),
+            storage,
+            settings,
+            recordingService,
+            pipelineFactory,
+            Substitute.For<IUsbCameraLifecycleCoordinator>(),
+            Substitute.For<IMotionDetectionService>(),
+            recordingIntents: intents);
+
+        // Act — the recording is gone (it dropped, or the server restarted)
+        await sut.DoWorkAsync(CancellationToken.None);
+
+        // Assert — the camera is opened to be recorded again
+        pipelineFactory.Received(1).Create(camera);
+        sut.FindPipeline(camera.Id).Should().BeSameAs(pipeline);
+    }
+
     private static (CameraConfiguration Camera, ICameraStorageService Storage, IMediaPipeline Pipeline, IRecordingService Recordings, IMotionDetectionService Motion, CameraConnectionService Sut) CreateRecordedCamera()
     {
         var camera = new CameraConfiguration { Id = Guid.NewGuid() };

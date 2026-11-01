@@ -165,7 +165,8 @@ public class StartRecordingHandlerTests
         recordingService.StartRecording(camera, pipeline).Returns(true);
         recordingService.GetRecordingState(cameraId).Returns(RecordingState.Recording);
         recordingService.GetSession(cameraId).Returns((RecordingSession?)null);
-        var handler = new StartRecordingHandler(storage, recordingService, pipelineFactory);
+        var intents = Substitute.For<IRecordingIntents>();
+        var handler = new StartRecordingHandler(storage, recordingService, pipelineFactory, intents: intents);
 
         // Act — kick off ExecuteAsync; it will subscribe to
         // pipeline.ConnectionStateChanged and yield at the await on the
@@ -189,6 +190,7 @@ public class StartRecordingHandlerTests
         okResult.Value.Should().NotBeNull();
         okResult.Value!.CameraId.Should().Be(cameraId);
         okResult.Value.State.Should().Be(RecordingStatusState.Recording);
+        intents.Received(1).Want(cameraId);
     }
 
     private sealed class UsbScenario

@@ -286,6 +286,11 @@ try
     builder.Services.AddSingleton<ICameraPipelineHost>(sp => sp.GetRequiredService<CameraConnectionService>());
     builder.Services.AddSingleton<ICameraRuntime>(sp => sp.GetRequiredService<CameraConnectionService>());
 
+    // The recordings someone started: they go on after a drop or a restart.
+    builder.Services.AddSingleton<IRecordingIntents>(sp => new RecordingIntents(
+        sp.GetRequiredService<ServerDataPaths>().RecordingIntentsPath,
+        sp.GetRequiredService<ILogger<RecordingIntents>>()));
+
     // Periodic disk-retention enforcement; without this, continuous server
     // recording fills the disk and crashes the host.
     builder.Services.AddSingleton(new ServerMediaCleanupServiceOptions());
