@@ -257,6 +257,11 @@ public partial class App
         RenderSplashMessage(Translations.StartingServices, 20);
         await host.StartAsync();
 
+        // After a sleep, or on another network, the event stream's connection may
+        // be dead without a word: it is opened again at once.
+        Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        System.Net.NetworkInformation.NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
+
         // Sign in (35%): the session of the last start, else the dialog. The
         // event stream and everything after this needs it.
         RenderSplashMessage(Translations.SigningIn, 35);
@@ -411,14 +416,19 @@ public partial class App
                 services.AddSingleton<ClientSession>();
                 services.AddSingleton(new SessionStore(SessionStore.DefaultFolder));
 
-                // Named HttpClient (matches Blazor.App pattern)
+                // Named HttpClient (matches Blazor.App pattern). The connections
+                // have TCP keep-alive, and the event stream fails when it is silent
+                // past its heartbeats, so a connection that died is opened again.
+                services.AddSingleton(new EventStreamWatchdog());
                 services
                     .AddHttpClient("VideoSurveillance-ApiClient", client =>
                     {
                         client.BaseAddress = new Uri(apiBaseAddress);
                     })
+                    .ConfigurePrimaryHttpMessageHandler(KeepAliveHttpHandler.Create)
                     .AddApiCredentials((sp, credentials) => SessionCredentials.Configure(credentials, sp.GetRequiredService<ClientSession>()))
-                    .AddApiResilience();
+                    .AddApiResilience()
+                    .AddHttpMessageHandler(sp => new EventStreamWatchdogHandler(sp.GetRequiredService<EventStreamWatchdog>()));
 
                 // Source-generated endpoint DI
                 services.AddVideoSurveillanceEndpoints();
@@ -556,6 +566,21 @@ public partial class App
         }
     }
 
+    private void OnPowerModeChanged(
+        object sender,
+        Microsoft.Win32.PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == Microsoft.Win32.PowerModes.Resume)
+        {
+            host?.Services.GetService<EventStreamWatchdog>()?.AbortAll();
+        }
+    }
+
+    private void OnNetworkAddressChanged(
+        object? sender,
+        EventArgs e)
+        => host?.Services.GetService<EventStreamWatchdog>()?.AbortAll();
+
     private static void RenderSplashMessage(
         string message,
         int percentage)
@@ -575,6 +600,9 @@ public partial class App
         }
 
         LogAppClosing();
+
+        Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        System.Net.NetworkInformation.NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
 
         // The streams' leases are given back first, before anything is
         // awaited: the process ends soon after this handler's first await.

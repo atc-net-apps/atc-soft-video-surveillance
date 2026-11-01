@@ -109,7 +109,7 @@ public sealed partial class EventStreamService(
 
         await foreach (var surveillanceEvent in endpoint
             .ReadResumingAsync(
-                new ListEventsParameters(CameraId: null, HeartbeatSeconds: null, LastEventId: lastEventId),
+                new ListEventsParameters(CameraId: null, HeartbeatSeconds: EventStreamWatchdog.HeartbeatSeconds, LastEventId: lastEventId),
                 policy,
                 streamReadOptions: readOptions,
                 cancellationToken: cancellationToken)

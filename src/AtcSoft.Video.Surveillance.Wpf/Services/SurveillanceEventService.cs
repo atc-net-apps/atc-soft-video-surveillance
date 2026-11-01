@@ -168,7 +168,7 @@ public sealed partial class SurveillanceEventService : BackgroundServiceBase<Sur
 
         await foreach (var surveillanceEvent in endpoint
             .ReadResumingAsync(
-                new ListEventsParameters(CameraId: null, HeartbeatSeconds: null, LastEventId: lastEventId),
+                new ListEventsParameters(CameraId: null, HeartbeatSeconds: EventStreamWatchdog.HeartbeatSeconds, LastEventId: lastEventId),
                 policy,
                 streamReadOptions: readOptions,
                 cancellationToken: cancellationToken)
