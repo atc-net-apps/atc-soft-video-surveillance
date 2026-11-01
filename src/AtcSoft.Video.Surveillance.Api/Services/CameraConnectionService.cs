@@ -456,7 +456,17 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
 
         var capturedCamera = camera;
         pipeline.ConnectionStateChanged += (_, e) =>
-            OnManagedPipelineConnected(capturedCamera, e);
+        {
+            // Runs on the pipeline's own thread: nothing may unwind into it.
+            try
+            {
+                OnManagedPipelineConnected(capturedCamera, e);
+            }
+            catch (Exception ex)
+            {
+                LogPipelineStateHandlerFailed(ex, capturedCamera.Id, e.NewState);
+            }
+        };
 
         return pipeline;
     }

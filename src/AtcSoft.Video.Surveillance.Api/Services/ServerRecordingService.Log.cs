@@ -49,4 +49,7 @@ public sealed partial class ServerRecordingService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Camera '{CameraName}' has a recording folder of its own, '{OwnFolder}'; the server records every camera below '{RecordingPath}', which it lists, serves and cleans")]
     private partial void LogOwnRecordingFolderNotUsed(string cameraName, string ownFolder, string recordingPath);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "A subscriber of {EventName} failed for camera {CameraId}; the others were told and the recording goes on")]
+    private partial void LogSubscriberFailed(Exception ex, string eventName, Guid cameraId);
 }

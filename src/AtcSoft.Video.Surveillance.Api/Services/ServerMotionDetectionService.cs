@@ -451,13 +451,23 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
         Guid cameraId,
         MotionDetectedEventArgs args)
     {
-        try
+        var handlers = MotionDetected;
+        if (handlers is null)
         {
-            MotionDetected?.Invoke(this, args);
+            return;
         }
-        catch (Exception ex)
+
+        // Each on its own: one that fails does not keep the others from hearing it.
+        foreach (var handler in handlers.GetInvocationList().Cast<EventHandler<MotionDetectedEventArgs>>())
         {
-            LogMotionSubscriberFailed(ex, cameraId);
+            try
+            {
+                handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                LogMotionSubscriberFailed(ex, cameraId);
+            }
         }
     }
 

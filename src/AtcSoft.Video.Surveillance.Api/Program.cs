@@ -47,6 +47,19 @@ if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("OTEL_EXPORTER
 
 Log.Logger = loggerConfig.CreateLogger();
 
+// An exception nothing caught ends the process: it is written, and the log flushed, first.
+// A faulted task nobody awaited is written, and does not end it.
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+{
+    Log.Fatal(e.ExceptionObject as Exception, "Unhandled exception; the server is ending: {IsTerminating}", e.IsTerminating);
+    Log.CloseAndFlush();
+};
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    Log.Error(e.Exception, "A background task failed and nobody observed it");
+    e.SetObserved();
+};
+
 try
 {
     var builder = WebApplication.CreateBuilder(hostArgs);

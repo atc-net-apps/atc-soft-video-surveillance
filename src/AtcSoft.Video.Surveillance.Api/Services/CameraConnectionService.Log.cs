@@ -82,4 +82,7 @@ public sealed partial class CameraConnectionService
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Camera {CameraId} was deleted: its recording is stopped and its pipeline closed")]
     private partial void LogForgettingCamera(Guid cameraId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Handling the {State} state of camera {CameraId}'s pipeline failed")]
+    private partial void LogPipelineStateHandlerFailed(Exception ex, Guid cameraId, ConnectionState state);
 }

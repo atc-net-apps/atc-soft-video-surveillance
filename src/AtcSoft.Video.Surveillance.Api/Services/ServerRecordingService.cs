@@ -92,7 +92,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
     public void Report(
         Guid cameraId,
         ConnectionState state)
-        => CameraConnectionStateChanged?.Invoke(cameraId, state);
+        => RaiseConnectionState(cameraId, state);
 
     /// <inheritdoc/>
     public RecordingState GetRecordingState(Guid cameraId)
@@ -131,7 +131,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         if (!MayRecord())
         {
             LogDiskSpaceGateFailed(camera.Display.DisplayName);
-            DiskSpaceStopped?.Invoke(camera.Id);
+            RaiseDiskSpaceStopped(camera.Id);
             return false;
         }
 
@@ -192,7 +192,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             // disconnect/reconnect transitions without subscribing per-pipeline.
             var capturedId = camera.Id;
             EventHandler<ConnectionStateChangedEventArgs> handler = (_, e) =>
-                CameraConnectionStateChanged?.Invoke(capturedId, e.NewState);
+                RaiseConnectionState(capturedId, e.NewState);
             pipeline.ConnectionStateChanged += handler;
             connectionHandlers[camera.Id] = handler;
 
@@ -201,7 +201,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
             // is called *after* the connection wait succeeds) still see the
             // current state. Without this, the Blazor live view would show
             // "Disconnected" until the next genuine state change.
-            CameraConnectionStateChanged?.Invoke(camera.Id, ConnectionState.Connected);
+            RaiseConnectionState(camera.Id, ConnectionState.Connected);
         }
 
         StartThumbnail(camera, pipeline, filePath);
@@ -278,7 +278,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         // synthetic Connected we fired in StartRecording.
         if (!borrowed)
         {
-            CameraConnectionStateChanged?.Invoke(cameraId, ConnectionState.Disconnected);
+            RaiseConnectionState(cameraId, ConnectionState.Disconnected);
         }
 
         RaiseStateChanged(cameraId, session.State, RecordingState.Idle, session.CurrentFilePath);
@@ -431,7 +431,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         {
             LogDiskSpaceGuardStoppingRecordings(1);
             StopRecording(cameraId);
-            DiskSpaceStopped?.Invoke(cameraId);
+            RaiseDiskSpaceStopped(cameraId);
             return false;
         }
 
@@ -623,7 +623,7 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         foreach (var session in shortSessions)
         {
             StopRecording(session.CameraId);
-            DiskSpaceStopped?.Invoke(session.CameraId);
+            RaiseDiskSpaceStopped(session.CameraId);
         }
 
         return true;
@@ -714,10 +714,74 @@ public sealed partial class ServerRecordingService : IRecordingService, ICameraC
         RecordingState newState,
         string? filePath)
     {
-        RecordingStateChanged?.Invoke(this, new RecordingStateChangedEventArgs(
+        var handlers = RecordingStateChanged;
+        if (handlers is null)
+        {
+            return;
+        }
+
+        var args = new RecordingStateChangedEventArgs(
             cameraId,
             oldState,
             newState,
-            filePath));
+            filePath);
+
+        // Each subscriber on its own: one that fails must neither keep the
+        // others from hearing it, nor unwind into the recording that raised it.
+        foreach (var handler in handlers.GetInvocationList().Cast<EventHandler<RecordingStateChangedEventArgs>>())
+        {
+            try
+            {
+                handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                LogSubscriberFailed(ex, nameof(RecordingStateChanged), cameraId);
+            }
+        }
+    }
+
+    private void RaiseConnectionState(
+        Guid cameraId,
+        ConnectionState state)
+    {
+        var handlers = CameraConnectionStateChanged;
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var handler in handlers.GetInvocationList().Cast<Action<Guid, ConnectionState>>())
+        {
+            try
+            {
+                handler(cameraId, state);
+            }
+            catch (Exception ex)
+            {
+                LogSubscriberFailed(ex, nameof(CameraConnectionStateChanged), cameraId);
+            }
+        }
+    }
+
+    private void RaiseDiskSpaceStopped(Guid cameraId)
+    {
+        var handlers = DiskSpaceStopped;
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var handler in handlers.GetInvocationList().Cast<Action<Guid>>())
+        {
+            try
+            {
+                handler(cameraId);
+            }
+            catch (Exception ex)
+            {
+                LogSubscriberFailed(ex, nameof(DiskSpaceStopped), cameraId);
+            }
+        }
     }
 }
