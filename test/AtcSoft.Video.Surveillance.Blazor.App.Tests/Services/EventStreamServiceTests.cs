@@ -98,6 +98,99 @@ public sealed class EventStreamServiceTests
         changes.Should().Equal(true, false);
     }
 
+    [Fact]
+    public async Task A_Stream_The_Server_Refused_Starts_Again_After_The_Last_Event()
+    {
+        // After a sleep the token has run out: the server answers 401 until it is renewed.
+        var requests = new List<string?>();
+        using var server = new GatewayTestServer(request =>
+        {
+            requests.Add(request.Headers.TryGetValues("Last-Event-ID", out var values) ? values.Single() : null);
+            return requests.Count switch
+            {
+                1 => Stream(Event(1)),
+                2 => new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized),
+                _ => Stream(Event(2)),
+            };
+        });
+        var time = new ImmediateTimeProvider();
+        var sut = new EventStreamService(server.Get<IListEventsEndpoint>()) { Time = time };
+        var missed = 0;
+        sut.MissedEvents += () => missed++;
+        using var done = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+
+        await sut.RunAsync(
+            async e =>
+            {
+                if (e.Connection!.NewState == CameraConnectionState.Connected)
+                {
+                    await done.CancelAsync();
+                }
+            },
+            done.Token);
+
+        requests.Should().Equal(null, "1", "1");
+        time.Waits.Should().Contain(EventStreamService.RestartDelay);
+        missed.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task An_Event_The_Page_Fails_On_Does_Not_End_The_Reading()
+    {
+        var calls = 0;
+        using var server = new GatewayTestServer(_ => ++calls == 1
+            ? Stream(Event(1) + Event(2))
+            : Stream(Event(3)));
+        var sut = new EventStreamService(server.Get<IListEventsEndpoint>()) { Time = new ImmediateTimeProvider() };
+        using var done = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var received = new List<CameraConnectionState>();
+
+        await sut.RunAsync(
+            async e =>
+            {
+                received.Add(e.Connection!.NewState);
+                if (received.Count == 2)
+                {
+                    await done.CancelAsync();
+                }
+
+                throw new InvalidOperationException("The page failed.");
+            },
+            done.Token);
+
+        received.Should().Equal(CameraConnectionState.Connecting, CameraConnectionState.Connected);
+        calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_Stream_The_Server_Could_Not_Resume_Has_Missed_Events()
+    {
+        var calls = 0;
+        using var server = new GatewayTestServer(_ =>
+        {
+            if (++calls == 1)
+            {
+                return Stream(Event(1));
+            }
+
+            var response = Stream(Event(2));
+            response.Headers.Add("X-Events-Missed", "3");
+            return response;
+        });
+        var sut = new EventStreamService(server.Get<IListEventsEndpoint>()) { Time = new ImmediateTimeProvider() };
+        using var done = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var missed = 0;
+        sut.MissedEvents += () =>
+        {
+            missed++;
+            done.Cancel();
+        };
+
+        await sut.RunAsync(_ => Task.CompletedTask, done.Token);
+
+        missed.Should().Be(1);
+    }
+
     private static HttpResponseMessage Stream(string body)
         => new(System.Net.HttpStatusCode.OK)
         {
