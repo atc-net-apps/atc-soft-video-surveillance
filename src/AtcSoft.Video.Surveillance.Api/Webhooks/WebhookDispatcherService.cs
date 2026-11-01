@@ -117,9 +117,9 @@ public sealed partial class WebhookDispatcherService : BackgroundServiceBase<Web
             return false;
         }
 
-        foreach (var endpoint in endpoints.Where(e => e.Wants(webhookEvent.Type)))
+        foreach (var endpoint in endpoints.Where(e => e.Wants(webhookEvent.Type)).DistinctBy(LaneKey, StringComparer.Ordinal))
         {
-            var lane = lanes.GetOrAdd(endpoint.Url, _ => new Lane());
+            var lane = lanes.GetOrAdd(LaneKey(endpoint), _ => new Lane());
             lane.Queue.Enqueue(webhookEvent);
 
             var dropped = 0;
@@ -142,19 +142,22 @@ public sealed partial class WebhookDispatcherService : BackgroundServiceBase<Web
     {
         // Asked at every tick: a receiver changed or removed through the API
         // is sent to as it is now, and one that is gone loses its queue.
-        var endpoints = registry.ActiveEndpoints.ToDictionary(e => e.Url, StringComparer.Ordinal);
-        foreach (var url in lanes.Keys)
+        // Two receivers alike in every way (address, secret, events) share a queue.
+        var endpoints = registry.ActiveEndpoints
+            .DistinctBy(LaneKey, StringComparer.Ordinal)
+            .ToDictionary(LaneKey, StringComparer.Ordinal);
+        foreach (var key in lanes.Keys)
         {
-            if (!endpoints.ContainsKey(url))
+            if (!endpoints.ContainsKey(key))
             {
-                lanes.TryRemove(url, out _);
+                lanes.TryRemove(key, out _);
             }
         }
 
         var running = new List<Task>();
-        foreach (var (url, lane) in lanes)
+        foreach (var (key, lane) in lanes)
         {
-            if (lane.Queue.IsEmpty || !endpoints.TryGetValue(url, out var endpoint))
+            if (lane.Queue.IsEmpty || !endpoints.TryGetValue(key, out var endpoint))
             {
                 continue;
             }
@@ -259,6 +262,11 @@ public sealed partial class WebhookDispatcherService : BackgroundServiceBase<Web
             Enqueue(webhookEvent);
         }
     }
+
+    // A receiver is told from another by everything that makes it one: two
+    // with the same address but other secrets or events are two receivers.
+    private static string LaneKey(WebhookEndpoint endpoint)
+        => string.Join('', endpoint.Url, endpoint.Secret ?? string.Empty, string.Join(',', endpoint.Events));
 
     private string GetCameraName(Guid cameraId)
         => cameraStorageService.GetCameraById(cameraId)?.Display.DisplayName ?? string.Empty;

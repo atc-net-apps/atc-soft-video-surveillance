@@ -118,6 +118,22 @@ public sealed class WebhookDispatcherServiceTests
         => motionDetection.MotionDetected += Raise.EventWith(new MotionDetectedEventArgs(cameraId, 5, active));
 
     [Fact]
+    public async Task Two_Receivers_At_One_Address_Are_Two_Receivers()
+    {
+        var all = new WebhookEndpoint { Url = "https://same.test/hook" };
+        var motionOnly = new WebhookEndpoint { Url = "https://same.test/hook", Events = ["motion.*"] };
+        using var sut = CreateSut(all, motionOnly);
+
+        sut.Enqueue(Motion);
+        sut.Enqueue(Recording);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        await sender.Received(1).SendAsync(all, Motion, Arg.Any<CancellationToken>());
+        await sender.Received(1).SendAsync(all, Recording, Arg.Any<CancellationToken>());
+        await sender.Received(1).SendAsync(motionOnly, Motion, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task A_Slow_Receiver_Does_Not_Hold_Up_The_Others()
     {
         var slow = new WebhookEndpoint { Url = "https://slow.test/hook" };
