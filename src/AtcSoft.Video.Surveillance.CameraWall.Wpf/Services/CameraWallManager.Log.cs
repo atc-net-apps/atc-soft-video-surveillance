@@ -29,6 +29,9 @@ public sealed partial class CameraWallManager
     [LoggerMessage(Level = LogLevel.Information, Message = "Desktop session back ({Reason}): {Recreated} player(s) whose graphics device was lost made anew; the others go on")]
     private partial void LogSessionSwitchReconnect(string reason, int recreated);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The USB camera watcher could not start: cameras plugged in or out are not noticed until the app starts again")]
+    private partial void LogUsbWatcherStartFailed(Exception ex);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Detected connection type {ConnectionType} for camera '{DisplayName}'")]
     private partial void LogConnectionTypeDetected(string displayName, string connectionType);
 }

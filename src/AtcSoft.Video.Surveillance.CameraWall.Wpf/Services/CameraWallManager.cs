@@ -200,7 +200,28 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
         // begin firing events — kept separate so production code goes
         // through Initialize but tests can fire events directly via
         // NSubstitute's Raise.EventWith without needing Start().
-        usbCameraWatcher.Start();
+        // Started in the background: registering the WMI queries takes seconds, and on the UI
+        // thread (the main window loading) it froze the window at every start.
+        _ = Task.Run(StartUsbWatcher);
+    }
+
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Without the watcher only hot-plug notices are missing; the app goes on.")]
+    private void StartUsbWatcher()
+    {
+        try
+        {
+            usbCameraWatcher.Start();
+
+            // Closed while it was starting: it stops again.
+            if (disposed)
+            {
+                usbCameraWatcher.Stop();
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            LogUsbWatcherStartFailed(ex);
+        }
     }
 
     private void OnUsbDeviceArrived(
