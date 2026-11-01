@@ -34,6 +34,11 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
     // would fail and log. The player above makes a new device (DeviceLost).
     private volatile bool deviceGone;
 
+    // Set while no view takes the pictures (a hidden or parked tile): they are not processed on
+    // the graphics card then, and the last processed one is old, so a snapshot is taken from the
+    // decoder's picture instead (the player's CPU capture).
+    private volatile bool latestIsStale;
+
     // Failures are logged at most once a minute, with how many there were since.
     private long lastFailureLoggedAt = long.MinValue;
     private int failuresSinceLogged;
@@ -74,6 +79,12 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
             return;
         }
 
+        if (FrameReady is null)
+        {
+            latestIsStale = true;
+            return;
+        }
+
         var srcFormat = (AVPixelFormat)frame->format;
 
         // Runs on the thread that reads the camera and feeds the recorder: it never waits here. While
@@ -98,6 +109,8 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
                 {
                     ProcessSoftwareFrame(frame);
                 }
+
+                latestIsStale = false;
             }
             finally
             {
@@ -249,7 +262,7 @@ public sealed unsafe partial class D3D11Accelerator : IGpuAccelerator
 
             try
             {
-                if (latestBgraTexture is null || latestWidth <= 0 || latestHeight <= 0)
+                if (latestBgraTexture is null || latestWidth <= 0 || latestHeight <= 0 || latestIsStale)
                 {
                     return null;
                 }

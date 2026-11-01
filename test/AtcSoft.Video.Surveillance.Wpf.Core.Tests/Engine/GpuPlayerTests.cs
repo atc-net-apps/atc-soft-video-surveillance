@@ -51,8 +51,25 @@ public sealed class GpuPlayerTests
             pictures.Should().Contain(p => p.Pixels.Distinct().Count() > 10, "the test pattern is in the pictures");
             player.State.Should().Be(PlayerState.Playing, "copying pictures back did not hold up decoding");
 
-            // Snapshots from the card, two at once: read under the picture's lock, encoded after it.
+            // No view takes the pictures (a hidden or parked tile): they are not processed on the card,
+            // and a snapshot is taken from the decoder's picture.
+            var hidden = await player.CaptureFrameAsync(cancellationToken);
+            hidden.Should().NotBeNull();
+            PngSize(hidden!).Should().Be((1280, 720));
+
+            // A view takes them: snapshots from the card, two at once (read under the picture's lock,
+            // encoded after it).
+            var shown = 0;
+            void OnShown() => Interlocked.Increment(ref shown);
+            accelerator!.FrameReady += OnShown;
+            while (Volatile.Read(ref shown) < 5 && DateTime.UtcNow < deadline.AddSeconds(30))
+            {
+                await Task.Delay(50, cancellationToken);
+            }
+
             var snapshots = await Task.WhenAll(player.CaptureFrameAsync(cancellationToken), player.CaptureFrameAsync(cancellationToken));
+            accelerator.FrameReady -= OnShown;
+            shown.Should().BeGreaterThanOrEqualTo(5, "pictures are processed for a view");
             snapshots.Should().OnlyContain(png => png != null && png.Length > 1000);
             snapshots.Select(png => PngSize(png!)).Should().AllBeEquivalentTo((1280, 720), "each is the whole picture");
         }
