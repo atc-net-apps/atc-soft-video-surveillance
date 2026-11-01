@@ -252,6 +252,12 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            self ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("hlsInterop.watchVisibility", self);
+        }
+
         if (pendingStreamInits.Count == 0)
         {
             return;
@@ -469,17 +475,7 @@ else
             while (!cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(leases.RenewInterval, cancellationToken);
-
-                var gone = await leases.RenewAllAsync((cameraId, leaseId) => Gateway.RenewStreamLeaseAsync(cameraId, leaseId, cancellationToken));
-                foreach (var cameraId in gone)
-                {
-                    if (streamUrls.Remove(cameraId))
-                    {
-                        await JS.InvokeVoidAsync("hlsInterop.destroyPlayer", $"video-{cameraId}");
-                    }
-
-                    await StartStreamAsync(cameraId);
-                }
+                await RenewLeasesAsync(cancellationToken);
             }
         }
         catch (OperationCanceledException)
@@ -487,6 +483,45 @@ else
             // The page was closed.
         }
     }
+
+    private async Task RenewLeasesAsync(CancellationToken cancellationToken)
+    {
+        var gone = await leases.RenewAllAsync((cameraId, leaseId) => Gateway.RenewStreamLeaseAsync(cameraId, leaseId, cancellationToken));
+        foreach (var cameraId in gone)
+        {
+            if (streamUrls.Remove(cameraId))
+            {
+                await JS.InvokeVoidAsync("hlsInterop.destroyPlayer", PlayerElement.IdFor(cameraId));
+            }
+
+            await StartStreamAsync(cameraId);
+        }
+    }
+
+    /// <summary>
+    /// The page is shown again. A browser slows the timers of a hidden tab
+    /// (to once a minute), so a renewal may have come too late: the leases
+    /// are renewed now, and a stream the server let go starts again.
+    /// </summary>
+    [JSInvokable]
+    public Task OnPageVisible()
+        => InvokeAsync(async () =>
+        {
+            if (left)
+            {
+                return;
+            }
+
+            try
+            {
+                await RenewLeasesAsync(heartbeatCancellation.Token);
+                await RestartWantedAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                // The page was closed.
+            }
+        });
 
     private void OnReadingChanged()
         => InvokeAsync(() =>
@@ -587,6 +622,15 @@ else
 
         await heartbeatCancellation.CancelAsync();
         heartbeatCancellation.Dispose();
+        try
+        {
+            await JS.InvokeVoidAsync("hlsInterop.unwatchVisibility");
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is already gone.
+        }
+
         self?.Dispose();
 
         // Leaving the page lets the server stop the transcoders right away.

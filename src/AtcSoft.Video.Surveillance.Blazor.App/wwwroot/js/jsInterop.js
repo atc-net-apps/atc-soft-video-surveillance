@@ -118,6 +118,25 @@ window.hlsInterop = {
         }
     },
 
+    // Tells owner (OnPageVisible) when the page is shown again: a hidden tab's
+    // timers run late, and the page renews its stream leases at once.
+    watchVisibility: function (owner) {
+        this.unwatchVisibility();
+        this._visibilityHandler = function () {
+            if (document.visibilityState === 'visible') {
+                owner.invokeMethodAsync('OnPageVisible').catch(function () { });
+            }
+        };
+        document.addEventListener('visibilitychange', this._visibilityHandler);
+    },
+
+    unwatchVisibility: function () {
+        if (this._visibilityHandler) {
+            document.removeEventListener('visibilitychange', this._visibilityHandler);
+            this._visibilityHandler = null;
+        }
+    },
+
     // The size of the picture a video element plays: [width, height],
     // zeros until the first picture has arrived.
     videoSize: function (elementId) {
