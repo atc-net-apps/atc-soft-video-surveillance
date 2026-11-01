@@ -10,6 +10,10 @@ namespace Atc.Video.Engine.Capture;
 internal sealed unsafe class RecordingFileDecoder : IDisposable
 {
     private readonly VideoDecoder decoder = new();
+
+    // Each read of the file (on a share that may stop answering) gives up after this long.
+    private readonly FileReadDeadline deadline = new(TimeSpan.FromSeconds(15));
+
     private AVFormatContext* formatContext;
     private AVPacket* packet;
     private int streamIndex = -1;
@@ -92,6 +96,7 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
                 break;
             }
 
+            deadline.Restart();
             if (av_read_frame(formatContext, packet) < 0)
             {
                 // The end: what the decoder still holds comes out after an empty packet.
@@ -138,6 +143,8 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
         {
             avformat_close_input(ref formatContext);
         }
+
+        deadline.Dispose();
     }
 
     private void OpenFile(
@@ -147,6 +154,7 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
         AVDictionary* options = null;
         try
         {
+            formatContext = deadline.NewContext();
             var ret = avformat_open_input(ref formatContext, filePath, null, ref options);
             if (ret < 0)
             {
@@ -154,6 +162,7 @@ internal sealed unsafe class RecordingFileDecoder : IDisposable
             }
 
             // Not "ref options": this argument is one dictionary per stream.
+            deadline.Restart();
             ret = avformat_find_stream_info(formatContext, (AVDictionary**)null);
             if (ret < 0)
             {

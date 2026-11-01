@@ -5,6 +5,9 @@ namespace Atc.Video.Engine;
 /// </summary>
 public static class MediaProbe
 {
+    // How long probing a file may wait for it.
+    private static readonly TimeSpan ProbeLimit = TimeSpan.FromSeconds(15);
+
     /// <summary>
     /// Gets the duration of a media file.
     /// </summary>
@@ -14,7 +17,9 @@ public static class MediaProbe
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
-        AVFormatContext* fmtCtx = null;
+        // A recording on a share that stops answering gives up instead of holding this thread.
+        using var deadline = new FileReadDeadline(ProbeLimit);
+        var fmtCtx = deadline.NewContext();
         AVDictionary* dict = null;
         try
         {
@@ -65,7 +70,9 @@ public static class MediaProbe
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
-        AVFormatContext* fmtCtx = null;
+        // A recording on a share that stops answering gives up instead of holding this thread.
+        using var deadline = new FileReadDeadline(ProbeLimit);
+        var fmtCtx = deadline.NewContext();
         AVDictionary* dict = null;
         try
         {
@@ -109,7 +116,9 @@ public static class MediaProbe
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
-        AVFormatContext* fmtCtx = null;
+        // A recording on a share that stops answering gives up instead of holding this thread.
+        using var deadline = new FileReadDeadline(ProbeLimit);
+        var fmtCtx = deadline.NewContext();
         AVDictionary* dict = null;
         try
         {
