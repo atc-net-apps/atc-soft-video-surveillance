@@ -57,7 +57,8 @@ public sealed class ListRecordingsHandler(
         }
         else
         {
-            length = durationProvider?.GetDuration(file.FullPath) is { } duration
+            // The walk read the size and time already: the file is not looked at again.
+            length = durationProvider?.GetDuration(file.FullPath, file.Length, file.LastWrittenAt.UtcDateTime) is { } duration
                 ? System.Xml.XmlConvert.ToString(duration)
                 : string.Empty;
         }

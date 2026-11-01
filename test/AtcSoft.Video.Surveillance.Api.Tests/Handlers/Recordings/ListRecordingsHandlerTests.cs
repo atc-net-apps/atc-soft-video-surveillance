@@ -302,8 +302,8 @@ public class ListRecordingsHandlerTests
             var unreadable = Touch(Path.Combine(root, "Front Door", "Front Door_20261011_111500_000.mp4"));
 
             var durations = Substitute.For<IRecordingDurationProvider>();
-            durations.GetDuration(video).Returns(TimeSpan.FromSeconds(65));
-            durations.GetDuration(unreadable).Returns((TimeSpan?)null);
+            durations.GetDuration(video, Arg.Any<long>(), Arg.Any<DateTime>()).Returns(TimeSpan.FromSeconds(65));
+            durations.GetDuration(unreadable, Arg.Any<long>(), Arg.Any<DateTime>()).Returns((TimeSpan?)null);
 
             var handler = CreateHandlerFor(root, durations, camera);
 

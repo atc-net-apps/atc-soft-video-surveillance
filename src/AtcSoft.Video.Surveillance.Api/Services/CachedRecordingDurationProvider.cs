@@ -10,6 +10,12 @@
 /// small budget is read on the spot, the rest is read on a background
 /// worker and is there the next time the file is asked for.
 /// </para>
+/// <para>
+/// A file whose length cannot be read (a damaged file) is remembered too, by its size and time
+/// of last write, so it is not opened again at every listing. Entries of files that are gone are
+/// dropped once the cache has doubled since it was last swept, so it never grows past what the
+/// archive holds.
+/// </para>
 /// </summary>
 public sealed class CachedRecordingDurationProvider : IRecordingDurationProvider, IDisposable
 {
@@ -32,6 +38,7 @@ public sealed class CachedRecordingDurationProvider : IRecordingDurationProvider
     private long windowStartedAt;
     private TimeSpan spentInWindow;
     private int workerStarted;
+    private int sweepAt = 1024;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CachedRecordingDurationProvider"/> class
@@ -60,6 +67,11 @@ public sealed class CachedRecordingDurationProvider : IRecordingDurationProvider
     /// </summary>
     public int PendingCount => pending.Count;
 
+    /// <summary>
+    /// Gets the number of files whose length (or that it cannot be read) is remembered.
+    /// </summary>
+    public int CachedCount => cache.Count;
+
     /// <inheritdoc />
     public TimeSpan? GetDuration(string filePath)
     {
@@ -77,11 +89,32 @@ public sealed class CachedRecordingDurationProvider : IRecordingDurationProvider
                 return null;
             }
 
+            return GetDuration(filePath, info.Length, info.LastWriteTimeUtc);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public TimeSpan? GetDuration(
+        string filePath,
+        long length,
+        DateTime lastWriteUtc)
+    {
+        if (string.IsNullOrEmpty(filePath))
+        {
+            return null;
+        }
+
+        try
+        {
             // The size and the time of the last write tell a changed file
             // (or another file under the same name) from the one that was read.
             if (cache.TryGetValue(filePath, out var entry) &&
-                entry.Length == info.Length &&
-                entry.LastWriteUtc == info.LastWriteTimeUtc)
+                entry.Length == length &&
+                entry.LastWriteUtc == lastWriteUtc)
             {
                 return entry.Duration;
             }
@@ -98,7 +131,7 @@ public sealed class CachedRecordingDurationProvider : IRecordingDurationProvider
             }
 
             var started = Stopwatch.GetTimestamp();
-            var duration = Read(filePath, info);
+            var duration = Read(filePath, length, lastWriteUtc);
             Spend(Stopwatch.GetElapsedTime(started));
             return duration;
         }
@@ -118,16 +151,47 @@ public sealed class CachedRecordingDurationProvider : IRecordingDurationProvider
 
     private TimeSpan? Read(
         string filePath,
-        FileInfo info)
+        long length,
+        DateTime lastWriteUtc)
     {
-        var duration = probe(filePath);
-        if (duration <= TimeSpan.Zero)
+        var probed = probe(filePath);
+        TimeSpan? duration = probed > TimeSpan.Zero ? probed : null;
+
+        // A length that cannot be read is remembered as well: the file is
+        // opened again only when it changes.
+        cache[filePath] = new Entry(length, lastWriteUtc, duration);
+        SweepWhenGrown();
+        return duration;
+    }
+
+    // Drops the entries of files that are gone, once the cache has doubled
+    // since the last sweep: a sweep looks at every file once.
+    private void SweepWhenGrown()
+    {
+        var threshold = Volatile.Read(ref sweepAt);
+        if (cache.Count < threshold ||
+            Interlocked.CompareExchange(ref sweepAt, int.MaxValue, threshold) != threshold)
         {
-            return null;
+            return;
         }
 
-        cache[filePath] = new Entry(info.Length, info.LastWriteTimeUtc, duration);
-        return duration;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                foreach (var path in cache.Keys)
+                {
+                    if (!File.Exists(path))
+                    {
+                        cache.TryRemove(path, out _);
+                    }
+                }
+            }
+            finally
+            {
+                Volatile.Write(ref sweepAt, Math.Max(1024, cache.Count * 2));
+            }
+        }, CancellationToken.None);
     }
 
     private bool TryTakeBudget()
@@ -188,7 +252,7 @@ public sealed class CachedRecordingDurationProvider : IRecordingDurationProvider
                     var info = new FileInfo(filePath);
                     if (info.Exists)
                     {
-                        Read(filePath, info);
+                        Read(filePath, info.Length, info.LastWriteTimeUtc);
                     }
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
@@ -207,5 +271,5 @@ public sealed class CachedRecordingDurationProvider : IRecordingDurationProvider
         }
     }
 
-    private readonly record struct Entry(long Length, DateTime LastWriteUtc, TimeSpan Duration);
+    private readonly record struct Entry(long Length, DateTime LastWriteUtc, TimeSpan? Duration);
 }
