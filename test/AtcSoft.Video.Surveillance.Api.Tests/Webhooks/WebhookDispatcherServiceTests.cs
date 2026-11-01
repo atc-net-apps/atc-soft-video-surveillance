@@ -9,6 +9,10 @@ public sealed class WebhookDispatcherServiceTests
     private readonly IMotionDetectionService motionDetection = Substitute.For<IMotionDetectionService>();
     private WebhookRegistry? registry;
 
+    // A receiver takes what it is sent, unless a test says otherwise.
+    public WebhookDispatcherServiceTests()
+        => sender.SendAsync(default!, default!, default).ReturnsForAnyArgs(true);
+
     [Fact]
     public async Task Each_Queued_Event_Goes_To_Every_Endpoint_That_Wants_It()
     {
@@ -112,6 +116,45 @@ public sealed class WebhookDispatcherServiceTests
         Guid cameraId,
         bool active)
         => motionDetection.MotionDetected += Raise.EventWith(new MotionDetectedEventArgs(cameraId, 5, active));
+
+    [Fact]
+    public async Task A_Slow_Receiver_Does_Not_Hold_Up_The_Others()
+    {
+        var slow = new WebhookEndpoint { Url = "https://slow.test/hook" };
+        var working = new WebhookEndpoint { Url = "https://working.test/hook" };
+        var never = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        sender.SendAsync(slow, Arg.Any<WebhookEvent>(), Arg.Any<CancellationToken>()).Returns(never.Task);
+        sender.SendAsync(working, Arg.Any<WebhookEvent>(), Arg.Any<CancellationToken>()).Returns(true);
+        using var sut = CreateSut(slow, working);
+
+        sut.Enqueue(Motion);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+        sut.Enqueue(Recording);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        await sender.Received(1).SendAsync(working, Motion, Arg.Any<CancellationToken>());
+        await sender.Received(1).SendAsync(working, Recording, Arg.Any<CancellationToken>());
+        await sender.Received(1).SendAsync(slow, Arg.Any<WebhookEvent>(), Arg.Any<CancellationToken>());
+        never.SetResult(true);
+    }
+
+    [Fact]
+    public async Task A_Receiver_That_Keeps_Failing_Is_Left_Alone_And_Its_Events_Wait()
+    {
+        var broken = new WebhookEndpoint { Url = "https://broken.test/hook" };
+        sender.SendAsync(broken, Arg.Any<WebhookEvent>(), Arg.Any<CancellationToken>()).Returns(false);
+        using var sut = CreateSut(broken);
+        for (var i = 0; i < 5; i++)
+        {
+            sut.Enqueue(Motion);
+        }
+
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+        await sut.DoWorkAsync(TestContext.Current.CancellationToken);
+
+        await sender.ReceivedWithAnyArgs(WebhookDispatcherService.FailuresBeforePause).SendAsync(default!, default!, TestContext.Current.CancellationToken);
+        sut.QueuedCount.Should().Be(2);
+    }
 
     [Fact]
     public void A_Full_Queue_Drops_The_Oldest_Event_Instead_Of_Growing()
