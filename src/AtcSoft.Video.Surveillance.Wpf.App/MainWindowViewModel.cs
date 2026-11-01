@@ -27,6 +27,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private ResizeMode previousResizeMode = ResizeMode.CanResize;
     private DispatcherTimer? latencyTimer;
     private bool suppressAutoStartCallback;
+    private bool signingIn;
 
     [ObservableProperty]
     private string statusText = Translations.Ready;
@@ -150,6 +151,13 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 RaisePropertyChanged(nameof(SignedInText));
                 RaisePropertyChanged(nameof(ShowManageUsers));
+
+                // The session ended (a password reset, a revoked session, a
+                // renewal the server refused): sign in again, or nothing works.
+                if (!this.session.IsSignedIn)
+                {
+                    _ = SignInAgainAsync();
+                }
             });
         };
         this.eventService.OnRecordingStateChanged += OnRecordingStateChanged;
@@ -241,11 +249,61 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand("SignOut")]
     private async Task SignOutAsync()
     {
-        await authService.SignOutAsync().ConfigureAwait(true);
-        if (!await signInFlow.ShowDialogAsync(Application.Current.MainWindow).ConfigureAwait(true))
+        signingIn = true;
+        try
         {
-            Application.Current.Shutdown();
+            await authService.SignOutAsync().ConfigureAwait(true);
+            if (!await signInFlow.ShowDialogAsync(Application.Current.MainWindow).ConfigureAwait(true))
+            {
+                Application.Current.Shutdown();
+                return;
+            }
+
+            ReloadAfterSignIn();
         }
+        finally
+        {
+            signingIn = false;
+        }
+    }
+
+    // One sign-in at a time, and only once the main window is up (the start-up
+    // signs in by itself). The configured user of an unattended wall signs in
+    // again without a dialog.
+    private async Task SignInAgainAsync()
+    {
+        if (signingIn || session.IsSignedIn || Application.Current?.MainWindow is not MainWindow mainWindow || !mainWindow.IsLoaded)
+        {
+            return;
+        }
+
+        signingIn = true;
+        try
+        {
+            if (!await signInFlow.EnsureSignedInAsync(mainWindow).ConfigureAwait(true))
+            {
+                Application.Current.Shutdown();
+                return;
+            }
+
+            ReloadAfterSignIn();
+        }
+        finally
+        {
+            signingIn = false;
+        }
+    }
+
+    // What was shown came from the session that ended: read it again.
+    private void ReloadAfterSignIn()
+    {
+        if (CurrentView is not LiveViewViewModel)
+        {
+            liveViewViewModel.LoadCommand.Execute(parameter: null);
+        }
+
+        RefreshCurrentView();
+        _ = LoadInitialStatsAsync();
     }
 
     [RelayCommand("ShowSettings")]
