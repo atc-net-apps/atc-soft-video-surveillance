@@ -192,17 +192,23 @@
                     </fluent:RibbonGroupBox>
 
                     <fluent:RibbonGroupBox Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GridSizeGroup}">
-                        <atcTheming:LabelComboBox
-                            Width="250"
+                        <!--  A segment's place is its size: automatic, then one to four cameras along a side  -->
+                        <atcTheming:Segmented
                             Margin="5,25,5,25"
-                            HideAreas="All"
-                            Items="{Binding Path=GridPresetItems}"
-                            LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                                            Key=GridSize}"
-                            LabelWidthNumber="50"
-                            SelectedKey="{Binding Path=SelectedGridPreset}"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                            Key=GridSize}"
+                            EqualSegmentWidth="False"
+                            SelectedIndex="{Binding Path=SelectedGridPresetIndex, Mode=TwoWay}"
+                            Size="Small"
                             ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                                          Key=GridSizeInfo}" />
+                                                          Key=GridSizeInfo}">
+                            <atcTheming:SegmentedItem Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GridSizeAuto}" />
+                            <atcTheming:SegmentedItem Content="1 &#215; 1" />
+                            <atcTheming:SegmentedItem Content="2 &#215; 2" />
+                            <atcTheming:SegmentedItem Content="3 &#215; 3" />
+                            <atcTheming:SegmentedItem Content="4 &#215; 4" />
+                        </atcTheming:Segmented>
                         <fluent:Button
                             Command="{Binding Path=PreviousPageCommand}"
                             Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,

@@ -175,6 +175,26 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
         }
     }
 
+    /// <summary>
+    /// Gets or sets the source as the place of its segment: 0 is a network camera, 1 a USB camera.
+    /// </summary>
+    public int SourceIndex
+    {
+        get => IsUsbSource ? 1 : 0;
+        set
+        {
+            switch (value)
+            {
+                case 0:
+                    IsNetworkSource = true;
+                    break;
+                case 1:
+                    IsUsbSource = true;
+                    break;
+            }
+        }
+    }
+
     private void SwitchToNetworkSource()
     {
         Camera.Connection.Source = CameraSource.Network;
@@ -189,6 +209,7 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
         ClearTestResult();
         OnPropertyChanged(nameof(IsNetworkSource));
         OnPropertyChanged(nameof(IsUsbSource));
+        OnPropertyChanged(nameof(SourceIndex));
         OnPropertyChanged(nameof(SelectedConnectionTypeKey));
         CommandManager.InvalidateRequerySuggested();
     }
@@ -212,6 +233,7 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
         IpAddressError = null;
         OnPropertyChanged(nameof(IsNetworkSource));
         OnPropertyChanged(nameof(IsUsbSource));
+        OnPropertyChanged(nameof(SourceIndex));
         OnPropertyChanged(nameof(SelectedProtocolKey));
         OnPropertyChanged(nameof(SelectedConnectionTypeKey));
         CommandManager.InvalidateRequerySuggested();

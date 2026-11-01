@@ -154,6 +154,7 @@ public partial class MainWindowViewModel : MainWindowViewModelBase
         cameraGrid.PagingChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(SelectedGridPreset));
+            OnPropertyChanged(nameof(SelectedGridPresetIndex));
             OnPropertyChanged(nameof(PageLabel));
             OnPropertyChanged(nameof(HasPages));
             CommandManager.InvalidateRequerySuggested();
@@ -192,24 +193,27 @@ public partial class MainWindowViewModel : MainWindowViewModelBase
     }
 
     /// <summary>
-    /// Gets the grid sizes to choose from.
-    /// </summary>
-    public IDictionary<string, string> GridPresetItems { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["0"] = Translations.GridSizeAuto,
-        ["1"] = "1 \u00D7 1",
-        ["2"] = "2 \u00D7 2",
-        ["3"] = "3 \u00D7 3",
-        ["4"] = "4 \u00D7 4",
-    };
-
-    /// <summary>
     /// Gets or sets the grid's size, as its number of cameras along a side ("0" is automatic).
     /// </summary>
     public string SelectedGridPreset
     {
         get => ((int)(cameraGrid?.GridPreset ?? GridPreset.Auto)).ToString(CultureInfo.InvariantCulture);
         set => SelectGridPreset(value);
+    }
+
+    /// <summary>
+    /// Gets or sets the grid's size as the place of its segment: 0 is automatic, then one to four cameras along a side.
+    /// </summary>
+    public int SelectedGridPresetIndex
+    {
+        get => (int)(cameraGrid?.GridPreset ?? GridPreset.Auto);
+        set
+        {
+            if (value >= 0)
+            {
+                SelectGridPreset(value.ToString(CultureInfo.InvariantCulture));
+            }
+        }
     }
 
     /// <summary>
