@@ -1102,6 +1102,25 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     {
         var previous = state;
         state = newState;
-        StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(previous, newState, errorMessage, reason));
+
+        // Raised on the demux thread, also from its error handling: a subscriber that throws is
+        // logged, and neither ends the thread (or the process) nor keeps the others from hearing it.
+        if (StateChanged?.GetInvocationList() is not { } handlers)
+        {
+            return;
+        }
+
+        var args = new PlayerStateChangedEventArgs(previous, newState, errorMessage, reason);
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                ((EventHandler<PlayerStateChangedEventArgs>)handler).Invoke(this, args);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                LogStateChangedSubscriberFailed(ex, newState);
+            }
+        }
     }
 }
