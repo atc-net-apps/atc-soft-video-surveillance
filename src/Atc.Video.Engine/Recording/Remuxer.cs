@@ -6,13 +6,12 @@ namespace Atc.Video.Engine.Recording;
 /// Records a video stream by remuxing (packet copy, no transcoding) to a container file.
 /// </summary>
 [SuppressMessage("", "CA1806:calls av_*", Justification = "OK")]
-internal sealed unsafe class Remuxer : IDisposable
+internal sealed unsafe partial class Remuxer : IDisposable
 {
     // Bounded queue capacity sized so a slow disk hiccup of a few seconds
     // (e.g. a cleanup pass thrashing the same drive) doesn't drop frames at
-    // 30 fps. When the queue fills, the producer side drops the oldest
-    // packet — keeping the freshest history when the disk is permanently
-    // behind.
+    // 30 fps. When the queue fills, new packets are left out up to the next
+    // key frame and counted (see TryEnqueue).
     private const int WriteQueueCapacity = 1000;
 
     // How far the source's clock may go back or forward between two pictures before it counts as a
@@ -26,6 +25,7 @@ internal sealed unsafe class Remuxer : IDisposable
     // closing take both, stateLock first, so no packet lands in the wrong file.
     private readonly Lock stateLock = new();
     private readonly Lock ioLock = new();
+    private readonly ILogger logger;
 
     // BlockingCollection (not Channel) because the surrounding class is
     // `unsafe` and cannot host `await`. The writer thread waits for
@@ -69,10 +69,25 @@ internal sealed unsafe class Remuxer : IDisposable
 
     private Thread? writerThread;
 
+    // Packets left out because the disk could not keep up (the queue was full), in this file.
+    private long droppedPackets;
+
+    // After a packet was left out, the rest are left out up to the next key frame: the file then goes
+    // on from a picture that can be decoded. Guarded by stateLock.
+    private bool waitingForKeyFrame;
+
     // A switch to the next file that waits for a key frame (see SwitchTo). Guarded by stateLock.
     private PendingSwitch? pendingSwitch;
 
+    public Remuxer(ILogger? logger = null)
+        => this.logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+
     public bool IsOpen => outputCtx is not null;
+
+    /// <summary>
+    /// Gets how many packets of the current file were left out because the disk could not keep up.
+    /// </summary>
+    public long DroppedPackets => Interlocked.Read(ref droppedPackets);
 
     /// <summary>
     /// Gets why the current file can take no more packets (a full disk, a broken output), or
@@ -477,7 +492,7 @@ internal sealed unsafe class Remuxer : IDisposable
                 // hiccup) that backed up the RTSP buffer and dropped
                 // frames upstream. The writer writes under ioLock only, so
                 // CloseLocked can flush before changing outputCtx.
-                if (TryEnqueueDropOldest((nint)clonedPkt))
+                if (TryEnqueue((nint)clonedPkt, isVideo: true, isKeyframe))
                 {
                     // Ownership transferred to the queue — do NOT free here.
                     clonedPkt = null;
@@ -536,7 +551,7 @@ internal sealed unsafe class Remuxer : IDisposable
 
             lastAudioDts = clonedPkt->dts;
 
-            if (TryEnqueueDropOldest((nint)clonedPkt))
+            if (TryEnqueue((nint)clonedPkt, isVideo: false, isKeyframe: false))
             {
                 packetQueued.Set();
             }
@@ -598,27 +613,35 @@ internal sealed unsafe class Remuxer : IDisposable
         }
     }
 
-    // BlockingCollection has no native drop-oldest mode; emulate it by
-    // attempting a non-blocking add and, on failure, draining the oldest
-    // queued packet (freeing it) before retrying once.
-    private bool TryEnqueueDropOldest(nint ptr)
+    // Called under stateLock. A full queue (the disk cannot keep up) leaves the new packet out, and
+    // the ones after it up to the next key frame: what is queued stays whole, and the file goes on
+    // from a picture that can be decoded. (Dropping the oldest instead could take a key frame and
+    // leave seconds that cannot be played.) Every packet left out is counted.
+    private bool TryEnqueue(
+        nint ptr,
+        bool isVideo,
+        bool isKeyframe)
     {
         if (writeQueue.IsAddingCompleted)
         {
             return false;
         }
 
+        if (waitingForKeyFrame && !(isVideo && isKeyframe))
+        {
+            Interlocked.Increment(ref droppedPackets);
+            return false;
+        }
+
         if (writeQueue.TryAdd(ptr))
         {
+            waitingForKeyFrame = false;
             return true;
         }
 
-        if (writeQueue.TryTake(out var dropped))
-        {
-            FreeQueuedPacket(dropped);
-        }
-
-        return writeQueue.TryAdd(ptr);
+        waitingForKeyFrame = true;
+        Interlocked.Increment(ref droppedPackets);
+        return false;
     }
 
     // Started lazily on first Open and stopped in Dispose. Writes the
@@ -746,6 +769,13 @@ internal sealed unsafe class Remuxer : IDisposable
             return;
         }
 
+        var dropped = Interlocked.Exchange(ref droppedPackets, 0);
+        waitingForKeyFrame = false;
+        if (dropped > 0)
+        {
+            LogPacketsDropped(logger, dropped, outputPath ?? string.Empty);
+        }
+
         // Flush every packet still in the queue to the current outputCtx
         // before writing the trailer. The writer task is blocked on the
         // ioLock by us, so this drain is exclusive.
@@ -812,6 +842,9 @@ internal sealed unsafe class Remuxer : IDisposable
         packetQueued.Dispose();
         writerThread = null;
     }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "{Count} packets of '{File}' were left out: the disk could not keep up (the recording goes on from the next key frame after each gap)")]
+    private static partial void LogPacketsDropped(ILogger logger, long count, string file);
 
     // The next file of a switch that waits for a key frame, with its own copies of the codec
     // parameters: the caller's may be gone by then.

@@ -201,7 +201,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 throw new InvalidOperationException("Cannot record: player is not playing.");
             }
 
-            remuxer ??= new Remuxer();
+            remuxer ??= new Remuxer(logger);
 
             if (remuxer.IsOpen)
             {
@@ -505,7 +505,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 return;
             }
 
-            var live = new Remuxer();
+            var live = new Remuxer(logger);
             AudioEncoder? sound = null;
             try
             {

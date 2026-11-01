@@ -96,6 +96,28 @@ public sealed unsafe class RemuxerPacketLossTests : IDisposable
         CountPackets(before).Should().Be(50, "the first file runs on to the next key frame");
     }
 
+    [Fact]
+    public void Packets_The_Disk_Cannot_Take_Are_Counted()
+    {
+        // An output that takes the connection and then reads nothing: the writer waits and the queue
+        // fills. Before, the oldest packets were thrown away without a word (key frames too).
+        TestEngine.Require();
+        using var output = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        output.Start();
+        var port = ((System.Net.IPEndPoint)output.LocalEndpoint).Port;
+        using var remuxer = new Remuxer();
+        Open(remuxer, $"tcp://127.0.0.1:{port}/stalled.mkv", switchTo: false);
+        var stalled = output.AcceptTcpClient();
+
+        // Far more than the queue and the socket's buffers hold.
+        WritePackets(remuxer, first: 0, count: 5000, keyEvery: 25, size: 16_384);
+
+        remuxer.DroppedPackets.Should().BeGreaterThan(0);
+        stalled.Dispose();
+        output.Stop();
+        remuxer.Close();
+    }
+
     private static void Open(
         Remuxer remuxer,
         string path,
@@ -134,13 +156,14 @@ public sealed unsafe class RemuxerPacketLossTests : IDisposable
         Remuxer remuxer,
         int first,
         int count,
-        int keyEvery)
+        int keyEvery,
+        int size = 64)
     {
         var packet = av_packet_alloc();
         try
         {
             // The recorder copies packets without looking inside them.
-            av_new_packet(packet, 64).Should().Be(0);
+            av_new_packet(packet, size).Should().Be(0);
             new Span<byte>(packet->data, packet->size).Clear();
             for (var i = first; i < first + count; i++)
             {
