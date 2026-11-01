@@ -235,6 +235,7 @@ public partial class CameraTile : IDisposable
     private bool disposed;
     private bool markedForRemoval;
     private bool stopRecordingOnDispose;
+    private bool restartRecordingOnConnect;
     private Window? subscribedWindow;
     private CameraGrid? registeredWithGrid;
     private bool isReconnecting;
@@ -1441,6 +1442,10 @@ public partial class CameraTile : IDisposable
         if (recordingService is not null && recordingService.IsRecording(Camera.Id))
         {
             recordingService.StopRecording(Camera.Id);
+
+            // The camera records on: a new recording starts once the new stream connects, also
+            // one a person started (record-on-connect would only start its own).
+            restartRecordingOnConnect = true;
         }
 
         // Keep reference to old player and pipeline
@@ -2039,8 +2044,11 @@ public partial class CameraTile : IDisposable
             // Start stream health monitoring to detect if stream goes offline
             StartStreamHealthCheck();
 
-            // Auto-start recording on connect if enabled (respects per-camera override)
-            if (GetEffectiveEnableRecordingOnConnect() &&
+            // Auto-start recording on connect if enabled (respects per-camera override), or again
+            // after the player was made anew while it recorded.
+            var recordAgain = restartRecordingOnConnect;
+            restartRecordingOnConnect = false;
+            if ((GetEffectiveEnableRecordingOnConnect() || recordAgain) &&
                 recordingService is not null &&
                 mediaPipeline is not null &&
                 Camera is not null &&
