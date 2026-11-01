@@ -70,6 +70,17 @@ public interface IMotionDetectionService
     /// <returns>The pipeline, or <see langword="null"/>.</returns>
     IMediaPipeline? FindPipeline(Guid cameraId) => null;
 
+    /// <summary>
+    /// Applies a camera's motion settings to its running detection (when they changed).
+    /// </summary>
+    /// <param name="cameraId">The camera.</param>
+    /// <param name="settings">The settings it should use now.</param>
+    void UseSettings(
+        Guid cameraId,
+        AtcSoft.Video.Surveillance.Models.Settings.MotionDetectionSettings settings)
+    {
+    }
+
     bool IsMotionDetected(Guid cameraId);
 
     IReadOnlyList<BoundingBox> GetLastBoundingBoxes(Guid cameraId);

@@ -726,6 +726,12 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
             {
                 StartWatching(camera, watching);
             }
+            else if (motionDetectionService.IsDetectionActive(camera.Id))
+            {
+                // Settings changed since the watching started (PUT /settings, a camera's
+                // overrides): the running detection takes them at its next quiet moment.
+                motionDetectionService.UseSettings(camera.Id, MotionDetectionPolicy.Resolve(camera, settingsService.MotionDetection));
+            }
 
             return;
         }

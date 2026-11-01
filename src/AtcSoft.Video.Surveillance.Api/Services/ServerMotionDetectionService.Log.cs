@@ -2,6 +2,9 @@ namespace AtcSoft.Video.Surveillance.Api.Services;
 
 public sealed partial class ServerMotionDetectionService
 {
+    [LoggerMessage(Level = LogLevel.Information, Message = "New motion settings applied to camera {CameraId}")]
+    private partial void LogMotionSettingsApplied(Guid cameraId);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Motion detection started for camera {CameraId}")]
     private partial void LogMotionDetectionStarted(Guid cameraId);
 
