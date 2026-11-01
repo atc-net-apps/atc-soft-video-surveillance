@@ -702,6 +702,20 @@ public partial class CameraTile : IDisposable
         // Swap motion detection state
         (IsMotionDetected, other.IsMotionDetected) = (other.IsMotionDetected, IsMotionDetected);
 
+        // The connection belongs to the camera too: a camera that is reconnecting or failed keeps
+        // that state, its attempt count and its device flags on the tile it moves to. The pending
+        // reconnect timers act on whatever camera their tile shows, so they start again below.
+        StopReconnectTimers();
+        other.StopReconnectTimers();
+        (ConnectionState, other.ConnectionState) = (other.ConnectionState, ConnectionState);
+        (isReconnecting, other.isReconnecting) = (other.isReconnecting, isReconnecting);
+        (reconnectAttemptCount, other.reconnectAttemptCount) = (other.reconnectAttemptCount, reconnectAttemptCount);
+        (restartRecordingOnConnect, other.restartRecordingOnConnect) = (other.restartRecordingOnConnect, restartRecordingOnConnect);
+        (IsDeviceBusy, other.IsDeviceBusy) = (other.IsDeviceBusy, IsDeviceBusy);
+        (IsDeviceUnplugged, other.IsDeviceUnplugged) = (other.IsDeviceUnplugged, IsDeviceUnplugged);
+        ResumeConnectionWatch();
+        other.ResumeConnectionWatch();
+
         // Restart stream health monitoring with new players
         StartStreamHealthCheck();
         other.StartStreamHealthCheck();
@@ -2482,6 +2496,31 @@ public partial class CameraTile : IDisposable
                 });
             }
         });
+    }
+
+    private void StopReconnectTimers()
+    {
+        reconnectTimer?.Stop();
+        autoReconnectTimer?.Stop();
+        autoReconnectTimer = null;
+    }
+
+    /// <summary>
+    /// Starts the watch that fits the camera this tile shows now (after a swap): the check of a
+    /// reconnect in progress, or the next attempt for a camera that failed.
+    /// </summary>
+    private void ResumeConnectionWatch()
+    {
+        if (isReconnecting && Player is not null)
+        {
+            StartReconnectStatusCheck();
+        }
+        else if (ConnectionState == ConnectionState.ConnectionFailed)
+        {
+            // TryAutoReconnect counts an attempt; this one was already counted.
+            reconnectAttemptCount = Math.Max(0, reconnectAttemptCount - 1);
+            TryAutoReconnect();
+        }
     }
 
     private void StartReconnectStatusCheck()

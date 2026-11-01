@@ -542,18 +542,9 @@ public partial class CameraGrid
             CameraTiles[sourceIndex] = targetCamera;
             CameraTiles[targetIndex] = sourceCamera;
 
-            if (sourceTile.ConnectionState == ConnectionState.Connected &&
-                targetTile.ConnectionState == ConnectionState.Connected)
-            {
-                // Both connected — swap players to keep streams alive
-                sourceTile.SwapPlayerWith(targetTile);
-            }
-            else
-            {
-                // At least one not connected — close then re-open streams with new camera configs
-                sourceTile.Reconnect();
-                targetTile.Reconnect();
-            }
+            // Each camera takes its player, its recording and its connection state with it,
+            // connected or not. (Reconnecting both tiles instead crossed the recordings over.)
+            sourceTile.SwapPlayerWith(targetTile);
 
             sourceTile.CompleteSwap();
             targetTile.CompleteSwap();
@@ -699,16 +690,8 @@ public partial class CameraGrid
                 CameraTiles[i] = cameraB;
                 CameraTiles[swapIndex] = cameraA;
 
-                if (tileA.ConnectionState == ConnectionState.Connected &&
-                    tileB.ConnectionState == ConnectionState.Connected)
-                {
-                    tileA.SwapPlayerWith(tileB);
-                }
-                else
-                {
-                    tileA.Reconnect();
-                    tileB.Reconnect();
-                }
+                // Each camera takes its player, its recording and its connection state with it.
+                tileA.SwapPlayerWith(tileB);
 
                 tileA.CompleteSwap();
                 tileB.CompleteSwap();
