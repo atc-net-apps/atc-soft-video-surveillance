@@ -81,16 +81,24 @@ public sealed class ServerRecordingServiceSharedPipelineTests : IDisposable
     {
         IRecordingService service = sut;
         using var bothIn = new Barrier(2);
-        pipeline.When(p => p.StartRecording(Arg.Any<string>())).Do(_ => Thread.Sleep(50));
+
+        // The pipeline takes a moment to start recording: the other start comes meanwhile.
+        pipeline.When(p => p.StartRecording(Arg.Any<string>())).Do(_ => Task.Delay(50).Wait());
 
         var results = await Task.WhenAll(
-            Task.Run(() => { bothIn.SignalAndWait(); return service.StartRecordingOnSharedPipeline(camera, pipeline); }),
-            Task.Run(() => { bothIn.SignalAndWait(); return service.StartRecordingOnSharedPipeline(camera, pipeline); }));
+            Task.Run(StartTogether),
+            Task.Run(StartTogether));
 
         results.Count(r => r).Should().Be(1);
         pipeline.Received(1).StartRecording(Arg.Any<string>());
         pipeline.DidNotReceive().StopRecording();
         sut.IsRecording(camera.Id).Should().BeTrue();
+
+        bool StartTogether()
+        {
+            bothIn.SignalAndWait();
+            return service.StartRecordingOnSharedPipeline(camera, pipeline);
+        }
     }
 
     [Fact]

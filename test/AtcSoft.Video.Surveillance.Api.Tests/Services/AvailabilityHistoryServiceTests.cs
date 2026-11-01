@@ -104,7 +104,8 @@ public sealed class AvailabilityHistoryServiceTests : IDisposable
     }
 
     // A long startup delay: the tests call DoWorkAsync themselves.
-    private AvailabilityHistoryService Service(IApplicationSettingsService? settings = null)
+    private AvailabilityHistoryService Service(
+        IApplicationSettingsService? settings = null)
         => new(
             NullLogger<AvailabilityHistoryService>.Instance,
             new AvailabilityHistoryServiceOptions { StartupDelaySeconds = ushort.MaxValue },
