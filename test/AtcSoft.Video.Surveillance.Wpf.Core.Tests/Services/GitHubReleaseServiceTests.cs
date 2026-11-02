@@ -7,7 +7,7 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.Services;
 public sealed class GitHubReleaseServiceTests
 {
     [Theory]
-    [InlineData("AtcSoft.Video.Surveillance.Wpf.App", "AtcSoft.Video.Surveillance.Installer.msi")]
+    [InlineData("AtcSoft.Video.Surveillance.Wpf.App", "AtcSoft.Video.Surveillance.Client.Installer.msi")]
     [InlineData("AtcSoft.Video.Surveillance.CameraWall.Wpf.App", "AtcSoft.Video.Surveillance.CameraWall.Installer.msi")]
     public void Each_App_Is_Updated_With_Its_Own_Installer(
         string appAssemblyName,

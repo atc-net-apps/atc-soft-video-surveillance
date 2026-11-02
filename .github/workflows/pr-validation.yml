@@ -117,7 +117,7 @@ jobs:
         run: dotnet publish src/AtcSoft.Video.Surveillance.Wpf.App/AtcSoft.Video.Surveillance.Wpf.App.csproj --configuration ${{ env.CONFIGURATION }} --output ./publish-vs
 
       - name: Build Installer
-        run: dotnet build setup/AtcSoft.Video.Surveillance.Installer/AtcSoft.Video.Surveillance.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-vs
+        run: dotnet build setup/AtcSoft.Video.Surveillance.Client.Installer/AtcSoft.Video.Surveillance.Client.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-vs
 
   build-installer-server:
     name: Build and install the Server Installer (Validation)

@@ -182,8 +182,8 @@ jobs:
           - name: VideoSurveillance
             app: src/AtcSoft.Video.Surveillance.Wpf.App/AtcSoft.Video.Surveillance.Wpf.App.csproj
             publish_dir: publish-videosurveillance
-            installer: setup/AtcSoft.Video.Surveillance.Installer/AtcSoft.Video.Surveillance.Installer.wixproj
-            installer_bin: setup/AtcSoft.Video.Surveillance.Installer/bin
+            installer: setup/AtcSoft.Video.Surveillance.Client.Installer/AtcSoft.Video.Surveillance.Client.Installer.wixproj
+            installer_bin: setup/AtcSoft.Video.Surveillance.Client.Installer/bin
             artifact: msi-installer-videosurveillance
           # The server as a Windows service: self-contained, as a service has nobody to tell
           # that a .NET runtime is missing.

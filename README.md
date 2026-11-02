@@ -50,7 +50,7 @@ Live view, recording, motion detection and an activity timeline for your RTSP, H
 | You want | Download from the [latest release](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases/latest) | Guide |
 |---|---|---|
 | CameraWall | `AtcSoft.Video.Surveillance.CameraWall.Installer.msi` | [Install CameraWall](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-CameraWall) |
-| The desktop client of the Video Surveillance system | `AtcSoft.Video.Surveillance.Installer.msi` | [Install Video Surveillance](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance) |
+| The desktop client of the Video Surveillance system | `AtcSoft.Video.Surveillance.Client.Installer.msi` | [Install Video Surveillance](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance) |
 | The server | No installer yet: built from source today | [The server on Windows today](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance#-the-server-on-windows-today) |
 
 ## 📋 Requirements
