@@ -7,3 +7,9 @@
 *.jpeg binary
 *.gif binary
 *.bmp binary
+
+# Run inside Linux containers and on Linux and macOS: always LF, whatever the checkout.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+compose*.yaml text eol=lf
