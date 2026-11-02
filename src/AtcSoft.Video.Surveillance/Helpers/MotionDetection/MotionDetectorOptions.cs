@@ -15,6 +15,7 @@ namespace AtcSoft.Video.Surveillance.Helpers.MotionDetection;
 /// <param name="ConfirmSeconds">How long a track must be seen before it shows.</param>
 /// <param name="MinTravelShare">How far a track must travel from where it began, as a share of the picture's width, before it shows.</param>
 /// <param name="TrackLostSeconds">How long a track may go unseen before it ends.</param>
+/// <param name="FollowExposure">Whether the background follows the camera's exposure in every picture (a small gain on the whole picture); on when lighting changes are ignored.</param>
 public sealed record MotionDetectorOptions(
     double ThresholdSigmas = 3.0,
     double MinThreshold = 16,
@@ -26,7 +27,8 @@ public sealed record MotionDetectorOptions(
     double LightingSettleSeconds = 1.5,
     double ConfirmSeconds = 0.4,
     double MinTravelShare = 0.03,
-    double TrackLostSeconds = 1.0)
+    double TrackLostSeconds = 1.0,
+    bool FollowExposure = true)
 {
     /// <summary>
     /// The smallest blob that counts by default, as a share of the picture's area.
@@ -93,6 +95,9 @@ public sealed record MotionDetectorOptions(
             SmallestObjectShare = Math.Clamp(settings.SmallestObjectPercent, 0, MaxSmallestObjectPercent) / 100,
             ForegroundSeconds = Math.Clamp(settings.StoppedObjectSeconds, MinStoppedObjectSeconds, MaxStoppedObjectSeconds) / (double)StoppedObjectTimeConstants,
             LightingChangeShare = settings.IgnoreLightingChanges ? defaults.LightingChangeShare : NeverLight,
+
+            // Following the camera's exposure is ignoring a (small) change of light too.
+            FollowExposure = settings.IgnoreLightingChanges,
         };
     }
 

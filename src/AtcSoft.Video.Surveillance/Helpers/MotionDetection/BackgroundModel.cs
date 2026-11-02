@@ -38,6 +38,19 @@ internal sealed class BackgroundModel
     private const float FlickerLearnsFrom = 0.3f;
     private const float FlickerScale = 1 / (1 - FlickerLearnsFrom);
 
+    // Every this many pixels is looked at for the exposure; a prime, so no column or row is favoured.
+    private const int ExposureSampleStep = 7;
+
+    // A gain closer to 1 than this is the noise of a still picture, not the exposure.
+    private const double MinExposureChange = 0.006;
+
+    // An exposure step is a few percent; more is a change of light, for the lighting check.
+    private const double MaxExposureChange = 0.15;
+
+    // The share of the samples that must lie within this many 0.002 steps of the gain.
+    private const int AgreeBuckets = 10;
+    private const double MinAgreeingShare = 0.5;
+
     private float[] mean = [];
     private float[] variance = [];
 
@@ -107,6 +120,95 @@ internal sealed class BackgroundModel
             mean[i] = frame[i];
             variance[i] = StartVariance;
         }
+    }
+
+    /// <summary>
+    /// Follows the camera's exposure: a camera that brightens or darkens the whole picture a little
+    /// (its automatic exposure, as a person or a door changes how much light it sees) changes the
+    /// bright surfaces most, by a gain rather than an offset. The gain is the median of picture over
+    /// background on a sample of the pixels, so what moves (less than half the picture) does not
+    /// move it, and the background is scaled by it before the foreground is looked for. Without
+    /// this, a change of a few percent turns the walls and ceiling into one foreground the size of
+    /// the picture.
+    /// </summary>
+    /// <param name="frame">The (blurred) picture.</param>
+    /// <param name="ignored">Pixels left out (ignore zones), or <see langword="null"/>.</param>
+    /// <returns>The gain applied; 1 when the exposure did not change.</returns>
+    public double FollowExposure(
+        byte[] frame,
+        byte[]? ignored)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+
+        // Ratios from 0.5 to 2 in steps of 0.002; dark and burnt-out pixels say nothing about a gain.
+        const int Buckets = 750;
+        const double Low = 0.5;
+        const double Step = 0.002;
+        Span<int> counts = stackalloc int[Buckets];
+        var samples = 0;
+        for (var i = 0; i < frame.Length; i += ExposureSampleStep)
+        {
+            var background = mean[i];
+            if (background < 24 || background > 235 || frame[i] > 250 || (ignored is not null && ignored[i] != 0))
+            {
+                continue;
+            }
+
+            var bucket = (int)(((frame[i] / background) - Low) / Step);
+            if (bucket is >= 0 and < Buckets)
+            {
+                counts[bucket]++;
+                samples++;
+            }
+        }
+
+        if (samples < 100)
+        {
+            return 1;
+        }
+
+        var half = samples / 2;
+        var seen = 0;
+        var median = 0;
+        for (; median < Buckets; median++)
+        {
+            seen += counts[median];
+            if (seen > half)
+            {
+                break;
+            }
+        }
+
+        var gain = Low + ((median + 0.5) * Step);
+
+        // Within the noise of a still picture: leave the background as it is. A bigger change than
+        // an exposure step is the lighting check's (it shifts or learns anew).
+        if (Math.Abs(gain - 1) < MinExposureChange || Math.Abs(gain - 1) > MaxExposureChange)
+        {
+            return 1;
+        }
+
+        // An exposure moves the whole background together: most samples agree on the gain. When they
+        // do not, something big in the picture (a person filling it) set the median, not the camera.
+        var agree = 0;
+        for (var b = Math.Max(0, median - AgreeBuckets); b <= Math.Min(Buckets - 1, median + AgreeBuckets); b++)
+        {
+            agree += counts[b];
+        }
+
+        if (agree < MinAgreeingShare * samples)
+        {
+            return 1;
+        }
+
+        var g = (float)gain;
+        for (var i = 0; i < mean.Length; i++)
+        {
+            mean[i] = Math.Min(255f, mean[i] * g);
+            anchor[i] = Math.Min(255f, anchor[i] * g);
+        }
+
+        return gain;
     }
 
     /// <summary>
