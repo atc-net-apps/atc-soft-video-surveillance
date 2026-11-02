@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="ManufacturerFolder" Name="AtcSoft">
+        <Directory Id="INSTALLFOLDER" Name="Video Surveillance Server" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="AtcSoft Video Surveillance Server" />
+    </StandardDirectory>
+
+    <!-- The server's data folder (ServerDataPaths): settings, cameras, users, keys and, unless
+         set elsewhere, the recordings. The same folder a server started by hand uses, so its
+         data is kept. -->
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="DataManufacturerFolder" Name="AtcSoft">
+        <Directory Id="DATAFOLDER" Name="VideoSurveillance" />
+      </Directory>
+    </StandardDirectory>
+  </Fragment>
+</Wix>

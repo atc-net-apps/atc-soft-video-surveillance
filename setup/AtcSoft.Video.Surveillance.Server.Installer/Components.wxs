@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:fire="http://wixtoolset.org/schemas/v4/wxs/firewall">
+  <Fragment>
+    <!-- Every other published file is harvested (the wixproj's HarvestDirectory). -->
+
+    <!-- The server, run as the Windows service AtcSoftVideoSurveillance (ServerHosting.ServiceName)
+         under its own virtual account: no password, only the rights it is given. It starts with
+         Windows, and again after a crash; cameras not reachable yet are tried again. -->
+    <Component Id="ServerService" Guid="A468C785-51EF-48DF-8008-9D8AEA20B5E3" Directory="INSTALLFOLDER">
+      <File Id="ServerExe" Source="$(HarvestDirectory)\AtcSoft.Video.Surveillance.Api.exe" KeyPath="yes" />
+
+      <ServiceInstall
+        Id="ServerServiceInstall"
+        Name="AtcSoftVideoSurveillance"
+        DisplayName="AtcSoft Video Surveillance Server"
+        Description="Records the cameras, watches them for motion and serves the web client and the desktop client."
+        Type="ownProcess"
+        Start="auto"
+        ErrorControl="normal"
+        Account="NT SERVICE\AtcSoftVideoSurveillance"
+        Arguments="--urls http://+:[PORT]"
+        Vital="yes">
+        <util:ServiceConfig
+          FirstFailureActionType="restart"
+          SecondFailureActionType="restart"
+          ThirdFailureActionType="restart"
+          RestartServiceDelayInSeconds="10"
+          ResetPeriodInDays="1" />
+      </ServiceInstall>
+
+      <ServiceControl
+        Id="ServerServiceControl"
+        Name="AtcSoftVideoSurveillance"
+        Start="install"
+        Stop="both"
+        Remove="uninstall"
+        Wait="yes" />
+
+      <!-- The port, on the networks Windows calls private or domain; never on public ones. -->
+      <fire:FirewallException
+        Id="ServerPortPrivate"
+        Name="AtcSoft Video Surveillance Server (private)"
+        Port="[PORT]"
+        Protocol="tcp"
+        Profile="private"
+        Scope="any" />
+      <fire:FirewallException
+        Id="ServerPortDomain"
+        Name="AtcSoft Video Surveillance Server (domain)"
+        Port="[PORT]"
+        Protocol="tcp"
+        Profile="domain"
+        Scope="any" />
+    </Component>
+
+    <!-- The web client from the Start menu: where the first admin is made. -->
+    <Component Id="WebClientShortcut" Guid="7D123EA2-B9BA-4BE9-83DD-2B9BFEDA2D92" Directory="ApplicationProgramsFolder">
+      <util:InternetShortcut
+        Id="WebClientLink"
+        Name="AtcSoft Video Surveillance"
+        Target="http://localhost:[PORT]/"
+        Type="url" />
+      <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\AtcSoft\VideoSurveillanceServer" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <!-- Data folder: SYSTEM and Administrators full control, Users and the service's virtual
+         account (S-1-5-80-…: the SID Windows derives from the service name) modify, inherited by
+         everything below it. The desktop client's MSI sets the same, so the two may be installed
+         in either order. Permanent: an uninstall or upgrade never deletes the data. The secrets
+         in it (users, keys, setup code) get access of their own from the server (SecretFile). -->
+    <Component Id="DataFolder" Guid="DD40AB4A-991A-4CAC-9768-2A034B2D0851" Directory="DATAFOLDER" Permanent="yes">
+      <CreateFolder>
+        <PermissionEx Sddl="D:(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1301bf;;;BU)(A;OICI;0x1301bf;;;S-1-5-80-2781899967-703317263-3564165195-2030983897-3191695680)" />
+      </CreateFolder>
+    </Component>
+
+    <!-- A server started by hand before the service wrote its secrets for its own user: the
+         service's account is given them too, before it starts. -->
+    <SetProperty
+      Id="GrantServiceAccountToData"
+      Value="&quot;[System64Folder]icacls.exe&quot; &quot;[DATAFOLDER].&quot; /grant *S-1-5-80-2781899967-703317263-3564165195-2030983897-3191695680:(OI)(CI)M /T /C /Q"
+      Before="GrantServiceAccountToData"
+      Sequence="execute" />
+    <CustomAction
+      Id="GrantServiceAccountToData"
+      BinaryRef="Wix4UtilCA_X64"
+      DllEntry="WixQuietExec64"
+      Execute="deferred"
+      Impersonate="no"
+      Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="GrantServiceAccountToData" After="InstallFiles" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

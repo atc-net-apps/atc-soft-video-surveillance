@@ -1,0 +1,35 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <InstallerPlatform>x64</InstallerPlatform>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- The server published self-contained for win-x64, with FFmpeg 9 in its ffmpeg folder
+         (release-please.yml): a service has nobody to tell that a .NET runtime is missing. -->
+    <PublishDir>$(MSBuildThisFileDirectory)..\..\publish-server</PublishDir>
+    <IconPath>$(MSBuildThisFileDirectory)..\..\src\AtcSoft.Video.Surveillance.Wpf.Core\Resources\Images\cctv-camera.ico</IconPath>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0</ProductVersion>
+    <DefineConstants>HarvestDirectory=$(PublishDir);ProductVersion=$(ProductVersion);IconPath=$(IconPath)</DefineConstants>
+    <!-- ICE61 must be suppressed when MajorUpgrade/@AllowSameVersionUpgrades="yes":
+         that option deliberately sets the upgrade Maximum equal to the product version,
+         which ICE61 flags as an error. -->
+    <SuppressIces>ICE61</SuppressIces>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Firewall.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Heat" Version="5.0.2" />
+  </ItemGroup>
+  <!-- Every published file, except the server's exe: its component (Components.wxs) also
+       installs the service. -->
+  <ItemGroup>
+    <HarvestDirectory Include="$(PublishDir)"
+                      ComponentGroupName="HarvestedComponents"
+                      DirectoryRefId="INSTALLFOLDER"
+                      SuppressRegistry="true"
+                      SuppressRootDirectory="true"
+                      Transforms="LeaveOutServerExe.xslt" />
+    <BindPath Include="$(PublishDir)" />
+  </ItemGroup>
+</Project>

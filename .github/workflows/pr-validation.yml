@@ -76,3 +76,25 @@ jobs:
 
       - name: Build Installer
         run: dotnet build setup/AtcSoft.Video.Surveillance.Installer/AtcSoft.Video.Surveillance.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-vs
+
+  build-installer-server:
+    name: Build Server Installer (Validation)
+    runs-on: windows-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Server
+        run: dotnet publish src/AtcSoft.Video.Surveillance.Api/AtcSoft.Video.Surveillance.Api.csproj --configuration ${{ env.CONFIGURATION }} --runtime win-x64 --self-contained true --output ./publish-server
+
+      - name: Build Installer
+        run: dotnet build setup/AtcSoft.Video.Surveillance.Server.Installer/AtcSoft.Video.Surveillance.Server.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-server

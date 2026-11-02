@@ -137,8 +137,9 @@ public static class SecretFile
     }
 
     /// <summary>
-    /// Gets the accounts allowed to a secret: the local system, the administrators
-    /// and the account the server runs as.
+    /// Gets the accounts allowed to a secret: the local system, the administrators,
+    /// the account the server runs as and, when it is installed, the Windows service's
+    /// account: a server started by hand leaves files the service can read.
     /// </summary>
     /// <returns>The accounts.</returns>
     [SupportedOSPlatform("windows")]
@@ -156,7 +157,27 @@ public static class SecretFile
             accounts.Add(user);
         }
 
+        if (ServiceAccount() is { } service && !accounts.Contains(service))
+        {
+            accounts.Add(service);
+        }
+
         return accounts;
+    }
+
+    // The service's virtual account (NT SERVICE\AtcSoftVideoSurveillance), which exists only
+    // while the service is installed.
+    [SupportedOSPlatform("windows")]
+    private static SecurityIdentifier? ServiceAccount()
+    {
+        try
+        {
+            return (SecurityIdentifier)new NTAccount("NT SERVICE", ServerHosting.ServiceName).Translate(typeof(SecurityIdentifier));
+        }
+        catch (IdentityNotMappedException)
+        {
+            return null;
+        }
     }
 
     // Linux and macOS: the folder 700 and its files 600, so only the server's own user reads them.

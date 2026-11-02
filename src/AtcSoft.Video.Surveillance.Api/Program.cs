@@ -62,7 +62,10 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
 
 try
 {
-    var builder = WebApplication.CreateBuilder(hostArgs);
+    var builder = WebApplication.CreateBuilder(ServerHosting.Options(hostArgs));
+
+    // A Windows service when the server MSI's service starts it, a console app otherwise.
+    builder.UseWindowsServiceWhenStartedAsOne();
 
     // Port 8585 on this machine when no address is configured (ASP.NET's own default is 5000).
     if (!ServerAddress.IsConfigured(builder.Configuration))

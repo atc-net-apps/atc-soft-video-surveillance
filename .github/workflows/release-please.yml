@@ -147,6 +147,15 @@ jobs:
             installer: setup/AtcSoft.Video.Surveillance.Installer/AtcSoft.Video.Surveillance.Installer.wixproj
             installer_bin: setup/AtcSoft.Video.Surveillance.Installer/bin
             artifact: msi-installer-videosurveillance
+          # The server as a Windows service: self-contained, as a service has nobody to tell
+          # that a .NET runtime is missing.
+          - name: Server
+            app: src/AtcSoft.Video.Surveillance.Api/AtcSoft.Video.Surveillance.Api.csproj
+            publish_args: --runtime win-x64 --self-contained true
+            publish_dir: publish-server
+            installer: setup/AtcSoft.Video.Surveillance.Server.Installer/AtcSoft.Video.Surveillance.Server.Installer.wixproj
+            installer_bin: setup/AtcSoft.Video.Surveillance.Server.Installer/bin
+            artifact: msi-installer-server
 
     steps:
       - name: Checkout
@@ -161,7 +170,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Publish Application
-        run: dotnet publish ${{ matrix.app }} --configuration ${{ env.CONFIGURATION }} --output ./${{ matrix.publish_dir }}
+        run: dotnet publish ${{ matrix.app }} --configuration ${{ env.CONFIGURATION }} --output ./${{ matrix.publish_dir }} ${{ matrix.publish_args }}
 
       - name: Download FFmpeg
         run: |

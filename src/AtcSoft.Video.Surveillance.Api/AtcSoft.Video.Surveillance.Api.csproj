@@ -34,6 +34,8 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+    <!-- The same exe runs as a console app or as a Windows service (the server MSI). -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.13" />
     <ProjectReference Include="..\Atc.Video.Engine.DirectX\Atc.Video.Engine.DirectX.csproj" />
     <ProjectReference Include="..\AtcSoft.Video.Surveillance.Windows\AtcSoft.Video.Surveillance.Windows.csproj" />
   </ItemGroup>
