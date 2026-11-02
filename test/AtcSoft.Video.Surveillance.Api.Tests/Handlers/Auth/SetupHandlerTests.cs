@@ -85,6 +85,7 @@ public sealed class SetupHandlerTests
     {
         var context = new DefaultHttpContext();
         context.Connection.RemoteIpAddress = IPAddress.Parse(address);
+        context.Request.Host = new HostString("localhost", 8585);
         httpContextAccessor.HttpContext.Returns(context);
     }
 }

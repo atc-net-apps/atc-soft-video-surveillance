@@ -21,6 +21,31 @@ public sealed class LocalSetupTests
     public void Another_Machine_Is_Not_Local(string address)
         => LocalSetup.IsLocal(Request(address)).Should().BeFalse();
 
+    [Theory]
+    [InlineData("localhost")]
+    [InlineData("127.0.0.1")]
+    [InlineData("[::1]")]
+    public void The_Server_Opened_By_A_Loopback_Name_Is_Local(string host)
+    {
+        var context = Request("127.0.0.1");
+        context.Request.Host = new HostString(host, 8585);
+
+        LocalSetup.IsLocal(context).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("attacker.example")]
+    [InlineData("my-server")]
+    [InlineData("192.168.1.10")]
+    public void A_Page_That_Points_Its_Own_Name_At_The_Server_Is_Not_Local(
+        string host)
+    {
+        var context = Request("127.0.0.1");
+        context.Request.Host = new HostString(host, 8585);
+
+        LocalSetup.IsLocal(context).Should().BeFalse();
+    }
+
     [Fact]
     public void A_Request_Without_An_Address_Is_Not_Local()
         => LocalSetup.IsLocal(new DefaultHttpContext()).Should().BeFalse();
@@ -71,6 +96,7 @@ public sealed class LocalSetupTests
     {
         var context = new DefaultHttpContext();
         context.Connection.RemoteIpAddress = IPAddress.Parse(address);
+        context.Request.Host = new HostString("localhost", 8585);
         foreach (var (name, value) in headers)
         {
             context.Request.Headers[name] = value;

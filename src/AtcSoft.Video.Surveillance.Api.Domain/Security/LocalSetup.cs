@@ -6,8 +6,10 @@ namespace AtcSoft.Video.Surveillance.Api.Domain.Security;
 /// the code anyway. Everyone else needs the code from the data folder.
 /// </summary>
 /// <remarks>
-/// A request counts as local only when it came over the loopback connection and no proxy
-/// handled it: a proxy on the same machine connects from loopback too, so any
+/// A request counts as local only when it came over the loopback connection, to the address
+/// <c>localhost</c> (or a loopback address), and no proxy handled it. The address keeps out a web
+/// page that points its own name at 127.0.0.1 (DNS rebinding) while the server waits for its
+/// first admin. A proxy on the same machine connects from loopback too, so any
 /// <c>X-Forwarded-*</c> header (or the <c>X-Original-*</c> ones the forwarded-headers
 /// middleware leaves after reading them) means it came from somewhere else. A proxy on the
 /// same machine that sends none of them cannot be told from a local browser:
@@ -61,7 +63,7 @@ public sealed class LocalSetup
             address = address.MapToIPv4();
         }
 
-        if (!System.Net.IPAddress.IsLoopback(address))
+        if (!System.Net.IPAddress.IsLoopback(address) || !IsLoopbackHost(context.Request.Host.Host))
         {
             return false;
         }
@@ -77,5 +79,18 @@ public sealed class LocalSetup
         }
 
         return true;
+    }
+
+    // The address the browser was given: a web page that points its own name at 127.0.0.1
+    // (DNS rebinding) reaches the server from loopback too, but under its own name.
+    private static bool IsLoopbackHost(string host)
+    {
+        if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return System.Net.IPAddress.TryParse(host.Trim('[', ']'), out var address) &&
+               System.Net.IPAddress.IsLoopback(address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address);
     }
 }

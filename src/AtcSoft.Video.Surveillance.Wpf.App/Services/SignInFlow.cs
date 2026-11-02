@@ -11,6 +11,9 @@ public sealed class SignInFlow(
     GatewayService gateway,
     IConfiguration configuration)
 {
+    // Where a server keeps the setup code when it does not say (one from before it did).
+    private const string OlderServerSetupCodeFile = "setup-code.txt";
+
     /// <summary>
     /// Signs in; <see langword="false"/> when the user closed the dialog.
     /// </summary>
@@ -36,13 +39,16 @@ public sealed class SignInFlow(
     /// </summary>
     public async Task<bool> ShowDialogAsync(Window? owner)
     {
+        // A server from before it named the file always wants the code, and keeps it in the
+        // file it always had.
         var status = await gateway.GetSetupStatusAsync().ConfigureAwait(true);
+        var olderServer = string.IsNullOrEmpty(status?.SetupCodeFile);
         var viewModel = new AtcSoft.Video.Surveillance.Wpf.Dialogs.SignInDialogViewModel(
             setupRequired: status?.SetupRequired == true,
             signIn: auth.SignInAsync,
             completeSetup: auth.CompleteSetupAsync,
-            setupCodeRequired: status?.SetupCodeRequired != false,
-            setupCodeFile: status?.SetupCodeFile ?? string.Empty);
+            setupCodeRequired: olderServer || status!.SetupCodeRequired,
+            setupCodeFile: olderServer ? OlderServerSetupCodeFile : status!.SetupCodeFile);
         var dialog = new AtcSoft.Video.Surveillance.Wpf.Dialogs.SignInDialog(viewModel);
         if (owner is not null)
         {
