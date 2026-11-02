@@ -1,3 +1,4 @@
+#if WINDOWS
 namespace AtcSoft.Video.Surveillance.Api.Security;
 
 /// <summary>
@@ -121,3 +122,4 @@ public sealed class SecretFileTests : IDisposable
             .Distinct()
             .ToList();
 }
+#endif

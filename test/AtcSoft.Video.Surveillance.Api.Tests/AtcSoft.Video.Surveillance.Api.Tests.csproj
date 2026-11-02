@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- As the server: Windows on Windows, plain .NET elsewhere (the Linux test image). -->
+    <TargetFramework Condition="'$(OS)' == 'Windows_NT'">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(OS)' != 'Windows_NT'">net10.0</TargetFramework>
     <RootNamespace>AtcSoft.Video.Surveillance.Api</RootNamespace>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

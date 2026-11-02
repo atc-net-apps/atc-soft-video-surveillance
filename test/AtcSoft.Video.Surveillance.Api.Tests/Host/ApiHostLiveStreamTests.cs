@@ -618,7 +618,7 @@ public sealed class ApiHostLiveStreamTests(ApiHostFixture host)
         var process = Process.Start(startInfo)!;
         process.ErrorDataReceived += (_, _) => { };
         process.BeginErrorReadLine();
-        return process;
+        return TestStreams.Listening(process, port);
     }
 
     private static void Stop(Process process)

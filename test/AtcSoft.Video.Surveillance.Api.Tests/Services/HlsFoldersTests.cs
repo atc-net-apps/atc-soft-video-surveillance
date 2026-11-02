@@ -84,7 +84,7 @@ public sealed class HlsFoldersTests : IDisposable
 
     private static (int Pid, DateTime StartedUtc) ExitedProcess()
     {
-        using var process = Process.Start(new ProcessStartInfo("cmd", "/c exit 0")
+        using var process = Process.Start(OperatingSystem.IsWindows() ? new ProcessStartInfo("cmd", "/c exit 0") : new ProcessStartInfo("sh", "-c true")
         {
             UseShellExecute = false,
             CreateNoWindow = true,

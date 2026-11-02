@@ -3,15 +3,20 @@ global using System.Diagnostics;
 global using System.Globalization;
 global using System.Net;
 global using System.Net.Http.Json;
+#if WINDOWS
 global using System.Runtime.Versioning;
 global using System.Security.AccessControl;
+#endif
 global using System.Security.Claims;
+#if WINDOWS
 global using System.Security.Principal;
+#endif
 global using System.Text.Json;
 global using System.Text.Json.Nodes;
 
 global using Atc.Hosting;
 global using Atc.Video.Engine;
+global using Atc.Video.Engine.Capture;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Cameras;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Devices;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Layouts;

@@ -17,6 +17,8 @@ ENV ATCSOFT_FFMPEG_PATH=/opt/ffmpeg/lib \
 
 WORKDIR /src
 COPY . .
-RUN dotnet build test/Atc.Video.Engine.Tests -c Release
+RUN dotnet build test/Atc.Video.Engine.Tests -c Release \
+ && dotnet build test/AtcSoft.Video.Surveillance.Api.Tests -c Release
 
-CMD ["dotnet", "test", "--no-build", "-c", "Release", "--project", "test/Atc.Video.Engine.Tests"]
+# The engine, then the server (in-process, against live test streams).
+CMD ["sh", "-c", "dotnet test --no-build -c Release --project test/Atc.Video.Engine.Tests && dotnet test --no-build -c Release --project test/AtcSoft.Video.Surveillance.Api.Tests"]
