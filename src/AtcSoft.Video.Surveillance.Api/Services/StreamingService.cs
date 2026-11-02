@@ -499,14 +499,19 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
 
         var playlistPath = Path.Combine(outputDir, "stream.m3u8");
 
-        if (camera.Connection.Source == CameraSource.Usb)
+        // A USB camera is always streamed from its one pipeline. A network camera the server has
+        // open already (watched or recorded) is too, rather than through a second connection the
+        // camera may refuse; one it does not have open is streamed by the FFmpeg tool below.
+        pipelineHost ??= services?.GetService<ICameraPipelineHost>();
+        var pipeline = pipelineHost?.Acquire(camera, CameraPipelineUse.Viewing);
+        if (pipeline is null && camera.Connection.Source == CameraSource.Usb)
         {
-            pipelineHost ??= services?.GetService<ICameraPipelineHost>();
+            throw new InvalidOperationException(
+                "This USB camera cannot be opened right now: it is unplugged, or the server is still connecting to it. Try again in a moment.");
+        }
 
-            var pipeline = pipelineHost?.Acquire(camera, CameraPipelineUse.Viewing)
-                ?? throw new InvalidOperationException(
-                    "This USB camera cannot be opened right now: it is unplugged, or the server is still connecting to it. Try again in a moment.");
-
+        if (pipeline is not null)
+        {
             var host = pipelineHost!;
             LogHlsStreamStartedFromPipeline(cameraId, playlistPath);
             return new StreamSession(

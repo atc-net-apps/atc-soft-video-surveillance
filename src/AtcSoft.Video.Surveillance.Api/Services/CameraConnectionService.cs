@@ -140,9 +140,27 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
     {
         ArgumentNullException.ThrowIfNull(camera);
 
-        if (!Hosts(camera) || usbLifecycle.IsUnplugged(camera.Id))
+        if (usbLifecycle.IsUnplugged(camera.Id))
         {
             return null;
+        }
+
+        // A network camera is shared only while the server already has it open (watched for
+        // motion or recorded) and it plays: one connection to the camera instead of two, which
+        // cameras that take one or two viewers need. It is not opened here for a viewer alone.
+        if (!Hosts(camera))
+        {
+            lock (pipelineGate)
+            {
+                if (!managedPipelines.TryGetValue(camera.Id, out var open) || HasStoppedPlaying(open))
+                {
+                    return null;
+                }
+
+                AddUse(camera.Id, use);
+                LogSharedForUse(camera.Id, camera.Display.DisplayName, use);
+                return open;
+            }
         }
 
         lock (pipelineGate)
@@ -171,15 +189,23 @@ public sealed partial class CameraConnectionService : BackgroundServiceBase<Came
                 }
             }
 
-            if (!pipelineUses.TryGetValue(camera.Id, out var uses))
-            {
-                uses = [];
-                pipelineUses[camera.Id] = uses;
-            }
-
-            uses.Add(use);
+            AddUse(camera.Id, use);
             return pipeline;
         }
+    }
+
+    // Called under pipelineGate.
+    private void AddUse(
+        Guid cameraId,
+        CameraPipelineUse use)
+    {
+        if (!pipelineUses.TryGetValue(cameraId, out var uses))
+        {
+            uses = [];
+            pipelineUses[cameraId] = uses;
+        }
+
+        uses.Add(use);
     }
 
     /// <inheritdoc />

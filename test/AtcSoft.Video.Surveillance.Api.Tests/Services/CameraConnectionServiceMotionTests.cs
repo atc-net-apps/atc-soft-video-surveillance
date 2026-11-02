@@ -282,6 +282,29 @@ public sealed class CameraConnectionServiceMotionTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Viewer_Of_A_Watched_Network_Camera_Shares_Its_Connection()
+    {
+        // Before, live view opened a second connection with the FFmpeg tool, which cameras that take
+        // one or two viewers refuse, and which doubles what the camera sends.
+        await ConnectAsync();
+        pipeline.FramesDecoded.Returns(100);
+        pipeline.LastPacketUtc.Returns(_ => DateTime.UtcNow);
+
+        sut.Acquire(camera, CameraPipelineUse.Viewing).Should().BeSameAs(pipeline);
+
+        sut.Release(camera.Id, CameraPipelineUse.Viewing);
+        pipeline.DidNotReceive().Dispose();
+        motionDetection.DidNotReceive().StopDetection(camera.Id);
+    }
+
+    [Fact]
+    public void A_Network_Camera_The_Server_Has_Not_Open_Is_Not_Opened_For_A_Viewer()
+    {
+        sut.Acquire(camera, CameraPipelineUse.Viewing).Should().BeNull("the viewer gets its own stream from the FFmpeg tool");
+        pipelineFactory.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Fact]
     public void A_Motion_End_Raised_After_The_Pipeline_Was_Removed_Still_Ends_The_Motion_Recording()
     {
         // No pipeline is kept for the camera: it was just removed, and stopping

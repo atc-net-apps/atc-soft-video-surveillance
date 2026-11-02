@@ -74,6 +74,9 @@ public sealed partial class CameraConnectionService
     [LoggerMessage(Level = LogLevel.Information, Message = "Opening camera {CameraId} ({CameraName}) for {Use}")]
     private partial void LogOpeningForUse(Guid cameraId, string cameraName, CameraPipelineUse use);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Camera {CameraId} ({CameraName}) is open already: {Use} shares its connection")]
+    private partial void LogSharedForUse(Guid cameraId, string cameraName, CameraPipelineUse use);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "Camera {CameraId} ({CameraName}) could not be opened for {Use}")]
     private partial void LogOpenForUseFailed(Exception ex, Guid cameraId, string cameraName, CameraPipelineUse use);
 
