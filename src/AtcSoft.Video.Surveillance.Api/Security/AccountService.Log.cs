@@ -11,6 +11,9 @@ public sealed partial class AccountService
     [LoggerMessage(Level = LogLevel.Information, Message = "The first admin '{UserName}' was created")]
     private partial void LogSetupCompleted(string userName);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "The first admin '{UserName}' was created on the server's own machine, without the setup code")]
+    private partial void LogSetupCompletedLocally(string userName);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "A request to create the first admin had the wrong setup code")]
     private partial void LogWrongSetupCode();
 

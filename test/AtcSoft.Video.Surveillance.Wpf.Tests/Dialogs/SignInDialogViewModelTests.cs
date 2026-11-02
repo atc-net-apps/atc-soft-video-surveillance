@@ -67,7 +67,43 @@ public sealed class SignInDialogViewModelTests
         await sut.SignInAsync();
 
         sut.IsSetup.Should().BeTrue();
+        sut.IsSetupCodeRequired.Should().BeTrue();
         sut.Title.Should().Be("Create the first admin");
         setup.Should().Be(("ABCD", "admin", "a long password"));
+    }
+
+    [Fact]
+    public async Task On_The_Server_Itself_The_First_Admin_Needs_No_Code()
+    {
+        (string? Code, string User, string Password) setup = (string.Empty, string.Empty, string.Empty);
+        var sut = new SignInDialogViewModel(
+            setupRequired: true,
+            signIn: (_, _) => Task.FromResult<string?>("not called"),
+            completeSetup: (code, user, password) =>
+            {
+                setup = (code, user, password);
+                return Task.FromResult<string?>(null);
+            },
+            setupCodeRequired: false,
+            setupCodeFile: "setup-code.txt");
+        sut.UserName = "admin";
+        sut.Password = "a long password";
+
+        await sut.SignInAsync();
+
+        sut.IsSetupCodeRequired.Should().BeFalse();
+        setup.Should().Be((null, "admin", "a long password"));
+    }
+
+    [Fact]
+    public void The_Help_Names_The_File_The_Server_Keeps_The_Code_In()
+    {
+        var sut = new SignInDialogViewModel(
+            setupRequired: true,
+            signIn: (_, _) => Task.FromResult<string?>(null),
+            completeSetup: (_, _, _) => Task.FromResult<string?>(null),
+            setupCodeFile: "setup-code.txt");
+
+        sut.SetupCodeHelp.Should().Contain("setup-code.txt");
     }
 }

@@ -2,12 +2,14 @@ namespace AtcSoft.Video.Surveillance.Wpf.Dialogs;
 
 /// <summary>
 /// View model for the sign-in dialog: signs in, or on a new server creates the
-/// first admin with the setup code, and shows the server's reason when it refused.
+/// first admin (with the setup code, unless the dialog runs on the server's own
+/// machine), and shows the server's reason when it refused.
 /// </summary>
 public partial class SignInDialogViewModel : ViewModelBase
 {
     private readonly Func<string, string, Task<string?>> signIn;
-    private readonly Func<string, string, string, Task<string?>> completeSetup;
+    private readonly Func<string?, string, string, Task<string?>> completeSetup;
+    private readonly string setupCodeFile;
 
     [ObservableProperty]
     private string setupCode = string.Empty;
@@ -26,15 +28,21 @@ public partial class SignInDialogViewModel : ViewModelBase
     /// </summary>
     /// <param name="setupRequired">The server has no user yet: the dialog creates the first admin.</param>
     /// <param name="signIn">Signs in (user name, password); returns the server's reason when it refused.</param>
-    /// <param name="completeSetup">Creates the first admin (setup code, user name, password); returns the server's reason when it refused.</param>
+    /// <param name="completeSetup">Creates the first admin (setup code or <see langword="null"/>, user name, password); returns the server's reason when it refused.</param>
+    /// <param name="setupCodeRequired">The server wants the setup code from this client (not on the server's own machine).</param>
+    /// <param name="setupCodeFile">The name of the file with the setup code in the server's data folder.</param>
     public SignInDialogViewModel(
         bool setupRequired,
         Func<string, string, Task<string?>> signIn,
-        Func<string, string, string, Task<string?>> completeSetup)
+        Func<string?, string, string, Task<string?>> completeSetup,
+        bool setupCodeRequired = true,
+        string setupCodeFile = "")
     {
         IsSetup = setupRequired;
+        IsSetupCodeRequired = setupRequired && setupCodeRequired;
         this.signIn = signIn;
         this.completeSetup = completeSetup;
+        this.setupCodeFile = setupCodeFile;
     }
 
     public event EventHandler<DialogClosedEventArgs>? CloseRequested;
@@ -43,6 +51,14 @@ public partial class SignInDialogViewModel : ViewModelBase
     /// Gets a value indicating whether the dialog creates the first admin.
     /// </summary>
     public bool IsSetup { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the first admin needs the setup code from the server's data folder.
+    /// </summary>
+    public bool IsSetupCodeRequired { get; }
+
+    public string SetupCodeHelp
+        => string.Format(CultureInfo.CurrentCulture, Translations.SetupCodeHelp1, setupCodeFile);
 
     public string Title
         => IsSetup ? Translations.CreateTheFirstAdmin : Translations.SignInToTheServer;
@@ -59,7 +75,7 @@ public partial class SignInDialogViewModel : ViewModelBase
         try
         {
             Problem = IsSetup
-                ? await completeSetup(SetupCode.Trim(), UserName.Trim(), Password).ConfigureAwait(true)
+                ? await completeSetup(IsSetupCodeRequired ? SetupCode.Trim() : null, UserName.Trim(), Password).ConfigureAwait(true)
                 : await signIn(UserName.Trim(), Password).ConfigureAwait(true);
         }
         catch (HttpRequestException ex)

@@ -39,7 +39,7 @@ public sealed class ServerDataPaths
         WebhooksPath = Path.Combine(folder, "webhooks.json");
         AccountsPath = Path.Combine(folder, "accounts.json");
         RecordingIntentsPath = Path.Combine(folder, "recording-intents.json");
-        SetupCodePath = Path.Combine(folder, "setup-code.txt");
+        SetupCodePath = Path.Combine(folder, LocalSetup.SetupCodeFileName);
         SigningKeyPath = Path.Combine(folder, "signing.key");
         AuditLogPath = Path.Combine(folder, "audit.log");
         AvailabilityPath = Path.Combine(folder, "availability");

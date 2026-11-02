@@ -36,8 +36,13 @@ public sealed class SignInFlow(
     /// </summary>
     public async Task<bool> ShowDialogAsync(Window? owner)
     {
-        var setupRequired = await gateway.IsSetupRequiredAsync().ConfigureAwait(true) == true;
-        var viewModel = new AtcSoft.Video.Surveillance.Wpf.Dialogs.SignInDialogViewModel(setupRequired, auth.SignInAsync, auth.CompleteSetupAsync);
+        var status = await gateway.GetSetupStatusAsync().ConfigureAwait(true);
+        var viewModel = new AtcSoft.Video.Surveillance.Wpf.Dialogs.SignInDialogViewModel(
+            setupRequired: status?.SetupRequired == true,
+            signIn: auth.SignInAsync,
+            completeSetup: auth.CompleteSetupAsync,
+            setupCodeRequired: status?.SetupCodeRequired != false,
+            setupCodeFile: status?.SetupCodeFile ?? string.Empty);
         var dialog = new AtcSoft.Video.Surveillance.Wpf.Dialogs.SignInDialog(viewModel);
         if (owner is not null)
         {

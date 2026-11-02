@@ -2488,13 +2488,13 @@ Miniature:
     <value>Opret den første administrator</value>
   </data>
   <data name="CreateTheFirstAdminHelp" xml:space="preserve">
-    <value>Serveren har ingen brugere endnu. Opret den første administrator med opsætningskoden.</value>
+    <value>Serveren har ingen brugere endnu. Vælg brugernavn og adgangskode til den første administrator.</value>
   </data>
   <data name="SetupCode" xml:space="preserve">
     <value>Opsætningskode</value>
   </data>
-  <data name="SetupCodeHelp" xml:space="preserve">
-    <value>Koden står i filen setup-code.txt i serverens datamappe.</value>
+  <data name="SetupCodeHelp1" xml:space="preserve">
+    <value>Koden står i filen {0} i serverens datamappe; åbn den som administrator. En browser på selve serveren behøver ingen kode.</value>
   </data>
   <data name="SignedInAs1" xml:space="preserve">
     <value>Logget ind som {0}</value>

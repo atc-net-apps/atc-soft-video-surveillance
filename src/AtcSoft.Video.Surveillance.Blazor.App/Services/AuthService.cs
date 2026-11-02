@@ -75,7 +75,7 @@ public sealed class AuthService : IDisposable
     /// Creates the first admin and signs them in; returns the server's reason when it refused.
     /// </summary>
     public async Task<string?> CompleteSetupAsync(
-        string setupCode,
+        string? setupCode,
         string userName,
         string password)
     {

@@ -7,18 +7,20 @@ public interface IAccountService
 {
     /// <summary>
     /// Gets a value indicating whether the server has no user yet, so the first
-    /// admin is created with the setup code from the data folder.
+    /// admin is still to be created.
     /// </summary>
     bool IsSetupRequired { get; }
 
     /// <summary>
-    /// Creates the first admin, when the code is the one in the data folder and
-    /// the server has no user yet, and signs them in.
+    /// Creates the first admin, when the server has no user yet and the code is
+    /// the one in the data folder (or no code is needed: the request came from the
+    /// server's own machine), and signs them in.
     /// </summary>
     (SetupOutcome Outcome, AccountSession? Session) CompleteSetup(
-        string setupCode,
+        string? setupCode,
         string userName,
-        string password);
+        string password,
+        bool setupCodeRequired = true);
 
     /// <summary>
     /// Signs a user in; <see langword="null"/> when the name or the password is

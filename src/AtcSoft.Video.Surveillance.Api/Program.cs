@@ -349,7 +349,9 @@ try
 
     // The users and their sessions (accounts.json in the data folder), and
     // the bearer handler that checks the server's own access tokens. While
-    // the server has no user, setup-code.txt next to it creates the first admin.
+    // the server has no user, setup-code.txt next to it creates the first admin;
+    // a browser on the server's own machine needs no code (LocalSetup).
+    builder.Services.AddSingleton(new LocalSetup(builder.Configuration.GetValue(LocalSetup.AllowLocalKey, defaultValue: true)));
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton(sp => new AccountService(
         sp.GetRequiredService<ServerDataPaths>(),

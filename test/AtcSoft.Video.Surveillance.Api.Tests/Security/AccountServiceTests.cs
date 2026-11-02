@@ -99,6 +99,33 @@ public sealed class AccountServiceTests : IDisposable
     }
 
     [Fact]
+    public void On_The_Servers_Own_Machine_The_First_Admin_Needs_No_Setup_Code()
+    {
+        var sut = CreateSut();
+
+        var (outcome, session) = sut.CompleteSetup(setupCode: null, AdminName, AdminPassword, setupCodeRequired: false);
+
+        outcome.Should().Be(SetupOutcome.Done);
+        session!.Role.Should().Be(AccountRole.Admin);
+        File.Exists(paths.SetupCodePath).Should().BeFalse("the code is of no use any more");
+    }
+
+    [Fact]
+    public void Without_A_Setup_Code_Elsewhere_No_One_Is_Made()
+    {
+        var sut = CreateSut();
+
+        var (outcome, _) = sut.CompleteSetup(setupCode: null, AdminName, AdminPassword);
+
+        outcome.Should().Be(SetupOutcome.WrongCode);
+        sut.IsSetupRequired.Should().BeTrue();
+    }
+
+    [Fact]
+    public void The_Setup_Code_Is_In_The_File_The_Clients_Are_Told_Of()
+        => Path.GetFileName(paths.SetupCodePath).Should().Be(LocalSetup.SetupCodeFileName);
+
+    [Fact]
     public void A_Server_With_A_User_Cannot_Be_Set_Up_Again()
     {
         var sut = CreateSut();

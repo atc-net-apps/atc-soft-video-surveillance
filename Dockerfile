@@ -43,10 +43,14 @@ COPY --chmod=755 docker/healthcheck.sh /usr/local/bin/healthcheck
 # Owned by the image's user "app" (1654).
 COPY --from=ffmpeg --chown=1654:1654 /empty/data /data
 
+# The first admin: the setup code is in the log (a NAS shows the log, not the files). No browser
+# runs on the container's own machine, but a proxy sharing it (host network) would look like one,
+# so the code is always needed here.
 ENV ASPNETCORE_URLS=http://+:8585 \
     ASPNETCORE_ENVIRONMENT=Production \
     Storage__DataPath=/data \
     Setup__LogCode=true \
+    Setup__AllowLocal=false \
     ATCSOFT_FFMPEG_PATH=/opt/ffmpeg/lib \
     LD_LIBRARY_PATH=/opt/ffmpeg/lib \
     DOTNET_CLI_TELEMETRY_OPTOUT=1

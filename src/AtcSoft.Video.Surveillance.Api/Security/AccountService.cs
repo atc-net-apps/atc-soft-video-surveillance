@@ -138,9 +138,10 @@ public sealed partial class AccountService : IAccountService
 
     /// <inheritdoc />
     public (SetupOutcome Outcome, AccountSession? Session) CompleteSetup(
-        string setupCode,
+        string? setupCode,
         string userName,
-        string password)
+        string password,
+        bool setupCodeRequired = true)
     {
         lock (sync)
         {
@@ -149,11 +150,14 @@ public sealed partial class AccountService : IAccountService
                 return (SetupOutcome.AlreadySetUp, null);
             }
 
-            var expected = ReadSetupCode();
-            if (expected is null || !FixedTimeEquals(expected, setupCode.Trim().ToUpperInvariant()))
+            if (setupCodeRequired)
             {
-                LogWrongSetupCode();
-                return (SetupOutcome.WrongCode, null);
+                var expected = ReadSetupCode();
+                if (expected is null || !FixedTimeEquals(expected, (setupCode ?? string.Empty).Trim().ToUpperInvariant()))
+                {
+                    LogWrongSetupCode();
+                    return (SetupOutcome.WrongCode, null);
+                }
             }
 
             var user = new StoredUser
@@ -169,7 +173,15 @@ public sealed partial class AccountService : IAccountService
             Save();
 
             TryDelete(paths.SetupCodePath);
-            LogSetupCompleted(user.UserName);
+            if (setupCodeRequired)
+            {
+                LogSetupCompleted(user.UserName);
+            }
+            else
+            {
+                LogSetupCompletedLocally(user.UserName);
+            }
+
             return (SetupOutcome.Done, session);
         }
     }
