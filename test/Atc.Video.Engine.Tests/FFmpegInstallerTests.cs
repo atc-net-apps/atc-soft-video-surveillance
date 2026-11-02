@@ -88,6 +88,10 @@ public sealed class FFmpegInstallerTests : IDisposable
     [Fact]
     public async Task An_Install_In_Use_Is_Left_As_It_Was()
     {
+        // Windows keeps a file in use from being replaced; Linux and macOS do not, and the installer
+        // installs the Windows FFmpeg only.
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "A file in use is locked on Windows only.");
+
         // The server may run from the shared folder while a client installs.
         Directory.CreateDirectory(Target);
         var inUse = Path.Combine(Target, "avutil-60.dll");

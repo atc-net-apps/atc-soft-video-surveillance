@@ -27,11 +27,11 @@
             Visibility="{Binding IsSetup, Converter={StaticResource BoolToVisibility}}" />
         <atc:LabelTextBox
             Margin="0,4"
-            InformationText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SetupCodeHelp}"
+            InformationText="{Binding SetupCodeHelp}"
             IsMandatory="True"
             LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SetupCode}"
             Text="{Binding SetupCode, UpdateSourceTrigger=PropertyChanged}"
-            Visibility="{Binding IsSetup, Converter={StaticResource BoolToVisibility}}" />
+            Visibility="{Binding IsSetupCodeRequired, Converter={StaticResource BoolToVisibility}}" />
         <atc:LabelTextBox
             Margin="0,4"
             IsMandatory="True"

@@ -2488,13 +2488,13 @@ Thumbnail:
     <value>Create the first admin</value>
   </data>
   <data name="CreateTheFirstAdminHelp" xml:space="preserve">
-    <value>The server has no users yet. Create its first admin with the setup code.</value>
+    <value>The server has no users yet. Choose the user name and password of its first admin.</value>
   </data>
   <data name="SetupCode" xml:space="preserve">
     <value>Setup code</value>
   </data>
-  <data name="SetupCodeHelp" xml:space="preserve">
-    <value>The code is in the file setup-code.txt in the server's data folder.</value>
+  <data name="SetupCodeHelp1" xml:space="preserve">
+    <value>The code is in the file {0} in the server's data folder; open it as administrator. A browser on the server itself needs no code.</value>
   </data>
   <data name="SignedInAs1" xml:space="preserve">
     <value>Signed in as {0}</value>

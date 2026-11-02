@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- As the server: Windows on Windows, plain .NET elsewhere (the Linux test image). -->
+    <TargetFramework Condition="'$(OS)' == 'Windows_NT'">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(OS)' != 'Windows_NT'">net10.0</TargetFramework>
     <RootNamespace>AtcSoft.Video.Surveillance.Api</RootNamespace>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
@@ -18,6 +20,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Api\AtcSoft.Video.Surveillance.Api.csproj" />
     <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Api.Domain\AtcSoft.Video.Surveillance.Api.Domain.csproj" />
+    <!-- The server's web client, aliased as in the server: its generated API client has the same
+         type names as the contracts. -->
+    <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Blazor.App\AtcSoft.Video.Surveillance.Blazor.App.csproj" Aliases="webclient" />
   </ItemGroup>
 
 </Project>

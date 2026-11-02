@@ -45,7 +45,9 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     private readonly TimeProvider time;
 
     private readonly string hlsOutputRoot;
+#if WINDOWS
     private readonly KillOnCloseJob? processJob;
+#endif
     private ICameraPipelineHost? pipelineHost;
     private bool disposed;
 
@@ -86,6 +88,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         HlsFolders.SweepStale(root, logger);
         hlsOutputRoot = HlsFolders.CreateInstanceFolder(root);
 
+#if WINDOWS
         // Every FFmpeg goes into a job that ends it when the server ends,
         // however it ends.
         processJob = KillOnCloseJob.TryCreate(out var jobError);
@@ -93,6 +96,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         {
             LogProcessJobUnavailable(jobError ?? string.Empty);
         }
+#endif
     }
 
     /// <summary>
@@ -402,7 +406,9 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         sessions.Clear();
 
         // Ends any FFmpeg that did not stop when asked.
+#if WINDOWS
         processJob?.Dispose();
+#endif
 
         try
         {
@@ -493,14 +499,19 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
 
         var playlistPath = Path.Combine(outputDir, "stream.m3u8");
 
-        if (camera.Connection.Source == CameraSource.Usb)
+        // A USB camera is always streamed from its one pipeline. A network camera the server has
+        // open already (watched or recorded) is too, rather than through a second connection the
+        // camera may refuse; one it does not have open is streamed by the FFmpeg tool below.
+        pipelineHost ??= services?.GetService<ICameraPipelineHost>();
+        var pipeline = pipelineHost?.Acquire(camera, CameraPipelineUse.Viewing);
+        if (pipeline is null && camera.Connection.Source == CameraSource.Usb)
         {
-            pipelineHost ??= services?.GetService<ICameraPipelineHost>();
+            throw new InvalidOperationException(
+                "This USB camera cannot be opened right now: it is unplugged, or the server is still connecting to it. Try again in a moment.");
+        }
 
-            var pipeline = pipelineHost?.Acquire(camera, CameraPipelineUse.Viewing)
-                ?? throw new InvalidOperationException(
-                    "This USB camera cannot be opened right now: it is unplugged, or the server is still connecting to it. Try again in a moment.");
-
+        if (pipeline is not null)
+        {
             var host = pipelineHost!;
             LogHlsStreamStartedFromPipeline(cameraId, playlistPath);
             return new StreamSession(
@@ -536,6 +547,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start FFmpeg HLS process.");
 
+#if WINDOWS
         // Ended with the server, however the server ends; marked so a run
         // without the job can still be cleared up at the next start.
         string? jobError = "no job";
@@ -543,6 +555,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         {
             LogProcessNotInJob(cameraId, jobError ?? string.Empty);
         }
+#endif
 
         HlsFolders.MarkProcess(outputDir, process);
 

@@ -36,13 +36,26 @@ public static partial class ServerVideoDecoding
             return null;
         }
 
+#if WINDOWS
         LogHardwareDecoding(logger);
         return new Atc.Video.Engine.DirectX.D3D11AcceleratorFactory();
+#else
+        // D3D11 is Windows only; the Docker image and other platforms decode on the processor.
+        LogHardwareDecodingNotAvailable(logger, ConfigurationKey);
+        return null;
+#endif
     }
+
+#if !WINDOWS
+    [LoggerMessage(Level = LogLevel.Warning, Message = "{Key} is true, but decoding on the graphics card is not available on this platform: video is decoded on the processor")]
+    private static partial void LogHardwareDecodingNotAvailable(ILogger logger, string key);
+#endif
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Video is decoded on the processor; set {Key} to true to decode on the graphics card")]
     private static partial void LogProcessorDecoding(ILogger logger, string key);
 
+#if WINDOWS
     [LoggerMessage(Level = LogLevel.Information, Message = "Video is decoded on the graphics card (D3D11VA) where a camera's player can open it, otherwise on the processor")]
     private static partial void LogHardwareDecoding(ILogger logger);
+#endif
 }

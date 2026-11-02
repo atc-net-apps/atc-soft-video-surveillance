@@ -39,6 +39,7 @@ public sealed class GetStorageStatusHandlerTests
     [Fact]
     public async Task A_Recording_Folder_Without_A_Readable_Disk_Is_Reported_As_Unavailable()
     {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows has drive letters that can be missing.");
         recording.RecordingPath = "Q:\\does-not-exist\\recordings";
 
         var result = await new GetStorageStatusHandler(settings).ExecuteAsync(TestContext.Current.CancellationToken);
@@ -49,6 +50,7 @@ public sealed class GetStorageStatusHandlerTests
     [Fact]
     public async Task An_Unreadable_Disk_Says_When_To_Ask_Again()
     {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows has drive letters that can be missing.");
         recording.RecordingPath = "Q:\\does-not-exist\\recordings";
 
         var result = await new GetStorageStatusHandler(settings).ExecuteAsync(TestContext.Current.CancellationToken);

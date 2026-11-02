@@ -13,7 +13,7 @@
            Color="Color.Primary"
            StartIcon="@Icons.Material.Filled.Add"
            Class="mb-4"
-           Href="/cameras/create">
+           Href="cameras/create">
     @Translations.AddCamera
 </MudButton>
 
@@ -57,7 +57,7 @@ else
                 <MudTooltip Text="@Translations.Edit">
                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                    Size="Size.Small"
-                                   OnClick="@(() => Navigation.NavigateTo($"/cameras/{context.Id}/edit"))" />
+                                   OnClick="@(() => Navigation.NavigateTo($"cameras/{context.Id}/edit"))" />
                 </MudTooltip>
                 <MudTooltip Text="@Translations.DownloadASnapshot">
                     <MudIconButton Icon="@Icons.Material.Filled.CameraAlt"

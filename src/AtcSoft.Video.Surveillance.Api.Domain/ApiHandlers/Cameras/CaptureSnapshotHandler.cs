@@ -55,17 +55,16 @@ public sealed class CaptureSnapshotHandler(
 
         using var pipeline = pipelineFactory.Create(camera);
 
-        // pipelineFactory.Create returns before RTSP open completes; the
-        // player is in Opening state. CaptureFrameAsync returns null when
-        // state != Playing, so without this wait the handler reports
-        // "Failed to capture frame" on practically every cold call.
-        var connected = await PipelineConnectionWaiter
-            .WaitForConnectedAsync(pipeline, ConnectionTimeout, cancellationToken)
+        // pipelineFactory.Create returns before the camera is open, and the player says it plays
+        // before it has decoded its first picture: without a picture there is nothing to capture,
+        // so the wait is for the first picture.
+        var playing = await PipelineConnectionWaiter
+            .WaitForPicturesAsync(pipeline, ConnectionTimeout, cancellationToken)
             .ConfigureAwait(false);
-        if (!connected)
+        if (!playing)
         {
             return CaptureSnapshotResult.ServiceUnavailable(
-                $"Camera {parameters.CameraId} did not reach Connected within {ConnectionTimeout.TotalSeconds:N0}s.", retryAfter: RetryAfterSeconds);
+                $"Camera {parameters.CameraId} delivered no picture within {ConnectionTimeout.TotalSeconds:N0}s.", retryAfter: RetryAfterSeconds);
         }
 
         return await CaptureAndSaveAsync(pipeline, camera, cancellationToken).ConfigureAwait(false);

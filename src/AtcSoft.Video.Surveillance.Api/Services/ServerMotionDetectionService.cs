@@ -37,8 +37,8 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="frameReader">
-    /// Turns a captured picture into a grayscale one. Optional: a host that
-    /// cannot read pictures (not Windows) runs without motion detection.
+    /// Turns a captured picture into a grayscale one, for a pipeline that cannot give grey
+    /// pictures itself. Optional: the server's pipelines give them on every platform.
     /// </param>
     /// <param name="timeProvider">The clock; the system's when not given.</param>
     /// <param name="runLoops">
@@ -241,7 +241,7 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
         Guid cameraId,
         CancellationToken cancellationToken = default)
     {
-        if (frameReader is null || !contexts.TryGetValue(cameraId, out var context))
+        if (!contexts.TryGetValue(cameraId, out var context))
         {
             return;
         }
@@ -251,14 +251,19 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
         try
         {
             // Grey straight from the decoded picture; a PNG read back as grey where the pipeline
-            // cannot make one.
+            // cannot make one and this platform can read a PNG (Windows).
             current = await context.Pipeline.CaptureGreyAsync(width, height, cancellationToken).ConfigureAwait(false);
-            if (current?.Length != width * height)
+            if (current?.Length != width * height && frameReader is not null)
             {
                 var picture = await context.Pipeline.CaptureFrameAsync(cancellationToken).ConfigureAwait(false);
                 current = picture is { Length: > 0 }
                     ? frameReader.ReadGrayscale(picture, width, height)
                     : null;
+            }
+
+            if (current?.Length != width * height)
+            {
+                current = null;
             }
 
             context.ConsecutiveFailures = 0;
@@ -308,12 +313,6 @@ public sealed partial class ServerMotionDetectionService : IMotionDetectionServi
         bool reportsMotion)
     {
         ArgumentNullException.ThrowIfNull(pipeline);
-
-        if (frameReader is null)
-        {
-            LogMotionDetectionNotAvailable(cameraId);
-            return;
-        }
 
         if (contexts.TryGetValue(cameraId, out var running))
         {

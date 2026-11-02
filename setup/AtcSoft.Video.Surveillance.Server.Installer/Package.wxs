@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package
+    Name="AtcSoft Video Surveillance Server"
+    Manufacturer="AtcSoft"
+    Version="$(ProductVersion)"
+    UpgradeCode="281DEE31-CFDE-44BF-B559-1472531015FC"
+    Scope="perMachine">
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+      AllowSameVersionUpgrades="yes" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- The port the server listens on, on every network address of the PC, and the one the
+         firewall opens: msiexec /i ... PORT=9000. 8585 by default (5000 is Synology's and macOS's). -->
+    <Property Id="PORT" Value="8585" Secure="yes" />
+
+    <Feature Id="ProductFeature" Title="AtcSoft Video Surveillance Server" Level="1">
+      <ComponentGroupRef Id="HarvestedComponents" />
+      <ComponentRef Id="ServerService" />
+      <ComponentRef Id="WebClientShortcut" />
+      <ComponentRef Id="DataFolder" />
+    </Feature>
+
+    <Icon Id="ServerIcon" SourceFile="$(IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="ServerIcon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+    <!-- The last page opens the web client, ticked by default: a browser on this PC creates the
+         first admin with just a user name and password (no setup code). Not when removing. -->
+    <SetProperty
+      Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT"
+      Value="Open AtcSoft Video Surveillance in the browser"
+      After="CostFinalize"
+      Sequence="ui"
+      Condition="NOT REMOVE" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <CustomAction
+      Id="OpenWebClient"
+      BinaryRef="Wix4UtilCA_X64"
+      DllEntry="WixShellExec"
+      Impersonate="yes" />
+
+    <UI>
+      <ui:WixUI Id="WixUI_InstallDir" />
+      <Publish
+        Dialog="ExitDialog"
+        Control="Finish"
+        Property="WixShellExecTarget"
+        Value="http://localhost:[PORT]/"
+        Order="1"
+        Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT REMOVE" />
+      <Publish
+        Dialog="ExitDialog"
+        Control="Finish"
+        Event="DoAction"
+        Value="OpenWebClient"
+        Order="2"
+        Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT REMOVE" />
+    </UI>
+
+  </Package>
+</Wix>

@@ -56,6 +56,7 @@ public sealed partial class AccountService : IAccountService
     private readonly ServerDataPaths paths;
     private readonly TimeProvider time;
     private readonly ILogger<AccountService> logger;
+    private readonly bool logSetupCode;
     private readonly PasswordHasher<StoredUser> hasher = new();
     private readonly StoredAccounts file;
     private readonly ServerDataFile accountsFile;
@@ -69,13 +70,15 @@ public sealed partial class AccountService : IAccountService
     public AccountService(
         ServerDataPaths paths,
         TimeProvider time,
-        ILogger<AccountService> logger)
+        ILogger<AccountService> logger,
+        bool logSetupCode = false)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
         this.paths = paths;
         this.time = time;
         this.logger = logger;
+        this.logSetupCode = logSetupCode;
         Tokens = new AccessTokens(paths.SigningKeyPath, time);
 
         // Files an older server wrote with the folder's access are kept from
@@ -135,9 +138,10 @@ public sealed partial class AccountService : IAccountService
 
     /// <inheritdoc />
     public (SetupOutcome Outcome, AccountSession? Session) CompleteSetup(
-        string setupCode,
+        string? setupCode,
         string userName,
-        string password)
+        string password,
+        bool setupCodeRequired = true)
     {
         lock (sync)
         {
@@ -146,11 +150,14 @@ public sealed partial class AccountService : IAccountService
                 return (SetupOutcome.AlreadySetUp, null);
             }
 
-            var expected = ReadSetupCode();
-            if (expected is null || !FixedTimeEquals(expected, setupCode.Trim().ToUpperInvariant()))
+            if (setupCodeRequired)
             {
-                LogWrongSetupCode();
-                return (SetupOutcome.WrongCode, null);
+                var expected = ReadSetupCode();
+                if (expected is null || !FixedTimeEquals(expected, (setupCode ?? string.Empty).Trim().ToUpperInvariant()))
+                {
+                    LogWrongSetupCode();
+                    return (SetupOutcome.WrongCode, null);
+                }
             }
 
             var user = new StoredUser
@@ -166,7 +173,15 @@ public sealed partial class AccountService : IAccountService
             Save();
 
             TryDelete(paths.SetupCodePath);
-            LogSetupCompleted(user.UserName);
+            if (setupCodeRequired)
+            {
+                LogSetupCompleted(user.UserName);
+            }
+            else
+            {
+                LogSetupCompletedLocally(user.UserName);
+            }
+
             return (SetupOutcome.Done, session);
         }
     }
@@ -722,15 +737,25 @@ public sealed partial class AccountService : IAccountService
 
     private void EnsureSetupCode()
     {
-        if (ReadSetupCode() is null)
+        var code = ReadSetupCode();
+        if (code is null)
         {
             // Whoever reads the code becomes the first admin.
-            var code = new string(RandomNumberGenerator.GetItems(SetupCodeAlphabet.AsSpan(), SetupCodeLength));
+            code = new string(RandomNumberGenerator.GetItems(SetupCodeAlphabet.AsSpan(), SetupCodeLength));
             SecretFile.WriteAllText(paths.SetupCodePath, code);
         }
 
-        // Where the code is, never the code itself.
-        LogSetupRequired(paths.SetupCodePath);
+        // Where the code is, not the code itself: a log may be read by more people than the
+        // data folder. Only where the log is the way in (a container on a NAS, whose UI shows the
+        // log but not its files) is the code written too, and only while there is no user.
+        if (logSetupCode)
+        {
+            LogSetupRequiredWithCode(paths.SetupCodePath, code);
+        }
+        else
+        {
+            LogSetupRequired(paths.SetupCodePath);
+        }
     }
 
     private string? ReadSetupCode()

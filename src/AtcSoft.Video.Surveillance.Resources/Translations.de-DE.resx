@@ -2488,13 +2488,13 @@ Vorschaubild:
     <value>Den ersten Administrator anlegen</value>
   </data>
   <data name="CreateTheFirstAdminHelp" xml:space="preserve">
-    <value>Der Server hat noch keine Benutzer. Legen Sie mit dem Einrichtungscode den ersten Administrator an.</value>
+    <value>Der Server hat noch keine Benutzer. Wählen Sie Benutzername und Kennwort des ersten Administrators.</value>
   </data>
   <data name="SetupCode" xml:space="preserve">
     <value>Einrichtungscode</value>
   </data>
-  <data name="SetupCodeHelp" xml:space="preserve">
-    <value>Der Code steht in der Datei setup-code.txt im Datenordner des Servers.</value>
+  <data name="SetupCodeHelp1" xml:space="preserve">
+    <value>Der Code steht in der Datei {0} im Datenordner des Servers; öffnen Sie sie als Administrator. Ein Browser auf dem Server selbst braucht keinen Code.</value>
   </data>
   <data name="SignedInAs1" xml:space="preserve">
     <value>Angemeldet als {0}</value>

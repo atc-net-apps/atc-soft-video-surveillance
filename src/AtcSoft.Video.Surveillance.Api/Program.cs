@@ -3,13 +3,31 @@
 // The data folder is read from the environment and the command line here:
 // logging is set up before the host, and its configuration, exist.
 // --install-ffmpeg is taken out first: the host would read it as a configuration key.
-var installFFmpeg = ServerFFmpegStartup.TakeInstallArgument(args, out var hostArgs);
+var resetPassword = ServerPasswordReset.TakeArgument(args, out var resetUserName, out var serverArgs);
+var installFFmpeg = ServerFFmpegStartup.TakeInstallArgument(serverArgs, out var hostArgs);
+
+// --reset-password <user>: a new password for a user, on the console; the server does not start.
+if (resetPassword)
+{
+    var resetConfiguration = new ConfigurationBuilder()
+        .SetBasePath(AppContext.BaseDirectory)
+        .AddJsonFile("appsettings.json", optional: true)
+        .AddEnvironmentVariables()
+        .AddCommandLine(hostArgs)
+        .Build();
+    Environment.ExitCode = ServerPasswordReset.Run(
+        new ServerDataPaths(resetConfiguration[ServerDataPaths.ConfigurationKey]),
+        resetUserName,
+        Console.Out);
+    return;
+}
+
 var earlyConfiguration = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .AddCommandLine(hostArgs)
     .Build();
-var advancedSettings = LoadAdvancedSettingsForLogging(
-    new ServerDataPaths(earlyConfiguration[ServerDataPaths.ConfigurationKey]).SettingsPath);
+var earlyPaths = new ServerDataPaths(earlyConfiguration[ServerDataPaths.ConfigurationKey]);
+var advancedSettings = LoadAdvancedSettingsForLogging(earlyPaths.SettingsPath);
 
 // Drop framework Debug noise (Kestrel connection lifecycle, request matching,
 // static file middleware) but keep AtcSoft.*
@@ -37,6 +55,17 @@ if (advancedSettings.EnableDebugLogging)
             outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
             formatProvider: System.Globalization.CultureInfo.InvariantCulture);
 }
+else if (ServerHosting.RunsAsWindowsService())
+{
+    // A service has no console: its log goes to the data folder's logs, so a service that
+    // stops says why.
+    loggerConfig.WriteTo.File(
+        Path.Combine(earlyPaths.LogsPath, "video-surveillance-api-.log"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 7,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
+        formatProvider: System.Globalization.CultureInfo.InvariantCulture);
+}
 
 // Under Aspire the logs (binding errors included) also go to the dashboard; the sink reads
 // the OTEL_EXPORTER_OTLP_* variables Aspire sets (endpoint, headers, protocol, service name).
@@ -62,7 +91,16 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
 
 try
 {
-    var builder = WebApplication.CreateBuilder(hostArgs);
+    var builder = WebApplication.CreateBuilder(ServerHosting.Options(hostArgs));
+
+    // A Windows service when the server MSI's service starts it, a console app otherwise.
+    builder.UseWindowsServiceWhenStartedAsOne();
+
+    // Port 8585 on this machine when no address is configured (ASP.NET's own default is 5000).
+    if (!ServerAddress.IsConfigured(builder.Configuration))
+    {
+        builder.WebHost.UseUrls(ServerAddress.DefaultUrl);
+    }
 
     builder.Host.UseSerilog();
 
@@ -170,13 +208,13 @@ try
     // Null fallback.
     builder.Services.AddSingleton<IUsbCameraEnumerator>(NullUsbCameraEnumerator.Instance);
     builder.Services.AddSingleton<IUsbCameraWatcher, NullUsbCameraWatcher>();
+#if WINDOWS
     if (OperatingSystem.IsWindows())
     {
         AtcSoft.Video.Surveillance.Windows.DependencyInjection.ServiceCollectionExtensions
             .AddWindowsUsbCameraSupport(builder.Services);
 
-        // Recording thumbnails are drawn with GDI+. On another platform the
-        // recording service simply gets no generator and records without them.
+        // Recording thumbnails and previews are drawn with GDI+ on Windows.
         AtcSoft.Video.Surveillance.Windows.DependencyInjection.ServiceCollectionExtensions
             .AddWindowsRecordingThumbnails(builder.Services);
 
@@ -184,6 +222,13 @@ try
         AtcSoft.Video.Surveillance.Windows.DependencyInjection.ServiceCollectionExtensions
             .AddWindowsMotionFrameReader(builder.Services);
     }
+#endif
+
+    // Elsewhere (Linux, macOS, the Docker image) they are drawn with FFmpeg.
+    Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+        .TryAddSingleton<IThumbnailGeneratorService, PortableThumbnailGenerator>(builder.Services);
+    Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+        .TryAddSingleton<IRecordingPreviewBuilder, PortableRecordingPreviewBuilder>(builder.Services);
 
     // Lifecycle coordinator translates raw watcher events into
     // per-camera Unplugged / Replugged transitions for
@@ -204,8 +249,8 @@ try
     // API from a non-loopback host.
     string[] defaultAllowedOrigins =
     [
-        "http://localhost:5000",
-        "https://localhost:5001",
+        "http://localhost:8585",
+        "https://localhost:8586",
         "http://localhost:39576",   // Blazor.App default HTTP
         "https://localhost:39575",  // Blazor.App default HTTPS
     ];
@@ -333,12 +378,15 @@ try
 
     // The users and their sessions (accounts.json in the data folder), and
     // the bearer handler that checks the server's own access tokens. While
-    // the server has no user, setup-code.txt next to it creates the first admin.
+    // the server has no user, setup-code.txt next to it creates the first admin;
+    // a browser on the server's own machine needs no code (LocalSetup).
+    builder.Services.AddSingleton(new LocalSetup(builder.Configuration.GetValue(LocalSetup.AllowLocalKey, defaultValue: true)));
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton(sp => new AccountService(
         sp.GetRequiredService<ServerDataPaths>(),
         sp.GetRequiredService<TimeProvider>(),
-        sp.GetRequiredService<ILogger<AccountService>>()));
+        sp.GetRequiredService<ILogger<AccountService>>(),
+        logSetupCode: builder.Configuration.GetValue("Setup:LogCode", defaultValue: false)));
     builder.Services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<AccountService>());
     builder.Services.AddSingleton<IAuditLog>(sp => new AuditLog(
         sp.GetRequiredService<ServerDataPaths>().AuditLogPath,
@@ -380,7 +428,15 @@ try
     builder.Services.AddSingleton(new ServerHeartbeatServiceOptions());
     builder.Services.AddHostedService<ServerHeartbeatService>();
 
+    // Behind a reverse proxy: the client's own address and scheme, from a proxy the server trusts.
+    builder.Services.Configure<ForwardedHeadersOptions>(options => ReverseProxy.Configure(options, builder.Configuration));
+
     var app = builder.Build();
+
+    // First, so that everything after it (the HTTPS redirect, the rate limits, the audit log)
+    // sees the client and not the proxy.
+    // A path the server lives under (PathBase, X-Forwarded-Prefix) is taken off here too.
+    app.UseReverseProxy();
 
     // HTTPS when the server was given an HTTPS endpoint, outside development
     // only: under Aspire the clients also reach the plain "public" endpoint,
@@ -393,16 +449,20 @@ try
 
     app.UseCors();
 
-    if (app.Environment.IsDevelopment())
+    // The web client from the server's own address (/ and every page a browser opens), unless
+    // turned off for a client hosted elsewhere.
+    if (WebClientHosting.IsEnabled(app.Configuration))
     {
-        app.MapOpenApi();
-        app.MapScalarApiReference();
+        app.UseWebClient();
     }
 
-    // Redirect root to Scalar API docs
-    app
-        .MapGet("/", () => Results.Redirect("/scalar/v1"))
-        .ExcludeFromDescription();
+    // The API's description (/openapi/v1.json) and its reference (/api-reference), outside
+    // development too, unless turned off.
+    if (app.Configuration.GetValue("ApiReference:Enabled", defaultValue: true))
+    {
+        app.MapOpenApi();
+        app.MapScalarApiReference("/api-reference");
+    }
 
     // Every change a caller makes is written into the audit log (audit.log).
     app.UseMiddleware<AuditMiddleware>();
@@ -567,6 +627,9 @@ try
     });
 
     Log.Information("Video Surveillance API starting");
+
+    // Held while the server runs: --reset-password refuses to change the users meanwhile.
+    using var serverLock = ServerLock.TryAcquire(app.Services.GetRequiredService<ServerDataPaths>().LockPath);
 
     await app
         .RunAsync()

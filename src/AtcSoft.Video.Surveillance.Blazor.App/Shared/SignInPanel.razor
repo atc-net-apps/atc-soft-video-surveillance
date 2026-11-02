@@ -1,4 +1,5 @@
-@* Shown instead of the pages until this browser is signed in; on a new server it creates the first admin. *@
+@* Shown instead of the pages until this browser is signed in; on a new server it creates the first admin
+   (with the setup code, unless this browser runs on the server itself). *@
 @inject AuthService Auth
 @inject GatewayService Gateway
 
@@ -7,21 +8,24 @@
     {
         <MudProgressLinear Indeterminate="true" />
     }
-    else if (setupRequired is null)
+    else if (status is null)
     {
         <MudAlert Severity="Severity.Error">@Translations.ServerDidNotAnswer</MudAlert>
     }
     else
     {
         <MudStack Spacing="3">
-            @if (setupRequired == true)
+            @if (SetupRequired)
             {
                 <MudText Typo="Typo.h5">@Translations.CreateTheFirstAdmin</MudText>
                 <MudText Typo="Typo.body2">@Translations.CreateTheFirstAdminHelp</MudText>
-                <MudTextField @bind-Value="setupCode"
-                              Label="@Translations.SetupCode"
-                              HelperText="@Translations.SetupCodeHelp"
-                              Variant="Variant.Outlined" />
+                @if (status.SetupCodeRequired)
+                {
+                    <MudTextField @bind-Value="setupCode"
+                                  Label="@Translations.SetupCode"
+                                  HelperText="@SetupCodeHelp"
+                                  Variant="Variant.Outlined" />
+                }
             }
             else
             {
@@ -31,12 +35,12 @@
             <MudTextField @bind-Value="userName"
                           Label="@Translations.Username"
                           Variant="Variant.Outlined"
-                          AutoFocus="@(setupRequired == false)" />
+                          AutoFocus="@(!SetupRequired || !status.SetupCodeRequired)" />
             <MudTextField @bind-Value="password"
                           Label="@Translations.Password"
                           InputType="InputType.Password"
                           Variant="Variant.Outlined"
-                          HelperText="@(setupRequired == true ? Translations.PasswordTooShort : null)"
+                          HelperText="@(SetupRequired ? Translations.PasswordTooShort : null)"
                           OnKeyUp="OnPasswordKeyUpAsync" />
 
             @if (problem is not null)
@@ -56,7 +60,7 @@
 
 @code {
     private bool isLoading = true;
-    private bool? setupRequired;
+    private SetupStatus? status;
     private bool busy;
     private string setupCode = string.Empty;
     private string userName = string.Empty;
@@ -72,13 +76,19 @@
                 return Translations.SigningIn;
             }
 
-            return setupRequired == true ? Translations.CreateTheFirstAdmin : Translations.SignIn;
+            return SetupRequired ? Translations.CreateTheFirstAdmin : Translations.SignIn;
         }
     }
 
+    private bool SetupRequired
+        => status?.SetupRequired == true;
+
+    private string SetupCodeHelp
+        => string.Format(CultureInfo.CurrentCulture, Translations.SetupCodeHelp1, status?.SetupCodeFile);
+
     protected override async Task OnInitializedAsync()
     {
-        setupRequired = await Gateway.IsSetupRequiredAsync();
+        status = await Gateway.GetSetupStatusAsync();
         isLoading = false;
     }
 
@@ -101,7 +111,7 @@
         problem = null;
         StateHasChanged();
 
-        problem = setupRequired == true
+        problem = SetupRequired
             ? await Auth.CompleteSetupAsync(setupCode, userName, password)
             : await Auth.SignInAsync(userName, password);
 

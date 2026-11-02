@@ -33,7 +33,7 @@
             Margin="0,0,0,12"
             LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ServerUrl}"
             Text="{Binding Path=Url, UpdateSourceTrigger=PropertyChanged}"
-            WatermarkText="https://server:5000" />
+            WatermarkText="http://server:8585" />
 
         <!--  Description  -->
         <atc:LabelTextBox

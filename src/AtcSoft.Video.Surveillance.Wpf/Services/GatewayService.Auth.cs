@@ -7,10 +7,10 @@ namespace AtcSoft.Video.Surveillance.Wpf.Services;
 public sealed partial class GatewayService
 {
     /// <summary>
-    /// Gets whether the server still needs its first admin; <see langword="null"/>
-    /// when it could not be reached.
+    /// Gets whether the server still needs its first admin, and whether this client needs
+    /// the setup code for it; <see langword="null"/> when the server could not be reached.
     /// </summary>
-    public async Task<bool?> IsSetupRequiredAsync(
+    public async Task<SetupStatus?> GetSetupStatusAsync(
         CancellationToken cancellationToken = default)
     {
         try
@@ -20,7 +20,7 @@ public sealed partial class GatewayService
                 .ConfigureAwait(false);
 
             return result.IsOk
-                ? result.OkContent.SetupRequired
+                ? result.OkContent
                 : null;
         }
         catch (HttpRequestException)
@@ -30,12 +30,15 @@ public sealed partial class GatewayService
     }
 
     public async Task<(Session? Session, string? Problem)> CompleteSetupAsync(
-        string setupCode,
+        string? setupCode,
         string userName,
         string password,
         CancellationToken cancellationToken = default)
     {
-        var parameters = new CompleteSetupParameters(Request: new CompleteSetupRequest(setupCode, userName, password));
+        var parameters = new CompleteSetupParameters(Request: new CompleteSetupRequest(
+            UserName: userName,
+            Password: password,
+            SetupCode: string.IsNullOrWhiteSpace(setupCode) ? null : setupCode));
         var result = await completeSetupEndpoint
             .ExecuteAsync(parameters, cancellationToken: cancellationToken)
             .ConfigureAwait(false);

@@ -40,6 +40,39 @@ public sealed class AccountServiceTests : IDisposable
     }
 
     [Fact]
+    public void The_Log_Says_Where_The_Setup_Code_Is_But_Not_The_Code()
+    {
+        var log = new CollectingLogger();
+
+        _ = new AccountService(paths, time, log);
+
+        var code = ReadSetupCode();
+        log.Messages.Should().ContainSingle(m => m.Contains(paths.SetupCodePath, StringComparison.Ordinal));
+        log.Messages.Should().NotContain(m => m.Contains(code, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Where_The_Log_Is_The_Way_In_It_Has_The_Setup_Code_Too()
+    {
+        var log = new CollectingLogger();
+
+        _ = new AccountService(paths, time, log, logSetupCode: true);
+
+        log.Messages.Should().ContainSingle(m => m.Contains(ReadSetupCode(), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_Server_With_Its_First_Admin_Logs_No_Setup_Code()
+    {
+        CreateSetUpSut();
+        var log = new CollectingLogger();
+
+        _ = new AccountService(paths, time, log, logSetupCode: true);
+
+        log.Messages.Should().NotContain(m => m.Contains("setup code", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void The_Setup_Code_Makes_The_First_Admin_And_Is_Gone_Afterwards()
     {
         var sut = CreateSut();
@@ -64,6 +97,33 @@ public sealed class AccountServiceTests : IDisposable
         session.Should().BeNull();
         sut.IsSetupRequired.Should().BeTrue();
     }
+
+    [Fact]
+    public void On_The_Servers_Own_Machine_The_First_Admin_Needs_No_Setup_Code()
+    {
+        var sut = CreateSut();
+
+        var (outcome, session) = sut.CompleteSetup(setupCode: null, AdminName, AdminPassword, setupCodeRequired: false);
+
+        outcome.Should().Be(SetupOutcome.Done);
+        session!.Role.Should().Be(AccountRole.Admin);
+        File.Exists(paths.SetupCodePath).Should().BeFalse("the code is of no use any more");
+    }
+
+    [Fact]
+    public void Without_A_Setup_Code_Elsewhere_No_One_Is_Made()
+    {
+        var sut = CreateSut();
+
+        var (outcome, _) = sut.CompleteSetup(setupCode: null, AdminName, AdminPassword);
+
+        outcome.Should().Be(SetupOutcome.WrongCode);
+        sut.IsSetupRequired.Should().BeTrue();
+    }
+
+    [Fact]
+    public void The_Setup_Code_Is_In_The_File_The_Clients_Are_Told_Of()
+        => Path.GetFileName(paths.SetupCodePath).Should().Be(LocalSetup.SetupCodeFileName);
 
     [Fact]
     public void A_Server_With_A_User_Cannot_Be_Set_Up_Again()
@@ -312,5 +372,25 @@ public sealed class AccountServiceTests : IDisposable
 
             Directory.Delete(Path);
         }
+    }
+
+    private sealed class CollectingLogger : ILogger<AccountService>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => null;
+
+        public bool IsEnabled(LogLevel logLevel)
+            => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
     }
 }

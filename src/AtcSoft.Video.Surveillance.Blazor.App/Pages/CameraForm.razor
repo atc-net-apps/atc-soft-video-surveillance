@@ -217,7 +217,7 @@ else
                     @(isSaving ? Translations.Saving : Translations.Save)
                 </MudButton>
                 <MudButton Variant="Variant.Outlined"
-                           Href="/cameras">
+                           Href="cameras">
                     @Translations.Cancel
                 </MudButton>
             </MudStack>
@@ -505,7 +505,7 @@ else
             if (result.IsSuccess)
             {
                 Snackbar.Add(Translations.CameraUpdated, Severity.Success);
-                Navigation.NavigateTo("/cameras");
+                Navigation.NavigateTo("cameras");
             }
             else
             {
@@ -545,7 +545,7 @@ else
             if (result.IsSuccess)
             {
                 Snackbar.Add(Translations.CameraCreated, Severity.Success);
-                Navigation.NavigateTo("/cameras");
+                Navigation.NavigateTo("cameras");
             }
             else
             {

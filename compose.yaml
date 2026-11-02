@@ -1,0 +1,66 @@
+# AtcSoft Video Surveillance: the server with its web client, on http://<this machine>:8585.
+#
+#   docker compose up -d                  # the released image, or built here when there is none
+#   docker compose logs video-surveillance # the setup code for the first admin
+#
+# With HTTPS through Caddy in front (a certificate from Let's Encrypt for a public name, or
+# Caddy's own for a local one):
+#
+#   SITE_ADDRESS=surveillance.example.com docker compose --profile https up -d --build
+#
+# PORT, HTTP_PORT and HTTPS_PORT move the ports on this machine (8585, 80, 443).
+#
+# See the wiki's Docker guide.
+
+services:
+  video-surveillance:
+    # The released image; "docker compose up --build" builds it from this folder instead.
+    image: ghcr.io/atc-net-apps/atc-soft-video-surveillance-server:latest
+    build: .
+    container_name: video-surveillance
+    restart: unless-stopped
+    # The server runs as user 1654 ("app"). With folders of a NAS mounted below instead of the
+    # volume, run it as the user that owns them (its id and group id, "id <name>" on the NAS):
+    # user: "1026:100"
+    ports:
+      - "${PORT:-8585}:8585"
+    environment:
+      # The time zone of the recordings' names and the timeline.
+      TZ: ${TZ:-Europe/Copenhagen}
+      # Caddy (below) is the only proxy whose X-Forwarded-For the server believes.
+      ReverseProxy__KnownProxies: 172.31.85.10
+    volumes:
+      # Settings, users, keys and, unless set elsewhere, the recordings.
+      - video-surveillance-data:/data
+      # Recordings on a disk of their own: mount it, then set the recording folder to
+      # /recordings in Settings. The folder must be writable by user 1654 (the image's "app").
+      # - /volume1/surveillance:/recordings
+    networks:
+      surveillance:
+
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    container_name: video-surveillance-caddy
+    restart: unless-stopped
+    depends_on:
+      - video-surveillance
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    command: caddy reverse-proxy --from ${SITE_ADDRESS:-localhost} --to video-surveillance:8585
+    volumes:
+      - caddy-data:/data
+    networks:
+      surveillance:
+        ipv4_address: 172.31.85.10
+
+networks:
+  surveillance:
+    ipam:
+      config:
+        - subnet: 172.31.85.0/24
+
+volumes:
+  video-surveillance-data:
+  caddy-data:

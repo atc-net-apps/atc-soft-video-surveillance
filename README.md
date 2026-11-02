@@ -50,7 +50,7 @@ Live view, recording, motion detection and an activity timeline for your RTSP, H
 | You want | Download from the [latest release](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases/latest) | Guide |
 |---|---|---|
 | CameraWall | `AtcSoft.Video.Surveillance.CameraWall.Installer.msi` | [Install CameraWall](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-CameraWall) |
-| The desktop client of the Video Surveillance system | `AtcSoft.Video.Surveillance.Installer.msi` | [Install Video Surveillance](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance) |
+| The desktop client of the Video Surveillance system | `AtcSoft.Video.Surveillance.Client.Installer.msi` | [Install Video Surveillance](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance) |
 | The server | No installer yet: built from source today | [The server on Windows today](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance#-the-server-on-windows-today) |
 
 ## 📋 Requirements
@@ -118,7 +118,7 @@ Read the full documentation on the **[WIKI](https://github.com/atc-net-apps/atc-
 
 ## 🗺️ Roadmap
 
-What is open and planned is in **[plans/roadmap.md](plans/roadmap.md)**. Found a problem or missing something? [Open an issue](https://github.com/atc-net-apps/atc-soft-video-surveillance/issues).
+What is coming, and in which order, is in **[platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support#coming)** in the wiki. Found a problem or missing something? [Open an issue](https://github.com/atc-net-apps/atc-soft-video-surveillance/issues).
 
 ## 📄 License
 

@@ -9,7 +9,14 @@ public sealed class GitHubReleaseService : IGitHubReleaseService, IDisposable
 {
     private const string GitHubApiUrl = "https://api.github.com/repos/atc-net-apps/atc-soft-video-surveillance/releases/latest";
     private const string UserAgent = "AtcSoft-VideoSurveillance";
-    private const string AppSuffix = ".Wpf.App";
+
+    // Each desktop app and the installer that updates it.
+    private static readonly Dictionary<string, string> Installers = new(StringComparer.Ordinal)
+    {
+        ["AtcSoft.Video.Surveillance.Wpf.App"] = "AtcSoft.Video.Surveillance.Client.Installer.msi",
+        ["AtcSoft.Video.Surveillance.CameraWall.Wpf.App"] = "AtcSoft.Video.Surveillance.CameraWall.Installer.msi",
+    };
+
     private static readonly TimeSpan LockAcquisitionTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan HttpRequestTimeout = TimeSpan.FromSeconds(10);
 
@@ -34,13 +41,13 @@ public sealed class GitHubReleaseService : IGitHubReleaseService, IDisposable
 
     /// <summary>
     /// Gets the name of the installer a desktop app is updated with. Every release carries one
-    /// installer per app, named after the app: <c>X.Wpf.App</c> is installed by <c>X.Installer.msi</c>.
+    /// installer per app, uploaded under its project name in <c>setup</c>.
     /// </summary>
     /// <param name="appAssemblyName">The app's assembly name, e.g. <c>AtcSoft.Video.Surveillance.Wpf.App</c>.</param>
     /// <returns>The installer's file name, or <see langword="null"/> for anything that is not a desktop app.</returns>
     public static string? GetInstallerAssetName(string? appAssemblyName)
-        => appAssemblyName is not null && appAssemblyName.EndsWith(AppSuffix, StringComparison.Ordinal)
-            ? string.Concat(appAssemblyName.AsSpan(0, appAssemblyName.Length - AppSuffix.Length), ".Installer.msi")
+        => appAssemblyName is not null && Installers.TryGetValue(appAssemblyName, out var installer)
+            ? installer
             : null;
 
     /// <inheritdoc />

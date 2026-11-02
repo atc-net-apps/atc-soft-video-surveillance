@@ -30,8 +30,50 @@ jobs:
       - name: Build
         run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
 
+      # The pinned FFmpeg 9, as release-please.yml: without it every test that needs a live stream
+      # or a recording skips.
+      - name: Download FFmpeg
+        shell: pwsh
+        run: |
+          $ffmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-full_build-shared.zip"
+          $ffmpegSha256 = "8d31e162f1616e37aab3fa2db991b97e1b8dbeb1c8465fd81a81be16ff91b328"
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile ffmpeg.zip
+          $actual = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $ffmpegSha256) { throw "FFmpeg download checksum $actual, expected $ffmpegSha256" }
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-temp
+          $binDir = Get-ChildItem -Path ffmpeg-temp -Recurse -Directory -Filter "bin" | Select-Object -First 1
+          "ATCSOFT_FFMPEG_PATH=$($binDir.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Test
         run: dotnet test --no-build --configuration ${{ env.CONFIGURATION }}
+
+  linux:
+    name: Linux tests and Docker image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The engine and the server, on Linux with the pinned FFmpeg 9 (docker/install-ffmpeg.sh).
+      - name: Engine and server tests
+        run: |
+          docker build --file docker/tests.Dockerfile --tag atc-soft-video-surveillance-tests .
+          docker run --rm atc-soft-video-surveillance-tests
+
+      # The server's image builds, starts and reports healthy.
+      - name: Server image
+        run: |
+          docker build --tag atc-soft-video-surveillance-server:pr .
+          docker run --detach --name server --publish 8585:8585 atc-soft-video-surveillance-server:pr
+          for i in $(seq 1 60); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' server)
+            [ "$status" = "healthy" ] && break
+            sleep 2
+          done
+          docker logs server
+          [ "$(docker inspect --format '{{.State.Health.Status}}' server)" = "healthy" ]
+          curl --fail --silent http://localhost:8585/health
 
   build-installer:
     name: Build Installer (Validation)
@@ -75,4 +117,132 @@ jobs:
         run: dotnet publish src/AtcSoft.Video.Surveillance.Wpf.App/AtcSoft.Video.Surveillance.Wpf.App.csproj --configuration ${{ env.CONFIGURATION }} --output ./publish-vs
 
       - name: Build Installer
-        run: dotnet build setup/AtcSoft.Video.Surveillance.Installer/AtcSoft.Video.Surveillance.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-vs
+        run: dotnet build setup/AtcSoft.Video.Surveillance.Client.Installer/AtcSoft.Video.Surveillance.Client.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-vs
+
+  build-installer-server:
+    name: Build and install the Server Installer (Validation)
+    runs-on: windows-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Server
+        run: dotnet publish src/AtcSoft.Video.Surveillance.Api/AtcSoft.Video.Surveillance.Api.csproj --configuration ${{ env.CONFIGURATION }} --runtime win-x64 --self-contained true --output ./publish-server
+
+      # As release-please.yml: the server exits without FFmpeg 9, and the MSI starts it.
+      - name: Download FFmpeg
+        shell: pwsh
+        run: |
+          $ffmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-full_build-shared.zip"
+          $ffmpegSha256 = "8d31e162f1616e37aab3fa2db991b97e1b8dbeb1c8465fd81a81be16ff91b328"
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile ffmpeg.zip
+          $actual = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $ffmpegSha256) { throw "FFmpeg download checksum $actual, expected $ffmpegSha256" }
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-temp
+          $binDir = Get-ChildItem -Path ffmpeg-temp -Recurse -Directory -Filter "bin" | Select-Object -First 1
+          New-Item -ItemType Directory -Path "./publish-server/ffmpeg" -Force | Out-Null
+          Copy-Item "$($binDir.FullName)\*.dll" -Destination "./publish-server/ffmpeg/"
+          Copy-Item "$($binDir.FullName)\ffmpeg.exe" -Destination "./publish-server/ffmpeg/"
+
+      - name: Build Installer
+        run: dotnet build setup/AtcSoft.Video.Surveillance.Server.Installer/AtcSoft.Video.Surveillance.Server.Installer.wixproj --configuration ${{ env.CONFIGURATION }} -p:PublishDir=${{ github.workspace }}/publish-server
+
+      # A server started by hand before the service: its secrets are written for this user only.
+      - name: Run the server by hand first
+        shell: pwsh
+        run: |
+          $server = Start-Process ./publish-server/AtcSoft.Video.Surveillance.Api.exe -ArgumentList '--urls', 'http://localhost:8599' -PassThru
+          $up = $false
+          foreach ($i in 1..60) {
+            try { if ((Invoke-WebRequest http://localhost:8599/health -UseBasicParsing).StatusCode -eq 200) { $up = $true; break } } catch { }
+            Start-Sleep -Seconds 2
+          }
+          Stop-Process -Id $server.Id -Force
+          if (-not $up) { throw 'The server started by hand did not answer /health' }
+          $data = "$env:ProgramData\AtcSoft\VideoSurveillance"
+          foreach ($file in 'signing.key', 'setup-code.txt') {
+            if (-not (Test-Path "$data\$file")) { throw "$file was not written" }
+          }
+
+      - name: Install
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem setup/AtcSoft.Video.Surveillance.Server.Installer/bin/${{ env.CONFIGURATION }}/*.msi | Select-Object -First 1
+          $install = Start-Process msiexec.exe -ArgumentList '/i', "`"$($msi.FullName)`"", '/qn', '/l*v', "`"$PWD\install.log`"" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "msiexec /i ended with $($install.ExitCode)" }
+
+      - name: Check the installed server
+        shell: pwsh
+        run: |
+          $service = Get-Service AtcSoftVideoSurveillance
+          $up = $false
+          foreach ($i in 1..60) {
+            try { if ((Invoke-WebRequest http://localhost:8585/health -UseBasicParsing).StatusCode -eq 200) { $up = $true; break } } catch { }
+            Start-Sleep -Seconds 2
+          }
+          if (-not $up) { throw "The service ($($service.Status)) does not answer /health on port 8585" }
+          if ((Get-Service AtcSoftVideoSurveillance).Status -ne 'Running') { throw 'The service is not running' }
+
+          $page = Invoke-WebRequest http://localhost:8585/cameras -Headers @{ 'Sec-Fetch-Mode' = 'navigate'; 'Accept' = 'text/html' } -UseBasicParsing
+          if ($page.Content -notmatch 'blazor.webassembly.js') { throw 'The web client is not served' }
+
+          foreach ($rule in 'AtcSoft Video Surveillance Server (private)', 'AtcSoft Video Surveillance Server (domain)') {
+            Get-NetFirewallRule -DisplayName $rule | Out-Null
+          }
+
+          # The service's account may read what the hand-run server wrote for itself.
+          $data = "$env:ProgramData\AtcSoft\VideoSurveillance"
+          $access = icacls "$data\signing.key" | Out-String
+          if ($access -notmatch 'AtcSoftVideoSurveillance|S-1-5-80-2781899967-703317263-3564165195-2030983897-3191695680') {
+            throw "The service's account has no access to signing.key: $access"
+          }
+          if (-not (Test-Path "$data\setup-code.txt")) { throw 'The setup code for the first admin is gone' }
+
+      - name: Uninstall keeps the data
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem setup/AtcSoft.Video.Surveillance.Server.Installer/bin/${{ env.CONFIGURATION }}/*.msi | Select-Object -First 1
+          $remove = Start-Process msiexec.exe -ArgumentList '/x', "`"$($msi.FullName)`"", '/qn', '/l*v', "`"$PWD\uninstall.log`"" -Wait -PassThru
+          if ($remove.ExitCode -ne 0) { throw "msiexec /x ended with $($remove.ExitCode)" }
+          if (Get-Service AtcSoftVideoSurveillance -ErrorAction SilentlyContinue) { throw 'The service is still there' }
+          if (-not (Test-Path "$env:ProgramData\AtcSoft\VideoSurveillance\signing.key")) { throw 'The data folder was not kept' }
+
+      # Why the service stopped: the service control manager's and the runtime's events, and the
+      # service's own log (it has no console, so it writes to the data folder's logs).
+      - name: Service diagnostics
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-Service AtcSoftVideoSurveillance -ErrorAction SilentlyContinue | Format-List Name, Status, StartType
+          $since = (Get-Date).AddMinutes(-30)
+          Write-Host '--- Service Control Manager'
+          Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Service Control Manager'; StartTime = $since } -ErrorAction SilentlyContinue |
+            Where-Object { $_.Message -match 'AtcSoft' } | Format-List TimeCreated, Id, Message
+          Write-Host '--- Application errors'
+          Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $since } -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProviderName -in '.NET Runtime', 'Application Error', 'Windows Error Reporting' } | Format-List TimeCreated, ProviderName, Message
+          Write-Host '--- The service log'
+          Get-ChildItem "$env:ProgramData\AtcSoft\VideoSurveillance\logs" -Filter *.log -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-Content $_.FullName -Tail 200 }
+          New-Item -ItemType Directory service-logs -Force | Out-Null
+          Copy-Item "$env:ProgramData\AtcSoft\VideoSurveillance\logs\*" service-logs -ErrorAction SilentlyContinue
+
+      - name: Installer logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: server-installer-logs
+          path: |
+            install.log
+            uninstall.log
+            service-logs/
+          retention-days: 5

@@ -2,6 +2,7 @@ global using System.Collections.Concurrent;
 global using System.Diagnostics;
 global using System.Diagnostics.CodeAnalysis;
 global using System.Globalization;
+global using System.Net;
 global using System.Runtime.Versioning;
 global using System.Security.AccessControl;
 global using System.Security.Claims;
@@ -15,6 +16,7 @@ global using System.Threading.Channels;
 
 global using Atc.Hosting;
 global using Atc.Video.Engine;
+global using Atc.Video.Engine.Capture;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Settings;
 global using AtcSoft.Video.Surveillance.Api.Domain.Events;
 global using AtcSoft.Video.Surveillance.Api.Domain.Mapping;
@@ -23,6 +25,7 @@ global using AtcSoft.Video.Surveillance.Api.Domain.Streaming;
 global using AtcSoft.Video.Surveillance.Api.Domain.Webhooks;
 global using AtcSoft.Video.Surveillance.Api.Security;
 global using AtcSoft.Video.Surveillance.Api.Services;
+global using AtcSoft.Video.Surveillance.Api.Services.Pictures;
 global using AtcSoft.Video.Surveillance.Api.Webhooks;
 global using AtcSoft.Video.Surveillance.Enums;
 global using AtcSoft.Video.Surveillance.Events;
@@ -32,11 +35,14 @@ global using AtcSoft.Video.Surveillance.Helpers.MotionDetection;
 global using AtcSoft.Video.Surveillance.Models;
 global using AtcSoft.Video.Surveillance.Models.Settings;
 global using AtcSoft.Video.Surveillance.Services;
+#if WINDOWS
 global using AtcSoft.Video.Surveillance.Windows.Diagnostics;
+#endif
 
 global using Microsoft.AspNetCore.Authentication;
 global using Microsoft.AspNetCore.Authentication.JwtBearer;
 global using Microsoft.AspNetCore.DataProtection;
+global using Microsoft.AspNetCore.HttpOverrides;
 global using Microsoft.AspNetCore.Identity;
 global using Microsoft.AspNetCore.OutputCaching;
 global using Microsoft.AspNetCore.StaticFiles;

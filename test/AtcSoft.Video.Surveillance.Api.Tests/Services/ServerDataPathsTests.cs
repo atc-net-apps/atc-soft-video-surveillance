@@ -13,9 +13,20 @@ public sealed class ServerDataPathsTests
     {
         var sut = new ServerDataPaths(dataPath);
 
-        sut.DataPath.Should().BeNull();
-        sut.SettingsPath.Should().Be(ApplicationPaths.DefaultSettingsPath);
-        sut.CameraDataPath.Should().Be(ApplicationPaths.DefaultCameraDataPath);
+        if (OperatingSystem.IsWindows())
+        {
+            // The shared application data folder (ProgramData).
+            sut.DataPath.Should().BeNull();
+            sut.SettingsPath.Should().Be(ApplicationPaths.DefaultSettingsPath);
+            sut.CameraDataPath.Should().Be(ApplicationPaths.DefaultCameraDataPath);
+        }
+        else
+        {
+            // The user's own data folder: the shared one (/usr/share) is not the server's to write.
+            var expected = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "atcsoft-video-surveillance");
+            sut.DataPath.Should().Be(expected);
+            sut.SettingsPath.Should().Be(Path.Combine(expected, "settings.json"));
+        }
     }
 
     [Fact]
@@ -66,6 +77,7 @@ public sealed class ServerDataPathsTests
     [Fact]
     public void RelocateDefaults_Does_Nothing_Without_A_Data_Folder()
     {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows has no data folder by default.");
         var settings = CreateSettings(new RecordingSettings(), new CameraDisplayAppSettings(), new AdvancedSettings());
 
         new ServerDataPaths(dataPath: null).RelocateDefaults(settings);

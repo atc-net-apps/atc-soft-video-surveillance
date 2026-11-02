@@ -178,6 +178,49 @@ public sealed class ApiHostLiveStreamTests(ApiHostFixture host)
     }
 
     [Fact]
+    public async Task A_Snapshot_Of_A_Camera_Nobody_Watches_Opens_It_For_The_Picture()
+    {
+        var ffmpeg = FindFFmpegTool();
+        Assert.SkipWhen(ffmpeg is null, "The FFmpeg command-line tool is not installed.");
+
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var client = host.CreateClient();
+        var port = GetFreePort();
+        using var stream = StartTestStream(ffmpeg!, port);
+        var cameraId = Guid.Empty;
+
+        try
+        {
+            // Arrange — a camera that is neither recorded nor watched for motion
+            var name = "Cold " + Guid.NewGuid().ToString("N")[..8];
+            var created = await client.PostAsJsonAsync(
+                "/cameras",
+                new { displayName = name, ipAddress = "127.0.0.1", port, protocol = "http", path = "live" },
+                cancellationToken);
+            created.StatusCode.Should().Be(HttpStatusCode.Created);
+            cameraId = (await created.Content.ReadFromJsonAsync<JsonElement>(cancellationToken)).GetProperty("id").GetGuid();
+
+            // Act
+            using var snapshot = await client.GetAsync(new Uri($"/cameras/{cameraId}/snapshot", UriKind.Relative), cancellationToken);
+
+            // Assert — a PNG of the camera's picture, 320 x 240
+            snapshot.StatusCode.Should().Be(HttpStatusCode.OK, await snapshot.Content.ReadAsStringAsync(cancellationToken));
+            var png = await snapshot.Content.ReadAsByteArrayAsync(cancellationToken);
+            png.Take(8).Should().Equal(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A);
+            System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16, 4)).Should().Be(320);
+        }
+        finally
+        {
+            if (cameraId != Guid.Empty)
+            {
+                await client.DeleteAsync(new Uri($"/cameras/{cameraId}", UriKind.Relative), CancellationToken.None);
+            }
+
+            Stop(stream);
+        }
+    }
+
+    [Fact]
     public async Task A_Recording_Gets_An_Activity_Index_That_Is_Served_While_It_Grows()
     {
         var ffmpeg = FindFFmpegTool();
@@ -575,7 +618,7 @@ public sealed class ApiHostLiveStreamTests(ApiHostFixture host)
         var process = Process.Start(startInfo)!;
         process.ErrorDataReceived += (_, _) => { };
         process.BeginErrorReadLine();
-        return process;
+        return TestStreams.Listening(process, port);
     }
 
     private static void Stop(Process process)

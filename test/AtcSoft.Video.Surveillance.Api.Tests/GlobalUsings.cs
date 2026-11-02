@@ -3,15 +3,21 @@ global using System.Diagnostics;
 global using System.Globalization;
 global using System.Net;
 global using System.Net.Http.Json;
+#if WINDOWS
 global using System.Runtime.Versioning;
 global using System.Security.AccessControl;
+#endif
 global using System.Security.Claims;
+#if WINDOWS
 global using System.Security.Principal;
+#endif
 global using System.Text.Json;
 global using System.Text.Json.Nodes;
 
 global using Atc.Hosting;
 global using Atc.Video.Engine;
+global using Atc.Video.Engine.Capture;
+global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Auth;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Cameras;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Devices;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Layouts;
@@ -38,6 +44,7 @@ global using Microsoft.AspNetCore.DataProtection;
 global using Microsoft.AspNetCore.Hosting;
 global using Microsoft.AspNetCore.Http;
 global using Microsoft.AspNetCore.Http.HttpResults;
+global using Microsoft.AspNetCore.HttpOverrides;
 global using Microsoft.AspNetCore.Mvc.Testing;
 global using Microsoft.AspNetCore.OutputCaching;
 global using Microsoft.AspNetCore.TestHost;
@@ -45,6 +52,8 @@ global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Logging.Abstractions;
+global using VideoSurveillance.Generated.Auth.Models;
+global using VideoSurveillance.Generated.Auth.Parameters;
 global using VideoSurveillance.Generated.Caching;
 global using VideoSurveillance.Generated.Cameras.Models;
 global using VideoSurveillance.Generated.Cameras.Parameters;

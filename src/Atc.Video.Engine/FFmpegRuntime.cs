@@ -101,7 +101,26 @@ public static class FFmpegRuntime
         Add(ManagedFolder);
         Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "ffmpeg", "bin"));
         Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ffmpeg", "bin"));
-        Add(@"C:\ffmpeg\bin");
+        if (OperatingSystem.IsWindows())
+        {
+            Add(@"C:\ffmpeg\bin");
+        }
+        else
+        {
+            // Where Linux and macOS keep shared libraries: the image's own folder first, then the
+            // loader's path and the system's folders.
+            Add("/opt/ffmpeg/lib");
+            foreach (var folder in (environment("LD_LIBRARY_PATH") ?? string.Empty).Split(Path.PathSeparator))
+            {
+                Add(folder.Trim());
+            }
+
+            Add(OperatingSystem.IsMacOS() ? "/opt/homebrew/lib" : "/usr/lib/x86_64-linux-gnu");
+            Add(OperatingSystem.IsMacOS() ? "/usr/local/lib" : "/usr/lib/aarch64-linux-gnu");
+            Add("/usr/local/lib");
+            Add("/usr/lib");
+        }
+
         Add(AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
         foreach (var folder in (environment("PATH") ?? string.Empty).Split(Path.PathSeparator))
         {
@@ -173,6 +192,68 @@ public static class FFmpegRuntime
         }
     }
 
+    /// <summary>
+    /// Reads a library's name and major version from its file name, as each system names it:
+    /// <c>avutil-61.dll</c> (Windows), <c>libavutil.so.61</c> or <c>libavutil.so.61.12.100</c>
+    /// (Linux), <c>libavutil.61.dylib</c> or <c>libavutil.61.12.100.dylib</c> (macOS).
+    /// </summary>
+    /// <param name="fileName">The file name, without its folder.</param>
+    /// <param name="library">The library (<c>avutil</c>).</param>
+    /// <param name="major">Its major version.</param>
+    /// <returns><see langword="true"/> when the name is that of a versioned library.</returns>
+    public static bool TryReadLibraryFile(
+        string fileName,
+        out string library,
+        out int major)
+    {
+        ArgumentNullException.ThrowIfNull(fileName);
+
+        library = string.Empty;
+        major = 0;
+
+        string name;
+        string version;
+        if (fileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            var stem = fileName[..^4];
+            var dash = stem.LastIndexOf('-');
+            if (dash <= 0)
+            {
+                return false;
+            }
+
+            name = stem[..dash];
+            version = stem[(dash + 1)..];
+        }
+        else if (fileName.StartsWith("lib", StringComparison.Ordinal) &&
+                 fileName.IndexOf(".so.", StringComparison.Ordinal) is > 3 and var so)
+        {
+            name = fileName[3..so];
+            version = fileName[(so + 4)..].Split('.')[0];
+        }
+        else if (fileName.StartsWith("lib", StringComparison.Ordinal) &&
+                 fileName.EndsWith(".dylib", StringComparison.Ordinal) &&
+                 fileName.IndexOf('.', StringComparison.Ordinal) is > 3 and var dot)
+        {
+            name = fileName[3..dot];
+            version = fileName[(dot + 1)..].Split('.')[0];
+        }
+        else
+        {
+            return false;
+        }
+
+        if (name.Length == 0 ||
+            !int.TryParse(version, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out major))
+        {
+            major = 0;
+            return false;
+        }
+
+        library = name;
+        return true;
+    }
+
     private static bool IsSearchLimited(Func<string, string?> environment)
         => string.Equals(environment(SearchEnvironmentVariable), "explicit", StringComparison.OrdinalIgnoreCase);
 
@@ -226,14 +307,10 @@ public static class FFmpegRuntime
             }
 
             var majors = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            foreach (var file in Directory.EnumerateFiles(folder, "*.dll"))
+            foreach (var file in Directory.EnumerateFiles(folder))
             {
-                var name = Path.GetFileNameWithoutExtension(file);
-                var dash = name.LastIndexOf('-');
-                if (dash > 0 &&
-                    int.TryParse(name.AsSpan(dash + 1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var major))
+                if (TryReadLibraryFile(Path.GetFileName(file), out var library, out var major))
                 {
-                    var library = name[..dash];
                     majors[library] = Math.Max(major, majors.GetValueOrDefault(library));
                 }
             }

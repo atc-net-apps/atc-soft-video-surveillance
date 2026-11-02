@@ -51,6 +51,9 @@ public sealed class DeleteRecordingHandlerTests : IDisposable
     [Fact]
     public async Task A_Recording_The_Server_May_Not_Delete_Is_A_Conflict_With_The_Reason_Not_A_Server_Error()
     {
+        // A read-only file stops a delete on Windows only; elsewhere the folder's rights decide.
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows refuses to delete a read-only file.");
+
         File.SetAttributes(video, FileAttributes.ReadOnly);
         try
         {

@@ -32,7 +32,8 @@ paths:
       summary: Create the first admin
       description: >-
         Only while the server has no user. The setup code is in the file setup-code.txt in the server's data folder,
-        so only someone who can read the server's disk can create the first admin.
+        so only someone who can read the server's disk can create the first admin. A request from the server's own
+        machine (not through a proxy) needs no code, unless Setup:AllowLocal is false: getSetupStatus tells which.
       operationId: completeSetup
       # Not a change for the audit log: sign-in writes its own entries, a lease renewal is no change.
       x-audit: false
@@ -1872,23 +1873,33 @@ components:
       type: object
       required:
         - setupRequired
+        - setupCodeRequired
+        - setupCodeFile
       properties:
         setupRequired:
           type: boolean
           description: True while the server has no user; completeSetup creates the first admin.
+        setupCodeRequired:
+          type: boolean
+          description: >-
+            True when completeSetup from this caller needs the setup code; false on the server's own machine, and
+            once the server has a user.
+        setupCodeFile:
+          type: string
+          description: The name of the file in the server's data folder that holds the setup code.
 
     CompleteSetupRequest:
       title: CompleteSetupRequest
       type: object
       required:
-        - setupCode
         - userName
         - password
       properties:
         setupCode:
           type: string
-          minLength: 1
-          description: The code in setup-code.txt in the server's data folder.
+          description: >-
+            The code in setup-code.txt in the server's data folder. Not needed on the server's own machine
+            (getSetupStatus says setupCodeRequired: false).
         userName:
           type: string
           minLength: 1

@@ -29,6 +29,7 @@ public sealed class VideoPlayerGreyCaptureTests
             UseShellExecute = false,
             CreateNoWindow = true,
         }) ?? throw new InvalidOperationException("The test stream could not be started.");
+        TestStreams.WaitUntilListening(port);
 
         try
         {

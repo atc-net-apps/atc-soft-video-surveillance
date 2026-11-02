@@ -27,12 +27,14 @@
       <RegistryValue Root="HKCU" Key="Software\AtcSoft\VideoSurveillance" Name="desktopshortcut" Type="integer" Value="1" KeyPath="yes" />
     </Component>
 
-    <!-- Data folder: SYSTEM and Administrators full control, Users modify, inherited by
-         everything below it. The SIDs (SY, BA, BU) work in every Windows language. Permanent,
-         so an uninstall or upgrade never deletes the data. -->
+    <!-- Data folder: SYSTEM and Administrators full control, Users and the server service's
+         virtual account (S-1-5-80-…, NT SERVICE\AtcSoftVideoSurveillance) modify, inherited by
+         everything below it. The SIDs work in every Windows language. The server's MSI sets the
+         same, so the two may be installed in either order. Permanent, so an uninstall or upgrade
+         never deletes the data. -->
     <Component Id="DataFolder" Guid="C2F6A1D8-4B3E-4F7A-9C5D-1E8B2A7F6D30" Directory="DATAFOLDER" Permanent="yes">
       <CreateFolder>
-        <PermissionEx Sddl="D:(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1301bf;;;BU)" />
+        <PermissionEx Sddl="D:(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1301bf;;;BU)(A;OICI;0x1301bf;;;S-1-5-80-2781899967-703317263-3564165195-2030983897-3191695680)" />
       </CreateFolder>
     </Component>
   </Fragment>
