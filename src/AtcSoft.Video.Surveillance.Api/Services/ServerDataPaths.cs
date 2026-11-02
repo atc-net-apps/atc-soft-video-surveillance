@@ -44,6 +44,7 @@ public sealed class ServerDataPaths
         AuditLogPath = Path.Combine(folder, "audit.log");
         AvailabilityPath = Path.Combine(folder, "availability");
         KeysPath = Path.Combine(folder, "keys");
+        LockPath = Path.Combine(folder, "server.lock");
     }
 
     /// <summary>
@@ -107,6 +108,12 @@ public sealed class ServerDataPaths
     /// webhook secrets) are encrypted with. Without it they cannot be read.
     /// </summary>
     public string KeysPath { get; }
+
+    /// <summary>
+    /// Gets the file a running server holds, so a command that changes its files while it is
+    /// stopped (<see cref="ServerPasswordReset"/>) knows it is not.
+    /// </summary>
+    public string LockPath { get; }
 
     /// <summary>
     /// Moves the recording, snapshot and log folders into the data folder

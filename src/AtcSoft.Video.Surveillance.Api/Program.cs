@@ -3,7 +3,25 @@
 // The data folder is read from the environment and the command line here:
 // logging is set up before the host, and its configuration, exist.
 // --install-ffmpeg is taken out first: the host would read it as a configuration key.
-var installFFmpeg = ServerFFmpegStartup.TakeInstallArgument(args, out var hostArgs);
+var resetPassword = ServerPasswordReset.TakeArgument(args, out var resetUserName, out var serverArgs);
+var installFFmpeg = ServerFFmpegStartup.TakeInstallArgument(serverArgs, out var hostArgs);
+
+// --reset-password <user>: a new password for a user, on the console; the server does not start.
+if (resetPassword)
+{
+    var resetConfiguration = new ConfigurationBuilder()
+        .SetBasePath(AppContext.BaseDirectory)
+        .AddJsonFile("appsettings.json", optional: true)
+        .AddEnvironmentVariables()
+        .AddCommandLine(hostArgs)
+        .Build();
+    Environment.ExitCode = ServerPasswordReset.Run(
+        new ServerDataPaths(resetConfiguration[ServerDataPaths.ConfigurationKey]),
+        resetUserName,
+        Console.Out);
+    return;
+}
+
 var earlyConfiguration = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .AddCommandLine(hostArgs)
@@ -598,6 +616,9 @@ try
     });
 
     Log.Information("Video Surveillance API starting");
+
+    // Held while the server runs: --reset-password refuses to change the users meanwhile.
+    using var serverLock = ServerLock.TryAcquire(app.Services.GetRequiredService<ServerDataPaths>().LockPath);
 
     await app
         .RunAsync()
