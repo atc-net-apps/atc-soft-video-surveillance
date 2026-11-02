@@ -439,3 +439,6 @@ docs/superpowers/
 # Local issue notes and plans are working files, not repository content.
 issues/*
 plans/*
+
+# Recordings copied from a test PC for analysis (bounding boxes, motion): large and private
+sample-recordings/
