@@ -54,6 +54,7 @@ public sealed class CameraWallRecordingTests
         var closed = app.CloseApp(main);
 
         opening.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10), "the recordings browser opens without holding up the app");
+        app.CloseWhileRecordingAsked.Should().BeTrue("closing stops the recording, so CameraWall asks first");
         closed.Should().BeTrue("CameraWall closes when its main window closes");
         foreach (var file in started.Files)
         {

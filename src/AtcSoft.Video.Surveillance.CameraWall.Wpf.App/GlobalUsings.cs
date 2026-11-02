@@ -47,6 +47,7 @@ global using Serilog.Events;
 
 global using ActivityIndexService = AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.ActivityIndexService;
 global using ApplicationHelper = AtcSoft.Video.Surveillance.Helpers.ApplicationHelper;
+global using CloseConfirmation = AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.CloseConfirmation;
 global using DiskSpaceGuard = AtcSoft.Video.Surveillance.Helpers.DiskSpaceGuard;
 global using FreeSpaceReader = AtcSoft.Video.Surveillance.Helpers.FreeSpaceReader;
 global using IMediaCleanupService = AtcSoft.Video.Surveillance.Services.IMediaCleanupService;

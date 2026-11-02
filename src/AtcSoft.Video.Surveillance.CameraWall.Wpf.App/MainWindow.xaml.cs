@@ -49,6 +49,13 @@ public partial class MainWindow : Fluent.IRibbonWindow
         object? sender,
         CancelEventArgs e)
     {
+        // Asked before anything closes: closing stops the recordings.
+        if (!viewModel.ConfirmClose())
+        {
+            e.Cancel = true;
+            return;
+        }
+
         viewModel.OnClosing(this, e);
         if (e.Cancel)
         {

@@ -2850,4 +2850,10 @@ Thumbnail:
   <data name="StreamStoppedStartsAgain" xml:space="preserve">
     <value>The stream stopped. It starts again by itself.</value>
   </data>
+  <data name="CloseWhileRecording1" xml:space="preserve">
+    <value>Cameras recording: {0}. Closing CameraWall stops their recordings. Close anyway?</value>
+  </data>
+  <data name="RecordingsInProgress" xml:space="preserve">
+    <value>Recordings in progress</value>
+  </data>
 </root>
