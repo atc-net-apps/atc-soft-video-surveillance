@@ -40,6 +40,12 @@ public class ConnectionSettings
     /// </summary>
     public CameraConnectionType ConnectionType { get; set; } = CameraConnectionType.None;
 
+    /// <summary>
+    /// Gets or sets the camera hub the camera was added from (motionEye on a Raspberry Pi, ...);
+    /// <see langword="null"/> for a camera added by hand.
+    /// </summary>
+    public CameraHubOrigin? Hub { get; set; }
+
     /// <inheritdoc />
     public override string ToString()
         => Source == CameraSource.Usb
@@ -56,6 +62,7 @@ public class ConnectionSettings
             Path = Path,
             Usb = Usb?.Clone(),
             ConnectionType = ConnectionType,
+            Hub = Hub?.Clone(),
         };
 
     public void CopyFrom(ConnectionSettings source)
@@ -68,6 +75,7 @@ public class ConnectionSettings
         Path = source.Path;
         Usb = source.Usb?.Clone();
         ConnectionType = source.ConnectionType;
+        Hub = source.Hub?.Clone();
     }
 
     public bool ValueEquals(ConnectionSettings? other)
@@ -84,12 +92,15 @@ public class ConnectionSettings
 
         var usbEqual = (Usb is null && other.Usb is null) ||
                        (Usb?.ValueEquals(other.Usb) == true);
+        var hubEqual = (Hub is null && other.Hub is null) ||
+                       (Hub?.ValueEquals(other.Hub) == true);
 
         return string.Equals(IpAddress, other.IpAddress, StringComparison.Ordinal) &&
                Protocol == other.Protocol &&
                Port == other.Port &&
                string.Equals(Path, other.Path, StringComparison.Ordinal) &&
                ConnectionType == other.ConnectionType &&
-               usbEqual;
+               usbEqual &&
+               hubEqual;
     }
 }
