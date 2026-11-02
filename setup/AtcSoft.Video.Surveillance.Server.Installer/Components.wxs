@@ -92,7 +92,8 @@
       Impersonate="no"
       Return="ignore" />
     <InstallExecuteSequence>
-      <Custom Action="GrantServiceAccountToData" After="InstallFiles" Condition="NOT REMOVE" />
+      <!-- After the service (and so its account) exists, before it starts. -->
+      <Custom Action="GrantServiceAccountToData" After="InstallServices" Condition="NOT REMOVE" />
     </InstallExecuteSequence>
   </Fragment>
 </Wix>
