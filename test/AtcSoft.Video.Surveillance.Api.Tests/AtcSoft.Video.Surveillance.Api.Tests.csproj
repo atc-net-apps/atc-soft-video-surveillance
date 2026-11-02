@@ -18,6 +18,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Api\AtcSoft.Video.Surveillance.Api.csproj" />
     <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Api.Domain\AtcSoft.Video.Surveillance.Api.Domain.csproj" />
+    <!-- The server's web client, aliased as in the server: its generated API client has the same
+         type names as the contracts. -->
+    <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Blazor.App\AtcSoft.Video.Surveillance.Blazor.App.csproj" Aliases="webclient" />
   </ItemGroup>
 
 </Project>

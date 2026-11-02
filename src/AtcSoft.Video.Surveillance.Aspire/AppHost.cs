@@ -14,7 +14,7 @@ var useScratch = !string.IsNullOrWhiteSpace(scratchDataPath);
 
 var api = builder
     .AddProject<Projects.AtcSoft_Video_Surveillance_Api>("VideoSurveillance-Api")
-    .WithHttpEndpoint(port: 5000, name: "public");
+    .WithHttpEndpoint(port: 8585, name: "public");
 
 if (useScratch)
 {

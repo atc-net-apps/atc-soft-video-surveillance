@@ -81,7 +81,7 @@
             Margin="0,16,0,0"
             LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ServerUrl}"
             Text="{Binding Path=ServerUrl, UpdateSourceTrigger=PropertyChanged}"
-            WatermarkText="https://server:5000" />
+            WatermarkText="http://server:8585" />
 
         <!--  Status + Test Connection  -->
         <atc:GridEx

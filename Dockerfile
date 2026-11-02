@@ -37,7 +37,7 @@ COPY --from=build /app /app
 # /data holds the settings, users, keys and (by default) the recordings: keep it in a volume.
 RUN mkdir -p /data && chown app:app /data
 
-ENV ASPNETCORE_HTTP_PORTS=8585 \
+ENV ASPNETCORE_URLS=http://+:8585 \
     ASPNETCORE_ENVIRONMENT=Production \
     Storage__DataPath=/data \
     ATCSOFT_FFMPEG_PATH=/opt/ffmpeg/lib \

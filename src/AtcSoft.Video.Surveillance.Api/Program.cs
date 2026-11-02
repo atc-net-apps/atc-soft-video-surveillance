@@ -64,6 +64,12 @@ try
 {
     var builder = WebApplication.CreateBuilder(hostArgs);
 
+    // Port 8585 on this machine when no address is configured (ASP.NET's own default is 5000).
+    if (!ServerAddress.IsConfigured(builder.Configuration))
+    {
+        builder.WebHost.UseUrls(ServerAddress.DefaultUrl);
+    }
+
     builder.Host.UseSerilog();
 
     // Configure OpenAPI document generation
@@ -206,8 +212,8 @@ try
     // API from a non-loopback host.
     string[] defaultAllowedOrigins =
     [
-        "http://localhost:5000",
-        "https://localhost:5001",
+        "http://localhost:8585",
+        "https://localhost:8586",
         "http://localhost:39576",   // Blazor.App default HTTP
         "https://localhost:39575",  // Blazor.App default HTTPS
     ];
@@ -395,16 +401,20 @@ try
 
     app.UseCors();
 
-    if (app.Environment.IsDevelopment())
+    // The web client from the server's own address (/ and every page a browser opens), unless
+    // turned off for a client hosted elsewhere.
+    if (WebClientHosting.IsEnabled(app.Configuration))
     {
-        app.MapOpenApi();
-        app.MapScalarApiReference();
+        app.UseWebClient();
     }
 
-    // Redirect root to Scalar API docs
-    app
-        .MapGet("/", () => Results.Redirect("/scalar/v1"))
-        .ExcludeFromDescription();
+    // The API's description (/openapi/v1.json) and its reference (/api-reference), outside
+    // development too, unless turned off.
+    if (app.Configuration.GetValue("ApiReference:Enabled", defaultValue: true))
+    {
+        app.MapOpenApi();
+        app.MapScalarApiReference("/api-reference");
+    }
 
     // Every change a caller makes is written into the audit log (audit.log).
     app.UseMiddleware<AuditMiddleware>();
