@@ -182,8 +182,7 @@ try
         AtcSoft.Video.Surveillance.Windows.DependencyInjection.ServiceCollectionExtensions
             .AddWindowsUsbCameraSupport(builder.Services);
 
-        // Recording thumbnails are drawn with GDI+. On another platform the
-        // recording service simply gets no generator and records without them.
+        // Recording thumbnails and previews are drawn with GDI+ on Windows.
         AtcSoft.Video.Surveillance.Windows.DependencyInjection.ServiceCollectionExtensions
             .AddWindowsRecordingThumbnails(builder.Services);
 
@@ -192,6 +191,12 @@ try
             .AddWindowsMotionFrameReader(builder.Services);
     }
 #endif
+
+    // Elsewhere (Linux, macOS, the Docker image) they are drawn with FFmpeg.
+    Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+        .TryAddSingleton<IThumbnailGeneratorService, PortableThumbnailGenerator>(builder.Services);
+    Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+        .TryAddSingleton<IRecordingPreviewBuilder, PortableRecordingPreviewBuilder>(builder.Services);
 
     // Lifecycle coordinator translates raw watcher events into
     // per-camera Unplugged / Replugged transitions for

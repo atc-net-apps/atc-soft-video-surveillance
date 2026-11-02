@@ -16,6 +16,7 @@ global using System.Threading.Channels;
 
 global using Atc.Hosting;
 global using Atc.Video.Engine;
+global using Atc.Video.Engine.Capture;
 global using AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Settings;
 global using AtcSoft.Video.Surveillance.Api.Domain.Events;
 global using AtcSoft.Video.Surveillance.Api.Domain.Mapping;
@@ -24,6 +25,7 @@ global using AtcSoft.Video.Surveillance.Api.Domain.Streaming;
 global using AtcSoft.Video.Surveillance.Api.Domain.Webhooks;
 global using AtcSoft.Video.Surveillance.Api.Security;
 global using AtcSoft.Video.Surveillance.Api.Services;
+global using AtcSoft.Video.Surveillance.Api.Services.Pictures;
 global using AtcSoft.Video.Surveillance.Api.Webhooks;
 global using AtcSoft.Video.Surveillance.Enums;
 global using AtcSoft.Video.Surveillance.Events;
