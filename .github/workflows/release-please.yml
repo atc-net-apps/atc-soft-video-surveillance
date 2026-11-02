@@ -126,6 +126,44 @@ jobs:
             throw "Never appeared on NuGet.org: $($pending -join ', ') - the push reported success but did not publish them"
           }
 
+  publish-image:
+    name: Publish Docker image
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      packages: write   # push to ghcr.io; only this job may
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      # The server with its web client for linux/amd64 (PCs, most NAS) and linux/arm64 (Apple
+      # silicon, Raspberry Pi, ARM NAS), tagged 1.4.0, 1.4 and latest, with an SBOM and provenance.
+      - name: Build and push
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/atc-video-surveillance
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+          # No emulation needed: the Dockerfile runs no command for the target architecture.
+          docker buildx create --use --name multiarch
+          minor="${VERSION%.*}"
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --label "org.opencontainers.image.version=$VERSION" \
+            --tag "$IMAGE:$VERSION" \
+            --tag "$IMAGE:$minor" \
+            --tag "$IMAGE:latest" \
+            --sbom=true \
+            --provenance=mode=max \
+            --push \
+            .
+
   build-installers:
     name: Build MSI (${{ matrix.name }})
     runs-on: windows-latest

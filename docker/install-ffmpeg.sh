@@ -10,8 +10,12 @@ set -eu
 BUILD="autobuild-2026-11-01-12-49"
 VERSION="n9.0.2-42-gd7643a0fe3"
 
-case "$(uname -m)" in
-  x86_64)
+# The architecture to install for: the first argument (Docker's TARGETARCH, amd64 or arm64), or
+# this machine's.
+ARCH="${1:-$(uname -m)}"
+
+case "$ARCH" in
+  x86_64|amd64)
     PLATFORM="linux64"
     SHA256="16b7be9d17e4b91e661e88c50f4f42f7e5c3928a7c15529e6759e96a66cb786c"
     ;;
@@ -20,7 +24,7 @@ case "$(uname -m)" in
     SHA256="5b9bf5bad16462c3ff9896e60c623d31d7778ae13c469be765cfcd29173c956e"
     ;;
   *)
-    echo "No FFmpeg build for $(uname -m)" >&2
+    echo "No FFmpeg build for $ARCH" >&2
     exit 1
     ;;
 esac

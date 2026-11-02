@@ -17,13 +17,17 @@ RUN dotnet publish src/AtcSoft.Video.Surveillance.Api \
       --output /app \
       -p:UseAppHost=false
 
-# FFmpeg 9 for the image's architecture, pinned and checked (docker/install-ffmpeg.sh).
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS ffmpeg
+# FFmpeg 9 for the image's architecture, pinned and checked (docker/install-ffmpeg.sh). Downloaded
+# on the machine's own platform, as nothing in the final stage runs a command: an arm64 image is
+# built on an x64 machine without emulation.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS ffmpeg
+ARG TARGETARCH
 RUN apt-get update \
  && apt-get install -y --no-install-recommends xz-utils \
  && rm -rf /var/lib/apt/lists/*
 COPY docker/install-ffmpeg.sh /tmp/install-ffmpeg.sh
-RUN sh /tmp/install-ffmpeg.sh
+RUN sh /tmp/install-ffmpeg.sh "$TARGETARCH" \
+ && mkdir -p /empty/data
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 LABEL org.opencontainers.image.title="AtcSoft Video Surveillance" \
@@ -36,7 +40,8 @@ COPY --from=build /app /app
 COPY --chmod=755 docker/healthcheck.sh /usr/local/bin/healthcheck
 
 # /data holds the settings, users, keys and (by default) the recordings: keep it in a volume.
-RUN mkdir -p /data && chown app:app /data
+# Owned by the image's user "app" (1654).
+COPY --from=ffmpeg --chown=1654:1654 /empty/data /data
 
 ENV ASPNETCORE_URLS=http://+:8585 \
     ASPNETCORE_ENVIRONMENT=Production \
