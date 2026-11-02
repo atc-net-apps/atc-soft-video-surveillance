@@ -41,6 +41,7 @@ RUN mkdir -p /data && chown app:app /data
 ENV ASPNETCORE_URLS=http://+:8585 \
     ASPNETCORE_ENVIRONMENT=Production \
     Storage__DataPath=/data \
+    Setup__LogCode=true \
     ATCSOFT_FFMPEG_PATH=/opt/ffmpeg/lib \
     LD_LIBRARY_PATH=/opt/ffmpeg/lib \
     DOTNET_CLI_TELEMETRY_OPTOUT=1

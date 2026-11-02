@@ -40,6 +40,39 @@ public sealed class AccountServiceTests : IDisposable
     }
 
     [Fact]
+    public void The_Log_Says_Where_The_Setup_Code_Is_But_Not_The_Code()
+    {
+        var log = new CollectingLogger();
+
+        _ = new AccountService(paths, time, log);
+
+        var code = ReadSetupCode();
+        log.Messages.Should().ContainSingle(m => m.Contains(paths.SetupCodePath, StringComparison.Ordinal));
+        log.Messages.Should().NotContain(m => m.Contains(code, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Where_The_Log_Is_The_Way_In_It_Has_The_Setup_Code_Too()
+    {
+        var log = new CollectingLogger();
+
+        _ = new AccountService(paths, time, log, logSetupCode: true);
+
+        log.Messages.Should().ContainSingle(m => m.Contains(ReadSetupCode(), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_Server_With_Its_First_Admin_Logs_No_Setup_Code()
+    {
+        CreateSetUpSut();
+        var log = new CollectingLogger();
+
+        _ = new AccountService(paths, time, log, logSetupCode: true);
+
+        log.Messages.Should().NotContain(m => m.Contains("setup code", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void The_Setup_Code_Makes_The_First_Admin_And_Is_Gone_Afterwards()
     {
         var sut = CreateSut();
@@ -312,5 +345,25 @@ public sealed class AccountServiceTests : IDisposable
 
             Directory.Delete(Path);
         }
+    }
+
+    private sealed class CollectingLogger : ILogger<AccountService>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => null;
+
+        public bool IsEnabled(LogLevel logLevel)
+            => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
     }
 }

@@ -351,7 +351,8 @@ try
     builder.Services.AddSingleton(sp => new AccountService(
         sp.GetRequiredService<ServerDataPaths>(),
         sp.GetRequiredService<TimeProvider>(),
-        sp.GetRequiredService<ILogger<AccountService>>()));
+        sp.GetRequiredService<ILogger<AccountService>>(),
+        logSetupCode: builder.Configuration.GetValue("Setup:LogCode", defaultValue: false)));
     builder.Services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<AccountService>());
     builder.Services.AddSingleton<IAuditLog>(sp => new AuditLog(
         sp.GetRequiredService<ServerDataPaths>().AuditLogPath,
