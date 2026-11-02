@@ -404,7 +404,8 @@ try
 
     // First, so that everything after it (the HTTPS redirect, the rate limits, the audit log)
     // sees the client and not the proxy.
-    app.UseForwardedHeaders();
+    // A path the server lives under (PathBase, X-Forwarded-Prefix) is taken off here too.
+    app.UseReverseProxy();
 
     // HTTPS when the server was given an HTTPS endpoint, outside development
     // only: under Aspire the clients also reach the plain "public" endpoint,

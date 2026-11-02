@@ -73,6 +73,52 @@ public static class WebClientHosting
     }
 
     /// <summary>
+    /// Gets the web client's page with its <c>&lt;base href&gt;</c> set to the path the server was
+    /// reached under (<c>/surveillance/</c> behind a proxy; <c>/</c> at the root), so the client's
+    /// files, pages and API calls stay below it.
+    /// </summary>
+    /// <param name="page">The page as built, with <c>&lt;base href="/" /&gt;</c>.</param>
+    /// <param name="pathBase">The path the request came under.</param>
+    /// <returns>The page to send.</returns>
+    public static string WithBase(
+        string page,
+        PathString pathBase)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+
+        if (!pathBase.HasValue)
+        {
+            return page;
+        }
+
+        var href = System.Net.WebUtility.HtmlEncode(pathBase.Value!.TrimEnd('/') + "/");
+        return page.Replace("<base href=\"/\" />", $"<base href=\"{href}\" />", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Marks an answer that depends on the encodings the browser accepts with
+    /// <c>Vary: Accept-Encoding</c>, in place of the <c>Vary: Content-Encoding</c> the web client's
+    /// compressed files are sent with.
+    /// </summary>
+    /// <param name="headers">The response headers.</param>
+    public static void FixVary(IHeaderDictionary headers)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+
+        var vary = headers.Vary.ToString();
+        if (vary.Length == 0 || !vary.Contains(Microsoft.Net.Http.Headers.HeaderNames.ContentEncoding, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var values = vary
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(v => string.Equals(v, Microsoft.Net.Http.Headers.HeaderNames.ContentEncoding, StringComparison.OrdinalIgnoreCase) ? Microsoft.Net.Http.Headers.HeaderNames.AcceptEncoding : v)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        headers.Vary = string.Join(", ", values);
+    }
+
+    /// <summary>
     /// Serves the web client: its files, and its page for a browser's page load. Call before the
     /// API's endpoints are mapped.
     /// </summary>
@@ -87,6 +133,12 @@ public static class WebClientHosting
             return;
         }
 
+        string page;
+        using (var reader = new StreamReader(index.CreateReadStream()))
+        {
+            page = reader.ReadToEnd();
+        }
+
         app.Use(async (context, next) =>
         {
             if (!IsPageLoad(context.Request))
@@ -98,7 +150,23 @@ public static class WebClientHosting
             // Never kept by the browser: a new version of the server brings a new client.
             context.Response.ContentType = "text/html; charset=utf-8";
             context.Response.Headers.CacheControl = "no-cache, no-store";
-            await context.Response.SendFileAsync(index, context.RequestAborted).ConfigureAwait(false);
+            await context.Response.WriteAsync(WithBase(page, context.Request.PathBase), context.RequestAborted).ConfigureAwait(false);
+        });
+
+        // The web client's files are sent compressed as the browser accepts (Brotli, gzip), but
+        // marked "Vary: Content-Encoding" instead of "Vary: Accept-Encoding". A browser's cache then
+        // hands a Brotli copy to a request that did not accept Brotli, which fails to decode, and
+        // the client never starts (seen behind a proxy after an update). The answer is marked
+        // with what it depends on.
+        app.Use((context, next) =>
+        {
+            context.Response.OnStarting(() =>
+            {
+                FixVary(context.Response.Headers);
+                return Task.CompletedTask;
+            });
+
+            return next(context);
         });
 
         app.UseBlazorFrameworkFiles();

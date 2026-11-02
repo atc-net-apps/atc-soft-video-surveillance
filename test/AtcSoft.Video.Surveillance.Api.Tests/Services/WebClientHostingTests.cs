@@ -55,6 +55,33 @@ public sealed class WebClientHostingTests
     public void The_Web_Client_Can_Be_Turned_Off()
         => WebClientHosting.IsEnabled(Configuration((WebClientHosting.EnabledKey, "false"))).Should().BeFalse();
 
+    [Fact]
+    public void At_The_Root_The_Page_Is_As_Built()
+        => WebClientHosting.WithBase(Page, PathString.Empty).Should().Be(Page);
+
+    [Fact]
+    public void Under_A_Path_The_Page_Says_So()
+        => WebClientHosting.WithBase(Page, new PathString("/surveillance"))
+            .Should().Contain("<base href=\"/surveillance/\" />").And.NotContain("<base href=\"/\" />");
+
+    [Theory]
+    [InlineData("Content-Encoding", "Accept-Encoding")]
+    [InlineData("Accept, Content-Encoding", "Accept, Accept-Encoding")]
+    [InlineData("Accept-Encoding, Content-Encoding", "Accept-Encoding")]
+    [InlineData("Origin", "Origin")]
+    public void A_Compressed_File_Varies_With_What_The_Browser_Accepts(
+        string vary,
+        string expected)
+    {
+        IHeaderDictionary headers = new HeaderDictionary { ["Vary"] = vary };
+
+        WebClientHosting.FixVary(headers);
+
+        headers.Vary.ToString().Should().Be(expected);
+    }
+
+    private const string Page = "<html><head><base href=\"/\" /></head><body></body></html>";
+
     private static HttpRequest Request(
         string method,
         string path,

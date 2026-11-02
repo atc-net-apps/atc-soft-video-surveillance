@@ -13,7 +13,7 @@ public sealed class ReverseProxyTests
 
         options.KnownProxies.Should().Equal(IPAddress.IPv6Loopback);
         options.KnownIPNetworks.Should().Equal(System.Net.IPNetwork.Parse("127.0.0.0/8"));
-        options.ForwardedHeaders.Should().Be(ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto);
+        options.ForwardedHeaders.Should().Be(ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedPrefix);
     }
 
     [Fact]
@@ -49,6 +49,34 @@ public sealed class ReverseProxyTests
 
         act.Should().Throw<InvalidOperationException>().WithMessage($"*{value}*");
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("/")]
+    public void Without_A_Path_The_Server_Is_At_The_Root(string? value)
+        => ReverseProxy.PathBase(Settings((ReverseProxy.PathBaseKey, value))).Should().BeNull();
+
+    [Theory]
+    [InlineData("/surveillance")]
+    [InlineData("surveillance")]
+    [InlineData("/surveillance/")]
+    public void A_Path_Has_One_Leading_Slash_And_No_Trailing_One(string value)
+        => ReverseProxy.PathBase(Settings((ReverseProxy.PathBaseKey, value))).Should().Be(new PathString("/surveillance"));
+
+    [Fact]
+    public void An_Address_Is_No_Path()
+    {
+        var act = () => ReverseProxy.PathBase(Settings((ReverseProxy.PathBaseKey, "https://nas/surveillance")));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*https://nas/surveillance*");
+    }
+
+    private static IConfiguration Settings(
+        params (string Key, string? Value)[] values)
+        => new ConfigurationBuilder()
+            .AddInMemoryCollection(values.Select(x => new KeyValuePair<string, string?>(x.Key, x.Value)))
+            .Build();
 
     private static ForwardedHeadersOptions Configure(
         params (string Key, string Value)[] values)

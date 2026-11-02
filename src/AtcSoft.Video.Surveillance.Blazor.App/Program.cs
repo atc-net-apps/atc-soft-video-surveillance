@@ -33,7 +33,8 @@ builder.Services
     })
     .AddApiCredentials((sp, credentials) => SessionCredentials.Configure(credentials, sp.GetRequiredService<BrowserSession>()))
     .AddApiResilience()
-    .AddHttpMessageHandler(sp => new EventStreamWatchdogHandler(sp.GetRequiredService<EventStreamWatchdog>()));
+    .AddHttpMessageHandler(sp => new EventStreamWatchdogHandler(sp.GetRequiredService<EventStreamWatchdog>()))
+    .AddHttpMessageHandler(() => new BasePathHandler(new Uri(apiBaseAddress)));
 
 // Register all generated endpoints (includes IHttpMessageFactory registration)
 builder.Services.AddVideoSurveillanceEndpoints();
