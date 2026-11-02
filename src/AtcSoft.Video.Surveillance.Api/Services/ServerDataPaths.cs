@@ -45,6 +45,7 @@ public sealed class ServerDataPaths
         AvailabilityPath = Path.Combine(folder, "availability");
         KeysPath = Path.Combine(folder, "keys");
         LockPath = Path.Combine(folder, "server.lock");
+        LogsPath = Path.Combine(folder, "logs");
     }
 
     /// <summary>
@@ -114,6 +115,11 @@ public sealed class ServerDataPaths
     /// stopped (<see cref="ServerPasswordReset"/>) knows it is not.
     /// </summary>
     public string LockPath { get; }
+
+    /// <summary>
+    /// Gets the folder the Windows service writes its log to (it has no console).
+    /// </summary>
+    public string LogsPath { get; }
 
     /// <summary>
     /// Moves the recording, snapshot and log folders into the data folder

@@ -216,6 +216,26 @@ jobs:
           if (Get-Service AtcSoftVideoSurveillance -ErrorAction SilentlyContinue) { throw 'The service is still there' }
           if (-not (Test-Path "$env:ProgramData\AtcSoft\VideoSurveillance\signing.key")) { throw 'The data folder was not kept' }
 
+      # Why the service stopped: the service control manager's and the runtime's events, and the
+      # service's own log (it has no console, so it writes to the data folder's logs).
+      - name: Service diagnostics
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-Service AtcSoftVideoSurveillance -ErrorAction SilentlyContinue | Format-List Name, Status, StartType
+          $since = (Get-Date).AddMinutes(-30)
+          Write-Host '--- Service Control Manager'
+          Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Service Control Manager'; StartTime = $since } -ErrorAction SilentlyContinue |
+            Where-Object { $_.Message -match 'AtcSoft' } | Format-List TimeCreated, Id, Message
+          Write-Host '--- Application errors'
+          Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $since } -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProviderName -in '.NET Runtime', 'Application Error', 'Windows Error Reporting' } | Format-List TimeCreated, ProviderName, Message
+          Write-Host '--- The service log'
+          Get-ChildItem "$env:ProgramData\AtcSoft\VideoSurveillance\logs" -Filter *.log -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-Content $_.FullName -Tail 200 }
+          New-Item -ItemType Directory service-logs -Force | Out-Null
+          Copy-Item "$env:ProgramData\AtcSoft\VideoSurveillance\logs\*" service-logs -ErrorAction SilentlyContinue
+
       - name: Installer logs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -224,4 +244,5 @@ jobs:
           path: |
             install.log
             uninstall.log
+            service-logs/
           retention-days: 5

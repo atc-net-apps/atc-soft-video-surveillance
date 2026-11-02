@@ -37,7 +37,10 @@ public static class ServerHosting
 #endif
     }
 
-    private static bool RunsAsWindowsService()
+    /// <summary>
+    /// Whether the service control manager started the server, as the Windows service.
+    /// </summary>
+    public static bool RunsAsWindowsService()
 #if WINDOWS
         => Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService();
 #else

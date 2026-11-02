@@ -26,8 +26,8 @@ var earlyConfiguration = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .AddCommandLine(hostArgs)
     .Build();
-var advancedSettings = LoadAdvancedSettingsForLogging(
-    new ServerDataPaths(earlyConfiguration[ServerDataPaths.ConfigurationKey]).SettingsPath);
+var earlyPaths = new ServerDataPaths(earlyConfiguration[ServerDataPaths.ConfigurationKey]);
+var advancedSettings = LoadAdvancedSettingsForLogging(earlyPaths.SettingsPath);
 
 // Drop framework Debug noise (Kestrel connection lifecycle, request matching,
 // static file middleware) but keep AtcSoft.*
@@ -54,6 +54,17 @@ if (advancedSettings.EnableDebugLogging)
             retainedFileCountLimit: 7,
             outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
             formatProvider: System.Globalization.CultureInfo.InvariantCulture);
+}
+else if (ServerHosting.RunsAsWindowsService())
+{
+    // A service has no console: its log goes to the data folder's logs, so a service that
+    // stops says why.
+    loggerConfig.WriteTo.File(
+        Path.Combine(earlyPaths.LogsPath, "video-surveillance-api-.log"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 7,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
+        formatProvider: System.Globalization.CultureInfo.InvariantCulture);
 }
 
 // Under Aspire the logs (binding errors included) also go to the dashboard; the sink reads
