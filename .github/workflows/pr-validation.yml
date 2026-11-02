@@ -33,6 +33,34 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration ${{ env.CONFIGURATION }}
 
+  linux:
+    name: Linux tests and Docker image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The engine and the server, on Linux with the pinned FFmpeg 9 (docker/install-ffmpeg.sh).
+      - name: Engine and server tests
+        run: |
+          docker build --file docker/tests.Dockerfile --tag atc-video-surveillance-tests .
+          docker run --rm atc-video-surveillance-tests
+
+      # The server's image builds, starts and reports healthy.
+      - name: Server image
+        run: |
+          docker build --tag atc-video-surveillance:pr .
+          docker run --detach --name server --publish 8585:8585 atc-video-surveillance:pr
+          for i in $(seq 1 60); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' server)
+            [ "$status" = "healthy" ] && break
+            sleep 2
+          done
+          docker logs server
+          [ "$(docker inspect --format '{{.State.Health.Status}}' server)" = "healthy" ]
+          curl --fail --silent http://localhost:8585/health
+
   build-installer:
     name: Build Installer (Validation)
     runs-on: windows-latest
