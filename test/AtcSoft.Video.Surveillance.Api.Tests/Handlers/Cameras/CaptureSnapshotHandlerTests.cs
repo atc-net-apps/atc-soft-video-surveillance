@@ -196,21 +196,14 @@ public class CaptureSnapshotHandlerTests
         var camera = new CameraConfiguration { Id = cameraId };
         storage.GetCameraById(cameraId).Returns(camera);
         pipelineFactory.Create(camera).Returns(pipeline);
+        pipeline.FramesDecoded.Returns(1);
         pipeline.CaptureFrameAsync(Arg.Any<CancellationToken>()).Returns((byte[]?)null);
         var handler = new CaptureSnapshotHandler(storage, pipelineFactory, settingsService);
 
-        // Act — kick off ExecuteAsync, then raise Connected so the handler
-        // proceeds past the connection wait and into CaptureFrameAsync.
-        var executeTask = handler.ExecuteAsync(
+        // Act — the camera delivers pictures, but none can be captured
+        var result = await handler.ExecuteAsync(
             new CaptureSnapshotParameters(cameraId),
             CancellationToken.None);
-
-        pipeline.ConnectionStateChanged += Raise.EventWith(
-            new AtcSoft.Video.Surveillance.Events.ConnectionStateChangedEventArgs(
-                AtcSoft.Video.Surveillance.Enums.ConnectionState.Connecting,
-                AtcSoft.Video.Surveillance.Enums.ConnectionState.Connected));
-
-        var result = await executeTask;
 
         // Assert
         pipelineFactory.Received(1).Create(camera);
