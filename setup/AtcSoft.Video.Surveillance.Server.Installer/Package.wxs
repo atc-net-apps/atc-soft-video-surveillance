@@ -30,8 +30,40 @@
     <Property Id="ARPHELPLINK" Value="https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance" />
 
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
-    <ui:WixUI Id="WixUI_InstallDir" />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+    <!-- The last page opens the web client, ticked by default: a browser on this PC creates the
+         first admin with just a user name and password (no setup code). Not when removing. -->
+    <SetProperty
+      Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT"
+      Value="Open AtcSoft Video Surveillance in the browser"
+      After="CostFinalize"
+      Sequence="ui"
+      Condition="NOT REMOVE" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <CustomAction
+      Id="OpenWebClient"
+      BinaryRef="Wix4UtilCA_X64"
+      DllEntry="WixShellExec"
+      Impersonate="yes" />
+
+    <UI>
+      <ui:WixUI Id="WixUI_InstallDir" />
+      <Publish
+        Dialog="ExitDialog"
+        Control="Finish"
+        Property="WixShellExecTarget"
+        Value="http://localhost:[PORT]/"
+        Order="1"
+        Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT REMOVE" />
+      <Publish
+        Dialog="ExitDialog"
+        Control="Finish"
+        Event="DoAction"
+        Value="OpenWebClient"
+        Order="2"
+        Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT REMOVE" />
+    </UI>
 
   </Package>
 </Wix>
