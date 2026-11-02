@@ -2850,4 +2850,10 @@ Vorschaubild:
   <data name="StreamStoppedStartsAgain" xml:space="preserve">
     <value>Der Stream wurde unterbrochen. Er startet von selbst neu.</value>
   </data>
+  <data name="CloseWhileRecording1" xml:space="preserve">
+    <value>Kameras, die aufnehmen: {0}. Wenn Sie CameraWall schließen, enden die Aufnahmen. Trotzdem schließen?</value>
+  </data>
+  <data name="RecordingsInProgress" xml:space="preserve">
+    <value>Aufnahmen laufen</value>
+  </data>
 </root>

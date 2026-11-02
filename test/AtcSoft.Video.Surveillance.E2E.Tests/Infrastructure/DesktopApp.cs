@@ -512,11 +512,19 @@ internal sealed class DesktopApp : IDisposable
         => Thread.Sleep(duration);
 
     /// <summary>
-    /// Asks the app to close its main window and waits for the process to end.
+    /// Gets a value indicating whether the last <see cref="CloseApp"/> was asked whether to
+    /// close while cameras record (CameraWall), and answered yes.
+    /// </summary>
+    public bool CloseWhileRecordingAsked { get; private set; }
+
+    /// <summary>
+    /// Asks the app to close its main window and waits for the process to end. CameraWall asks
+    /// first while cameras record: the question is answered yes.
     /// </summary>
     /// <returns><see langword="true"/> when it ended by itself.</returns>
     public bool CloseApp(Window mainWindow)
     {
+        CloseWhileRecordingAsked = false;
         try
         {
             mainWindow.Close();
@@ -524,6 +532,30 @@ internal sealed class DesktopApp : IDisposable
         catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException)
         {
             // Closing as it closes.
+        }
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (!Process.HasExited && DateTime.UtcNow < deadline)
+        {
+            var question = Windows().FirstOrDefault(w => SafeMatch(
+                x => x.Title.Contains("Recordings in progress", StringComparison.OrdinalIgnoreCase),
+                w));
+            if (question is not null)
+            {
+                foreach (var name in new[] { "Yes", "OK" })
+                {
+                    if (TryFind(question, name, ControlType.Button) is { IsEnabled: true } yes)
+                    {
+                        Press(yes);
+                        CloseWhileRecordingAsked = true;
+                        break;
+                    }
+                }
+
+                break;
+            }
+
+            Thread.Sleep(250);
         }
 
         return Process.Process.WaitForExit(30_000);
