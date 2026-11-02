@@ -37,6 +37,31 @@ public sealed class FFmpegRuntimeTests : IDisposable
         expected.FFmpegMajor.Should().Be(9, "bindings 9.x are for FFmpeg 9");
     }
 
+    [Theory]
+    [InlineData("avutil-61.dll", "avutil", 61)]
+    [InlineData("libavutil.so.61", "avutil", 61)]
+    [InlineData("libavcodec.so.63.4.100", "avcodec", 63)]
+    [InlineData("libavutil.61.dylib", "avutil", 61)]
+    [InlineData("libswscale.10.1.100.dylib", "swscale", 10)]
+    public void A_Library_Is_Read_From_The_File_Name_Each_System_Gives_It(
+        string fileName,
+        string library,
+        int major)
+    {
+        // Before, only Windows' names were read: FFmpeg on Linux and macOS was never found.
+        FFmpegRuntime.TryReadLibraryFile(fileName, out var name, out var version).Should().BeTrue();
+        name.Should().Be(library);
+        version.Should().Be(major);
+    }
+
+    [Theory]
+    [InlineData("libavutil.so")]
+    [InlineData("avutil.dll")]
+    [InlineData("libavutil.dylib")]
+    [InlineData("readme.txt")]
+    public void A_File_Without_A_Version_Is_Not_A_Library_Found(string fileName)
+        => FFmpegRuntime.TryReadLibraryFile(fileName, out _, out _).Should().BeFalse();
+
     [Fact]
     public void A_Folder_With_The_Expected_Libraries_Is_Ready()
     {
@@ -108,10 +133,13 @@ public sealed class FFmpegRuntimeTests : IDisposable
     [Fact]
     public void The_Usual_Folders_Are_Looked_In_After_The_Configured_One()
     {
-        var candidates = FFmpegRuntime.Candidates(@"D:\Configured", name => name == "PATH" ? @"D:\OnPath" : null);
+        // Folders of this system: on Linux and macOS a "D:\..." would be split at its colon.
+        var configured = Path.Combine(Path.GetTempPath(), "Configured");
+        var onPath = Path.Combine(Path.GetTempPath(), "OnPath");
+        var candidates = FFmpegRuntime.Candidates(configured, name => name == "PATH" ? onPath : null);
 
-        candidates[0].Should().Be(@"D:\Configured");
-        candidates.Should().Contain(FFmpegRuntime.ManagedFolder).And.Contain(@"D:\OnPath");
+        candidates[0].Should().Be(configured);
+        candidates.Should().Contain(FFmpegRuntime.ManagedFolder).And.Contain(onPath);
     }
 
     [Fact]

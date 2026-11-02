@@ -56,7 +56,8 @@ public sealed class RecordingWriteErrorTests
     private static Process StartCamera(
         string tool,
         int port)
-        => Process.Start(new ProcessStartInfo
+        => TestStreams.Listening(
+            Process.Start(new ProcessStartInfo
         {
             FileName = tool,
             Arguments =
@@ -65,7 +66,8 @@ public sealed class RecordingWriteErrorTests
                 $"-f mpegts \"tcp://127.0.0.1:{port}?listen=1\"",
             UseShellExecute = false,
             CreateNoWindow = true,
-        }) ?? throw new InvalidOperationException("The test stream could not be started.");
+        }) ?? throw new InvalidOperationException("The test stream could not be started."),
+            port);
 
     private static async Task WaitUntilAsync(
         Func<bool> condition,

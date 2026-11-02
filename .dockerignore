@@ -1,0 +1,18 @@
+# What a Docker build may read: the sources and their build settings. Build output, local
+# working notes and editor state stay out of every image.
+**/bin/
+**/obj/
+**/TestResults/
+**/BenchmarkDotNet.Artifacts/
+**/node_modules/
+.git/
+.github/
+.claude/
+.vs/
+.idea/
+issues/
+plans/
+images/
+setup/
+*.user
+*.DotSettings

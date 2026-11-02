@@ -366,8 +366,9 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
             CreateNoWindow = true,
         };
 
-        return System.Diagnostics.Process.Start(start)
-            ?? throw new InvalidOperationException("The test stream could not be started.");
+        return TestStreams.Listening(
+            System.Diagnostics.Process.Start(start) ?? throw new InvalidOperationException("The test stream could not be started."),
+            port);
     }
 
     private static string? FindFFmpegTool()
@@ -407,8 +408,9 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
             CreateNoWindow = true,
         };
 
-        return System.Diagnostics.Process.Start(start)
-            ?? throw new InvalidOperationException("The test stream could not be started.");
+        return TestStreams.Listening(
+            System.Diagnostics.Process.Start(start) ?? throw new InvalidOperationException("The test stream could not be started."),
+            port);
     }
 
     private static void Stop(System.Diagnostics.Process process)

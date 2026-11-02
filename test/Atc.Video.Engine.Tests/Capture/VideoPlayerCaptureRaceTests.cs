@@ -25,6 +25,7 @@ public sealed class VideoPlayerCaptureRaceTests
             UseShellExecute = false,
             CreateNoWindow = true,
         }) ?? throw new InvalidOperationException("The test stream could not be started.");
+        TestStreams.WaitUntilListening(port);
 
         var captured = 0;
         try
