@@ -1,7 +1,7 @@
 # AtcSoft Video Surveillance: the server with its web client, on http://<this machine>:8585.
 #
-#   docker compose up -d --build
-#   docker compose exec video-surveillance cat /data/setup-code.txt    # the code for the first admin
+#   docker compose up -d                  # the released image, or built here when there is none
+#   docker compose logs video-surveillance # the setup code for the first admin
 #
 # With HTTPS through Caddy in front (a certificate from Let's Encrypt for a public name, or
 # Caddy's own for a local one):
@@ -14,8 +14,9 @@
 
 services:
   video-surveillance:
+    # The released image; "docker compose up --build" builds it from this folder instead.
+    image: ghcr.io/atc-net-apps/atc-video-surveillance:latest
     build: .
-    image: atc-video-surveillance:local
     container_name: video-surveillance
     restart: unless-stopped
     ports:
