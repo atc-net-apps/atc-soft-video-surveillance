@@ -100,6 +100,12 @@ public sealed class BuiltInMotionDetector : IMotionDetector
         var mask = buffers.Mask;
         var ignore = Ignored(frame.Width, frame.Height);
 
+        // The camera's exposure moves the whole picture a little: the background follows it first.
+        if (options.FollowExposure)
+        {
+            background.FollowExposure(blurred, ignore);
+        }
+
         // Most of the picture still differs (a change of light taken for motion, as lighting
         // changes are not ignored): it is learnt at the background's speed, not kept like
         // something that stopped, so motion is seen again within seconds.
