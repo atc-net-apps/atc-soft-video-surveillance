@@ -170,6 +170,7 @@ try
     // Null fallback.
     builder.Services.AddSingleton<IUsbCameraEnumerator>(NullUsbCameraEnumerator.Instance);
     builder.Services.AddSingleton<IUsbCameraWatcher, NullUsbCameraWatcher>();
+#if WINDOWS
     if (OperatingSystem.IsWindows())
     {
         AtcSoft.Video.Surveillance.Windows.DependencyInjection.ServiceCollectionExtensions
@@ -184,6 +185,7 @@ try
         AtcSoft.Video.Surveillance.Windows.DependencyInjection.ServiceCollectionExtensions
             .AddWindowsMotionFrameReader(builder.Services);
     }
+#endif
 
     // Lifecycle coordinator translates raw watcher events into
     // per-camera Unplugged / Replugged transitions for

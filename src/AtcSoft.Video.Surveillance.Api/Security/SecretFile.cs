@@ -49,7 +49,16 @@ public static class SecretFile
             }
             else
             {
-                using var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                // Readable and writable by the server's own user only (600), from its creation.
+                using var stream = new FileStream(
+                    temp,
+                    new FileStreamOptions
+                    {
+                        Mode = FileMode.CreateNew,
+                        Access = FileAccess.Write,
+                        Share = FileShare.None,
+                        UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite,
+                    });
                 using var writer = new StreamWriter(stream);
                 writer.Write(contents);
                 writer.Flush();
@@ -88,7 +97,7 @@ public static class SecretFile
 
         if (!OperatingSystem.IsWindows())
         {
-            return true;
+            return TryRestrictUnix(path);
         }
 
         try
@@ -148,6 +157,35 @@ public static class SecretFile
         }
 
         return accounts;
+    }
+
+    // Linux and macOS: the folder 700 and its files 600, so only the server's own user reads them.
+    private static bool TryRestrictUnix(string path)
+    {
+        const UnixFileMode OwnerFile = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        const UnixFileMode OwnerFolder = OwnerFile | UnixFileMode.UserExecute;
+
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                File.SetUnixFileMode(path, OwnerFolder);
+                foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                {
+                    File.SetUnixFileMode(file, OwnerFile);
+                }
+            }
+            else if (File.Exists(path))
+            {
+                File.SetUnixFileMode(path, OwnerFile);
+            }
+
+            return true;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or PlatformNotSupportedException)
+        {
+            return false;
+        }
     }
 
     [SupportedOSPlatform("windows")]

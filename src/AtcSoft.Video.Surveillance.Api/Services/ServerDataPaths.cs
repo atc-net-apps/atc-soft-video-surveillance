@@ -18,9 +18,14 @@ public sealed class ServerDataPaths
     /// <param name="dataPath">The data folder, or <c>null</c> / empty for the default location.</param>
     public ServerDataPaths(string? dataPath)
     {
-        DataPath = string.IsNullOrWhiteSpace(dataPath)
-            ? null
-            : Path.GetFullPath(dataPath);
+        // Windows keeps the shared application data folder (ProgramData). Elsewhere that folder is
+        // /usr/share, which a server must not write: the user's own data folder is the default
+        // there ($XDG_DATA_HOME or ~/.local/share on Linux), and the Docker image sets /data.
+        DataPath = !string.IsNullOrWhiteSpace(dataPath)
+            ? Path.GetFullPath(dataPath)
+            : OperatingSystem.IsWindows()
+                ? null
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "atcsoft-video-surveillance");
 
         SettingsPath = DataPath is null
             ? ApplicationPaths.DefaultSettingsPath
@@ -42,7 +47,7 @@ public sealed class ServerDataPaths
     }
 
     /// <summary>
-    /// Gets the configured data folder, or <c>null</c> when the default location is used.
+    /// Gets the data folder: the configured one, the user's own outside Windows, or <c>null</c> on Windows for the shared application data folder.
     /// </summary>
     public string? DataPath { get; }
 
