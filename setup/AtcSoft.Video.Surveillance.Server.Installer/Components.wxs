@@ -78,10 +78,12 @@
     </Component>
 
     <!-- A server started by hand before the service wrote its secrets for its own user: the
-         service's account is given them too, before it starts. -->
+         service's account is given them too, before it starts. Granted twice: on a file
+         icacls takes (OI)(CI) without a word and grants nothing, so M for every file and folder, and
+         (OI)(CI)M on the folders (keys) for the files the service writes into them later. -->
     <SetProperty
       Id="GrantServiceAccountToData"
-      Value="&quot;[System64Folder]icacls.exe&quot; &quot;[DATAFOLDER].&quot; /grant *S-1-5-80-2781899967-703317263-3564165195-2030983897-3191695680:(OI)(CI)M /T /C /Q"
+      Value="&quot;[System64Folder]icacls.exe&quot; &quot;[DATAFOLDER].&quot; /grant *S-1-5-80-2781899967-703317263-3564165195-2030983897-3191695680:M *S-1-5-80-2781899967-703317263-3564165195-2030983897-3191695680:(OI)(CI)M /T /C /Q"
       Before="GrantServiceAccountToData"
       Sequence="execute" />
     <CustomAction
