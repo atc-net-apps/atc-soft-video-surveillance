@@ -146,7 +146,7 @@ jobs:
       - name: Build and push
         env:
           VERSION: ${{ needs.release-please.outputs.version }}
-          IMAGE: ghcr.io/${{ github.repository_owner }}/atc-video-surveillance
+          IMAGE: ghcr.io/${{ github.repository_owner }}/atc-soft-video-surveillance-server
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "$GH_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
@@ -266,7 +266,7 @@ jobs:
         run: |
           dotnet publish src/AtcSoft.Video.Surveillance.Blazor.App --configuration ${{ env.CONFIGURATION }} --output ./web-client
           mkdir -p ./assets
-          cp docker/web-client-README.txt ./web-client/wwwroot/README.txt
+          cp setup/web-client/README.txt ./web-client/wwwroot/README.txt
           (cd ./web-client/wwwroot && zip -r -q "../../assets/AtcSoft.Video.Surveillance.WebClient-$VERSION.zip" .)
           cp setup/iis/web.config ./assets/AtcSoft.Video.Surveillance.IIS.web.config
 

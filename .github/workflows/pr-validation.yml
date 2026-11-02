@@ -58,14 +58,14 @@ jobs:
       # The engine and the server, on Linux with the pinned FFmpeg 9 (docker/install-ffmpeg.sh).
       - name: Engine and server tests
         run: |
-          docker build --file docker/tests.Dockerfile --tag atc-video-surveillance-tests .
-          docker run --rm atc-video-surveillance-tests
+          docker build --file docker/tests.Dockerfile --tag atc-soft-video-surveillance-tests .
+          docker run --rm atc-soft-video-surveillance-tests
 
       # The server's image builds, starts and reports healthy.
       - name: Server image
         run: |
-          docker build --tag atc-video-surveillance:pr .
-          docker run --detach --name server --publish 8585:8585 atc-video-surveillance:pr
+          docker build --tag atc-soft-video-surveillance-server:pr .
+          docker run --detach --name server --publish 8585:8585 atc-soft-video-surveillance-server:pr
           for i in $(seq 1 60); do
             status=$(docker inspect --format '{{.State.Health.Status}}' server)
             [ "$status" = "healthy" ] && break

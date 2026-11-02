@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 #
 # The AtcSoft Video Surveillance server with its web client, for linux/amd64 and linux/arm64.
-#   docker build -t atc-video-surveillance .
-#   docker run -d -p 8585:8585 -v ./data:/data atc-video-surveillance
+#   docker build -t atc-soft-video-surveillance-server .
+#   docker run -d -p 8585:8585 -v ./data:/data atc-soft-video-surveillance-server
 # See compose.yaml, and the wiki's Docker guide.
 
 # The sources are built on the machine's own platform, for the image's architecture.
@@ -30,7 +30,7 @@ RUN sh /tmp/install-ffmpeg.sh "$TARGETARCH" \
  && mkdir -p /empty/data
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
-LABEL org.opencontainers.image.title="AtcSoft Video Surveillance" \
+LABEL org.opencontainers.image.title="AtcSoft Video Surveillance Server" \
       org.opencontainers.image.description="Video surveillance server with its web client: cameras, recording, motion detection, timeline" \
       org.opencontainers.image.source="https://github.com/atc-net-apps/atc-soft-video-surveillance" \
       org.opencontainers.image.licenses="MIT"

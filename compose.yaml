@@ -15,7 +15,7 @@
 services:
   video-surveillance:
     # The released image; "docker compose up --build" builds it from this folder instead.
-    image: ghcr.io/atc-net-apps/atc-video-surveillance:latest
+    image: ghcr.io/atc-net-apps/atc-soft-video-surveillance-server:latest
     build: .
     container_name: video-surveillance
     restart: unless-stopped
