@@ -388,7 +388,14 @@ try
     builder.Services.AddSingleton(new ServerHeartbeatServiceOptions());
     builder.Services.AddHostedService<ServerHeartbeatService>();
 
+    // Behind a reverse proxy: the client's own address and scheme, from a proxy the server trusts.
+    builder.Services.Configure<ForwardedHeadersOptions>(options => ReverseProxy.Configure(options, builder.Configuration));
+
     var app = builder.Build();
+
+    // First, so that everything after it (the HTTPS redirect, the rate limits, the audit log)
+    // sees the client and not the proxy.
+    app.UseForwardedHeaders();
 
     // HTTPS when the server was given an HTTPS endpoint, outside development
     // only: under Aspire the clients also reach the plain "public" endpoint,
