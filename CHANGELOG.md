@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.4.0](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.3.0...v1.4.0) (2026-11-02)
+
+
+### New features
+
+* **docker:** compose file with optional HTTPS through Caddy, and a health check ([0d43e87](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/0d43e87ceed16a9ec6c691dd61bbbfac82a4777f))
+* **docker:** the setup code for the first admin in the container's log ([f7b1a37](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/f7b1a370c77158276f2806e82797f61883fddf0d))
+* **engine:** find and load FFmpeg 9 on Linux and macOS ([d443a9f](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/d443a9f7f6b0f1cd9835772fab119f060f5a8593))
+* **iis:** a web.config for IIS as a reverse proxy in front of the server ([4736adf](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/4736adf85341718f6e8bfb951ccfb922c560c459))
+* **installer:** open the web client from the server installer's last page ([9f04234](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/9f042340d87379b6b4db51aac1116c28e0a83b34))
+* **server:** build and run on Linux, and a Docker image ([3e78a61](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/3e78a61bc60ed22a725a89ffb2832dde82b008e6))
+* **server:** create the first admin without the setup code on the server's own machine ([224b199](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/224b199063912f13cfff3b44c3b0075e6a685cb4))
+* **server:** recording thumbnails and previews on Linux and macOS ([ee6ddde](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/ee6ddde5ad4a5826e0f6fd6c28c954acee4ed4f5))
+* **server:** reset a forgotten password with --reset-password &lt;user&gt; ([717375e](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/717375ec693ba115881184869fd7608df7b20506))
+* **server:** run as a Windows service, installed by a server MSI ([5bfaea0](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/5bfaea064cc481816b3429714ff48b054058abac))
+* **server:** serve the server and its web client under a path of a proxy's site ([71557da](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/71557da4ec3047dfa289c236a0f9e1a8f2629343))
+* **server:** serve the web client from the server's own address, on port 8585 ([df158a5](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/df158a50a532b920ef82f71558b19de29d2685ad))
+* **server:** take the client's address from a trusted reverse proxy ([0b5ca18](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/0b5ca18b695fe04965c6af9b510aaa8c97794d09))
+* **server:** the Windows service writes its log to the data folder ([85770d0](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/85770d04aa092ae75e204f553303a0990db550e5))
+
+
+### Bug fixes
+
+* **installer:** give the server service's account the files a hand-run server wrote ([103f4c3](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/103f4c395c377d019a47d57640fa9dac374168b1))
+* **server:** a snapshot of a camera nobody watches waits for its first picture ([8901bb8](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/8901bb82844e60e3a3b1ff7f1bc1ff1296b162dd))
+* **server:** first admin without the setup code only at localhost ([cc10279](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/cc10279ef8120429910899fff640ceb08787993d))
+
+
+### Performance improvements
+
+* **server:** live view shares the connection of a camera the server has open ([da51713](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/da517131a1863ec5832c9c354b8fc9bacaa9138b))
+
+
+### Documentation
+
+* every place the pinned FFmpeg build is named ([4e115ef](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/4e115ef3a9d75f9b27cd77d8140bb42315f16c43))
+* how the server is hosted and installed, and its tests on Linux ([95a4bd4](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/95a4bd44c2f1deb6d379255c5ac55d25b8dc828a))
+* **iis:** the server under a path of an existing IIS site ([6193237](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/6193237c95755abfc440b930a71f5e4797c9325c))
+* local setup only at localhost in the server rules ([1496157](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/149615727ea4df9314723ce03673695bff3cb89f))
+* the first admin and the password reset in the server rules ([fd92278](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/fd922781040e1728bf7af6ac32e3aae91fc56e5b))
+
 ## [1.3.0](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.2.5...v1.3.0) (2026-11-01)
 
 
