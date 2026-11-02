@@ -30,6 +30,20 @@ jobs:
       - name: Build
         run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
 
+      # The pinned FFmpeg 9, as release-please.yml: without it every test that needs a live stream
+      # or a recording skips.
+      - name: Download FFmpeg
+        shell: pwsh
+        run: |
+          $ffmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-full_build-shared.zip"
+          $ffmpegSha256 = "8d31e162f1616e37aab3fa2db991b97e1b8dbeb1c8465fd81a81be16ff91b328"
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile ffmpeg.zip
+          $actual = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $ffmpegSha256) { throw "FFmpeg download checksum $actual, expected $ffmpegSha256" }
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-temp
+          $binDir = Get-ChildItem -Path ffmpeg-temp -Recurse -Directory -Filter "bin" | Select-Object -First 1
+          "ATCSOFT_FFMPEG_PATH=$($binDir.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Test
         run: dotnet test --no-build --configuration ${{ env.CONFIGURATION }}
 
