@@ -33,6 +33,7 @@ LABEL org.opencontainers.image.title="AtcSoft Video Surveillance" \
 
 COPY --from=ffmpeg /opt/ffmpeg /opt/ffmpeg
 COPY --from=build /app /app
+COPY --chmod=755 docker/healthcheck.sh /usr/local/bin/healthcheck
 
 # /data holds the settings, users, keys and (by default) the recordings: keep it in a volume.
 RUN mkdir -p /data && chown app:app /data
@@ -48,5 +49,8 @@ USER app
 WORKDIR /app
 VOLUME ["/data"]
 EXPOSE 8585
+
+# Healthy while /health answers 200: every always-on worker of the server is running.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD ["healthcheck"]
 
 ENTRYPOINT ["dotnet", "AtcSoft.Video.Surveillance.Api.dll"]
