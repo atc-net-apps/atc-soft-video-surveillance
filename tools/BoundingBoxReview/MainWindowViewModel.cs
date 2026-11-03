@@ -56,6 +56,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private double progressMaximum = 1;
 
+    [ObservableProperty]
+    private bool isProgressUnknown = true;
+
     public ObservableCollection<PictureItem> Pictures { get; } = [];
 
     public bool HasReview
@@ -256,12 +259,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         BusyText = "Starting ...";
         ProgressValue = 0;
         ProgressMaximum = 1;
+        IsProgressUnknown = true;
         return new Progress<ReviewProgress>(p =>
         {
             Status = p.Text;
             BusyText = p.Text;
             ProgressMaximum = p.Maximum;
             ProgressValue = p.Value;
+            IsProgressUnknown = p.Maximum <= 1 && p.Value <= 0;
         });
     }
 
