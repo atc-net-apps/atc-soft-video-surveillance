@@ -18,4 +18,11 @@ public sealed class ReviewPicture
 
     [SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "Read and written as JSON.")]
     public IList<ReviewBox>? Person { get; set; }
+
+    /// <summary>
+    /// Gets or sets what the person says about the picture (what moves, what is still), or
+    /// <see langword="null"/> when there is nothing new since the picture before.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Comment { get; set; }
 }

@@ -6,6 +6,7 @@
     xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime"
     Title="{Binding Path=Title}"
     Width="1400"
     Height="860"
@@ -23,7 +24,10 @@
     <atc:NiceWindow.InputBindings>
         <KeyBinding Key="Left" Command="{Binding Path=PreviousCommand}" />
         <KeyBinding Key="Right" Command="{Binding Path=NextCommand}" />
-        <KeyBinding Key="N" Command="{Binding Path=NothingHereCommand}" />
+        <KeyBinding
+            Key="N"
+            Command="{Binding Path=NothingHereCommand}"
+            Modifiers="Control" />
         <KeyBinding
             Key="Z"
             Command="{Binding Path=UndoLastCommand}"
@@ -112,6 +116,21 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
+        <!--  What the person says about the picture  -->
+        <DockPanel Margin="0,8,0,0" DockPanel.Dock="Bottom">
+            <TextBlock
+                Margin="0,0,0,4"
+                DockPanel.Dock="Top"
+                Text="Comment (what moves, what is still; leave empty when nothing changed since the picture before)" />
+            <TextBox
+                Height="64"
+                AcceptsReturn="True"
+                IsEnabled="{Binding Path=HasReview}"
+                Text="{Binding Path=Selected.Comment, UpdateSourceTrigger=PropertyChanged, FallbackValue={x:Static sys:String.Empty}}"
+                TextWrapping="Wrap"
+                VerticalScrollBarVisibility="Auto" />
+        </DockPanel>
+
         <!--  Step through the pictures  -->
         <StackPanel
             Margin="0,8,0,0"
@@ -131,7 +150,7 @@
                 Margin="24,0,0,0"
                 Padding="10,4"
                 Command="{Binding Path=NothingHereCommand}"
-                Content="Nothing to box here (N)" />
+                Content="Nothing to box here (Ctrl+N)" />
             <Button
                 Margin="8,0,0,0"
                 Padding="10,4"

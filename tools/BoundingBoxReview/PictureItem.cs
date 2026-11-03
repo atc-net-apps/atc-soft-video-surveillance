@@ -5,12 +5,24 @@ namespace BoundingBoxReview;
 /// </summary>
 public sealed partial class PictureItem : ObservableObject
 {
+    [ObservableProperty]
+    private string state = string.Empty;
+
+    [ObservableProperty(AfterChangedCallback = nameof(OnCommentChanged))]
+    private string comment;
+
     public PictureItem(ReviewPicture picture)
     {
         Picture = picture ?? throw new ArgumentNullException(nameof(picture));
         Detector = [.. picture.Detector.Select(BoxView.Of)];
+        comment = picture.Comment ?? string.Empty;
         Refresh();
     }
+
+    /// <summary>
+    /// Occurs when the person changes the comment, so the review can be saved.
+    /// </summary>
+    public event EventHandler? CommentChanged;
 
     public ReviewPicture Picture { get; }
 
@@ -20,9 +32,6 @@ public sealed partial class PictureItem : ObservableObject
     public IReadOnlyList<BoxView> Detector { get; }
 
     public ObservableCollection<BoxView> Person { get; } = [];
-
-    [ObservableProperty]
-    private string state = string.Empty;
 
     public void Refresh()
     {
@@ -37,6 +46,14 @@ public sealed partial class PictureItem : ObservableObject
             null => $"to do · {Picture.Detector.Count} yellow",
             { Count: 0 } => $"nothing · {Picture.Detector.Count} yellow",
             { } boxes => $"{boxes.Count} red · {Picture.Detector.Count} yellow",
-        };
+        } + (Picture.Comment is null ? string.Empty : " · comment");
+    }
+
+    // An empty comment is no comment: nothing new since the picture before.
+    private void OnCommentChanged()
+    {
+        Picture.Comment = string.IsNullOrWhiteSpace(Comment) ? null : Comment.Trim();
+        Refresh();
+        CommentChanged?.Invoke(this, EventArgs.Empty);
     }
 }
