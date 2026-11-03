@@ -264,14 +264,21 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         folder = path;
         PictureWidth = review.Width;
         PictureHeight = review.Height;
+        foreach (var old in Pictures)
+        {
+            old.CommentChanged -= OnCommentChanged;
+        }
+
         Pictures.Clear();
         foreach (var picture in review.Pictures)
         {
-            Pictures.Add(new PictureItem(picture));
+            var item = new PictureItem(picture);
+            item.CommentChanged += OnCommentChanged;
+            Pictures.Add(item);
         }
 
         Title = $"Bounding box review: {Path.GetFileName(review.Recording)}";
-        Status = "Drag on the picture to draw where a box should be (red). Right-click a red box to remove it. Arrow keys: previous / next. N: nothing to box here.";
+        Status = "Drag on the picture to draw where a box should be (red). Right-click a red box to remove it. Arrow keys: previous / next. Ctrl+N: nothing to box here. Write what you see in the comment; leave it empty when nothing changed since the picture before.";
         CompareText = string.Empty;
         OnPropertyChanged(nameof(HasReview));
         Selected = Pictures.FirstOrDefault(p => p.Picture.Person is null) ?? Pictures.FirstOrDefault();
@@ -291,6 +298,17 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // The original, without boxes: the boxes are drawn over it, so they can be shown and hidden.
         var (pixels, width, height) = PicturePixels.Load(Path.Combine(folder, ReviewFile.OriginalFolder, item.Picture.File));
         Image = PicturePixels.ToImage(pixels, width, height);
+    }
+
+    // A comment is only text in boxes.json: the picture need not be drawn again.
+    private void OnCommentChanged(
+        object? sender,
+        EventArgs e)
+    {
+        if (folder is not null && review is not null)
+        {
+            review.Write(folder);
+        }
     }
 
     private void Step(int by)

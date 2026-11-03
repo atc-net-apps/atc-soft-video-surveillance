@@ -74,6 +74,17 @@ public static class ReviewComparer
             }
         }
 
+        var comments = review.Pictures.Where(p => p.Comment is not null).ToList();
+        if (comments.Count > 0)
+        {
+            lines.Add(string.Empty);
+            lines.Add("## Comments");
+            lines.Add(string.Empty);
+            lines.Add("What the person said; a picture without a comment has nothing new since the one before.");
+            lines.Add(string.Empty);
+            lines.AddRange(comments.Select(p => string.Create(CultureInfo.InvariantCulture, $"- **{p.Seconds:0} s:** {p.Comment!.ReplaceLineEndings(" ")}")));
+        }
+
         var summary = Summarise(matches, missed, extra, reviewed, notReviewed);
         lines.Add(string.Empty);
         lines.Add("## Summary");
