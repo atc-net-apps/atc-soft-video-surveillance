@@ -105,6 +105,7 @@ global using PlayAllStart = AtcSoft.Video.Surveillance.Helpers.Activity.PlayAllS
 global using PlayAllTile = AtcSoft.Video.Surveillance.Models.PlayAllTile;
 global using ReconnectBackoff = AtcSoft.Video.Surveillance.Helpers.ReconnectBackoff;
 global using RecordingAnalysis = AtcSoft.Video.Surveillance.Helpers.Activity.RecordingAnalysis;
+global using RecordingBoxes = AtcSoft.Video.Surveillance.Helpers.Activity.RecordingBoxes;
 global using RecordingPathHelper = AtcSoft.Video.Surveillance.Helpers.RecordingPathHelper;
 global using RecordingPreviewFile = AtcSoft.Video.Surveillance.Helpers.Activity.RecordingPreviewFile;
 global using RecordingPreviewLayout = AtcSoft.Video.Surveillance.Helpers.Activity.RecordingPreviewLayout;

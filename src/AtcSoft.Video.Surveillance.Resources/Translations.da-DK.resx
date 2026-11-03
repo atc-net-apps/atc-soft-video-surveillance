@@ -2898,4 +2898,7 @@ Miniature:
   <data name="HubCameraAdded1" xml:space="preserve">
     <value>Kameraet {0} blev tilføjet fra hubben.</value>
   </data>
+  <data name="ShowMotionBoxes" xml:space="preserve">
+    <value>Vis bevægelsesbokse</value>
+  </data>
 </root>

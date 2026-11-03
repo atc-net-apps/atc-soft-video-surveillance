@@ -501,6 +501,30 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     }
 
     /// <summary>
+    /// Gets the loader of a recording's motion boxes, shown over its playback: the recording run
+    /// through the detector with its camera's settings and zones (the app's when the camera is not
+    /// known).
+    /// </summary>
+    /// <param name="recording">The recording.</param>
+    public RecordingBoxLoader BoxLoaderFor(RecordingEntry recording)
+    {
+        ArgumentNullException.ThrowIfNull(recording);
+
+        return RecordingBoxLoaders.FromFile(recording.FilePath, settingsService.MotionDetection, cameraByFolder?.Invoke(recording.CameraName));
+    }
+
+    /// <summary>
+    /// Gets how a recording's motion boxes are drawn: its camera's bounding box settings.
+    /// </summary>
+    /// <param name="recording">The recording.</param>
+    public BoundingBoxSettings BoxStyleFor(RecordingEntry recording)
+    {
+        ArgumentNullException.ThrowIfNull(recording);
+
+        return RecordingAnalysis.SettingsFor(cameraByFolder?.Invoke(recording.CameraName), settingsService.MotionDetection).BoundingBox;
+    }
+
+    /// <summary>
     /// Gets the motion zones of a recording's camera now, for the colours of its timeline; none
     /// when the camera is not known.
     /// </summary>
