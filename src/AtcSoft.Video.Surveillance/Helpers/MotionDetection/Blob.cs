@@ -36,6 +36,12 @@ internal sealed record Blob(
     /// <summary>
     /// Determines whether the boxes are within a gap of each other.
     /// </summary>
+    /// <summary>
+    /// Gets the label of the blob's pixels in the label image it was found in
+    /// (<see cref="ConnectedComponents.Find"/>); 0 for a blob made by joining others.
+    /// </summary>
+    public int Label { get; init; }
+
     public bool IsNear(
         Blob other,
         int gap)

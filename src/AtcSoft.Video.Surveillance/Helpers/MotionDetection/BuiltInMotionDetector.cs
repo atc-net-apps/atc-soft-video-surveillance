@@ -38,6 +38,10 @@ public sealed class BuiltInMotionDetector : IMotionDetector
     private bool holding;
     private double lastShare;
 
+    // Per pixel, how long it has been foreground without a break, in seconds: a ghost stays where
+    // it is, a branch's or a snowflake's last place is foreground for a moment only.
+    private float[] foregroundAge = [];
+
     /// <summary>
     /// Initializes a new instance of the <see cref="BuiltInMotionDetector"/> class.
     /// </summary>
@@ -150,6 +154,12 @@ public sealed class BuiltInMotionDetector : IMotionDetector
 
         var area = frame.Width * frame.Height;
         var found = ConnectedComponents.Find(mask, frame.Width, frame.Height, buffers);
+        if (options.RemoveGhosts)
+        {
+            Age(mask, (float)dt);
+            found = RemoveGhosts(found, blurred, frame.Width, frame.Height);
+        }
+
         var blobs = found
             .Where(b => b.Pixels >= SmallestShare(b, frame.Width, frame.Height) * area)
             .ToList();
@@ -192,6 +202,7 @@ public sealed class BuiltInMotionDetector : IMotionDetector
         settleUntil = null;
         lastHadBoxes = false;
         lastShare = 0;
+        Array.Clear(foregroundAge);
         LastDiagnostics = null;
     }
 
@@ -312,6 +323,47 @@ public sealed class BuiltInMotionDetector : IMotionDetector
         var y = Math.Clamp((int)box.CenterY, 0, height - 1);
         var zone = zoneOf[(y * width) + x];
         return zone == 0 ? null : watchZones[zone - 1].Name;
+    }
+
+    // The blobs without the ghosts of things that left (GhostCheck): a ghost is learnt as background
+    // at once and dropped, so it neither shows nor joins what is there into one big box.
+    private List<Blob> RemoveGhosts(
+        List<Blob> found,
+        byte[] blurred,
+        int width,
+        int height)
+    {
+        var labels = buffers.Labels;
+        var roots = buffers.Roots;
+        var kept = new List<Blob>(found.Count);
+        foreach (var blob in found)
+        {
+            if (GhostCheck.HasLasted(blob, labels, roots, foregroundAge, width) &&
+                GhostCheck.IsGhost(blob, labels, roots, blurred, background.Mean, width, height))
+            {
+                background.TakeIn(blob, labels, roots, blurred);
+                continue;
+            }
+
+            kept.Add(blob);
+        }
+
+        return kept;
+    }
+
+    private void Age(
+        byte[] mask,
+        float seconds)
+    {
+        if (foregroundAge.Length != mask.Length)
+        {
+            foregroundAge = new float[mask.Length];
+        }
+
+        for (var i = 0; i < mask.Length; i++)
+        {
+            foregroundAge[i] = mask[i] != 0 ? foregroundAge[i] + seconds : 0;
+        }
     }
 
     // The smallest object for a blob: that of the watch zone its middle is in, else the camera's.
