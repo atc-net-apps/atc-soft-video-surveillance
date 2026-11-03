@@ -169,96 +169,99 @@
                 Content="Mark as not reviewed" />
         </StackPanel>
 
-        <!--  The picture, the detector's boxes and the person's: everything in the video's pixels  -->
-        <Viewbox Stretch="Uniform">
-            <Grid
-                x:Name="Surface"
-                Width="{Binding Path=PictureWidth}"
-                Height="{Binding Path=PictureHeight}"
-                Background="Transparent"
-                Cursor="Cross"
-                MouseLeftButtonDown="OnSurfaceMouseLeftButtonDown"
-                MouseLeftButtonUp="OnSurfaceMouseLeftButtonUp"
-                MouseMove="OnSurfaceMouseMove">
-                <Image Source="{Binding Path=Image}" Stretch="Fill" />
+        <!--  The picture, the detector's boxes and the person's: everything in the video's pixels.
+              Covered by a spinner while the detector runs over the recording.  -->
+        <atc:BusyOverlay IsBusy="{Binding Path=IsBusy}">
+            <Viewbox Stretch="Uniform">
+                <Grid
+                    x:Name="Surface"
+                    Width="{Binding Path=PictureWidth}"
+                    Height="{Binding Path=PictureHeight}"
+                    Background="Transparent"
+                    Cursor="Cross"
+                    MouseLeftButtonDown="OnSurfaceMouseLeftButtonDown"
+                    MouseLeftButtonUp="OnSurfaceMouseLeftButtonUp"
+                    MouseMove="OnSurfaceMouseMove">
+                    <Image Source="{Binding Path=Image}" Stretch="Fill" />
 
-                <ItemsControl
-                    IsHitTestVisible="False"
-                    ItemsSource="{Binding Path=Selected.Detector, FallbackValue={x:Null}}"
-                    Visibility="{Binding Path=ShowDetector, Converter={StaticResource BoolToVisibility}}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <Canvas />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemContainerStyle>
-                        <Style TargetType="ContentPresenter">
-                            <Setter Property="Canvas.Left" Value="{Binding Path=X}" />
-                            <Setter Property="Canvas.Top" Value="{Binding Path=Y}" />
-                        </Style>
-                    </ItemsControl.ItemContainerStyle>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type app:BoxView}">
-                            <Rectangle
-                                Width="{Binding Path=Width}"
-                                Height="{Binding Path=Height}"
-                                Stroke="Yellow"
-                                StrokeThickness="4" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    <ItemsControl
+                        IsHitTestVisible="False"
+                        ItemsSource="{Binding Path=Selected.Detector, FallbackValue={x:Null}}"
+                        Visibility="{Binding Path=ShowDetector, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="{Binding Path=X}" />
+                                <Setter Property="Canvas.Top" Value="{Binding Path=Y}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type app:BoxView}">
+                                <Rectangle
+                                    Width="{Binding Path=Width}"
+                                    Height="{Binding Path=Height}"
+                                    Stroke="Yellow"
+                                    StrokeThickness="4" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                <ItemsControl ItemsSource="{Binding Path=Selected.Person, FallbackValue={x:Null}}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <Canvas />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemContainerStyle>
-                        <Style TargetType="ContentPresenter">
-                            <Setter Property="Canvas.Left" Value="{Binding Path=X}" />
-                            <Setter Property="Canvas.Top" Value="{Binding Path=Y}" />
-                        </Style>
-                    </ItemsControl.ItemContainerStyle>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type app:BoxView}">
-                            <Rectangle
-                                Width="{Binding Path=Width}"
-                                Height="{Binding Path=Height}"
-                                Fill="#22FF0000"
-                                MouseRightButtonUp="OnPersonBoxRightClick"
-                                Stroke="Red"
-                                StrokeThickness="4"
-                                ToolTip="Right-click to remove" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    <ItemsControl ItemsSource="{Binding Path=Selected.Person, FallbackValue={x:Null}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="{Binding Path=X}" />
+                                <Setter Property="Canvas.Top" Value="{Binding Path=Y}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type app:BoxView}">
+                                <Rectangle
+                                    Width="{Binding Path=Width}"
+                                    Height="{Binding Path=Height}"
+                                    Fill="#22FF0000"
+                                    MouseRightButtonUp="OnPersonBoxRightClick"
+                                    Stroke="Red"
+                                    StrokeThickness="4"
+                                    ToolTip="Right-click to remove" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                <ItemsControl IsHitTestVisible="False" ItemsSource="{Binding Path=Drawing}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <Canvas />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemContainerStyle>
-                        <Style TargetType="ContentPresenter">
-                            <Setter Property="Canvas.Left" Value="{Binding Path=X}" />
-                            <Setter Property="Canvas.Top" Value="{Binding Path=Y}" />
-                        </Style>
-                    </ItemsControl.ItemContainerStyle>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type app:BoxView}">
-                            <Rectangle
-                                Width="{Binding Path=Width}"
-                                Height="{Binding Path=Height}"
-                                Stroke="Red"
-                                StrokeDashArray="3 2"
-                                StrokeThickness="4" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </Grid>
-        </Viewbox>
+                    <ItemsControl IsHitTestVisible="False" ItemsSource="{Binding Path=Drawing}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="{Binding Path=X}" />
+                                <Setter Property="Canvas.Top" Value="{Binding Path=Y}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type app:BoxView}">
+                                <Rectangle
+                                    Width="{Binding Path=Width}"
+                                    Height="{Binding Path=Height}"
+                                    Stroke="Red"
+                                    StrokeDashArray="3 2"
+                                    StrokeThickness="4" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Viewbox>
+        </atc:BusyOverlay>
 
     </DockPanel>
 </atc:NiceWindow>
