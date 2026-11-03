@@ -66,6 +66,7 @@ public sealed class WpfClientSmokeTests(ServerFixture server)
         // Cameras: add, and edit each camera
         steps.Run("Cameras view", () => ShowView(app, main, "Cameras"));
         steps.Run("Add Camera", () => Walk(app, main, "Add Camera"));
+        steps.Run("Add from a camera hub", () => Walk(app, main, "Add from a camera hub"));
         foreach (var index in RowButtons(app, main, "Edit"))
         {
             steps.Run($"Edit camera {index + 1}", () => app.WalkAndClose(app.OpenWindow(() => DesktopApp.Press(RowButtons(app, main, "Edit", index)), "Edit")));

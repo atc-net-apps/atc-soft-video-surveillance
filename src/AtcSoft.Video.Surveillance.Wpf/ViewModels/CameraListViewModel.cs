@@ -120,6 +120,24 @@ public partial class CameraListViewModel : ViewModelBase
         }
     }
 
+    // A camera of a camera hub (motionEye, motionEyeOS), added through the server.
+    [RelayCommand("AddFromCameraHub")]
+    private async Task AddFromCameraHubAsync()
+    {
+        var viewModel = new HubCameraDialogViewModel(
+            request => gatewayService.ProbeHubAsync(request),
+            request => gatewayService.AddHubCameraAsync(request));
+        var dialog = new HubCameraDialog(viewModel)
+        {
+            Owner = Application.Current.MainWindow,
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            await LoadAsync().ConfigureAwait(false);
+        }
+    }
+
     [RelayCommand("EditCamera")]
     private async Task EditCameraAsync(CameraItemViewModel? item)
     {
