@@ -16,6 +16,13 @@
            Href="cameras/create">
     @Translations.AddCamera
 </MudButton>
+<MudButton Variant="Variant.Outlined"
+           Color="Color.Primary"
+           StartIcon="@Icons.Material.Filled.Hub"
+           Class="mb-4 ml-2"
+           OnClick="AddFromCameraHubAsync">
+    @Translations.AddFromCameraHub
+</MudButton>
 
 @if (isLoading)
 {
@@ -137,6 +144,16 @@ else
         }
 
         return Task.CompletedTask;
+    }
+
+    private async Task AddFromCameraHubAsync()
+    {
+        var dialog = await DialogService.ShowAsync<HubCameraDialog>(Translations.CameraHubHeader, new DialogOptions { MaxWidth = MaxWidth.Medium });
+        if (await dialog.Result is { Canceled: false, Data: string name })
+        {
+            Snackbar.Add(string.Format(CultureInfo.CurrentCulture, Translations.HubCameraAdded1, name), Severity.Success);
+            await LoadCamerasAsync();
+        }
     }
 
     private async Task LoadCamerasAsync()

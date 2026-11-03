@@ -2889,4 +2889,10 @@
   <data name="HubCameraUsed1" xml:space="preserve">
     <value>Filled in from the hub's camera {0}. Check the name, then save.</value>
   </data>
+  <data name="AddFromCameraHub" xml:space="preserve">
+    <value>Add from a camera hub</value>
+  </data>
+  <data name="HubCameraAdded1" xml:space="preserve">
+    <value>The camera {0} was added from the hub.</value>
+  </data>
 </root>
