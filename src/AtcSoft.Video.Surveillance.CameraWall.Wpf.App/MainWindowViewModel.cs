@@ -11,6 +11,7 @@ public partial class MainWindowViewModel : MainWindowViewModelBase
     private readonly IDialogService dialogService;
     private readonly IApplicationSettingsService settingsService;
     private readonly IRecordingService recordingService;
+    private readonly ICameraStorageService storageService;
     private readonly DispatcherTimer diskSpaceTimer;
 
     // 1 while the free space is being read.
@@ -24,20 +25,24 @@ public partial class MainWindowViewModel : MainWindowViewModelBase
     /// <param name="settingsService">The application settings service.</param>
     /// <param name="dialogService">The dialog service.</param>
     /// <param name="recordingService">The recordings; closing while any runs asks first.</param>
+    /// <param name="storageService">The cameras; closing while any is set to record asks first.</param>
     public MainWindowViewModel(
         ICameraWallManager cameraWallManager,
         IApplicationSettingsService settingsService,
         IDialogService dialogService,
-        IRecordingService recordingService)
+        IRecordingService recordingService,
+        ICameraStorageService storageService)
     {
         ArgumentNullException.ThrowIfNull(cameraWallManager);
         ArgumentNullException.ThrowIfNull(settingsService);
         ArgumentNullException.ThrowIfNull(dialogService);
         ArgumentNullException.ThrowIfNull(recordingService);
+        ArgumentNullException.ThrowIfNull(storageService);
 
         this.dialogService = dialogService;
         this.settingsService = settingsService;
         this.recordingService = recordingService;
+        this.storageService = storageService;
         Manager = cameraWallManager;
 
         // Recordings stop when the disk runs out, so the status bar shows
@@ -524,8 +529,13 @@ public partial class MainWindowViewModel : MainWindowViewModelBase
     /// </summary>
     /// <returns><see langword="true"/> to close; <see langword="false"/> when the user keeps CameraWall open.</returns>
     public bool ConfirmClose()
-        => CloseConfirmation.Question(recordingService.GetActiveSessions().Count) is not { } question ||
-           dialogService.ShowConfirmation(question, Translations.RecordingsInProgress);
+    {
+        var cameras = storageService.GetAllCameras();
+        var recordingNow = recordingService.GetActiveSessions().Select(s => s.CameraId).ToHashSet();
+        var (now, active) = CloseConfirmation.Count(cameras, recordingNow, settingsService.Recording);
+        return CloseConfirmation.Question(cameras.Count, active, now) is not { } question ||
+               dialogService.ShowConfirmation(question, Translations.RecordingIsOn);
+    }
 
     // Through the window's Closing, so Exit asks the same question as the window's X.
     [RelayCommand]

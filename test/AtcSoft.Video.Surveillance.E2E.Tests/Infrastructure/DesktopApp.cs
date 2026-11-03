@@ -519,7 +519,7 @@ internal sealed class DesktopApp : IDisposable
 
     /// <summary>
     /// Asks the app to close its main window and waits for the process to end. CameraWall asks
-    /// first while cameras record: the question is answered yes.
+    /// first while cameras record or are set to record: the question is answered yes.
     /// </summary>
     /// <returns><see langword="true"/> when it ended by itself.</returns>
     public bool CloseApp(Window mainWindow)
@@ -538,7 +538,7 @@ internal sealed class DesktopApp : IDisposable
         while (!Process.HasExited && DateTime.UtcNow < deadline)
         {
             var question = Windows().FirstOrDefault(w => SafeMatch(
-                x => x.Title.Contains("Recordings in progress", StringComparison.OrdinalIgnoreCase),
+                x => x.Title.Contains("Recording is on", StringComparison.OrdinalIgnoreCase),
                 w));
             if (question is not null)
             {
