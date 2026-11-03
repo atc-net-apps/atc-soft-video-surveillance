@@ -180,7 +180,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanRerun))]
+    [RelayCommand("Rerun", CanExecute = nameof(CanRerun))]
     private async Task RerunAsync()
     {
         if (folder is null || !EnsureEngine())
