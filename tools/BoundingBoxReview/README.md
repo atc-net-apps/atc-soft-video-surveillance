@@ -16,6 +16,15 @@ or start it without a path and use *Open recording...* / *Open review folder...*
 2. **Draw the boxes.** For each picture, drag a red box around every thing that should be boxed (a person, a cat). Right-click a red box to remove it, *Ctrl+Z* removes the last one, *Ctrl+N* says nothing should be boxed, arrows step through the pictures. Write what you see in the comment box ("one cat, sitting very still", "the cat is moving"); leave it empty when nothing changed since the picture before. Every change is saved at once.
 3. **Compare.** *Compare* writes `compare.md`: per picture the overlap (IoU), the size of the detector's box against yours, how far each edge lies outside yours, what it missed and what it boxed that you did not; and a summary.
 
+## 🔁 After changing the detector
+
+*Run detector again* runs today's detector over the review's recording with the review's settings and gives every picture the new yellow boxes; your red boxes and comments stay, and *Compare* runs at once. So each review is a test of the next change. Without a window:
+
+```powershell
+BoundingBoxReview.exe --rerun "<review folder>"                  # new boxes, compare.md, rerun.log
+BoundingBoxReview.exe --masks "<review folder>" [--no-ghosts]    # what the detector saw: masks\ (foreground in magenta, every blob and its fate)
+```
+
 ## 📁 The review folder
 
 | File | What |

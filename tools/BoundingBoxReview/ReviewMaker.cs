@@ -118,6 +118,42 @@ public static class ReviewMaker
     }
 
     /// <summary>
+    /// Runs the detector over a review's recording again, with the review's settings and today's
+    /// detector, and gives each picture the new boxes; the person's boxes and comments stay. For
+    /// judging a change to the detector on reviews made before it. The engine must be started.
+    /// </summary>
+    public static void Rerun(
+        string folder,
+        IProgress<string> progress)
+    {
+        ArgumentNullException.ThrowIfNull(progress);
+
+        var review = ReviewFile.Read(folder);
+        var video = review.Recording;
+        progress.Report(string.Create(CultureInfo.InvariantCulture, $"Running the detector again over {Path.GetFileName(video)}, sensitivity {review.Settings.Sensitivity} ..."));
+        var run = StorybookRunner.RunRecording(
+            video,
+            RecordingAnalysis.DetectorFor(camera: null, review.Settings, MediaProbe.GetRotation(video)),
+            new StorybookRunOptions(AnalysisWidth: review.Settings.AnalysisWidth, AnalysesPerSecond: review.AnalysesPerSecond));
+        if (run.Frames.Count == 0)
+        {
+            throw new InvalidDataException($"{video} has no pictures.");
+        }
+
+        foreach (var picture in review.Pictures)
+        {
+            var analysed = run.Frames.LastOrDefault(f => f.Time <= picture.AnalysedSeconds + 0.001) ?? run.Frames[0];
+            picture.AnalysedSeconds = analysed.Time;
+            picture.Detector = [.. analysed.Detected.Select(d => ReviewBox.From(d.Box, d.TrackId, review.Width, review.Height))];
+            Render(folder, review, picture);
+            progress.Report($"{picture.File}: {picture.Detector.Count} box(es)");
+        }
+
+        review.Made = DateTimeOffset.Now;
+        review.Write(folder);
+    }
+
+    /// <summary>
     /// Writes a picture with its boxes drawn on the original: the detector's in yellow, the
     /// person's in red, so they can be seen in any picture viewer too.
     /// </summary>
