@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.5.0](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.4.0...v1.5.0) (2026-11-03)
+
+
+### New features
+
+* **camerawall:** add a camera from a motionEye or motionEyeOS hub ([098aea3](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/098aea3e421220d92e5c61c0216bce2f7baefaee))
+* **camerawall:** show the motion boxes over a recording's playback, with a toggle ([b4a78e8](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/b4a78e8d4ebf9702386909ee465a475b755cd160))
+* **hubs:** list the cameras of a motionEye or motionEyeOS hub ([2ff7f1a](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/2ff7f1a62ee5b38f051503444048aaaa87ff39ee))
+* **motion:** follow the camera's exposure, so walls and ceilings do not become motion ([f7c8555](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/f7c8555050386d93e2aca70570f40ce15d2e38c3))
+* **server:** list a camera hub's cameras and add one (motionEye, motionEyeOS) ([2f9b6be](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/2f9b6bea7155693d50912ea3be1f3166a13e3ff5))
+* **web:** add a camera from a motionEye or motionEyeOS hub ([0b280f0](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/0b280f09aafdaec163158d492566fb5f1e75caab))
+* **wpf:** add a camera from a motionEye or motionEyeOS hub ([425d14d](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/425d14ddca7978dd9bf87113514932af48e66b16))
+
+
+### Bug fixes
+
+* **camerawall:** ask before closing while cameras record ([4a5e032](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/4a5e0329ce0fdee21e8e730342181bf4f5d96d6c))
+
+
+### Documentation
+
+* camera hubs in the Video Surveillance system too, in the README ([e3ab9d1](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/e3ab9d1ae324b61f5d0d06e8f8fbb232b2cc7632))
+* follow the wiki's new anchor for what is coming ([b645656](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/b6456565b90e3912277551552027089c789bec08))
+* link the camera hubs page from the README ([9b444f9](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/9b444f988022c853743ed6771584c126adf75bc7))
+
 ## [1.4.0](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.3.0...v1.4.0) (2026-11-02)
 
 
