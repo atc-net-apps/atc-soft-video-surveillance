@@ -2853,4 +2853,40 @@
   <data name="RecordingsInProgress" xml:space="preserve">
     <value>Recordings in progress</value>
   </data>
+  <data name="CameraHubHeader" xml:space="preserve">
+    <value>Camera Hub - motionEye or motionEyeOS</value>
+  </data>
+  <data name="CameraHubHelp" xml:space="preserve">
+    <value>The address of a Raspberry Pi (or another box) running motionEye, and its admin user. Its cameras are listed; pick one to add it.</value>
+  </data>
+  <data name="CameraHubListed1" xml:space="preserve">
+    <value>Cameras on the hub: {0}</value>
+  </data>
+  <data name="CameraHubUnreachable" xml:space="preserve">
+    <value>Nothing answered at that address.</value>
+  </data>
+  <data name="CameraHubNotMotionEye" xml:space="preserve">
+    <value>Something answered, but it is not motionEye.</value>
+  </data>
+  <data name="CameraHubSignInRefused" xml:space="preserve">
+    <value>The hub refused the user name or password.</value>
+  </data>
+  <data name="CameraHubOlderSignIn" xml:space="preserve">
+    <value>This motionEye signs in the older, less secure way (as motionEyeOS does). It works; update it to motionEye 0.44 or later when you can.</value>
+  </data>
+  <data name="HubCameraDisabled" xml:space="preserve">
+    <value>Switched off on the hub.</value>
+  </data>
+  <data name="HubCameraStreamingOff" xml:space="preserve">
+    <value>Its video is streamed to the hub only: turn on Video Streaming for it in motionEye.</value>
+  </data>
+  <data name="HubCameraOnAnotherHub" xml:space="preserve">
+    <value>A camera of another motionEye: add it from that one.</value>
+  </data>
+  <data name="UseThisCamera" xml:space="preserve">
+    <value>Use this camera</value>
+  </data>
+  <data name="HubCameraUsed1" xml:space="preserve">
+    <value>Filled in from the hub's camera {0}. Check the name, then save.</value>
+  </data>
 </root>

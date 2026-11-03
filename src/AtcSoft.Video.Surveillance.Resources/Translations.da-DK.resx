@@ -2856,4 +2856,40 @@ Miniature:
   <data name="RecordingsInProgress" xml:space="preserve">
     <value>Optagelser er i gang</value>
   </data>
+  <data name="CameraHubHeader" xml:space="preserve">
+    <value>Kamerahub - motionEye eller motionEyeOS</value>
+  </data>
+  <data name="CameraHubHelp" xml:space="preserve">
+    <value>Adressen på en Raspberry Pi (eller en anden boks) med motionEye og dens administrator. Dens kameraer vises; vælg et for at tilføje det.</value>
+  </data>
+  <data name="CameraHubListed1" xml:space="preserve">
+    <value>Kameraer på hubben: {0}</value>
+  </data>
+  <data name="CameraHubUnreachable" xml:space="preserve">
+    <value>Intet svarede på den adresse.</value>
+  </data>
+  <data name="CameraHubNotMotionEye" xml:space="preserve">
+    <value>Noget svarede, men det er ikke motionEye.</value>
+  </data>
+  <data name="CameraHubSignInRefused" xml:space="preserve">
+    <value>Hubben afviste brugernavnet eller adgangskoden.</value>
+  </data>
+  <data name="CameraHubOlderSignIn" xml:space="preserve">
+    <value>Denne motionEye logger ind på den ældre, mindre sikre måde (som motionEyeOS gør). Det virker; opdater den til motionEye 0.44 eller nyere, når du kan.</value>
+  </data>
+  <data name="HubCameraDisabled" xml:space="preserve">
+    <value>Slået fra på hubben.</value>
+  </data>
+  <data name="HubCameraStreamingOff" xml:space="preserve">
+    <value>Dens video sendes kun til hubben selv: slå Video Streaming til for den i motionEye.</value>
+  </data>
+  <data name="HubCameraOnAnotherHub" xml:space="preserve">
+    <value>Et kamera fra en anden motionEye: tilføj det derfra.</value>
+  </data>
+  <data name="UseThisCamera" xml:space="preserve">
+    <value>Brug dette kamera</value>
+  </data>
+  <data name="HubCameraUsed1" xml:space="preserve">
+    <value>Udfyldt fra hubbens kamera {0}. Tjek navnet, og gem.</value>
+  </data>
 </root>

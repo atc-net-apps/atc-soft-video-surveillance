@@ -127,6 +127,9 @@ public partial class CameraWallApp
                     sp => new AtcSoft.Video.Surveillance.Services.OnvifConnectionTypeDetector(
                         sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<AtcSoft.Video.Surveillance.Services.OnvifConnectionTypeDetector>>()));
 
+                // Camera hubs (motionEye, motionEyeOS) for the camera dialog's "Camera Hub" part.
+                services.AddSingleton<AtcSoft.Video.Surveillance.Services.Hubs.ICameraHubProvider, AtcSoft.Video.Surveillance.Services.Hubs.MotionEyeHubProvider>();
+
                 // Diagnostics for a long test run: a system report and health samples (Advanced.EnableDiagnostics).
                 services.AddSingleton(new AtcSoft.Video.Surveillance.CameraWall.Wpf.App.Diagnostics.DiagnosticsServiceOptions
                 {

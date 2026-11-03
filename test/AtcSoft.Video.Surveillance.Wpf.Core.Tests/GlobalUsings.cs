@@ -18,5 +18,6 @@ global using AtcSoft.Video.Surveillance.Helpers.MotionDetection;
 global using AtcSoft.Video.Surveillance.Models;
 global using AtcSoft.Video.Surveillance.Models.Settings;
 global using AtcSoft.Video.Surveillance.Services;
+global using AtcSoft.Video.Surveillance.Services.Hubs;
 global using AtcSoft.Video.Surveillance.Wpf.Core.Helpers;
 global using Microsoft.Extensions.Logging;

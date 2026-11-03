@@ -2856,4 +2856,40 @@ Vorschaubild:
   <data name="RecordingsInProgress" xml:space="preserve">
     <value>Aufnahmen laufen</value>
   </data>
+  <data name="CameraHubHeader" xml:space="preserve">
+    <value>Kamera-Hub - motionEye oder motionEyeOS</value>
+  </data>
+  <data name="CameraHubHelp" xml:space="preserve">
+    <value>Die Adresse eines Raspberry Pi (oder eines anderen Geräts) mit motionEye und dessen Administrator. Seine Kameras werden aufgelistet; wählen Sie eine aus, um sie hinzuzufügen.</value>
+  </data>
+  <data name="CameraHubListed1" xml:space="preserve">
+    <value>Kameras am Hub: {0}</value>
+  </data>
+  <data name="CameraHubUnreachable" xml:space="preserve">
+    <value>Unter dieser Adresse hat nichts geantwortet.</value>
+  </data>
+  <data name="CameraHubNotMotionEye" xml:space="preserve">
+    <value>Etwas hat geantwortet, aber es ist nicht motionEye.</value>
+  </data>
+  <data name="CameraHubSignInRefused" xml:space="preserve">
+    <value>Der Hub hat den Benutzernamen oder das Kennwort abgelehnt.</value>
+  </data>
+  <data name="CameraHubOlderSignIn" xml:space="preserve">
+    <value>Dieses motionEye meldet sich auf die ältere, weniger sichere Weise an (wie motionEyeOS). Es funktioniert; aktualisieren Sie es bei Gelegenheit auf motionEye 0.44 oder neuer.</value>
+  </data>
+  <data name="HubCameraDisabled" xml:space="preserve">
+    <value>Am Hub ausgeschaltet.</value>
+  </data>
+  <data name="HubCameraStreamingOff" xml:space="preserve">
+    <value>Sein Video wird nur an den Hub selbst gestreamt: Schalten Sie in motionEye Video Streaming dafür ein.</value>
+  </data>
+  <data name="HubCameraOnAnotherHub" xml:space="preserve">
+    <value>Eine Kamera eines anderen motionEye: Fügen Sie sie von dort hinzu.</value>
+  </data>
+  <data name="UseThisCamera" xml:space="preserve">
+    <value>Diese Kamera verwenden</value>
+  </data>
+  <data name="HubCameraUsed1" xml:space="preserve">
+    <value>Aus der Kamera {0} des Hubs ausgefüllt. Prüfen Sie den Namen und speichern Sie.</value>
+  </data>
 </root>
