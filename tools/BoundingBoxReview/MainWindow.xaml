@@ -75,6 +75,12 @@
             <Button
                 Margin="8,0,0,0"
                 Padding="10,4"
+                Command="{Binding Path=RerunCommand}"
+                Content="Run detector again"
+                ToolTip="Today's detector over the recording again, with the review's settings; your boxes and comments stay" />
+            <Button
+                Margin="8,0,0,0"
+                Padding="10,4"
                 Command="{Binding Path=CompareCommand}"
                 Content="Compare" />
             <Button

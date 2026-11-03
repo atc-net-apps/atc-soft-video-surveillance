@@ -180,6 +180,40 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand(CanExecute = nameof(CanRerun))]
+    private async Task RerunAsync()
+    {
+        if (folder is null || !EnsureEngine())
+        {
+            return;
+        }
+
+        var path = folder;
+        IsBusy = true;
+        CommandManager.InvalidateRequerySuggested();
+        try
+        {
+            var progress = new Progress<string>(text => Status = text);
+            await Task.Run(() => ReviewMaker.Rerun(path, progress)).ConfigureAwait(true);
+            var at = Selected is null ? 0 : Pictures.IndexOf(Selected);
+            OpenFolder(path);
+            Selected = Pictures.Count == 0 ? null : Pictures[Math.Clamp(at, 0, Pictures.Count - 1)];
+            Compare();
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException or Atc.Video.Engine.FFmpeg.FFmpegException)
+        {
+            Status = $"Could not run the detector again: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    private bool CanRerun()
+        => HasReview && !IsBusy;
+
     [RelayCommand(CanExecute = nameof(HasReview))]
     private void Compare()
     {

@@ -9,6 +9,20 @@ public partial class App
     {
         ArgumentNullException.ThrowIfNull(e);
 
+        // --rerun <folder>: the detector over a review again and the comparison, without a window.
+        if (e.Args is ["--rerun", { } rerunFolder])
+        {
+            Shutdown(Headless.Rerun(Path.GetFullPath(rerunFolder)));
+            return;
+        }
+
+        // --masks <folder> [--no-ghosts]: what the detector saw at each picture (for tuning it).
+        if (e.Args is ["--masks", { } masksFolder, .. var rest])
+        {
+            Shutdown(Headless.Masks(Path.GetFullPath(masksFolder), dissolveGhosts: !rest.Contains("--no-ghosts", StringComparer.Ordinal)));
+            return;
+        }
+
         // Atc.Wpf finds the texts only in loaded assemblies; the FFmpeg set-up dialog uses them.
         _ = AtcSoft.Video.Surveillance.Resources.Translations.ResourceManager;
         base.OnStartup(e);
