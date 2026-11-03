@@ -252,6 +252,9 @@ public sealed partial class FullScreenRecordingWindowViewModel : ViewModelDialog
         mediaElement.Source = new Uri(filePath);
         mediaElement.Play();
         IsPlaying = true;
+
+        // Its motion boxes are found while it plays.
+        _ = FindMotionBoxesAsync();
     }
 
     /// <summary>
@@ -749,6 +752,13 @@ public sealed partial class FullScreenRecordingWindowViewModel : ViewModelDialog
         RecordingSegment next)
     {
         segment++;
+
+        // The boxes found were the last recording's.
+        StopMotionBoxes();
+        boxLoader = null;
+        recordingBoxes = null;
+        MotionBoxes = null;
+        OnPropertyChanged(nameof(CanShowMotionBoxes));
         filePath = next.FilePath;
         FileName = next.FileName;
         recordingStartTime = next.RecordingStartTime ?? ParseRecordingStartTime(next.FileName);
@@ -867,6 +877,8 @@ public sealed partial class FullScreenRecordingWindowViewModel : ViewModelDialog
 
             positionUpdateTimer?.Stop();
             positionUpdateTimer = null;
+
+            StopMotionBoxes();
 
             if (mediaElement is not null)
             {

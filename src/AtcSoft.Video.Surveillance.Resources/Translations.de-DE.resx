@@ -2898,4 +2898,7 @@ Vorschaubild:
   <data name="HubCameraAdded1" xml:space="preserve">
     <value>Die Kamera {0} wurde vom Hub hinzugefügt.</value>
   </data>
+  <data name="ShowMotionBoxes" xml:space="preserve">
+    <value>Bewegungsrahmen anzeigen</value>
+  </data>
 </root>

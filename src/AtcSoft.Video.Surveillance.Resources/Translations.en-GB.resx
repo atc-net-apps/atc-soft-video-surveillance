@@ -2895,4 +2895,7 @@
   <data name="HubCameraAdded1" xml:space="preserve">
     <value>The camera {0} was added from the hub.</value>
   </data>
+  <data name="ShowMotionBoxes" xml:space="preserve">
+    <value>Show motion boxes</value>
+  </data>
 </root>

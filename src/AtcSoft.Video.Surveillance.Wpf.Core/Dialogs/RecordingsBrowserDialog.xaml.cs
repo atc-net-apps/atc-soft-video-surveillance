@@ -191,6 +191,7 @@ public partial class RecordingsBrowserDialog : IDisposable
             zonesLoader: _ => Task.FromResult(viewModel.ZonesFor(recording)),
             previewLoader: RecordingPreviewLoaders.FromFile(recording.FilePath, viewModel.Previews),
             verdictSaver: viewModel.VerdictSaverFor(recording));
+        fullScreenViewModel.UseMotionBoxes(viewModel.BoxLoaderFor(recording), viewModel.BoxStyleFor(recording));
         using var fullScreenWindow = new FullScreenRecordingWindow(fullScreenViewModel)
         {
             // A browser that closed itself cannot own the player

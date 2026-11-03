@@ -39,6 +39,18 @@
             </MediaElement.LayoutTransform>
         </MediaElement>
 
+        <!--  Motion boxes at the playing position, found by running the recording through the detector  -->
+        <userControls:MotionBoundingBoxOverlay
+            AnalysisHeight="{Binding Path=BoxAnalysisHeight}"
+            AnalysisWidth="{Binding Path=BoxAnalysisWidth}"
+            BoxColor="{Binding Path=BoxColor}"
+            BoxThickness="{Binding Path=BoxThickness}"
+            IsHitTestVisible="False"
+            IsOverlayEnabled="{Binding Path=ShowMotionBoxes}"
+            MotionBoxes="{Binding Path=MotionBoxes}"
+            VideoHeight="{Binding Path=BoxAnalysisHeight}"
+            VideoWidth="{Binding Path=BoxAnalysisWidth}" />
+
         <!--  Overlay content (directly in visual tree - no airspace issue for MediaElement)  -->
         <Grid Background="Transparent">
             <!--  Recording Info Overlay (Top-Left) - Always visible  -->
@@ -309,6 +321,28 @@
                                 StrokeThickness="2" />
                         </Button>
                     </StackPanel>
+
+                    <!--  Motion boxes over the playback: shown when the recording can be analysed (CameraWall)  -->
+                    <ToggleButton
+                        Width="36"
+                        Height="40"
+                        Margin="0,0,12,0"
+                        AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                                        Key=ShowMotionBoxes}"
+                        IsChecked="{Binding Path=ShowMotionBoxes, Mode=TwoWay}"
+                        Style="{StaticResource FullScreenToggleIconButtonStyle}"
+                        ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                      Key=ShowMotionBoxes}"
+                        Visibility="{Binding Path=CanShowMotionBoxes, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                        <Path
+                            Width="16"
+                            Height="16"
+                            Data="M1,1 L15,1 L15,15 L1,15 Z M5,5 L11,5 L11,11 L5,11 Z"
+                            Stretch="Uniform"
+                            Stroke="#FF8C00"
+                            StrokeDashArray="2,1"
+                            StrokeThickness="1.5" />
+                    </ToggleButton>
 
                     <!--  Position Text  -->
                     <TextBlock
