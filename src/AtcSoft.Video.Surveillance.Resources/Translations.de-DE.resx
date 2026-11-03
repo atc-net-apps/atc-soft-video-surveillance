@@ -2850,11 +2850,11 @@ Vorschaubild:
   <data name="StreamStoppedStartsAgain" xml:space="preserve">
     <value>Der Stream wurde unterbrochen. Er startet von selbst neu.</value>
   </data>
-  <data name="CloseWhileRecording1" xml:space="preserve">
-    <value>Kameras, die aufnehmen: {0}. Wenn Sie CameraWall schließen, enden die Aufnahmen. Trotzdem schließen?</value>
+  <data name="CloseWhileRecording3" xml:space="preserve">
+    <value>{0} von {1} Kameras nehmen auf oder warten auf Bewegung, um aufzunehmen ({2} nehmen gerade auf). Wenn Sie CameraWall schließen, endet das. Trotzdem schließen?</value>
   </data>
-  <data name="RecordingsInProgress" xml:space="preserve">
-    <value>Aufnahmen laufen</value>
+  <data name="RecordingIsOn" xml:space="preserve">
+    <value>Aufnahme ist eingeschaltet</value>
   </data>
   <data name="CameraHubHeader" xml:space="preserve">
     <value>Kamera-Hub - motionEye oder motionEyeOS</value>
