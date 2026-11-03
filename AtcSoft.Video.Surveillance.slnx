@@ -57,4 +57,7 @@
     <Project Path="test/AtcSoft.Video.Surveillance.Wpf.Core.Tests/AtcSoft.Video.Surveillance.Wpf.Core.Tests.csproj" />
     <Project Path="test/AtcSoft.Video.Surveillance.Wpf.Tests/AtcSoft.Video.Surveillance.Wpf.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/BoundingBoxReview/BoundingBoxReview.csproj" />
+  </Folder>
 </Solution>
