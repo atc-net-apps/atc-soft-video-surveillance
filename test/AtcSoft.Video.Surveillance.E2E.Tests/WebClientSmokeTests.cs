@@ -101,6 +101,7 @@ public sealed class WebClientSmokeTests(ServerFixture server)
         await run("Add user", () => OpenAndCancelAsync(page, "/users", "Add user"));
         await run("Make API key", () => OpenAndCancelAsync(page, "/users", "Make API key", tab: "API keys"));
         await run("Add receiver", () => OpenAndCancelAsync(page, "/webhooks", "Add receiver"));
+        await run("Add from a camera hub", () => OpenAndCancelAsync(page, "/cameras", "Add from a camera hub"));
         await run("Change password", () => ChangePasswordAsync(page));
 
         await File.WriteAllLinesAsync(Path.Combine(shots, "browser-problems.txt"), problems, TestContext.Current.CancellationToken);

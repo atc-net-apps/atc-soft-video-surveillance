@@ -41,6 +41,16 @@
                     <TextBlock Margin="6,0,0,0" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AddCamera}" />
                 </StackPanel>
             </Button>
+            <Button AutomationProperties.Name="Add from a camera hub" Command="{Binding AddFromCameraHubCommand}" ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AddFromCameraHub}">
+                <StackPanel Orientation="Horizontal">
+                    <fontIcons:ImageAwesomeSolid
+                        Width="16"
+                        Height="16"
+                        Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground}"
+                        Icon="NetworkWired" />
+                    <TextBlock Margin="6,0,0,0" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AddFromCameraHub}" />
+                </StackPanel>
+            </Button>
             <Separator />
             <Button AutomationProperties.Name="Refresh" Command="{Binding LoadCommand}" ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Refresh}">
                 <StackPanel Orientation="Horizontal">
