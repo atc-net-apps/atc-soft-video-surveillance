@@ -18,7 +18,7 @@ or start it without a path and use *Open recording...* / *Open review folder...*
 
 ## 🔁 After changing the detector
 
-*Run detector again* runs today's detector over the review's recording with the review's settings and gives every picture the new yellow boxes; your red boxes and comments stay, and *Compare* runs at once. So each review is a test of the next change. Without a window:
+*Run detector again* runs today's detector over the review's recording with the review's settings and gives every picture the new yellow boxes; your red boxes and comments stay, and *Compare* runs at once. While it runs, the picture is covered by a progress bar: the seconds of the recording analysed, then the pictures ("Picture 3 of 7"). *Compare* on its own shows the summary in a box as well. So each review is a test of the next change. Without a window:
 
 ```powershell
 BoundingBoxReview.exe --rerun "<review folder>"                  # new boxes, compare.md, rerun.log

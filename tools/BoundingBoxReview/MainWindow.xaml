@@ -171,7 +171,15 @@
 
         <!--  The picture, the detector's boxes and the person's: everything in the video's pixels.
               Covered by a spinner while the detector runs over the recording.  -->
-        <atc:BusyOverlay IsBusy="{Binding Path=IsBusy}">
+        <atc:BusyOverlay BusyContent="{Binding Path=BusyText}" IsBusy="{Binding Path=IsBusy}">
+            <atc:BusyOverlay.BusyContentAfter>
+                <ProgressBar
+                    Width="320"
+                    Height="10"
+                    Margin="0,8,0,8"
+                    Maximum="{Binding Path=ProgressMaximum}"
+                    Value="{Binding Path=ProgressValue}" />
+            </atc:BusyOverlay.BusyContentAfter>
             <Viewbox Stretch="Uniform">
                 <Grid
                     x:Name="Surface"

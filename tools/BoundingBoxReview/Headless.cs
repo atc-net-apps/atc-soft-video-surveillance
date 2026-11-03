@@ -8,6 +8,12 @@ public static class Headless
 {
     public static int Rerun(string folder)
     {
+        if (!File.Exists(Path.Combine(folder, ReviewFile.FileName)))
+        {
+            Console.Error.WriteLine($"No review in {folder} ({ReviewFile.FileName} not found).");
+            return 1;
+        }
+
         var log = Path.Combine(folder, "rerun.log");
         var lines = new List<string>();
         try
@@ -43,6 +49,12 @@ public static class Headless
         string folder,
         bool dissolveGhosts)
     {
+        if (!File.Exists(Path.Combine(folder, ReviewFile.FileName)))
+        {
+            Console.Error.WriteLine($"No review in {folder} ({ReviewFile.FileName} not found).");
+            return 1;
+        }
+
         var output = Path.Combine(folder, dissolveGhosts ? "masks" : "masks-no-ghosts");
         Directory.CreateDirectory(output);
         var lines = new List<string>();
@@ -113,9 +125,15 @@ public static class Headless
     }
 
     // Progress<T> posts to a synchronisation context; here the lines are wanted in order, at once.
-    private sealed class SyncProgress(List<string> lines) : IProgress<string>
+    // The detector's seconds are left out of the log: a line a second of recording says little.
+    private sealed class SyncProgress(List<string> lines) : IProgress<ReviewProgress>
     {
-        public void Report(string value)
-            => lines.Add(value);
+        public void Report(ReviewProgress value)
+        {
+            if (!value.Text.StartsWith("Running the detector:", StringComparison.Ordinal))
+            {
+                lines.Add(value.Text);
+            }
+        }
     }
 }

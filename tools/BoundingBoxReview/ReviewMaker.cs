@@ -53,7 +53,7 @@ public static class ReviewMaker
         string video,
         MotionDetectionSettings settings,
         double everySeconds,
-        IProgress<string> progress)
+        IProgress<ReviewProgress> progress)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(progress);
@@ -65,11 +65,11 @@ public static class ReviewMaker
         var rotation = MediaProbe.GetRotation(video);
         var (width, height) = MediaProbe.GetDisplaySize(video);
         var perSecond = Math.Max(1, settings.AnalysisFrameRate);
-        progress.Report(string.Create(CultureInfo.InvariantCulture, $"Analysing {Path.GetFileName(video)} ({width}×{height}) at {perSecond} pictures a second, sensitivity {settings.Sensitivity} ..."));
+        progress.Report(new ReviewProgress(string.Create(CultureInfo.InvariantCulture, $"Analysing {Path.GetFileName(video)} ({width}×{height}) at {perSecond} pictures a second, sensitivity {settings.Sensitivity} ..."), 0, 1));
 
         var run = StorybookRunner.RunRecording(
             video,
-            RecordingAnalysis.DetectorFor(camera: null, settings, rotation),
+            new ProgressDetector(RecordingAnalysis.DetectorFor(camera: null, settings, rotation), MediaProbe.GetDuration(video), progress),
             new StorybookRunOptions(AnalysisWidth: settings.AnalysisWidth, AnalysesPerSecond: perSecond));
         if (run.Frames.Count == 0)
         {
@@ -90,6 +90,7 @@ public static class ReviewMaker
         };
 
         var end = run.Frames[^1].Time;
+        var count = Math.Max(1, (int)Math.Floor(end / everySeconds));
         using (var reader = PictureFileReader.Open(video, width, height, (VideoRotation)rotation, RecordingAnalysis.DecoderThreads))
         {
             for (var at = everySeconds; at <= end; at += everySeconds)
@@ -109,7 +110,8 @@ public static class ReviewMaker
                 var reviewPicture = new ReviewPicture { File = file, Seconds = at, AnalysedSeconds = analysed.Time, Detector = boxes };
                 review.Pictures.Add(reviewPicture);
                 Render(folder, review, reviewPicture);
-                progress.Report($"{file}: {boxes.Count} box(es)");
+                var made = review.Pictures.Count;
+                progress.Report(new ReviewProgress(string.Create(CultureInfo.InvariantCulture, $"Picture {made} of {count}: {boxes.Count} box(es)"), made, count));
             }
         }
 
@@ -124,29 +126,31 @@ public static class ReviewMaker
     /// </summary>
     public static void Rerun(
         string folder,
-        IProgress<string> progress)
+        IProgress<ReviewProgress> progress)
     {
         ArgumentNullException.ThrowIfNull(progress);
 
         var review = ReviewFile.Read(folder);
         var video = review.Recording;
-        progress.Report(string.Create(CultureInfo.InvariantCulture, $"Running the detector again over {Path.GetFileName(video)}, sensitivity {review.Settings.Sensitivity} ..."));
+        progress.Report(new ReviewProgress(string.Create(CultureInfo.InvariantCulture, $"Running the detector again over {Path.GetFileName(video)}, sensitivity {review.Settings.Sensitivity} ..."), 0, 1));
         var run = StorybookRunner.RunRecording(
             video,
-            RecordingAnalysis.DetectorFor(camera: null, review.Settings, MediaProbe.GetRotation(video)),
+            new ProgressDetector(RecordingAnalysis.DetectorFor(camera: null, review.Settings, MediaProbe.GetRotation(video)), MediaProbe.GetDuration(video), progress),
             new StorybookRunOptions(AnalysisWidth: review.Settings.AnalysisWidth, AnalysesPerSecond: review.AnalysesPerSecond));
         if (run.Frames.Count == 0)
         {
             throw new InvalidDataException($"{video} has no pictures.");
         }
 
+        var done = 0;
         foreach (var picture in review.Pictures)
         {
             var analysed = run.Frames.LastOrDefault(f => f.Time <= picture.AnalysedSeconds + 0.001) ?? run.Frames[0];
             picture.AnalysedSeconds = analysed.Time;
             picture.Detector = [.. analysed.Detected.Select(d => ReviewBox.From(d.Box, d.TrackId, review.Width, review.Height))];
             Render(folder, review, picture);
-            progress.Report($"{picture.File}: {picture.Detector.Count} box(es)");
+            done++;
+            progress.Report(new ReviewProgress(string.Create(CultureInfo.InvariantCulture, $"Picture {done} of {review.Pictures.Count}: {picture.Detector.Count} box(es)"), done, review.Pictures.Count));
         }
 
         review.Made = DateTimeOffset.Now;

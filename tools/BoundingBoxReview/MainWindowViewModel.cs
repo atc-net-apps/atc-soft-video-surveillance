@@ -46,6 +46,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string compareText = string.Empty;
 
+    // What the busy overlay shows: the step, and how far out of how many.
+    [ObservableProperty]
+    private string busyText = string.Empty;
+
+    [ObservableProperty]
+    private double progressValue;
+
+    [ObservableProperty]
+    private double progressMaximum = 1;
+
     public ObservableCollection<PictureItem> Pictures { get; } = [];
 
     public bool HasReview
@@ -193,12 +203,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         CommandManager.InvalidateRequerySuggested();
         try
         {
-            var progress = new Progress<string>(text => Status = text);
+            var progress = NewProgress();
             await Task.Run(() => ReviewMaker.Rerun(path, progress)).ConfigureAwait(true);
             var at = Selected is null ? 0 : Pictures.IndexOf(Selected);
             OpenFolder(path);
             Selected = Pictures.Count == 0 ? null : Pictures[Math.Clamp(at, 0, Pictures.Count - 1)];
-            Compare();
+            Compare(showInfo: false);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException or Atc.Video.Engine.FFmpeg.FFmpegException)
         {
@@ -214,8 +224,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private bool CanRerun()
         => HasReview && !IsBusy;
 
-    [RelayCommand(CanExecute = nameof(HasReview))]
-    private void Compare()
+    [RelayCommand("Compare", CanExecute = nameof(HasReview))]
+    private void CompareFromButton()
+        => Compare(showInfo: true);
+
+    private void Compare(bool showInfo)
     {
         if (folder is null)
         {
@@ -223,8 +236,33 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         var summary = ReviewComparer.Compare(folder);
+        var report = Path.Combine(folder, ReviewComparer.ReportName);
         CompareText = string.Join(Environment.NewLine, summary);
-        Status = $"Compared: {Path.Combine(folder, ReviewComparer.ReportName)}";
+        Status = $"Compared: {report}";
+        if (!showInfo || Application.Current?.MainWindow is not { } owner)
+        {
+            return;
+        }
+
+        var settings = Atc.Wpf.Forms.Dialogs.DialogBoxSettings.Create(Atc.Wpf.Forms.Dialogs.DialogBoxType.Ok);
+        settings.TitleBarText = "Compared";
+        settings.Width = 560;
+        new Atc.Wpf.Components.Dialogs.InfoDialogBox(owner, settings, CompareText + Environment.NewLine + Environment.NewLine + "Written to " + report).ShowDialog();
+    }
+
+    // The busy overlay's text and bar, and the status line; reported from the pool, shown on the UI thread.
+    private Progress<ReviewProgress> NewProgress()
+    {
+        BusyText = "Starting ...";
+        ProgressValue = 0;
+        ProgressMaximum = 1;
+        return new Progress<ReviewProgress>(p =>
+        {
+            Status = p.Text;
+            BusyText = p.Text;
+            ProgressMaximum = p.Maximum;
+            ProgressValue = p.Value;
+        });
     }
 
     [RelayCommand(CanExecute = nameof(HasReview))]
@@ -267,7 +305,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         try
         {
             Status = settingsPath is null ? "No settings.json found beside the recording: the default motion settings are used." : $"Motion settings from {settingsPath}";
-            var progress = new Progress<string>(text => Status = text);
+            var progress = NewProgress();
             var every = Math.Max(1, EverySeconds);
             var made = await Task.Run(() => ReviewMaker.Make(video, settings, every, progress)).ConfigureAwait(true);
             OpenFolder(made);
