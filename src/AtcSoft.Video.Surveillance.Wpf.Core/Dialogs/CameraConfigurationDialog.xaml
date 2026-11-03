@@ -89,6 +89,9 @@
                                 </ContentControl.Style>
                             </ContentControl>
 
+                            <!--  Camera hub (motionEye, motionEyeOS): a new network camera from a hub's cameras  -->
+                            <cameraConfigs:CameraHubPart Visibility="{Binding Path=CanUseCameraHub, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
+
                             <!--  Network branch — 3-column basic settings  -->
                             <atc:GroupBoxExpander
                                 Margin="0,0,0,20"

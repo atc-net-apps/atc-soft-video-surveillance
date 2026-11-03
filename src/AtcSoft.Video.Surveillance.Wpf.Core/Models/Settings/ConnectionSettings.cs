@@ -144,6 +144,24 @@ public partial class ConnectionSettings : ObservableObject
     }
 
     /// <summary>
+    /// Gets or sets the camera hub the camera was added from (motionEye on a Raspberry Pi, ...);
+    /// <see langword="null"/> for a camera added by hand.
+    /// </summary>
+    public CoreSettings.CameraHubOrigin? Hub
+    {
+        get => Core.Hub;
+        set
+        {
+            var same = Core.Hub is null ? value is null : Core.Hub.ValueEquals(value);
+            Core.Hub = value;
+            if (!same)
+            {
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets or sets the physical link to the camera, for display. Read the
     /// displayed value through <c>CameraConnectionTypeHelper.GetEffective</c>.
     /// </summary>
@@ -189,6 +207,7 @@ public partial class ConnectionSettings : ObservableObject
         Path = source.Path;
         Usb = source.Usb is null ? null : source.Usb.Clone();
         ConnectionType = source.ConnectionType;
+        Hub = source.Hub?.Clone();
     }
 
     /// <summary>

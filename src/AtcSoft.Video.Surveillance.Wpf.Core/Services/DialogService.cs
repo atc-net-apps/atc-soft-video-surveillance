@@ -12,6 +12,7 @@ public class DialogService : IDialogService
     private readonly IVideoPlayerFactory videoPlayerFactory;
     private readonly AtcSoft.Video.Surveillance.Services.IUsbCameraEnumerator usbCameraEnumerator;
     private readonly AtcSoft.Video.Surveillance.Services.ICameraConnectionTypeDetector? connectionTypeDetector;
+    private readonly AtcSoft.Video.Surveillance.Services.Hubs.ICameraHubProvider? cameraHubProvider;
     private readonly ICameraStorageService? cameraStorage;
     private readonly IRecordingLayoutSynchronizer? recordingLayoutSynchronizer;
     private readonly IRecordingPreviews? recordingPreviews;
@@ -46,7 +47,8 @@ public class DialogService : IDialogService
         IRecordingLayoutSynchronizer? recordingLayoutSynchronizer = null,
         ICameraStorageService? cameraStorage = null,
         IRecordingPreviews? recordingPreviews = null,
-        ILoggerFactory? loggerFactory = null)
+        ILoggerFactory? loggerFactory = null,
+        AtcSoft.Video.Surveillance.Services.Hubs.ICameraHubProvider? cameraHubProvider = null)
     {
         this.settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         this.motionDetectionService = motionDetectionService ?? throw new ArgumentNullException(nameof(motionDetectionService));
@@ -57,6 +59,7 @@ public class DialogService : IDialogService
         this.cameraStorage = cameraStorage;
         this.recordingPreviews = recordingPreviews;
         this.loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+        this.cameraHubProvider = cameraHubProvider;
     }
 
     /// <inheritdoc />
@@ -83,6 +86,7 @@ public class DialogService : IDialogService
             usbCameraEnumerator,
             connectionTypeDetector,
             livePicture);
+        viewModel.UseCameraHubs(cameraHubProvider);
 
         var dialog = new CameraConfigurationDialog(viewModel)
         {
