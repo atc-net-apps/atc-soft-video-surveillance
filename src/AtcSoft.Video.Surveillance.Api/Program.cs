@@ -114,6 +114,9 @@ try
     // Register API handlers from the Domain project (source-generated)
     builder.Services.AddApiHandlersFromDomain();
 
+    // Camera hubs (motionEye, motionEyeOS): POST /hubs/probe and /hubs/cameras.
+    builder.Services.AddSingleton<AtcSoft.Video.Surveillance.Services.Hubs.ICameraHubProvider, AtcSoft.Video.Surveillance.Services.Hubs.MotionEyeHubProvider>();
+
     // Register Core service implementations for the server. Storage:DataPath
     // moves the server's files out of the shared application data folder, so
     // a second server (or a test) can run with data of its own.

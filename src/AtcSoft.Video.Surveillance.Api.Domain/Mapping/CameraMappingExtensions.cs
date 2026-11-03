@@ -53,7 +53,8 @@ internal static class CameraMappingExtensions
             StreamBufferDurationMs: core.Stream.BufferDurationMs,
             ConnectionState: connectionState?.ToApiConnectionState(),
             IsRecording: isRecording,
-            MotionZones: [.. core.MotionZones.Select(ToApiZone)]);
+            MotionZones: [.. core.MotionZones.Select(ToApiZone)],
+            Hub: core.Connection.Hub.ToApiModel());
     }
 
     public static CoreCameraConfiguration ToCoreModel(
