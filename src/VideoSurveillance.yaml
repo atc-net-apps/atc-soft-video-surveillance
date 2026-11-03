@@ -573,6 +573,113 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /hubs/probe:
+    post:
+      summary: List the cameras of a camera hub (motionEye or motionEyeOS)
+      description: >-
+        Signs in to the hub with the user and password given, which are not kept, and lists its cameras with a
+        picture each. A hub that only knows the older, less secure sign-in (motionEye before 0.44, as in motionEyeOS)
+        is listed with olderSignIn. The cameras' stream credentials are not returned; addHubCamera reads them itself.
+      operationId: probeHub
+      x-authorize-roles:
+        - operator
+        - admin
+      # Not a change: nothing is stored.
+      x-audit: false
+      x-retry-enabled: false
+      # Each probe signs in to another machine; a client in a loop would keep doing so.
+      x-ratelimit-policy: hub-probes
+      x-ratelimit-permit-limit: 10
+      x-ratelimit-window-seconds: 60
+      x-ratelimit-algorithm: fixed
+      x-ratelimit-partition: ip
+      tags:
+        - hubs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HubProbeRequest"
+      responses:
+        '200':
+          description: What the hub answered, with its cameras when it listed them
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubProbeResult"
+        '400':
+          description: The address is no address
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '429':
+          description: Too many tries from this address; Retry-After says when to try again.
+          headers:
+            Retry-After:
+              description: Seconds to wait before trying again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /hubs/cameras:
+    post:
+      summary: Add a camera of a camera hub
+      description: >-
+        Signs in to the hub again, and adds the camera as a network camera on its stream (MJPEG from motionEye,
+        recorded as H.264), with the stream's credentials from the hub and the hub as its origin.
+      operationId: addHubCamera
+      x-authorize-roles:
+        - operator
+        - admin
+      x-retry-enabled: false
+      x-ratelimit-policy: hub-cameras
+      x-ratelimit-permit-limit: 10
+      x-ratelimit-window-seconds: 60
+      x-ratelimit-algorithm: fixed
+      x-ratelimit-partition: ip
+      tags:
+        - hubs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddHubCameraRequest"
+      responses:
+        '201':
+          description: Camera added
+          headers:
+            Location:
+              description: The new resource's address.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubCameraAdded"
+        '400':
+          description: The hub could not be listed, has no camera with that id, or the camera cannot be added (switched off, streamed to the hub only)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '429':
+          description: Too many tries from this address; Retry-After says when to try again.
+          headers:
+            Retry-After:
+              description: Seconds to wait before trying again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /cameras:
     get:
       summary: List all cameras
@@ -2226,6 +2333,8 @@ components:
           description: Areas of the picture motion detection ignores or watches on their own, drawn on the picture as it is shown (rotated).
           items:
             $ref: "#/components/schemas/MotionZone"
+        hub:
+          $ref: "#/components/schemas/HubOrigin"
 
     ConnectionTypeDetection:
       title: ConnectionTypeDetection
@@ -3994,3 +4103,146 @@ components:
           $ref: "#/components/schemas/UsbCameraLifecycleEvent"
         activity:
           $ref: "#/components/schemas/ActivityChangedEvent"
+
+    HubOrigin:
+      title: HubOrigin
+      type: object
+      description: The camera hub a camera was added from, and the camera's id on it.
+      required:
+        - kind
+        - address
+        - cameraId
+      properties:
+        kind:
+          type: string
+          description: The kind of hub (motionEye).
+        address:
+          type: string
+          description: The hub's address, as its API is reached.
+        cameraId:
+          type: string
+        cameraName:
+          type: string
+          description: The camera's name on the hub, when it was added.
+
+    HubProbeRequest:
+      title: HubProbeRequest
+      type: object
+      required:
+        - address
+      properties:
+        address:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: The hub, as a person types it (pi-garage, 192.168.1.50, pi-garage:9000 or a URL).
+        userName:
+          type: string
+          maxLength: 128
+          description: The hub's admin user (admin when left out).
+        password:
+          type: string
+          maxLength: 256
+
+    AddHubCameraRequest:
+      title: AddHubCameraRequest
+      type: object
+      required:
+        - address
+        - cameraId
+      properties:
+        address:
+          type: string
+          minLength: 1
+          maxLength: 512
+        userName:
+          type: string
+          maxLength: 128
+        password:
+          type: string
+          maxLength: 256
+        cameraId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: The camera's id on the hub, as probeHub listed it.
+        displayName:
+          type: string
+          maxLength: 256
+          description: The camera's name; the hub's name for it when left out.
+
+    HubProbeResult:
+      title: HubProbeResult
+      type: object
+      required:
+        - outcome
+        - kind
+        - address
+        - olderSignIn
+        - cameras
+      properties:
+        outcome:
+          type: string
+          enum: [listed, unreachable, notThisKind, signInRefused]
+        kind:
+          type: string
+        address:
+          type: string
+          description: The hub's address as it was reached.
+        olderSignIn:
+          type: boolean
+          description: The hub only knows the older, less secure sign-in (motionEye before 0.44, motionEyeOS).
+        cameras:
+          type: array
+          maxItems: 64
+          items:
+            $ref: "#/components/schemas/HubCameraInfo"
+
+    HubCameraInfo:
+      title: HubCameraInfo
+      type: object
+      required:
+        - id
+        - name
+        - streamKind
+        - isUsb
+        - problem
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        streamKind:
+          type: string
+          enum: [mjpeg, rtsp]
+        resolution:
+          type: string
+          description: Its size as the hub says it (1280x720).
+        framesPerSecond:
+          type: integer
+          format: int32
+        isUsb:
+          type: boolean
+          description: A USB camera on the hub (not a network camera the hub reads).
+        problem:
+          type: string
+          enum: [none, disabled, streamingOff, onAnotherHub]
+          description: Why it cannot be added; none when it can.
+        picture:
+          type: string
+          format: byte
+          description: Its current picture (JPEG), when the hub gave one.
+
+    HubCameraAdded:
+      title: HubCameraAdded
+      type: object
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The new camera's id.
+        displayName:
+          type: string
