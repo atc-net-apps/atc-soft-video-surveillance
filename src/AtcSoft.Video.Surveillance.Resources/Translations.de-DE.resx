@@ -2892,4 +2892,10 @@ Vorschaubild:
   <data name="HubCameraUsed1" xml:space="preserve">
     <value>Aus der Kamera {0} des Hubs ausgefüllt. Prüfen Sie den Namen und speichern Sie.</value>
   </data>
+  <data name="AddFromCameraHub" xml:space="preserve">
+    <value>Von einem Kamera-Hub hinzufügen</value>
+  </data>
+  <data name="HubCameraAdded1" xml:space="preserve">
+    <value>Die Kamera {0} wurde vom Hub hinzugefügt.</value>
+  </data>
 </root>

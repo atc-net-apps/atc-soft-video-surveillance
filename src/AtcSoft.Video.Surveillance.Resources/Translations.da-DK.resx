@@ -2892,4 +2892,10 @@ Miniature:
   <data name="HubCameraUsed1" xml:space="preserve">
     <value>Udfyldt fra hubbens kamera {0}. Tjek navnet, og gem.</value>
   </data>
+  <data name="AddFromCameraHub" xml:space="preserve">
+    <value>Tilføj fra en kamerahub</value>
+  </data>
+  <data name="HubCameraAdded1" xml:space="preserve">
+    <value>Kameraet {0} blev tilføjet fra hubben.</value>
+  </data>
 </root>

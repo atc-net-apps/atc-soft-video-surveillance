@@ -1,0 +1,115 @@
+@* A camera of a camera hub (motionEye or motionEyeOS on a Raspberry Pi): the hub's cameras, one added. *@
+@inject GatewayService Gateway
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: 640px;">
+            <MudText Typo="Typo.body2">@Translations.CameraHubHelp</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.End">
+                <MudTextField @bind-Value="address" Label="@Translations.Address" Variant="Variant.Outlined" AutoFocus="true" />
+                <MudTextField @bind-Value="userName" Label="@Translations.Username" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="password" Label="@Translations.Password" InputType="InputType.Password" Variant="Variant.Outlined" />
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(busy || string.IsNullOrWhiteSpace(address))" OnClick="ConnectAsync">@Translations.Connect</MudButton>
+            </MudStack>
+            @if (busy)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            @if (status is not null)
+            {
+                <MudText Typo="Typo.body2">@status</MudText>
+            }
+            @if (listing is { OlderSignIn: true })
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@Translations.CameraHubOlderSignIn</MudAlert>
+            }
+            @if (problem is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@problem</MudAlert>
+            }
+            @if (listing is not null)
+            {
+                <MudGrid Spacing="2">
+                    @foreach (var camera in listing.Cameras)
+                    {
+                        var reason = HubCameraText.Problem(camera.Problem);
+                        <MudItem xs="6" sm="4">
+                            <MudCard Outlined="true">
+                                @if (HubCameraText.PictureAddress(camera.Picture) is { } picture)
+                                {
+                                    <MudCardMedia Image="@picture" Height="110" />
+                                }
+                                <MudCardContent>
+                                    <MudText Typo="Typo.subtitle2">@camera.Name</MudText>
+                                    <MudText Typo="Typo.caption">@HubCameraText.Details(camera)</MudText>
+                                    @if (reason is not null)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Error">@reason</MudText>
+                                    }
+                                </MudCardContent>
+                                <MudCardActions>
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="@(busy || reason is not null)" OnClick="@(() => AddAsync(camera))">@Translations.AddCamera</MudButton>
+                                </MudCardActions>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Translations.Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string address = string.Empty;
+    private string userName = "admin";
+    private string password = string.Empty;
+    private HubProbeResult? listing;
+    private string? status;
+    private string? problem;
+    private bool busy;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private void Cancel()
+        => MudDialog.Cancel();
+
+    private async Task ConnectAsync()
+    {
+        busy = true;
+        problem = null;
+        status = Translations.Connecting;
+        listing = null;
+        var result = await Gateway.ProbeHubAsync(new HubProbeRequest(Address: address.Trim(), UserName: userName, Password: password));
+        busy = false;
+        if (result.IsSuccess)
+        {
+            listing = result.Value;
+            status = HubCameraText.Status(result.Value!);
+        }
+        else
+        {
+            status = null;
+            problem = result.Problem;
+        }
+    }
+
+    private async Task AddAsync(HubCameraInfo camera)
+    {
+        busy = true;
+        problem = null;
+        var result = await Gateway.AddHubCameraAsync(new AddHubCameraRequest(Address: address.Trim(), CameraId: camera.Id, UserName: userName, Password: password));
+        busy = false;
+        if (result.IsSuccess)
+        {
+            MudDialog.Close(DialogResult.Ok(result.Value!.DisplayName));
+        }
+        else
+        {
+            problem = result.Problem;
+        }
+    }
+}
