@@ -16,6 +16,7 @@ namespace AtcSoft.Video.Surveillance.Helpers.MotionDetection;
 /// <param name="MinTravelShare">How far a track must travel from where it began, as a share of the picture's width, before it shows.</param>
 /// <param name="TrackLostSeconds">How long a track may go unseen before it ends.</param>
 /// <param name="FollowExposure">Whether the background follows the camera's exposure in every picture (a small gain on the whole picture); on when lighting changes are ignored.</param>
+/// <param name="RemoveGhosts">Whether a blob that is the ghost of something that lay still and left (its outline an edge in the background, not in the picture) is learnt as background at once, instead of in the stopped-object time.</param>
 public sealed record MotionDetectorOptions(
     double ThresholdSigmas = 3.0,
     double MinThreshold = 16,
@@ -28,7 +29,8 @@ public sealed record MotionDetectorOptions(
     double ConfirmSeconds = 0.4,
     double MinTravelShare = 0.03,
     double TrackLostSeconds = 1.0,
-    bool FollowExposure = true)
+    bool FollowExposure = true,
+    bool RemoveGhosts = true)
 {
     /// <summary>
     /// The smallest blob that counts by default, as a share of the picture's area.

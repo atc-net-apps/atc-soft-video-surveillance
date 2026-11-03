@@ -100,7 +100,7 @@ internal static class ConnectedComponents
         {
             if (count[root] > 0)
             {
-                blobs.Add(new Blob(minX[root], minY[root], maxX[root], maxY[root], count[root]));
+                blobs.Add(new Blob(minX[root], minY[root], maxX[root], maxY[root], count[root]) { Label = root });
             }
         }
 

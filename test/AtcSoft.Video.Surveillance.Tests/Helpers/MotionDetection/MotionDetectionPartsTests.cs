@@ -17,8 +17,11 @@ public sealed class MotionDetectionPartsTests
         var blobs = ConnectedComponents.Find(mask, Width, Height).OrderBy(b => b.MinX).ToList();
 
         blobs.Should().HaveCount(2);
-        blobs[0].Should().Be(new Blob(2, 2, 6, 6, 25));
-        blobs[1].Should().Be(new Blob(20, 10, 23, 15, 24));
+
+        // The label is the blob's own in the label image; the boxes are what matter here.
+        (blobs[0] with { Label = 0 }).Should().Be(new Blob(2, 2, 6, 6, 25));
+        (blobs[1] with { Label = 0 }).Should().Be(new Blob(20, 10, 23, 15, 24));
+        blobs[0].Label.Should().NotBe(blobs[1].Label);
     }
 
     [Fact]

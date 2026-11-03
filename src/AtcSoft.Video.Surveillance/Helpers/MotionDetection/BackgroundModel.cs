@@ -212,6 +212,43 @@ internal sealed class BackgroundModel
     }
 
     /// <summary>
+    /// Learns a blob's pixels as background at once: the picture is the scene there. For the ghost
+    /// of something that left (<see cref="GhostCheck"/>), whose background from before is the thing.
+    /// </summary>
+    /// <param name="blob">The blob, with its label.</param>
+    /// <param name="labels">The label of each pixel.</param>
+    /// <param name="roots">The blob each label belongs to.</param>
+    /// <param name="frame">The (blurred) picture.</param>
+    public void TakeIn(
+        Blob blob,
+        int[] labels,
+        int[] roots,
+        byte[] frame)
+    {
+        ArgumentNullException.ThrowIfNull(blob);
+        ArgumentNullException.ThrowIfNull(labels);
+        ArgumentNullException.ThrowIfNull(roots);
+        ArgumentNullException.ThrowIfNull(frame);
+
+        for (var y = blob.MinY; y <= blob.MaxY; y++)
+        {
+            var row = y * Width;
+            for (var x = blob.MinX; x <= blob.MaxX; x++)
+            {
+                var i = row + x;
+                if (labels[i] == 0 || roots[labels[i]] != blob.Label)
+                {
+                    continue;
+                }
+
+                mean[i] = frame[i];
+                anchor[i] = frame[i];
+                settled[i] = StateBackground;
+            }
+        }
+    }
+
+    /// <summary>
     /// Shifts the whole background by the picture's overall change in brightness, so a lighting
     /// change (exposure, a cloud, dusk) does not make everything foreground while what is in the
     /// picture stays as it was.
