@@ -171,11 +171,11 @@ public partial class App
         var settings = new DialogBoxSettings(DialogBoxType.Ok, LogCategoryType.Error)
         {
             TitleBarText = title,
-            Width = 500,
+            Width = AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.DefaultWidth,
         };
 
         var dialog = new InfoDialogBox(owner, settings, message);
-        dialog.ShowDialog();
+        AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.Wrap(dialog).ShowDialog();
     }
 
     private async void ApplicationStartup(
