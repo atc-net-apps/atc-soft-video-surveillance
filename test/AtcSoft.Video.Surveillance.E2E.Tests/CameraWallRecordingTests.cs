@@ -50,11 +50,12 @@ public sealed class CameraWallRecordingTests
         ShouldKeepRecording(app, recordings, started, "after the first layout is back");
         ShouldAnswer(app, main, "Browse Recordings", "the main window");
 
+        // Closed with Exit in the backstage: it asks the same question as the window's X.
         var recordedFor = DateTime.UtcNow - started.At;
-        var closed = app.CloseApp(main);
+        var closed = app.CloseApp(main, fromBackstage: true);
 
         opening.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10), "the recordings browser opens without holding up the app");
-        app.CloseWhileRecordingAsked.Should().BeTrue("closing stops the recording, so CameraWall asks first");
+        app.CloseWhileRecordingAsked.Should().BeTrue("closing stops the recording, so CameraWall asks first, from Exit as from the X");
         closed.Should().BeTrue("CameraWall closes when its main window closes");
         foreach (var file in started.Files)
         {

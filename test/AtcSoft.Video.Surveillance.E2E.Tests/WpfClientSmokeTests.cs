@@ -99,7 +99,9 @@ public sealed class WpfClientSmokeTests(ServerFixture server)
 
         steps.Run("leave the backstage", () => DesktopApp.Press(app.Find(main, "Home", ControlType.TabItem)));
 
-        var closed = app.CloseApp(main);
+        // Closed with Exit in the backstage: through the window's close, as the X, so the window's place is kept.
+        var closed = app.CloseApp(main, fromBackstage: true);
+        Directory.GetFiles(run.DataFolder, "window-state.json", SearchOption.AllDirectories).Should().ContainSingle("Exit keeps the window's place, as the X does");
 
         steps.Failures.Should().BeEmpty(steps.Report());
         LogFindings.AssertClean(run.LogFolder, "The WPF client");
