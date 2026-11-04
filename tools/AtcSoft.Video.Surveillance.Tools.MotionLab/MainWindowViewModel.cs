@@ -506,9 +506,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         var dialog = new Atc.Wpf.Components.Dialogs.QuestionDialogBox(Application.Current.MainWindow!, "Save into the suite?", message)
         {
-            Width = 460,
+            Width = AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.DefaultWidth,
         };
-        return dialog.ShowDialog() == true;
+        return AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.Wrap(dialog).ShowDialog() == true;
     }
 
     [RelayCommand(CanExecute = nameof(CanReview))]

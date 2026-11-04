@@ -49,9 +49,9 @@ internal static class UserDialog
 
         var dialog = new QuestionDialogBox(owner, title, message)
         {
-            Width = 400,
+            Width = AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.DefaultWidth,
         };
-        return dialog.ShowDialog() == true;
+        return AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.Wrap(dialog).ShowDialog() == true;
     }
 
     private static void Show(
@@ -66,10 +66,10 @@ internal static class UserDialog
         }
 
         settings.TitleBarText = title;
-        settings.Width = 400;
+        settings.Width = AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.DefaultWidth;
 
         var dialog = new InfoDialogBox(owner, settings, message);
-        dialog.ShowDialog();
+        AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.Wrap(dialog).ShowDialog();
     }
 
     private static Window? ResolveOwner()

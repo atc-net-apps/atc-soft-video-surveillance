@@ -169,10 +169,10 @@ public class DialogService : IDialogService
             title,
             message)
         {
-            Width = 400,
+            Width = DialogBoxText.DefaultWidth,
         };
 
-        var dialogResult = dialogBox.ShowDialog();
+        var dialogResult = DialogBoxText.Wrap(dialogBox).ShowDialog();
         return dialogResult.HasValue && dialogResult.Value;
     }
 
@@ -186,13 +186,13 @@ public class DialogService : IDialogService
             Atc.LogCategoryType.Error)
         {
             TitleBarText = title ?? Translations.Error,
-            Width = 400,
+            Width = DialogBoxText.DefaultWidth,
         };
         var dialog = new InfoDialogBox(
             Application.Current.MainWindow!,
             settings,
             message);
-        dialog.ShowDialog();
+        DialogBoxText.Wrap(dialog).ShowDialog();
     }
 
     /// <inheritdoc />
@@ -205,9 +205,9 @@ public class DialogService : IDialogService
             title ?? Translations.Information,
             message)
         {
-            Width = 400,
+            Width = DialogBoxText.DefaultWidth,
         };
-        dialog.ShowDialog();
+        DialogBoxText.Wrap(dialog).ShowDialog();
     }
 
     /// <inheritdoc />

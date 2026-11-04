@@ -285,8 +285,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         var settings = Atc.Wpf.Forms.Dialogs.DialogBoxSettings.Create(Atc.Wpf.Forms.Dialogs.DialogBoxType.Ok);
         settings.TitleBarText = "Compared";
-        settings.Width = 560;
-        new Atc.Wpf.Components.Dialogs.InfoDialogBox(owner, settings, CompareText + Environment.NewLine + Environment.NewLine + "Written to " + report).ShowDialog();
+
+        // Wide for the summary's long lines, within the window; as tall as the text needs.
+        settings.Width = Math.Min(900, Math.Max(560, owner.ActualWidth - 80));
+        var dialog = new Atc.Wpf.Components.Dialogs.InfoDialogBox(owner, settings, CompareText + Environment.NewLine + Environment.NewLine + "Written to " + report);
+        AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.Wrap(dialog).ShowDialog();
     }
 
     // The busy overlay's text and bar, and the status line; reported from the pool, shown on the UI thread.
