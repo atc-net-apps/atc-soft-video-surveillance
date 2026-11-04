@@ -183,38 +183,6 @@ public sealed class TimelinePageTests
         TimelineRefresh.Wait(Nine, Nine.AddSeconds(9)).Should().Be(TimeSpan.Zero);
     }
 
-    [Fact]
-    public void Zoom_And_Move_Are_The_Same_As_The_Desktop_Clients()
-    {
-        var now = Nine.AddDays(2);
-        (DateTimeOffset From, DateTimeOffset To)[] spans =
-        [
-            (Nine, Nine.AddHours(4)),
-            (Nine, Nine.AddMinutes(15)),
-            (now.AddDays(-6), now),
-            (now.AddHours(-2), now),
-        ];
-        DateTimeOffset[] focuses = [Nine, Nine.AddHours(1), now, Nine.AddDays(-3)];
-
-        foreach (var (from, to) in spans)
-        {
-            var span = new TimelineSpan(from, to);
-            foreach (var focus in focuses)
-            {
-                Pair(TimelineZoom.In(span, focus, now)).Should().Be(AtcSoft.Video.Surveillance.Helpers.Activity.TimelineZoom.In(from, to, focus, now));
-                Pair(TimelineZoom.Out(span, focus, now)).Should().Be(AtcSoft.Video.Surveillance.Helpers.Activity.TimelineZoom.Out(from, to, focus, now));
-            }
-
-            foreach (var later in new[] { true, false })
-            {
-                Pair(TimelineZoom.Move(span, later, now)).Should().Be(AtcSoft.Video.Surveillance.Helpers.Activity.TimelineZoom.Move(from, to, later, now));
-            }
-        }
-
-        static (DateTimeOffset, DateTimeOffset) Pair(TimelineSpan span)
-            => (span.From, span.To);
-    }
-
     private static TimelineBucket Bucket(
         bool recorded = true,
         bool analysed = true,

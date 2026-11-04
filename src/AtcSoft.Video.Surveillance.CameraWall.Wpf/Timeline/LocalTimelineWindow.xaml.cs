@@ -28,6 +28,12 @@ public partial class LocalTimelineWindow
         Closed += (_, _) => viewModel.Dispose();
     }
 
+    // Only a move the person makes zooms (TimelineZoomRange).
+    private void OnZoomSliderTouched(
+        object sender,
+        RoutedEventArgs e)
+        => viewModel.Zoom.Touch();
+
     private void OnPlayAllSliderDown(
         object sender,
         System.Windows.Input.MouseButtonEventArgs e)

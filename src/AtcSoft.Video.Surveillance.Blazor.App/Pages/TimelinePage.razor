@@ -11,16 +11,28 @@
 <MudText Typo="Typo.body2" Class="mb-4 mud-text-secondary">@Translations.TimelineHelp</MudText>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4" Wrap="Wrap.Wrap">
-    <MudButton Variant="@(day is null ? Variant.Filled : Variant.Outlined)"
-               Color="Color.Primary"
-               OnClick="ShowLast24HoursAsync">@Translations.Last24Hours</MudButton>
-    <MudDatePicker Label="@Translations.Day"
-                   Date="@(day?.ToDateTime(TimeOnly.MinValue))"
-                   DateChanged="OnDayChangedAsync"
-                   MaxDate="@DateTime.Today"
-                   Variant="Variant.Outlined"
-                   Margin="Margin.Dense"
-                   Style="max-width: 200px;" />
+    <MudSelect T="int"
+               Label="@Translations.Timeline"
+               Value="@spanHours"
+               ValueChanged="OnSpanChangedAsync"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Style="max-width: 200px;">
+        @foreach (var hours in SpanChoices)
+        {
+            <MudSelectItem T="int" Value="@hours">@TimelineSpans.Label(hours)</MudSelectItem>
+        }
+    </MudSelect>
+    @if (spanHours == 0)
+    {
+        <MudDatePicker Label="@Translations.Day"
+                       Date="@(day?.ToDateTime(TimeOnly.MinValue))"
+                       DateChanged="OnDayChangedAsync"
+                       MaxDate="@DateTime.Today"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Style="max-width: 200px;" />
+    }
     <MudTooltip Text="@Translations.PreviousEvent">
         <MudIconButton Icon="@Icons.Material.Filled.SkipPrevious"
                        aria-label="@Translations.PreviousEvent"
@@ -31,29 +43,12 @@
                        aria-label="@Translations.NextEvent"
                        OnClick="@(() => JumpAsync(forward: true))" />
     </MudTooltip>
-    <MudButton Variant="Variant.Outlined"
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.GridView"
                OnClick="PlayAllAsync">@Translations.PlayAllFromHere</MudButton>
-    <MudTooltip Text="@Translations.Earlier">
-        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
-                       aria-label="@Translations.Earlier"
-                       OnClick="@(() => MoveAsync(later: false))" />
-    </MudTooltip>
-    <MudTooltip Text="@Translations.ZoomOut">
-        <MudIconButton Icon="@Icons.Material.Filled.ZoomOut"
-                       aria-label="@Translations.ZoomOut"
-                       OnClick="@(() => ZoomAsync(zoomIn: false))" />
-    </MudTooltip>
-    <MudTooltip Text="@Translations.ZoomIn">
-        <MudIconButton Icon="@Icons.Material.Filled.ZoomIn"
-                       aria-label="@Translations.ZoomIn"
-                       OnClick="@(() => ZoomAsync(zoomIn: true))" />
-    </MudTooltip>
-    <MudTooltip Text="@Translations.Later">
-        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
-                       aria-label="@Translations.Later"
-                       OnClick="@(() => MoveAsync(later: true))" />
-    </MudTooltip>
+    <MudSpacer />
+    <MudButton StartIcon="@Icons.Material.Filled.ZoomOutMap" OnClick="ResetZoomAsync">@Translations.ResetZoom</MudButton>
     <MudButton StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">@Translations.Refresh</MudButton>
 </MudStack>
 
@@ -108,6 +103,19 @@ else if (timeline is { } shown)
         </div>
     </div>
 
+    @* Zoom: the part of the span shown, by its two ends, right under the lanes *@
+    <div class="d-flex align-center mt-2">
+        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="width: 160px; flex: none; padding-right: 8px;">@TimelineSpans.ShownText(span, TimeZoneInfo.Local, CultureInfo.CurrentCulture)</MudText>
+        <div style="flex: 1;">
+            <RangeSlider Maximum="@rangeMaximum"
+                         Start="@rangeStart"
+                         End="@rangeEnd"
+                         StartLabel="@Translations.ZoomRange"
+                         EndLabel="@Translations.ZoomRange"
+                         RangeChanged="OnRangeChangedAsync" />
+        </div>
+    </div>
+
     <div class="d-flex flex-wrap align-center gap-3 mt-2">
         <div style="width: 160px; flex: none;"></div>
         @foreach (var reason in TimelineGapStyle.Reasons)
@@ -124,10 +132,20 @@ else if (timeline is { } shown)
     // About one stretch per two pixels of a wide page.
     private const int BucketCount = 720;
 
-    private TimelineSpan span = TimelineSpan.Last24Hours(DateTimeOffset.UtcNow);
+    private static readonly IReadOnlyList<int> SpanChoices = [.. TimelineSpans.LastHoursChoices, 0];
+
+    // The span chosen (the last hours, or a day: 0), and the part of it shown.
+    private int spanHours = 24;
+    private TimelineSpan whole = TimelineSpans.LastHours(24, DateTimeOffset.UtcNow);
+    private TimelineSpan span = TimelineSpans.LastHours(24, DateTimeOffset.UtcNow);
     private DateOnly? day;
 
-    // A span zoomed or moved by the viewer stays as it is; the last 24 hours and a day reset it.
+    // The range slider over the span, in minutes from its start.
+    private double rangeMaximum = 24 * 60;
+    private double rangeStart;
+    private double rangeEnd = 24 * 60;
+
+    // A span zoomed by the viewer stays as it is; another span or a day resets it.
     private bool zoomed;
     private Timeline? timeline;
     private bool loading = true;
@@ -163,7 +181,7 @@ else if (timeline is { } shown)
     // page waits to read the timeline again.
     private Task OnEventAsync(SurveillanceEvent surveillanceEvent)
     {
-        if (TimelineRefresh.ShouldReload(surveillanceEvent, showsNow: day is null && !zoomed))
+        if (TimelineRefresh.ShouldReload(surveillanceEvent, showsNow: spanHours > 0 && !zoomed))
         {
             ReloadLater(TimelineRefresh.Wait(lastLoad, DateTimeOffset.UtcNow));
         }
@@ -220,9 +238,13 @@ else if (timeline is { } shown)
     {
         lastLoad = DateTimeOffset.UtcNow;
         loading = timeline is null;
-        if (day is null && !zoomed)
+        if (!zoomed)
         {
-            span = TimelineSpan.Last24Hours(DateTimeOffset.UtcNow);
+            whole = TimelineSpans.Whole(spanHours, day, DateTimeOffset.UtcNow, TimeZoneInfo.Local);
+            span = whole;
+            rangeMaximum = (whole.To - whole.From).TotalMinutes;
+            rangeStart = 0;
+            rangeEnd = rangeMaximum;
         }
 
         try
@@ -239,42 +261,41 @@ else if (timeline is { } shown)
         }
     }
 
-    private Task ShowLast24HoursAsync()
+    private Task OnSpanChangedAsync(int hours)
     {
-        day = null;
+        spanHours = hours;
         zoomed = false;
         cursor = null;
+        if (hours == 0 && day is null)
+        {
+            day = DateOnly.FromDateTime(DateTime.Today);
+        }
+
         return LoadAsync();
     }
 
     private Task OnDayChangedAsync(DateTime? date)
     {
-        if (date is not { } chosen)
-        {
-            return ShowLast24HoursAsync();
-        }
-
-        day = DateOnly.FromDateTime(chosen);
+        day = date is { } chosen ? DateOnly.FromDateTime(chosen) : DateOnly.FromDateTime(DateTime.Today);
         zoomed = false;
-        span = TimelineSpan.Day(day.Value, TimeZoneInfo.Local);
         cursor = null;
         return LoadAsync();
     }
 
-    // Around the place last played, or the middle; the span stays put until the next zoom or move.
-    private Task ZoomAsync(bool zoomIn)
+    // A thumb was let go: the part between the thumbs is shown.
+    private Task OnRangeChangedAsync((double Start, double End) range)
     {
-        var now = DateTimeOffset.UtcNow;
-        var focus = cursor ?? span.At(0.5);
-        span = zoomIn ? TimelineZoom.In(span, focus, now) : TimelineZoom.Out(span, focus, now);
-        zoomed = true;
+        rangeStart = range.Start;
+        rangeEnd = range.End;
+        span = TimelineSpans.Within(whole, range.Start, range.End);
+        zoomed = !TimelineSpans.IsWhole(range.Start, range.End, rangeMaximum);
         return LoadAsync();
     }
 
-    private Task MoveAsync(bool later)
+    // The whole span again, after zooming in with the range slider.
+    private Task ResetZoomAsync()
     {
-        span = TimelineZoom.Move(span, later, DateTimeOffset.UtcNow);
-        zoomed = true;
+        zoomed = false;
         return LoadAsync();
     }
 

@@ -1,0 +1,66 @@
+/* The timeline's range slider (Shared/RangeSlider.razor): two native range inputs over each
+   other; only their thumbs take the mouse, so both can be dragged. */
+.atc-range-slider {
+    position: relative;
+    height: 28px;
+}
+
+.atc-range-slider-track,
+.atc-range-slider-fill {
+    position: absolute;
+    top: 12px;
+    height: 4px;
+    border-radius: 2px;
+}
+
+.atc-range-slider-track {
+    left: 0;
+    right: 0;
+    background: rgba(128, 128, 128, 0.35);
+}
+
+.atc-range-slider-fill {
+    background: var(--mud-palette-primary);
+}
+
+.atc-range-slider input[type="range"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 28px;
+    margin: 0;
+    background: transparent;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.atc-range-slider input[type="range"]::-webkit-slider-runnable-track {
+    background: transparent;
+}
+
+.atc-range-slider input[type="range"]::-moz-range-track {
+    background: transparent;
+}
+
+.atc-range-slider input[type="range"]::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--mud-palette-primary);
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.atc-range-slider input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: var(--mud-palette-primary);
+    cursor: pointer;
+    pointer-events: auto;
+}

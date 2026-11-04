@@ -1,0 +1,88 @@
+@* Two thumbs on one track, from 0 to Maximum: the part between them is chosen. Built from two
+   native range inputs over each other (MudBlazor has no range slider). A thumb's new value is
+   given when it is let go (change), so a drag does not reload the page many times. *@
+
+<div class="atc-range-slider">
+    <div class="atc-range-slider-track"></div>
+    <div class="atc-range-slider-fill" style="@($"left: {fill.Left}; width: {fill.Width};")"></div>
+    <input type="range"
+           min="0"
+           max="@SvgNumber.Format(Maximum)"
+           step="@SvgNumber.Format(Step)"
+           value="@SvgNumber.Format(start)"
+           aria-label="@StartLabel"
+           title="@StartLabel"
+           @oninput="@(e => Move(e, isStart: true))"
+           @onchange="@(e => LetGoAsync(e, isStart: true))" />
+    <input type="range"
+           min="0"
+           max="@SvgNumber.Format(Maximum)"
+           step="@SvgNumber.Format(Step)"
+           value="@SvgNumber.Format(end)"
+           aria-label="@EndLabel"
+           title="@EndLabel"
+           @oninput="@(e => Move(e, isStart: false))"
+           @onchange="@(e => LetGoAsync(e, isStart: false))" />
+</div>
+
+@code {
+    private double start;
+    private double end;
+    private (string Left, string Width) fill = ("0%", "100%");
+
+    [Parameter]
+    public double Maximum { get; set; } = 100;
+
+    [Parameter]
+    public double Step { get; set; } = 1;
+
+    [Parameter]
+    public double Start { get; set; }
+
+    [Parameter]
+    public double End { get; set; } = 100;
+
+    [Parameter]
+    public string StartLabel { get; set; } = string.Empty;
+
+    [Parameter]
+    public string EndLabel { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets what is told when a thumb is let go: the lower and the upper value.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(double Start, double End)> RangeChanged { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        start = Start;
+        end = End;
+        fill = TimelineSpans.Fill(start, end, Maximum);
+    }
+
+    private void Move(ChangeEventArgs e, bool isStart)
+    {
+        if (!double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            return;
+        }
+
+        if (isStart)
+        {
+            start = value;
+        }
+        else
+        {
+            end = value;
+        }
+
+        fill = TimelineSpans.Fill(start, end, Maximum);
+    }
+
+    private Task LetGoAsync(ChangeEventArgs e, bool isStart)
+    {
+        Move(e, isStart);
+        return RangeChanged.InvokeAsync((Math.Min(start, end), Math.Max(start, end)));
+    }
+}

@@ -99,4 +99,3 @@ global using TimelineMark = AtcSoft.Video.Surveillance.Models.TimelineMark;
 global using TimelineMarks = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineMarks;
 global using TimelineStretch = AtcSoft.Video.Surveillance.Models.TimelineStretch;
 global using TimelineVerdict = AtcSoft.Video.Surveillance.Helpers.Review.TimelineVerdict;
-global using TimelineZoom = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineZoom;
