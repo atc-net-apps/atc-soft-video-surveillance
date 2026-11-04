@@ -29,9 +29,10 @@ public sealed class WebClientSmokeTests(ServerFixture server)
             Locale = "en-US",
         });
 
-        // The app reads its server address from appsettings.json at start.
+        // The app reads its server address from appsettings.json at start, and in Development from
+        // appsettings.Development.json too (localhost:8585, which would win): both are answered.
         await context.RouteAsync(
-            "**/appsettings.json",
+            "**/appsettings*.json",
             route => route.FulfillAsync(new RouteFulfillOptions
             {
                 Status = 200,
