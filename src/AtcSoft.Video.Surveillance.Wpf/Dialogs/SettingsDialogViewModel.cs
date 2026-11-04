@@ -35,6 +35,10 @@ public partial class SettingsDialogViewModel : ViewModelBase
     [ObservableProperty]
     private string selectedLanguage = "1033";
 
+    // Why the server refused the settings, shown beside the buttons; empty when nothing went wrong.
+    [ObservableProperty]
+    private string saveProblem = string.Empty;
+
     [ObservableProperty]
     private bool connectCamerasOnStartup = true;
 
@@ -508,6 +512,7 @@ public partial class SettingsDialogViewModel : ViewModelBase
     [RelayCommand("Save")]
     private async Task SaveAsync()
     {
+        SaveProblem = string.Empty;
         try
         {
             // Save general settings locally
@@ -523,10 +528,10 @@ public partial class SettingsDialogViewModel : ViewModelBase
         {
             // The server refused the settings (a value out of range): say why,
             // and keep the dialog open so the value can be corrected.
-            UserDialog.ShowError(string.Format(
+            SaveProblem = string.Format(
                 CultureInfo.CurrentCulture,
                 Translations.FailedToSaveSettings1,
-                ex.Message));
+                ex.Message);
             return;
         }
         catch

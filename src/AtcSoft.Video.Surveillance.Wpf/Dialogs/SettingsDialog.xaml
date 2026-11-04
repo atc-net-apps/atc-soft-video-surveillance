@@ -127,25 +127,31 @@
             </TabItem>
         </TabControl>
 
-        <!--  Dialog Buttons  -->
-        <StackPanel
-            Grid.Row="1"
-            Margin="0,16,0,0"
-            HorizontalAlignment="Right"
-            Orientation="Horizontal">
-            <Button
-                MinWidth="80"
-                Margin="0,0,8,0"
-                Padding="16,8"
-                Command="{Binding Path=SaveCommand}"
-                Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Save}"
-                IsDefault="True" />
-            <Button
-                MinWidth="80"
-                Padding="16,8"
-                Command="{Binding Path=CancelCommand}"
-                Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Cancel}"
-                IsCancel="True" />
-        </StackPanel>
+        <!--  Dialog Buttons, and why a save failed: said here, not in a window of its own  -->
+        <DockPanel Grid.Row="1" Margin="0,16,0,0">
+            <StackPanel
+                DockPanel.Dock="Right"
+                Orientation="Horizontal">
+                <Button
+                    MinWidth="80"
+                    Margin="0,0,8,0"
+                    Padding="16,8"
+                    Command="{Binding Path=SaveCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Save}"
+                    IsDefault="True" />
+                <Button
+                    MinWidth="80"
+                    Padding="16,8"
+                    Command="{Binding Path=CancelCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Cancel}"
+                    IsCancel="True" />
+            </StackPanel>
+            <TextBlock
+                Margin="0,0,16,0"
+                VerticalAlignment="Center"
+                Foreground="OrangeRed"
+                Text="{Binding Path=SaveProblem}"
+                TextWrapping="Wrap" />
+        </DockPanel>
     </atc:GridEx>
 </atc:NiceWindow>

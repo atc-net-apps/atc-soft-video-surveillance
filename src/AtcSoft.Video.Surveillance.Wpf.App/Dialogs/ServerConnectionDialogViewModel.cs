@@ -19,6 +19,10 @@ public sealed partial class ServerConnectionDialogViewModel : ObservableObject
     [ObservableProperty(AfterChangedCallback = nameof(OnIsTestingChanged))]
     private bool isTesting;
 
+    // The profile being added or edited, over the dialog; null when none is.
+    [ObservableProperty(DependentPropertyNames = [nameof(IsEditingProfile)])]
+    private ServerProfileEditorViewModel? profileEditor;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="ServerConnectionDialogViewModel"/> class.
     /// </summary>
@@ -38,6 +42,17 @@ public sealed partial class ServerConnectionDialogViewModel : ObservableObject
             SelectedProfile = Profiles.FirstOrDefault(p => p.Id == lastUsed.Id);
         }
     }
+
+    /// <summary>
+    /// Gets the yes/no question shown inside the dialog: a dialog opens no other window.
+    /// </summary>
+    public AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.DialogQuestion Question { get; } = new();
+
+    /// <summary>
+    /// Gets a value indicating whether a profile is being added or edited, over the dialog.
+    /// </summary>
+    public bool IsEditingProfile
+        => ProfileEditor is not null;
 
     /// <summary>
     /// The collection of saved server profiles.
@@ -111,27 +126,36 @@ public sealed partial class ServerConnectionDialogViewModel : ObservableObject
 
     [RelayCommand]
     private void AddProfile()
+        => OpenEditor(new ServerProfileEditorViewModel(), vm =>
+        {
+            var profile = new ServerProfile
+            {
+                Name = vm.ProfileName,
+                Url = vm.Url.TrimEnd('/'),
+                Description = vm.Description,
+            };
+
+            profileService.AddOrUpdateProfile(profile);
+            profileService.Save();
+
+            Profiles.Add(profile);
+            SelectedProfile = profile;
+        });
+
+    // The editor shows over the dialog until saved or cancelled; on save the change is applied.
+    private void OpenEditor(
+        ServerProfileEditorViewModel editor,
+        Action<ServerProfileEditorViewModel> apply)
     {
-        var vm = new ServerProfileEditDialogViewModel();
-        var dialog = new ServerProfileEditDialog(vm);
-
-        if (dialog.ShowDialog() != true)
+        editor.CloseRequested += (_, saved) =>
         {
-            return;
-        }
-
-        var profile = new ServerProfile
-        {
-            Name = vm.ProfileName,
-            Url = vm.Url.TrimEnd('/'),
-            Description = vm.Description,
+            ProfileEditor = null;
+            if (saved)
+            {
+                apply(editor);
+            }
         };
-
-        profileService.AddOrUpdateProfile(profile);
-        profileService.Save();
-
-        Profiles.Add(profile);
-        SelectedProfile = profile;
+        ProfileEditor = editor;
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedProfile))]
@@ -142,65 +166,51 @@ public sealed partial class ServerConnectionDialogViewModel : ObservableObject
             return;
         }
 
-        var vm = new ServerProfileEditDialogViewModel
-        {
-            ProfileName = SelectedProfile.Name,
-            Url = SelectedProfile.Url,
-            Description = SelectedProfile.Description,
-        };
+        var profile = SelectedProfile;
+        OpenEditor(
+            new ServerProfileEditorViewModel
+            {
+                ProfileName = profile.Name,
+                Url = profile.Url,
+                Description = profile.Description,
+            },
+            vm =>
+            {
+                profile.Name = vm.ProfileName;
+                profile.Url = vm.Url.TrimEnd('/');
+                profile.Description = vm.Description;
 
-        var dialog = new ServerProfileEditDialog(vm);
+                profileService.AddOrUpdateProfile(profile);
+                profileService.Save();
 
-        if (dialog.ShowDialog() != true)
-        {
-            return;
-        }
-
-        SelectedProfile.Name = vm.ProfileName;
-        SelectedProfile.Url = vm.Url.TrimEnd('/');
-        SelectedProfile.Description = vm.Description;
-
-        profileService.AddOrUpdateProfile(SelectedProfile);
-        profileService.Save();
-
-        // Refresh list
-        var index = Profiles.IndexOf(SelectedProfile);
-        if (index >= 0)
-        {
-            var updated = SelectedProfile;
-            Profiles[index] = updated;
-            SelectedProfile = updated;
-        }
+                // Refresh list
+                var index = Profiles.IndexOf(profile);
+                if (index >= 0)
+                {
+                    Profiles[index] = profile;
+                    SelectedProfile = profile;
+                }
+            });
     }
 
-    [RelayCommand(CanExecute = nameof(HasSelectedProfile))]
-    private void DeleteProfile()
+    [RelayCommand("DeleteProfile", CanExecute = nameof(HasSelectedProfile))]
+    private async Task DeleteProfileAsync()
     {
-        if (SelectedProfile is null)
+        if (SelectedProfile is not { } profile)
         {
             return;
         }
 
-        var dialog = new QuestionDialogBox(
-            Application.Current.MainWindow!,
-            Translations.DeleteProfile,
-            string.Format(
-                CultureInfo.CurrentCulture,
-                Translations.ConfirmDeleteProfile1,
-                SelectedProfile.Name))
-        {
-            Width = 400,
-        };
-
-        if (dialog.ShowDialog() != true)
+        var question = string.Format(CultureInfo.CurrentCulture, Translations.ConfirmDeleteProfile1, profile.Name);
+        if (!await Question.AskAsync(question).ConfigureAwait(true))
         {
             return;
         }
 
-        profileService.DeleteProfile(SelectedProfile.Id);
+        profileService.DeleteProfile(profile.Id);
         profileService.Save();
 
-        Profiles.Remove(SelectedProfile);
+        Profiles.Remove(profile);
         SelectedProfile = Profiles.FirstOrDefault();
     }
 

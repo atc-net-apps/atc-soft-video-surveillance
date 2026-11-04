@@ -15,7 +15,7 @@ public sealed class UsersDialogViewModelTests
         admin.Users.Add(new UserAccount(Guid.NewGuid(), "admin", UserRole.Admin, Created));
         admin.ApiKeys.Add(new ApiKey(Guid.NewGuid(), "home assistant", UserRole.Viewer, Created));
         admin.Audit.Add(new AuditEntry(Created, "admin", "createCamera", "/cameras"));
-        var sut = new UsersDialogViewModel(admin, confirm: _ => true);
+        var sut = new UsersDialogViewModel(admin, confirm: _ => Task.FromResult(true));
 
         await sut.LoadAsync();
 
@@ -28,7 +28,7 @@ public sealed class UsersDialogViewModelTests
     [Fact]
     public void The_Roles_Are_Named_In_Words_Least_First()
     {
-        var sut = new UsersDialogViewModel(new FakeUserAdministration(), confirm: _ => true);
+        var sut = new UsersDialogViewModel(new FakeUserAdministration(), confirm: _ => Task.FromResult(true));
 
         sut.RoleItems.Keys.Should().Equal(UserRole.Names.Viewer, UserRole.Names.Operator, UserRole.Names.Admin);
         sut.RoleItems.Values.Should().Equal("Viewer", "Operator", "Admin");
@@ -38,7 +38,7 @@ public sealed class UsersDialogViewModelTests
     public async Task With_No_User_Chosen_Saving_Adds_One()
     {
         var admin = new FakeUserAdministration();
-        var sut = new UsersDialogViewModel(admin, confirm: _ => true)
+        var sut = new UsersDialogViewModel(admin, confirm: _ => Task.FromResult(true))
         {
             UserName = "ops",
             Password = "a long password",
@@ -59,7 +59,7 @@ public sealed class UsersDialogViewModelTests
         var admin = new FakeUserAdministration();
         var user = new UserAccount(Guid.NewGuid(), "ops", UserRole.Viewer, Created);
         admin.Users.Add(user);
-        var sut = new UsersDialogViewModel(admin, confirm: _ => true);
+        var sut = new UsersDialogViewModel(admin, confirm: _ => Task.FromResult(true));
         await sut.LoadAsync();
 
         sut.SelectedUser = sut.Users[0];
@@ -75,7 +75,7 @@ public sealed class UsersDialogViewModelTests
     public async Task A_Refused_Save_Shows_The_Servers_Reason()
     {
         var admin = new FakeUserAdministration { Refusal = "A user with that name already exists." };
-        var sut = new UsersDialogViewModel(admin, confirm: _ => true)
+        var sut = new UsersDialogViewModel(admin, confirm: _ => Task.FromResult(true))
         {
             UserName = "admin",
             Password = "a long password",
@@ -98,7 +98,7 @@ public sealed class UsersDialogViewModelTests
         var sut = new UsersDialogViewModel(admin, confirm: question =>
         {
             asked = question;
-            return answer;
+            return Task.FromResult(answer);
         });
         await sut.LoadAsync();
         sut.SelectedUser = sut.Users[0];
@@ -118,7 +118,7 @@ public sealed class UsersDialogViewModelTests
     public async Task A_New_Api_Key_Is_Shown_Once()
     {
         var admin = new FakeUserAdministration();
-        var sut = new UsersDialogViewModel(admin, confirm: _ => true)
+        var sut = new UsersDialogViewModel(admin, confirm: _ => Task.FromResult(true))
         {
             ApiKeyName = "home assistant",
             SelectedApiKeyRoleKey = UserRole.Names.Viewer,
@@ -139,7 +139,7 @@ public sealed class UsersDialogViewModelTests
     {
         var admin = new FakeUserAdministration();
         admin.ApiKeys.Add(new ApiKey(Guid.NewGuid(), "home assistant", UserRole.Viewer, Created));
-        var sut = new UsersDialogViewModel(admin, confirm: _ => true);
+        var sut = new UsersDialogViewModel(admin, confirm: _ => Task.FromResult(true));
         await sut.LoadAsync();
         sut.SelectedApiKey = sut.ApiKeys[0];
 

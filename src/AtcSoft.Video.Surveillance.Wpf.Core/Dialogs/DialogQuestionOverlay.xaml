@@ -1,0 +1,50 @@
+<UserControl
+    x:Class="AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.DialogQuestionOverlay"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
+    xmlns:atcValueConverters="https://github.com/atc-net/atc-wpf/tree/main/schemas/value-converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:dialogs="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.Dialogs"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=dialogs:DialogQuestion,
+                                     IsDesignTimeCreatable=False}"
+    d:DesignHeight="300"
+    d:DesignWidth="400"
+    Visibility="{Binding Path=IsOpen, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}, FallbackValue=Collapsed}"
+    mc:Ignorable="d">
+
+    <!--  The question over the dialog it belongs to: the rest of the dialog waits for the answer  -->
+    <Grid Background="#99000000">
+        <Border
+            MinWidth="320"
+            MaxWidth="460"
+            Padding="20"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Background="{DynamicResource AtcApps.Brushes.ThemeBackground}"
+            BorderBrush="{DynamicResource AtcApps.Brushes.Accent}"
+            BorderThickness="1"
+            CornerRadius="4">
+            <StackPanel>
+                <TextBlock
+                    Margin="0,0,0,16"
+                    Text="{Binding Path=Text}"
+                    TextWrapping="Wrap" />
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                    <Button
+                        MinWidth="80"
+                        Margin="0,0,8,0"
+                        Padding="16,6"
+                        Command="{Binding Path=YesCommand}"
+                        Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Yes}" />
+                    <Button
+                        MinWidth="80"
+                        Padding="16,6"
+                        Command="{Binding Path=NoCommand}"
+                        Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=No}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

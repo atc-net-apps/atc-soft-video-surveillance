@@ -8,7 +8,7 @@ public partial class UsersDialogViewModel : ViewModelBase
     private const int AuditEntriesShown = 200;
 
     private readonly IUserAdministration administration;
-    private readonly Func<string, bool> confirm;
+    private readonly Func<string, Task<bool>> confirm;
 
     [ObservableProperty(DependentPropertyNames = [nameof(IsNewUser)], AfterChangedCallback = nameof(OnSelectedUserChanged))]
     private UserRow? selectedUser;
@@ -44,14 +44,19 @@ public partial class UsersDialogViewModel : ViewModelBase
     /// Initializes a new instance of the <see cref="UsersDialogViewModel"/> class.
     /// </summary>
     /// <param name="administration">The server's users, API keys and audit log.</param>
-    /// <param name="confirm">Asks the admin a yes/no question.</param>
+    /// <param name="confirm">Asks the admin a yes/no question; by default inside the dialog (<see cref="Question"/>).</param>
     public UsersDialogViewModel(
         IUserAdministration administration,
-        Func<string, bool> confirm)
+        Func<string, Task<bool>>? confirm = null)
     {
         this.administration = administration;
-        this.confirm = confirm;
+        this.confirm = confirm ?? Question.AskAsync;
     }
+
+    /// <summary>
+    /// Gets the yes/no question shown inside the dialog: a dialog opens no other window.
+    /// </summary>
+    public AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.DialogQuestion Question { get; } = new();
 
     public event EventHandler<DialogClosedEventArgs>? CloseRequested;
 
@@ -130,7 +135,7 @@ public partial class UsersDialogViewModel : ViewModelBase
     public async Task RemoveUserAsync()
     {
         if (SelectedUser is not { } user ||
-            !confirm(string.Format(CultureInfo.CurrentCulture, Translations.RemoveUser1, user.UserName)))
+            !await confirm(string.Format(CultureInfo.CurrentCulture, Translations.RemoveUser1, user.UserName)).ConfigureAwait(true))
         {
             return;
         }
@@ -167,7 +172,7 @@ public partial class UsersDialogViewModel : ViewModelBase
     public async Task RemoveApiKeyAsync()
     {
         if (SelectedApiKey is not { } key ||
-            !confirm(string.Format(CultureInfo.CurrentCulture, Translations.RemoveApiKey1, key.Name)))
+            !await confirm(string.Format(CultureInfo.CurrentCulture, Translations.RemoveApiKey1, key.Name)).ConfigureAwait(true))
         {
             return;
         }
