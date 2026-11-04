@@ -347,6 +347,7 @@ Use Atc controls instead of standard WPF controls:
 - `atc:LabelComboBox` for labeled dropdowns (uses `IDictionary<string, string>` Items and `SelectedKey`)
 - `atc:LabelPasswordBox` for password inputs
 - `atc:LabelIntegerBox` for numeric inputs
+- **One dialog at a time, in every app of the repo** (CameraWall, the WPF client, the web client, the samples and tools): a dialog or a secondary window never opens another window or dialog box. The exceptions are the system's own pickers (open folder, open file) and the full-screen players (`FullScreenCameraWindow`, `FullScreenRecordingWindow`). A confirmation, an error, or a second view (a player, a grid of recordings) is shown inside it instead: an overlay, an Atc `Flyout`, or an inline message; in the web client, never a `MudDialog` from a `MudDialog`. A message box over the main window (or page) is fine
 - Every window and dialog has `atc:NiceWindow` as its root (or an Atc dialog box: `InfoDialogBox`, `QuestionDialogBox`, `InputDialogBox`, all `NiceDialogBox`), never a plain `Window`: a plain one does not follow the dark and light theme. A full-screen video window is a `NiceWindow` with `UseNoneWindowStyle="True"`, black whatever the theme; the walks check it still covers the taskbar. Only `VideoHost`'s hidden surface windows are plain
 
 ## Models
