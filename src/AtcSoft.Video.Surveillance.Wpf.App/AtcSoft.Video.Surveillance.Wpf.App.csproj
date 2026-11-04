@@ -15,9 +15,9 @@
 
   <ItemGroup>
     <PackageReference Include="Fluent.Ribbon" Version="11.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />

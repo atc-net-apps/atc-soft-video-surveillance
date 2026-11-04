@@ -12,9 +12,9 @@
 
   <ItemGroup>
     <PackageReference Include="Atc.Hosting" Version="2.0.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.13" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
     <!-- Pinned above the 2.0.0 that Microsoft.AspNetCore.OpenApi 10.0.8 pulls in transitively (NU1903 / GHSA-v5pm-xwqc-g5wc). -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.12.2" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.18.0" />
@@ -35,7 +35,7 @@
 
   <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
     <!-- The same exe runs as a console app or as a Windows service (the server MSI). -->
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.14" />
     <ProjectReference Include="..\Atc.Video.Engine.DirectX\Atc.Video.Engine.DirectX.csproj" />
     <ProjectReference Include="..\AtcSoft.Video.Surveillance.Windows\AtcSoft.Video.Surveillance.Windows.csproj" />
   </ItemGroup>
