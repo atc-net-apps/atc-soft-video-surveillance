@@ -3,7 +3,7 @@ namespace AtcSoft.Video.Surveillance.Wpf.App.Dialogs;
 /// <summary>
 /// View model for the server profile add/edit dialog.
 /// </summary>
-public sealed partial class ServerProfileEditDialogViewModel : ObservableObject
+public sealed partial class ServerProfileEditorViewModel : ObservableObject
 {
     [ObservableProperty(AfterChangedCallback = nameof(OnFieldChanged))]
     private string profileName = string.Empty;

@@ -1,25 +1,13 @@
 namespace AtcSoft.Video.Surveillance.Wpf.App.Dialogs;
 
 /// <summary>
-/// Dialog for adding or editing a server profile.
+/// Edits a server profile inside the server connection dialog (<see cref="ServerProfileEditorViewModel"/>).
 /// </summary>
-public partial class ServerProfileEditDialog
+public partial class ServerProfileEditor
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="ServerProfileEditDialog"/> class.
+    /// Initializes a new instance of the <see cref="ServerProfileEditor"/> class.
     /// </summary>
-    /// <param name="viewModel">The view model.</param>
-    public ServerProfileEditDialog(ServerProfileEditDialogViewModel viewModel)
-    {
-        ArgumentNullException.ThrowIfNull(viewModel);
-
-        InitializeComponent();
-        DataContext = viewModel;
-
-        viewModel.CloseRequested += (_, result) =>
-        {
-            DialogResult = result;
-            Close();
-        };
-    }
+    public ServerProfileEditor()
+        => InitializeComponent();
 }

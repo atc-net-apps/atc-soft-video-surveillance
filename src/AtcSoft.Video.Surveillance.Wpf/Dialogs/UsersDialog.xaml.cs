@@ -20,15 +20,13 @@ public partial class UsersDialog
     }
 
     /// <summary>
-    /// Shows the dialog over the owner, asking before anything is removed.
+    /// Shows the dialog over the owner, asking inside it before anything is removed.
     /// </summary>
     public static void Show(
         IUserAdministration administration,
         Window? owner)
     {
-        var viewModel = new UsersDialogViewModel(
-            administration,
-            question => UserDialog.Confirm(question, Translations.Remove));
+        var viewModel = new UsersDialogViewModel(administration);
         var dialog = new UsersDialog(viewModel)
         {
             Owner = owner,
