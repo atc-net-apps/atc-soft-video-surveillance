@@ -25,22 +25,28 @@ internal static class VerdictWalk
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(timeline);
 
-        var bounds = timeline.BoundingRectangle;
-        FlaUI.Core.Input.Mouse.RightClick(new System.Drawing.Point(bounds.X + (bounds.Width / 2), bounds.Y + (bounds.Height / 2)));
-
         var desktop = app.Automation.GetDesktop();
         var processId = timeline.Properties.ProcessId.Value;
         var deadline = DateTime.UtcNow + DesktopApp.ElementTimeout;
         AutomationElement? item = null;
+
+        // The timeline offers verdicts once its activity has come from the server or the file: a
+        // right-click before that opens nothing, so it is tried again until the menu shows.
         while (item is null && DateTime.UtcNow < deadline)
         {
-            item = desktop
-                .FindAllChildren(app.Conditions.ByProcessId(processId))
-                .Select(w => w.FindFirstDescendant(app.Conditions.ByControlType(ControlType.MenuItem).And(app.Conditions.ByName(verdict))))
-                .FirstOrDefault(i => i is not null);
-            if (item is null)
+            var bounds = timeline.BoundingRectangle;
+            FlaUI.Core.Input.Mouse.RightClick(new System.Drawing.Point(bounds.X + (bounds.Width / 2), bounds.Y + (bounds.Height / 2)));
+            var tryUntil = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+            while (item is null && DateTime.UtcNow < tryUntil)
             {
-                Thread.Sleep(200);
+                item = desktop
+                    .FindAllChildren(app.Conditions.ByProcessId(processId))
+                    .Select(w => w.FindFirstDescendant(app.Conditions.ByControlType(ControlType.MenuItem).And(app.Conditions.ByName(verdict))))
+                    .FirstOrDefault(i => i is not null);
+                if (item is null)
+                {
+                    Thread.Sleep(200);
+                }
             }
         }
 
