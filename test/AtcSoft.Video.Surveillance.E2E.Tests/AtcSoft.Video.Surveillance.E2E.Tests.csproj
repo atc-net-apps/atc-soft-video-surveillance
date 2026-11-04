@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Wpf.App\AtcSoft.Video.Surveillance.Wpf.App.csproj" ReferenceOutputAssembly="false" Private="false" />
     <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Api\AtcSoft.Video.Surveillance.Api.csproj" ReferenceOutputAssembly="false" Private="false" />
     <ProjectReference Include="..\..\tools\AtcSoft.Video.Surveillance.Tools.MotionLab\AtcSoft.Video.Surveillance.Tools.MotionLab.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="..\..\tools\AtcSoft.Video.Surveillance.Tools.DetectionReview\AtcSoft.Video.Surveillance.Tools.DetectionReview.csproj" ReferenceOutputAssembly="false" Private="false" />
     <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Blazor.App\AtcSoft.Video.Surveillance.Blazor.App.csproj" ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
 
