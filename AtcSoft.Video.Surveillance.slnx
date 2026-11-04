@@ -9,9 +9,6 @@
     <File Path="plans/roadmap.md" />
     <File Path="plans/roadmap-boundingbox.md" />
   </Folder>
-  <Folder Name="/sample/">
-    <Project Path="sample/BoundingBoxWpfApp/BoundingBoxWpfApp.csproj" />
-  </Folder>
   <Folder Name="/src/">
     <Project Path="src/AtcSoft.Video.Surveillance.Aspire/AtcSoft.Video.Surveillance.Aspire.csproj" />
   </Folder>
@@ -58,6 +55,7 @@
     <Project Path="test/AtcSoft.Video.Surveillance.Wpf.Tests/AtcSoft.Video.Surveillance.Wpf.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
-    <Project Path="tools/BoundingBoxReview/BoundingBoxReview.csproj" />
+    <Project Path="tools/AtcSoft.Video.Surveillance.Tools.DetectionReview/AtcSoft.Video.Surveillance.Tools.DetectionReview.csproj" />
+    <Project Path="tools/AtcSoft.Video.Surveillance.Tools.MotionLab/AtcSoft.Video.Surveillance.Tools.MotionLab.csproj" />
   </Folder>
 </Solution>
