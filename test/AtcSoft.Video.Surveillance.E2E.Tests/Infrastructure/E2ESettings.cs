@@ -46,15 +46,13 @@ internal static class E2ESettings
     /// Gets Motion Lab, a developer tool under <c>tools/</c>.
     /// </summary>
     public static string MotionLabExe
-    {
-        get
-        {
-            var path = Path.Combine(RepositoryRoot, "tools", "AtcSoft.Video.Surveillance.Tools.MotionLab", "bin", Configuration, AppTargetFramework, "AtcSoft.Video.Surveillance.Tools.MotionLab.exe");
-            return File.Exists(path)
-                ? path
-                : throw new FileNotFoundException($"Build AtcSoft.Video.Surveillance.Tools.MotionLab ({Configuration}) first; the smoke tests start its executable.", path);
-        }
-    }
+        => ToolPath("AtcSoft.Video.Surveillance.Tools.MotionLab");
+
+    /// <summary>
+    /// Gets Detection Review, a developer tool under <c>tools/</c>.
+    /// </summary>
+    public static string DetectionReviewExe
+        => ToolPath("AtcSoft.Video.Surveillance.Tools.DetectionReview");
 
     public static string BlazorProjectFolder
         => Path.Combine(RepositoryRoot, "src", "AtcSoft.Video.Surveillance.Blazor.App");
@@ -89,6 +87,14 @@ internal static class E2ESettings
         }
 
         return path;
+    }
+
+    private static string ToolPath(string project)
+    {
+        var path = Path.Combine(RepositoryRoot, "tools", project, "bin", Configuration, AppTargetFramework, project + ".exe");
+        return File.Exists(path)
+            ? path
+            : throw new FileNotFoundException($"Build {project} ({Configuration}) first; the smoke tests start its executable.", path);
     }
 
     private static string FindRepositoryRoot()
