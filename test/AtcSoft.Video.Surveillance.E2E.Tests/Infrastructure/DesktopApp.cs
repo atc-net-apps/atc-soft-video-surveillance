@@ -554,13 +554,24 @@ internal sealed class DesktopApp : IDisposable
     /// Asks the app to close its main window and waits for the process to end. CameraWall asks
     /// first while cameras record or are set to record: the question is answered yes.
     /// </summary>
+    /// <param name="mainWindow">The main window.</param>
+    /// <param name="fromBackstage">Close with the backstage's Exit, not the window's X.</param>
     /// <returns><see langword="true"/> when it ended by itself.</returns>
-    public bool CloseApp(Window mainWindow)
+    public bool CloseApp(
+        Window mainWindow,
+        bool fromBackstage = false)
     {
         CloseWhileRecordingAsked = false;
         try
         {
-            mainWindow.Close();
+            if (fromBackstage)
+            {
+                PressBackstageItem(mainWindow, "Exit");
+            }
+            else
+            {
+                mainWindow.Close();
+            }
         }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException)
         {
@@ -575,6 +586,9 @@ internal sealed class DesktopApp : IDisposable
                 w));
             if (question is not null)
             {
+                // A picture of the question, to see that its text is readable without scrolling.
+                Directory.CreateDirectory(dumpFolder);
+                WindowPicture.Save(question, Path.Combine(dumpFolder, "close-question.png"));
                 foreach (var name in new[] { "Yes", "OK" })
                 {
                     if (TryFind(question, name, ControlType.Button) is { IsEnabled: true } yes)

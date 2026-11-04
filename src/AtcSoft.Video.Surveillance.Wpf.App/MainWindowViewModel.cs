@@ -408,9 +408,10 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    // Through the window's Closing, so Exit does what the window's X does.
     [RelayCommand]
     private static void Exit()
-        => Application.Current.Shutdown();
+        => Application.Current.MainWindow?.Close();
 
     private void OnStartWithWindowsChanged()
     {
