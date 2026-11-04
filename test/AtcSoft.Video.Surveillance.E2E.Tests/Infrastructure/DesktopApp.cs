@@ -410,6 +410,39 @@ internal sealed class DesktopApp : IDisposable
     /// Closes a dialog with its Cancel / Close / OK button, else through the window itself,
     /// and waits until it is gone.
     /// </summary>
+    /// <summary>
+    /// Saves a picture of a window, for a person to look at after the run (a dialog's layout and
+    /// title bar). A capture that fails does not fail the step.
+    /// </summary>
+    /// <param name="window">The window.</param>
+    /// <param name="name">The file name, without extension, in the run's <c>desktop-ui</c> folder.</param>
+    public static void Screenshot(
+        Window window,
+        string name)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+
+        var folder = E2ESettings.NewFolder("desktop-ui");
+        try
+        {
+            window.SetForeground();
+
+            // In real pixels: without, display scaling cuts the capture off.
+            _ = SetProcessDPIAware();
+            Thread.Sleep(300);
+            FlaUI.Core.Capturing.Capture.Element(window).ToFile(Path.Combine(folder, name + ".png"));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or IOException or ArgumentException or NotSupportedException)
+        {
+            // Only a picture for a person; the walk goes on, and says why there is none.
+            File.WriteAllText(Path.Combine(folder, name + ".txt"), ex.ToString());
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    private static extern bool SetProcessDPIAware();
+
     public void CloseWindow(Window window)
     {
         var handle = Handle(window);

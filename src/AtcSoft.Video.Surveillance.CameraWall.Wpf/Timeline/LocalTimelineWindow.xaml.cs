@@ -2,10 +2,13 @@ namespace AtcSoft.Video.Surveillance.CameraWall.Wpf.Timeline;
 
 /// <summary>
 /// CameraWall's timeline of every camera. It grows while it is open, and lets go of the recording
-/// service's events when it closes.
+/// service's events when it closes. *Play all from here* shows over the lanes; its slider moves
+/// through the time shown, and plays all from where it is let go.
 /// </summary>
 public partial class LocalTimelineWindow
 {
+    private readonly LocalTimelineViewModel viewModel;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="LocalTimelineWindow"/> class.
     /// </summary>
@@ -15,6 +18,7 @@ public partial class LocalTimelineWindow
         ArgumentNullException.ThrowIfNull(viewModel);
 
         InitializeComponent();
+        this.viewModel = viewModel;
         DataContext = viewModel;
         Loaded += (_, _) =>
         {
@@ -23,4 +27,14 @@ public partial class LocalTimelineWindow
         };
         Closed += (_, _) => viewModel.Dispose();
     }
+
+    private void OnPlayAllSliderDown(
+        object sender,
+        System.Windows.Input.MouseButtonEventArgs e)
+        => viewModel.BeginSeek();
+
+    private void OnPlayAllSliderUp(
+        object sender,
+        System.Windows.Input.MouseButtonEventArgs e)
+        => viewModel.EndSeek();
 }

@@ -232,15 +232,32 @@ public sealed class CameraWallSmokeTests
             e => e.ControlType == ControlType.Custom && e.Name == TestCameras.DeadCameraName,
             "a timeline lane for the offline camera",
             TimeSpan.FromSeconds(20));
+        DesktopApp.Screenshot(timeline, "camerawall-timeline");
 
-        var grid = app.OpenWindow(() => DesktopApp.Press(app.Find(timeline, "Play all from here", ControlType.Button)), "Play all from here");
-        app.Find(grid, TestCameras.DeadCameraName, timeout: TimeSpan.FromSeconds(20));
-        app.WaitUntilGone(grid, "Loading...", ControlType.Text, TimeSpan.FromSeconds(20)).Should().BeTrue("the recordings should open");
-        app.TryFind(grid, "Could not be played", ControlType.Text).Should().BeNull();
-        DesktopApp.Press(app.Find(grid, "Pause", ControlType.Button));
-        app.Find(grid, "Play", ControlType.Button);
+        // The span: the last hours, or a chosen day; a range slider zooms into a part of it.
+        app.Find(timeline, "Drag the ends to zoom in on a part", ControlType.Slider);
+        var span = app.Find(timeline, "Timeline", ControlType.ComboBox).AsComboBox();
+        span.Select("Last 6 hours");
+        app.FindWhere(
+            timeline,
+            e => e.ControlType == ControlType.Custom && e.Name == TestCameras.DeadCameraName,
+            "the lane again over the last 6 hours",
+            TimeSpan.FromSeconds(20));
+        span.Select("Last 24 hours");
 
-        app.CloseWindow(grid);
+        // Play all from here shows inside the timeline window: a dialog opens no other window.
+        DesktopApp.Press(app.Find(timeline, "Play all from here", ControlType.Button));
+        app.Find(timeline, "Back to the timeline", ControlType.Button, TimeSpan.FromSeconds(20));
+        app.Windows().Should().NotContain(w => w.Title.StartsWith("All cameras from", StringComparison.Ordinal), "play all shows inside the timeline window");
+        app.WaitUntilGone(timeline, "Loading...", ControlType.Text, TimeSpan.FromSeconds(20)).Should().BeTrue("the recordings should open");
+        app.TryFind(timeline, "Could not be played", ControlType.Text).Should().BeNull();
+        app.Find(timeline, "Move through the time shown", ControlType.Slider);
+        DesktopApp.Screenshot(timeline, "camerawall-timeline-play-all");
+        DesktopApp.Press(app.Find(timeline, "Pause", ControlType.Button));
+        app.Find(timeline, "Play", ControlType.Button);
+
+        DesktopApp.Press(app.Find(timeline, "Back to the timeline", ControlType.Button));
+        app.WaitUntilGone(timeline, "Back to the timeline", ControlType.Button, TimeSpan.FromSeconds(10)).Should().BeTrue("the timeline shows again");
         app.CloseWindow(timeline);
     }
 

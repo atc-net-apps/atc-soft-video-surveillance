@@ -2677,7 +2677,7 @@ Thumbnail:
     <value>Timeline</value>
   </data>
   <data name="TimelineHelp" xml:space="preserve">
-    <value>Every camera over the day. Grey: nothing recorded. Bars: how much changed. Orange: something went somewhere. Click a lane to play from there.</value>
+    <value>Every camera over the time shown. Grey: nothing recorded. Bars: how much changed. Orange: something went somewhere. Click a lane to play from there.</value>
   </data>
   <data name="Last24Hours" xml:space="preserve">
     <value>Last 24 hours</value>
@@ -2900,5 +2900,26 @@ Thumbnail:
   </data>
   <data name="ShowMotionBoxes" xml:space="preserve">
     <value>Show motion boxes</value>
+  </data>
+  <data name="LastHour" xml:space="preserve">
+    <value>Last hour</value>
+  </data>
+  <data name="LastHours1" xml:space="preserve">
+    <value>Last {0} hours</value>
+  </data>
+  <data name="ChooseADay" xml:space="preserve">
+    <value>Choose a day</value>
+  </data>
+  <data name="Shown2" xml:space="preserve">
+    <value>Shown: {0} – {1}</value>
+  </data>
+  <data name="BackToTimeline" xml:space="preserve">
+    <value>Back to the timeline</value>
+  </data>
+  <data name="ZoomRange" xml:space="preserve">
+    <value>Drag the ends to zoom in on a part</value>
+  </data>
+  <data name="PlayAllPosition" xml:space="preserve">
+    <value>Move through the time shown</value>
   </data>
 </root>

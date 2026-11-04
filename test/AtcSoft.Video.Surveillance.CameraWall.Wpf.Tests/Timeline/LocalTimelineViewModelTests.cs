@@ -5,8 +5,8 @@ using IActiveRecordings = AtcSoft.Video.Surveillance.Services.IActiveRecordings;
 using TimelineCamera = AtcSoft.Video.Surveillance.Models.TimelineCamera;
 
 /// <summary>
-/// CameraWall's timeline: a lane per camera from its own folders, and what play all and a
-/// recording's end play next.
+/// CameraWall's timeline: a lane per camera from its own folders over the last 1 to 24 hours or a
+/// day, play all inside the window, and what play all and a recording's end play next.
 /// </summary>
 public sealed class LocalTimelineViewModelTests : IDisposable
 {
@@ -49,6 +49,49 @@ public sealed class LocalTimelineViewModelTests : IDisposable
 
         var tiles = LocalTimelineViewModel.PlayAllTiles(viewModel.Lanes, started.AddMinutes(20));
         tiles.Should().ContainSingle().Which.CameraName.Should().Be("Garden");
+    }
+
+    [Fact]
+    public void It_Offers_The_Last_1_To_24_Hours_And_A_Day_And_Starts_With_24_Hours()
+    {
+        using var viewModel = new LocalTimelineViewModel(() => [garden], () => [root], recordings, new ActivitySummaryCache(), TimeZoneInfo.Utc);
+
+        viewModel.SpanChoices.Select(c => c.Hours).Should().Equal(1, 3, 6, 12, 24, 0);
+        viewModel.SelectedSpan.Hours.Should().Be(24);
+        viewModel.IsDayChosen.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task The_Last_Hour_Leaves_Out_What_Was_Recorded_Before_It()
+    {
+        Record("Garden", DateTimeOffset.UtcNow.AddHours(-3), TimeSpan.FromMinutes(10));
+        var recent = Record("Garden", DateTimeOffset.UtcNow.AddMinutes(-30), TimeSpan.FromMinutes(10));
+        using var viewModel = new LocalTimelineViewModel(() => [garden], () => [root], recordings, new ActivitySummaryCache(), TimeZoneInfo.Utc);
+
+        viewModel.SelectedSpan = viewModel.SpanChoices.First(c => c.Hours == 1);
+        await viewModel.LoadCommand.ExecuteAsync(parameter: null);
+
+        viewModel.Lanes[0].Coverage.Select(c => c.VideoPath).Should().Equal(recent);
+        viewModel.RangeMaximum.Should().Be(60);
+        viewModel.RangeEnd.Should().Be(60, "the whole hour is shown until a thumb moves");
+    }
+
+    [Fact]
+    public async Task Play_All_Shows_Inside_The_Window_And_Closes_Again()
+    {
+        Record("Garden", DateTimeOffset.UtcNow.AddHours(-2), TimeSpan.FromMinutes(10));
+        using var viewModel = new LocalTimelineViewModel(() => [garden], () => [root], recordings, new ActivitySummaryCache(), TimeZoneInfo.Utc);
+        await viewModel.LoadCommand.ExecuteAsync(parameter: null);
+
+        viewModel.PlayAllCommand.Execute(parameter: null);
+
+        viewModel.IsPlayingAll.Should().BeTrue();
+        viewModel.PlayAllSession!.Tiles.Should().ContainSingle();
+        viewModel.PlayAllMaximum.Should().BeApproximately(24 * 3600, 60);
+
+        viewModel.ClosePlayAllCommand.Execute(parameter: null);
+
+        viewModel.IsPlayingAll.Should().BeFalse();
     }
 
     private string Record(

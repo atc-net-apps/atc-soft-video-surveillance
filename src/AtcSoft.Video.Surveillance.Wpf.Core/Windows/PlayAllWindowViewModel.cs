@@ -18,6 +18,9 @@ public sealed partial class PlayAllWindowViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string clockText;
 
+    [ObservableProperty]
+    private DateTimeOffset clock;
+
     [ObservableProperty(DependentPropertyNames = [nameof(PlayPauseText)])]
     private bool isPaused;
 
@@ -40,6 +43,7 @@ public sealed partial class PlayAllWindowViewModel : ViewModelBase, IDisposable
             : string.Empty;
         Columns = (int)Math.Ceiling(Math.Sqrt(Math.Max(Tiles.Count, 1)));
         clockText = FormatClock(moment);
+        clock = moment;
     }
 
     public string Title { get; }
@@ -83,6 +87,7 @@ public sealed partial class PlayAllWindowViewModel : ViewModelBase, IDisposable
         }
 
         ClockText = FormatClock(pacer.Clock);
+        Clock = pacer.Clock;
     }
 
     /// <inheritdoc />
