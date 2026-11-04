@@ -47,7 +47,7 @@
                         Width="16"
                         Height="16"
                         Foreground="{DynamicResource AtcApps.Brushes.ThemeForeground}"
-                        Icon="NetworkWired" />
+                        Icon="Sitemap" />
                     <TextBlock Margin="6,0,0,0" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AddFromCameraHub}" />
                 </StackPanel>
             </Button>
