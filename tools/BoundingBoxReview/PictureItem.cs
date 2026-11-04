@@ -46,7 +46,8 @@ public sealed partial class PictureItem : ObservableObject
             null => $"to do · {Picture.Detector.Count} yellow",
             { Count: 0 } => $"nothing · {Picture.Detector.Count} yellow",
             { } boxes => $"{boxes.Count} red · {Picture.Detector.Count} yellow",
-        } + (Picture.Comment is null ? string.Empty : " · comment");
+        } + (Picture.Comment is null ? string.Empty : " · comment")
+          + (Picture.Verdict is null ? string.Empty : " · " + ReviewVerdict.Symbol(Picture.Verdict));
     }
 
     // An empty comment is no comment: nothing new since the picture before.

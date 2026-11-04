@@ -25,4 +25,11 @@ public sealed class ReviewPicture
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Comment { get; set; }
+
+    /// <summary>
+    /// Gets or sets the person's quick verdict on the yellow boxes (<see cref="ReviewVerdict"/>), or
+    /// <see langword="null"/> when not given (or cleared because the detector's boxes changed).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Verdict { get; set; }
 }

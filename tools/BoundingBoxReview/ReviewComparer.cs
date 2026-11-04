@@ -86,6 +86,15 @@ public static class ReviewComparer
         }
 
         var summary = Summarise(matches, missed, extra, reviewed, notReviewed);
+        var judged = review.Pictures.Where(p => p.Verdict is not null and not ReviewVerdict.Skip).ToList();
+        if (judged.Count > 0)
+        {
+            var count = (string verdict) => judged.Count(p => p.Verdict == verdict);
+            summary.Insert(0, string.Create(
+                CultureInfo.InvariantCulture,
+                $"Quick verdicts: good {count(ReviewVerdict.Good)}, okay {count(ReviewVerdict.Okay)}, bad {count(ReviewVerdict.Bad)} of {judged.Count} pictures judged ({review.Pictures.Count(p => p.Verdict == ReviewVerdict.Skip)} skipped, {review.Pictures.Count(p => p.Verdict is null)} not judged)."));
+        }
+
         lines.Add(string.Empty);
         lines.Add("## Summary");
         lines.Add(string.Empty);

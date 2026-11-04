@@ -32,6 +32,22 @@
             Key="Z"
             Command="{Binding Path=UndoLastCommand}"
             Modifiers="Control" />
+        <KeyBinding
+            Key="D1"
+            Command="{Binding Path=GoodCommand}"
+            Modifiers="Control" />
+        <KeyBinding
+            Key="D2"
+            Command="{Binding Path=OkayCommand}"
+            Modifiers="Control" />
+        <KeyBinding
+            Key="D3"
+            Command="{Binding Path=BadCommand}"
+            Modifiers="Control" />
+        <KeyBinding
+            Key="D4"
+            Command="{Binding Path=SkipCommand}"
+            Modifiers="Control" />
     </atc:NiceWindow.InputBindings>
 
     <DockPanel Margin="8">
@@ -136,6 +152,53 @@
                 TextWrapping="Wrap"
                 VerticalScrollBarVisibility="Auto" />
         </DockPanel>
+
+        <!--  A quick verdict on the yellow boxes, then the next picture  -->
+        <StackPanel
+            Margin="0,8,0,0"
+            HorizontalAlignment="Center"
+            DockPanel.Dock="Bottom"
+            Orientation="Horizontal">
+            <TextBlock
+                Margin="0,0,8,0"
+                VerticalAlignment="Center"
+                Text="The yellow boxes are:" />
+            <Button
+                MinWidth="110"
+                Padding="10,4"
+                Background="#2E7D32"
+                Command="{Binding Path=GoodCommand}"
+                Content="✓ Good (Ctrl+1)"
+                Foreground="White"
+                ToolTip="Right; when you drew no red boxes, they become the reference" />
+            <Button
+                MinWidth="110"
+                Margin="8,0,0,0"
+                Padding="10,4"
+                Background="#EF8F00"
+                Command="{Binding Path=OkayCommand}"
+                Content="~ Okay (Ctrl+2)"
+                Foreground="White"
+                ToolTip="A little off, but acceptable" />
+            <Button
+                MinWidth="110"
+                Margin="8,0,0,0"
+                Padding="10,4"
+                Background="#C62828"
+                Command="{Binding Path=BadCommand}"
+                Content="✗ Bad (Ctrl+3)"
+                Foreground="White"
+                ToolTip="Wrong: come back and draw red boxes where they should be" />
+            <Button
+                MinWidth="110"
+                Margin="8,0,0,0"
+                Padding="10,4"
+                Background="#616161"
+                Command="{Binding Path=SkipCommand}"
+                Content="⏭ Skip (Ctrl+4)"
+                Foreground="White"
+                ToolTip="Unclear: left out of the counts" />
+        </StackPanel>
 
         <!--  Step through the pictures  -->
         <StackPanel
