@@ -251,6 +251,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException or Atc.Video.Engine.FFmpeg.FFmpegException)
         {
             Status = $"Could not run the detector again: {ex.Message}";
+            Log.Error(ex, "Could not run the detector again over {Folder}", path);
         }
         finally
         {
@@ -348,11 +349,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             var progress = NewProgress();
             var every = Math.Max(1, EverySeconds);
             var made = await Task.Run(() => ReviewMaker.Make(video, settings, every, progress)).ConfigureAwait(true);
+            Log.Information("Made the review of {Recording} in {Folder}", video, made);
             OpenFolder(made);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException or Atc.Video.Engine.FFmpeg.FFmpegException)
         {
             Status = $"Could not make the pictures: {ex.Message}";
+            Log.Error(ex, "Could not make the pictures of {Recording}", video);
         }
         finally
         {

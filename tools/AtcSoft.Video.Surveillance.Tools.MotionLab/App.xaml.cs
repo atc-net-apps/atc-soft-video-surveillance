@@ -33,6 +33,9 @@ public partial class App
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         base.OnStartup(e);
 
+        // The tools are always dark with the blue accent.
+        Atc.Wpf.Theming.Helpers.ThemeManagerHelper.SetThemeAndAccent(Current, "Dark.Blue");
+
         BindingErrorLogging.Start(
             static message => Log.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "AtcSoft.BindingErrors")
                 .Warning("Binding error: {BindingError}", message),
