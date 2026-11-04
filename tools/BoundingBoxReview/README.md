@@ -14,7 +14,8 @@ or start it without a path and use *Open recording...* / *Open review folder...*
 
 1. **Make the pictures.** *Open recording...* runs the recording through the detector as CameraWall does live (the same detector, settings and analyses a second) and writes a picture every *Every* seconds into `{recording}-review` beside it. The motion settings come from the first `settings.json` found in the recording's folder or above it (copy a CameraWall data folder as it is), else the defaults; *Sensitivity* overrides theirs.
 2. **Draw the boxes.** For each picture, drag a red box around every thing that should be boxed (a person, a cat). Right-click a red box to remove it, *Ctrl+Z* removes the last one, *Ctrl+N* says nothing should be boxed, arrows step through the pictures. Write what you see in the comment box ("one cat, sitting very still", "the cat is moving"); leave it empty when nothing changed since the picture before. Every change is saved at once.
-3. **Compare.** *Compare* writes `compare.md`: per picture the overlap (IoU), the size of the detector's box against yours, how far each edge lies outside yours, what it missed and what it boxed that you did not; and a summary.
+   **Or judge quickly**: the yellow boxes are ✓ *Good* (Ctrl+1; when you drew no red boxes, the yellow ones become yours, the reference), ~ *Okay* (Ctrl+2, a little off but acceptable), ✗ *Bad* (Ctrl+3; come back and draw red boxes where they should be) or ⏭ *Skip* (Ctrl+4, unclear). Each goes on to the next picture. *Run detector again* keeps a verdict only where the yellow boxes did not change.
+3. **Compare.** *Compare* writes `compare.md`: per picture the overlap (IoU), the size of the detector's box against yours, how far each edge lies outside yours, what it missed and what it boxed that you did not; and a summary, with the quick verdicts counted.
 
 ## 🔁 After changing the detector
 

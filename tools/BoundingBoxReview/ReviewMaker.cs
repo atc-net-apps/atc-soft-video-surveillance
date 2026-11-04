@@ -147,7 +147,16 @@ public static class ReviewMaker
         {
             var analysed = run.Frames.LastOrDefault(f => f.Time <= picture.AnalysedSeconds + 0.001) ?? run.Frames[0];
             picture.AnalysedSeconds = analysed.Time;
-            picture.Detector = [.. analysed.Detected.Select(d => ReviewBox.From(d.Box, d.TrackId, review.Width, review.Height))];
+            List<ReviewBox> boxes = [.. analysed.Detected.Select(d => ReviewBox.From(d.Box, d.TrackId, review.Width, review.Height))];
+
+            // A verdict was on the boxes it saw: when they changed, the picture is to be judged again.
+            var same = boxes.Count == picture.Detector.Count && boxes.Zip(picture.Detector).All(p => p.First.SameBox(p.Second));
+            if (!same && picture.Verdict is not null && picture.Verdict != ReviewVerdict.Skip)
+            {
+                picture.Verdict = null;
+            }
+
+            picture.Detector = boxes;
             Render(folder, review, picture);
             done++;
             progress.Report(new ReviewProgress(string.Create(CultureInfo.InvariantCulture, $"Picture {done} of {review.Pictures.Count}: {picture.Detector.Count} box(es)"), done, review.Pictures.Count));

@@ -56,6 +56,12 @@ public sealed class ReviewBox
         };
     }
 
+    public bool SameBox(ReviewBox other)
+        => other is not null && X == other.X && Y == other.Y && Width == other.Width && Height == other.Height;
+
+    public ReviewBox Copy()
+        => new() { X = X, Y = Y, Width = Width, Height = Height };
+
     public double IntersectionOverUnion(ReviewBox other)
     {
         ArgumentNullException.ThrowIfNull(other);

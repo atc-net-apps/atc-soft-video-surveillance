@@ -174,6 +174,41 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(HasReview))]
+    private void Good()
+        => Judge(ReviewVerdict.Good);
+
+    [RelayCommand(CanExecute = nameof(HasReview))]
+    private void Okay()
+        => Judge(ReviewVerdict.Okay);
+
+    [RelayCommand(CanExecute = nameof(HasReview))]
+    private void Bad()
+        => Judge(ReviewVerdict.Bad);
+
+    [RelayCommand(CanExecute = nameof(HasReview))]
+    private void Skip()
+        => Judge(ReviewVerdict.Skip);
+
+    // A quick verdict, then the next picture. Good makes the yellow boxes the reference when no red
+    // ones are drawn, so a later run of the detector is measured against them.
+    private void Judge(string verdict)
+    {
+        if (Selected is not { } item)
+        {
+            return;
+        }
+
+        item.Picture.Verdict = verdict;
+        if (verdict == ReviewVerdict.Good && item.Picture.Person is null)
+        {
+            item.Picture.Person = [.. item.Picture.Detector.Select(b => b.Copy())];
+        }
+
+        Save(item);
+        Step(1);
+    }
+
+    [RelayCommand(CanExecute = nameof(HasReview))]
     private void UndoLast()
     {
         if (Selected is { Picture.Person: { Count: > 0 } person } item)
@@ -355,7 +390,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         Title = $"Bounding box review: {Path.GetFileName(review.Recording)}";
-        Status = "Drag on the picture to draw where a box should be (red). Right-click a red box to remove it. Arrow keys: previous / next. Ctrl+N: nothing to box here. Write what you see in the comment; leave it empty when nothing changed since the picture before.";
+        Status = "Drag on the picture to draw where a box should be (red). Right-click a red box to remove it. Arrow keys: previous / next. Ctrl+1 good, Ctrl+2 okay, Ctrl+3 bad, Ctrl+4 skip. Ctrl+N: nothing to box here. Write what you see in the comment; leave it empty when nothing changed since the picture before.";
         CompareText = string.Empty;
         OnPropertyChanged(nameof(HasReview));
         Selected = Pictures.FirstOrDefault(p => p.Picture.Person is null) ?? Pictures.FirstOrDefault();
