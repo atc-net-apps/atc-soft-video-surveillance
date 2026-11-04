@@ -17,4 +17,8 @@
     <ProjectReference Include="..\..\src\AtcSoft.Video.Surveillance.Wpf.Core\AtcSoft.Video.Surveillance.Wpf.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
 </Project>

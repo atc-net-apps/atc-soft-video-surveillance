@@ -5,7 +5,7 @@ A developer tool for tuning the motion detector's bounding boxes on real recordi
 ## 🚀 Run it
 
 ```powershell
-dotnet run --project tools/AtcSoft.Video.Surveillance.Tools.DetectionReview -c Release -- "<recording.mkv or review folder>"
+dotnet run --project tools/AtcSoft.Video.Surveillance.Tools.DetectionReview -c Release -- "<recording.mkv or review folder>" [--every <seconds>]
 ```
 
 or start it without a path and use *Open recording...* / *Open review folder...*.
@@ -41,3 +41,4 @@ A picture drawn on in red in another program (and not reviewed in the tool) is r
 
 - The detector starts cold on the recording and only learns the scene for its first 3 seconds, as *Analyse recording* and the playback boxes do. Live, CameraWall had learnt the scene long before the recording started, so the first seconds can differ from what was shown live.
 - The boxes are the detector's own, without the overlay's smoothing.
+- The log, with every binding error, is in `%ProgramData%\AtcSoft\DetectionReview\logs` (or under `ATCSOFT_DATA_PATH`). The E2E walk `DetectionReviewSmokeTests` reads it.

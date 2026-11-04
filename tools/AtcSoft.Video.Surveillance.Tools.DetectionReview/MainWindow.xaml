@@ -113,9 +113,13 @@
 
         <!--  Status and the comparison  -->
         <StackPanel Margin="0,8,0,0" DockPanel.Dock="Bottom">
-            <TextBlock Text="{Binding Path=Status}" TextWrapping="Wrap" />
+            <TextBlock
+                AutomationProperties.AutomationId="Status"
+                Text="{Binding Path=Status}"
+                TextWrapping="Wrap" />
             <TextBlock
                 Margin="0,4,0,0"
+                AutomationProperties.AutomationId="CompareText"
                 FontWeight="SemiBold"
                 Text="{Binding Path=CompareText}"
                 TextWrapping="Wrap" />
@@ -125,6 +129,7 @@
         <ListBox
             Width="220"
             Margin="0,0,8,0"
+            AutomationProperties.AutomationId="Pictures"
             DockPanel.Dock="Left"
             ItemsSource="{Binding Path=Pictures}"
             SelectedItem="{Binding Path=Selected}">
@@ -147,6 +152,7 @@
             <TextBox
                 Height="64"
                 AcceptsReturn="True"
+                AutomationProperties.AutomationId="Comment"
                 IsEnabled="{Binding Path=HasReview}"
                 Text="{Binding Path=Selected.Comment, UpdateSourceTrigger=PropertyChanged, FallbackValue={x:Static sys:String.Empty}}"
                 TextWrapping="Wrap"
