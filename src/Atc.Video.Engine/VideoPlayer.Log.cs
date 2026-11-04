@@ -29,6 +29,9 @@ public sealed partial class VideoPlayer
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "[{Source}] The camera did not open together with its microphone '{Microphone}' ({Reason}). Opening it without sound; check that the microphone is connected")]
     private partial void LogOpeningWithoutMicrophone(string source, string microphone, string reason);
 
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "[{Source}] Could not open the stream: {Reason}")]
+    private partial void LogStreamOpenFailed(string source, string reason);
+
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "[{Source}] Stream demuxer opened successfully")]
     private partial void LogStreamDemuxerOpened(string source);
 

@@ -862,7 +862,19 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             localDecoder = new VideoDecoder();
 
             LogOpeningStream(source, UriRedactor.Redact(streamUri));
-            OpenDemuxer(localDemuxer, streamUri, options, ct);
+            try
+            {
+                OpenDemuxer(localDemuxer, streamUri, options, ct);
+            }
+            catch (FFmpegException ex) when (!ct.IsCancellationRequested)
+            {
+                // A camera that is off or out of reach: expected, and the one who opened it tries
+                // again. One line, without the stack trace.
+                LogStreamOpenFailed(source, ex.Message);
+                SetState(PlayerState.Error, ex.Message);
+                return;
+            }
+
             LogStreamDemuxerOpened(source);
 
             var threadCount = VideoEngineBootstrap.Config?.DecoderThreads ?? 0;

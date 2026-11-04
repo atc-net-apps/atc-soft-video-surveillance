@@ -2143,7 +2143,7 @@ public partial class CameraTile : IDisposable
             TimeSpan.FromSeconds(GetEffectiveReconnectDelaySeconds()),
             ReconnectBackoff.CameraMaxDelay);
 
-        LogAutoReconnectScheduled(Camera.Display.DisplayName, (int)delay.TotalSeconds);
+        LogAutoReconnectScheduled(Camera.Display.DisplayName, (int)delay.TotalSeconds, reconnectAttemptCount);
 
         autoReconnectTimer?.Stop();
         autoReconnectTimer = new DispatcherTimer
