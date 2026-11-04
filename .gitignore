@@ -441,4 +441,4 @@ issues/*
 plans/*
 
 # Recordings copied from a test PC for analysis (bounding boxes, motion): large and private
-sample-recordings/
+tools-data/
