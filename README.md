@@ -115,6 +115,7 @@ Read the full documentation on the **[WIKI](https://github.com/atc-net-apps/atc-
 | [🏛️ Architecture](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Architecture) | Assemblies, layers and data flow |
 | [🧪 E2E smoke tests](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/E2E-Smoke-Tests) | The end-to-end walks of every app |
 | [🎬 Motion detection storybook](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Motion-Detection-Storybook) | Measuring the detector on scenes with known content |
+| [🧰 Developer tools](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Developer-Tools) | Motion Lab and Detection Review: tools for improving motion detection |
 | [🧪 24/7 soak test](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Soak-Test) | The procedure for a long stability run |
 
 ## 🗺️ Roadmap
