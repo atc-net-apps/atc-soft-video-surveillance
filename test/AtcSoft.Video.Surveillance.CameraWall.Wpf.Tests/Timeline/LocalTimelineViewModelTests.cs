@@ -72,8 +72,8 @@ public sealed class LocalTimelineViewModelTests : IDisposable
         await viewModel.LoadCommand.ExecuteAsync(parameter: null);
 
         viewModel.Lanes[0].Coverage.Select(c => c.VideoPath).Should().Equal(recent);
-        viewModel.RangeMaximum.Should().Be(60);
-        viewModel.RangeEnd.Should().Be(60, "the whole hour is shown until a thumb moves");
+        viewModel.Zoom.Maximum.Should().Be(60);
+        viewModel.Zoom.End.Should().Be(60, "the whole hour is shown until a thumb moves");
     }
 
     [Fact]

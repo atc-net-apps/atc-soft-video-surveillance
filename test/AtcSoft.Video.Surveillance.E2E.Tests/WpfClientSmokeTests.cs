@@ -47,6 +47,15 @@ public sealed class WpfClientSmokeTests(ServerFixture server)
                 e => e.ControlType == ControlType.Custom && e.Name == TestCameras.LiveCameraName,
                 "a timeline lane for the live camera",
                 TimeSpan.FromSeconds(20));
+
+            // The span is chosen, and a range slider zooms; the whole span shows until it is moved.
+            app.Find(main, "Timeline", ControlType.ComboBox);
+            app.Find(main, "Drag the ends to zoom in on a part", ControlType.Slider);
+            app.FindWhere(
+                main,
+                e => e.ControlType == ControlType.Text && e.Name.StartsWith("Shown: ", StringComparison.Ordinal) && e.Name.Length > 20,
+                "the span shown")
+                .Name.Should().NotMatchRegex(@"\d{1,2}:\d{2} – \d{1,2}:\d{2}$", "the last 24 hours span two days, not part of one");
         });
 
         // Play all from here: a tile per camera with a recording, one pause for all

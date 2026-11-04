@@ -145,10 +145,12 @@
                             Grid.Column="1"
                             VerticalAlignment="Center"
                             AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ZoomRange}"
-                            Maximum="{Binding Path=RangeMaximum}"
+                            Maximum="{Binding Path=Zoom.Maximum}"
                             Minimum="0"
-                            RangeEnd="{Binding Path=RangeEnd, Mode=TwoWay}"
-                            RangeStart="{Binding Path=RangeStart, Mode=TwoWay}"
+                            PreviewKeyDown="OnZoomSliderTouched"
+                            PreviewMouseLeftButtonDown="OnZoomSliderTouched"
+                            RangeEnd="{Binding Path=Zoom.End, Mode=TwoWay}"
+                            RangeStart="{Binding Path=Zoom.Start, Mode=TwoWay}"
                             Step="1"
                             ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ZoomRange}" />
                     </atc:GridEx>

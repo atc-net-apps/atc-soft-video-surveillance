@@ -5,7 +5,9 @@
     xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
     xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
     xmlns:coreControls="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.UserControls;assembly=AtcSoft.Video.Surveillance.Wpf.Core"
+    xmlns:atcValueConverters="https://github.com/atc-net/atc-wpf/tree/main/schemas/value-converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:inputs="clr-namespace:Atc.Wpf.Controls.Inputs;assembly=Atc.Wpf.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModels="clr-namespace:AtcSoft.Video.Surveillance.Wpf.ViewModels"
     d:DataContext="{d:DesignInstance Type=viewModels:TimelineViewModel}"
@@ -24,66 +26,58 @@
                 Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=TimelineHelp}"
                 TextWrapping="Wrap" />
 
-            <!--  Span and jumps  -->
-            <StackPanel
+            <!--  The span, the events, play all  -->
+            <DockPanel
                 Grid.Row="1"
                 Margin="0,0,0,12"
-                Orientation="Horizontal">
-                <Button
+                LastChildFill="False">
+                <ComboBox
+                    Width="170"
                     Margin="0,0,8,0"
-                    Padding="16,6"
-                    Command="{Binding Path=ShowLast24HoursCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Last24Hours}" />
-                <TextBlock
-                    Margin="8,0,8,0"
                     VerticalAlignment="Center"
-                    Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Day}" />
+                    AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Timeline}"
+                    DockPanel.Dock="Left"
+                    ItemsSource="{Binding Path=SpanChoices}"
+                    SelectedItem="{Binding Path=SelectedSpan, Mode=TwoWay}" />
                 <DatePicker
                     Width="140"
                     Margin="0,0,16,0"
                     VerticalAlignment="Center"
                     AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Day}"
-                    SelectedDate="{Binding Path=SelectedDay, Mode=TwoWay}" />
+                    DockPanel.Dock="Left"
+                    SelectedDate="{Binding Path=SelectedDay, Mode=TwoWay}"
+                    Visibility="{Binding Path=IsDayChosen, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
                 <Button
-                    Margin="0,0,8,0"
+                    Margin="8,0,8,0"
                     Padding="16,6"
                     Command="{Binding Path=PreviousEventCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=PreviousEvent}" />
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=PreviousEvent}"
+                    DockPanel.Dock="Left" />
                 <Button
                     Margin="0,0,16,0"
                     Padding="16,6"
                     Command="{Binding Path=NextEventCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=NextEvent}" />
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=NextEvent}"
+                    DockPanel.Dock="Left" />
                 <Button
-                    Margin="0,0,16,0"
                     Padding="16,6"
+                    Background="{DynamicResource AtcApps.Brushes.Accent}"
                     Command="{Binding Path=PlayAllCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=PlayAllFromHere}" />
-                <Button
-                    Margin="0,0,8,0"
-                    Padding="12,6"
-                    Command="{Binding Path=EarlierCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Earlier}" />
-                <Button
-                    Margin="0,0,8,0"
-                    Padding="12,6"
-                    Command="{Binding Path=ZoomOutCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ZoomOut}" />
-                <Button
-                    Margin="0,0,8,0"
-                    Padding="12,6"
-                    Command="{Binding Path=ZoomInCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ZoomIn}" />
-                <Button
-                    Margin="0,0,16,0"
-                    Padding="12,6"
-                    Command="{Binding Path=LaterCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Later}" />
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=PlayAllFromHere}"
+                    DockPanel.Dock="Left"
+                    Foreground="White" />
                 <Button
                     Padding="16,6"
                     Command="{Binding Path=LoadCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Refresh}" />
-            </StackPanel>
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Refresh}"
+                    DockPanel.Dock="Right" />
+                <Button
+                    Margin="0,0,8,0"
+                    Padding="12,6"
+                    Command="{Binding Path=ResetZoomCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ResetZoom}"
+                    DockPanel.Dock="Right" />
+            </DockPanel>
 
             <!--  One lane per camera  -->
             <ScrollViewer
@@ -119,6 +113,30 @@
                             Grid.Column="1"
                             Marks="{Binding Path=Marks}"
                             Opacity="0.75" />
+                    </atc:GridEx>
+
+                    <!--  Zoom: the part of the span shown, by its two ends, right under the lanes  -->
+                    <atc:GridEx Margin="0,8,0,0" Columns="160,*">
+                        <TextBlock
+                            Grid.Column="0"
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Opacity="0.75"
+                            Text="{Binding Path=ShownText}"
+                            TextWrapping="Wrap" />
+                        <inputs:RangeSlider
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ZoomRange}"
+                            Maximum="{Binding Path=Zoom.Maximum}"
+                            Minimum="0"
+                            PreviewKeyDown="OnZoomSliderTouched"
+                            PreviewMouseLeftButtonDown="OnZoomSliderTouched"
+                            RangeEnd="{Binding Path=Zoom.End, Mode=TwoWay}"
+                            RangeStart="{Binding Path=Zoom.Start, Mode=TwoWay}"
+                            Step="1"
+                            ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ZoomRange}" />
                     </atc:GridEx>
 
                     <!--  Why a lane has a gap  -->

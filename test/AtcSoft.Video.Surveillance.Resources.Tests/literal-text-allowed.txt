@@ -1,7 +1,7 @@
 # relative/path|literal text|why it is not translated
 src/AtcSoft.Video.Surveillance.Wpf.App/MainWindow.xaml|.:: AtcSoft Video Surveillance ::.|the product name
 src/AtcSoft.Video.Surveillance.Wpf.App/Dialogs/ServerConnectionDialog.xaml|http://server:8585|an example address, the same in every language
-src/AtcSoft.Video.Surveillance.Wpf.App/Dialogs/ServerProfileEditDialog.xaml|http://server:8585|an example address, the same in every language
+src/AtcSoft.Video.Surveillance.Wpf.App/Dialogs/ServerProfileEditor.xaml|http://server:8585|an example address, the same in every language
 src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|/stream1|an example path
 src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|HTTPS|a protocol, the same in every language
 src/AtcSoft.Video.Surveillance.Blazor.App/Pages/CameraForm.razor|HTTP|a protocol, the same in every language

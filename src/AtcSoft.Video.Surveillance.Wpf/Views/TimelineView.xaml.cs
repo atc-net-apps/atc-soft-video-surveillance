@@ -30,4 +30,15 @@ public partial class TimelineView
             viewModel.IsShown = false;
         }
     }
+
+    // Only a move the person makes zooms (TimelineZoomRange).
+    private void OnZoomSliderTouched(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (DataContext is TimelineViewModel viewModel)
+        {
+            viewModel.Zoom.Touch();
+        }
+    }
 }

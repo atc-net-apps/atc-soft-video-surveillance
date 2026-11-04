@@ -37,9 +37,6 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     // How often the recordings in progress are read again for their activity.
     private static readonly TimeSpan LiveRefreshInterval = TimeSpan.FromSeconds(15);
 
-    // A range slider's thumbs move many times a second: the lanes are read again once they rest.
-    private static readonly TimeSpan RangeSettleInterval = TimeSpan.FromMilliseconds(350);
-
     private readonly Func<IReadOnlyList<TimelineCamera>> cameras;
     private readonly Func<IReadOnlyList<string?>> folders;
     private readonly IActiveRecordings recordings;
@@ -51,9 +48,7 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     private DateTimeOffset to;
     private DateTimeOffset spanFrom;
     private DateTimeOffset spanTo;
-    private bool settingRange;
     private bool seeking;
-    private DispatcherTimer? rangeTimer;
     private DateTimeOffset lastLoad;
     private bool zoomed;
     private int reloadPending;
@@ -76,17 +71,7 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     private string statusMessage = string.Empty;
 
     [ObservableProperty(AfterChangedCallback = nameof(OnSelectedSpanChanged), DependentPropertyNames = [nameof(IsDayChosen)])]
-    private LocalTimelineSpanChoice selectedSpan;
-
-    // The range slider over the span, in minutes from its start: the part shown.
-    [ObservableProperty]
-    private double rangeMaximum = 24 * 60;
-
-    [ObservableProperty(AfterChangedCallback = nameof(OnRangeChanged))]
-    private double rangeStart;
-
-    [ObservableProperty(AfterChangedCallback = nameof(OnRangeChanged))]
-    private double rangeEnd = 24 * 60;
+    private TimelineSpanChoice selectedSpan;
 
     [ObservableProperty]
     private string shownText = string.Empty;
@@ -135,15 +120,21 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         this.verdictSaverFor = verdictSaverFor;
         this.cache = cache;
         this.zone = zone ?? TimeZoneInfo.Local;
-        SpanChoices = LocalTimelineSpanChoice.All();
+        SpanChoices = TimelineSpanChoice.All();
         selectedSpan = SpanChoices.First(c => c.Hours == 24);
+        Zoom = new TimelineZoomRange(OnZoomSettled);
         recordings.RecordingStateChanged += OnRecordingStateChanged;
     }
 
     /// <summary>
+    /// Gets the range slider under the lanes, in minutes from the span's start: the part shown.
+    /// </summary>
+    public TimelineZoomRange Zoom { get; }
+
+    /// <summary>
     /// Gets the spans the selector offers.
     /// </summary>
-    public IReadOnlyList<LocalTimelineSpanChoice> SpanChoices { get; }
+    public IReadOnlyList<TimelineSpanChoice> SpanChoices { get; }
 
     /// <summary>
     /// Gets a value indicating whether a day is chosen, so its picker shows.
@@ -208,7 +199,6 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     {
         IsShown = false;
         StopPlayAll();
-        rangeTimer?.Stop();
         recordings.RecordingStateChanged -= OnRecordingStateChanged;
         if (liveTimer is not null)
         {
@@ -292,7 +282,7 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
                 ? TimelineDays.Span(SelectedDay ?? DateTime.Today, now, zone)
                 : TimelineSpans.LastHours(SelectedSpan.Hours, now);
             (from, to) = (spanFrom, spanTo);
-            SetRange(0, (spanTo - spanFrom).TotalMinutes, (spanTo - spanFrom).TotalMinutes);
+            Zoom.Set(0, (spanTo - spanFrom).TotalMinutes, (spanTo - spanFrom).TotalMinutes);
         }
 
         ShownText = string.Format(
@@ -411,6 +401,16 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         }
     }
 
+    // The person moved the slider's ends and let go: the part between them is shown.
+    private void OnZoomSettled(
+        double start,
+        double end)
+    {
+        (from, to) = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineSpans.Within(spanFrom, spanTo, start, end);
+        zoomed = !Zoom.IsWhole;
+        LoadCommand.Execute(parameter: null);
+    }
+
     private void OnSelectedSpanChanged()
     {
         zoomed = false;
@@ -429,53 +429,6 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     {
         zoomed = false;
         cursor = null;
-        LoadCommand.Execute(parameter: null);
-    }
-
-    // The slider's values from the code, without loading again.
-    private void SetRange(
-        double start,
-        double end,
-        double maximum)
-    {
-        settingRange = true;
-        try
-        {
-            RangeMaximum = maximum;
-            RangeStart = start;
-            RangeEnd = end;
-        }
-        finally
-        {
-            settingRange = false;
-        }
-    }
-
-    // The person moved a thumb: the part shown is loaded once the thumbs rest.
-    private void OnRangeChanged()
-    {
-        if (settingRange)
-        {
-            return;
-        }
-
-        if (rangeTimer is null)
-        {
-            rangeTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = RangeSettleInterval };
-            rangeTimer.Tick += OnRangeSettled;
-        }
-
-        rangeTimer.Stop();
-        rangeTimer.Start();
-    }
-
-    private void OnRangeSettled(
-        object? sender,
-        EventArgs e)
-    {
-        rangeTimer?.Stop();
-        (from, to) = TimelineSpans.Within(spanFrom, spanTo, RangeStart, RangeEnd);
-        zoomed = !TimelineSpans.IsWhole(RangeStart, RangeEnd, RangeMaximum);
         LoadCommand.Execute(parameter: null);
     }
 

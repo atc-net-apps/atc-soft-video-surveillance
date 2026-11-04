@@ -1,9 +1,10 @@
 namespace AtcSoft.Video.Surveillance.Wpf.ViewModels;
 
 /// <summary>
-/// View model for the Timeline view: every camera as a lane over the last 24 hours or a chosen
-/// day, from the server's <c>GET /timeline</c>. A click plays the recording that covers that
-/// moment from that far in; previous and next event jump across recordings.
+/// View model for the Timeline view: every camera as a lane over the last 1 to 24 hours or a chosen
+/// day, from the server's <c>GET /timeline</c>, with a range slider to zoom into a part of it. A
+/// click plays the recording that covers that moment from that far in; previous and next event
+/// jump across recordings.
 /// </summary>
 [SuppressMessage("", "S2325:Make properties static", Justification = "XAML binding requires instance properties")]
 public sealed partial class TimelineViewModel : ViewModelBase
@@ -22,9 +23,11 @@ public sealed partial class TimelineViewModel : ViewModelBase
     private readonly ClientSession? session;
     private DateTimeOffset from;
     private DateTimeOffset to;
+    private DateTimeOffset spanFrom;
+    private DateTimeOffset spanTo;
     private DateTimeOffset lastLoad;
 
-    // A span zoomed or moved by the viewer stays as it is; the last 24 hours and a day reset it.
+    // A span zoomed by the viewer stays as it is; another span or a day resets it.
     private bool zoomed;
     private int reloadPending;
 
@@ -46,6 +49,12 @@ public sealed partial class TimelineViewModel : ViewModelBase
     [ObservableProperty]
     private string statusMessage = string.Empty;
 
+    [ObservableProperty(AfterChangedCallback = nameof(OnSelectedSpanChanged), DependentPropertyNames = [nameof(IsDayChosen)])]
+    private TimelineSpanChoice selectedSpan;
+
+    [ObservableProperty]
+    private string shownText = string.Empty;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="TimelineViewModel"/> class.
     /// </summary>
@@ -65,12 +74,31 @@ public sealed partial class TimelineViewModel : ViewModelBase
         this.gatewayService = gatewayService;
         this.apiBaseUri = apiBaseUri;
         this.session = session;
+        SpanChoices = TimelineSpanChoice.All();
+        selectedSpan = SpanChoices.First(c => c.Hours == 24);
+        Zoom = new TimelineZoomRange(OnZoomSettled);
         if (eventService is not null)
         {
             eventService.OnActivityChanged += _ => ReloadLive();
             eventService.OnRecordingStateChanged += _ => ReloadLive();
         }
     }
+
+    /// <summary>
+    /// Gets the range slider under the lanes, in minutes from the span's start: the part shown.
+    /// </summary>
+    public TimelineZoomRange Zoom { get; }
+
+    /// <summary>
+    /// Gets the spans the selector offers.
+    /// </summary>
+    public IReadOnlyList<TimelineSpanChoice> SpanChoices { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether a day is chosen, so its picker shows.
+    /// </summary>
+    public bool IsDayChosen
+        => SelectedSpan.IsDay;
 
     /// <summary>
     /// Gets or sets a value indicating whether the view is on screen; only then does it grow live.
@@ -96,8 +124,18 @@ public sealed partial class TimelineViewModel : ViewModelBase
         lastLoad = now;
         if (!zoomed)
         {
-            (from, to) = SpanOf(SelectedDay, now, TimeZoneInfo.Local);
+            (spanFrom, spanTo) = SelectedSpan.IsDay
+                ? SpanOf(SelectedDay ?? DateTime.Today, now, TimeZoneInfo.Local)
+                : AtcSoft.Video.Surveillance.Helpers.Activity.TimelineSpans.LastHours(SelectedSpan.Hours, now);
+            (from, to) = (spanFrom, spanTo);
+            Zoom.Set(0, (spanTo - spanFrom).TotalMinutes, (spanTo - spanFrom).TotalMinutes);
         }
+
+        ShownText = string.Format(
+            CultureInfo.CurrentCulture,
+            Translations.Shown2,
+            from.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
+            to.ToLocalTime().ToString(from.ToLocalTime().Date == to.ToLocalTime().Date ? "t" : "g", CultureInfo.CurrentCulture));
 
         IsLoading = true;
         StatusMessage = string.Empty;
@@ -117,50 +155,36 @@ public sealed partial class TimelineViewModel : ViewModelBase
         }
     }
 
+    // The whole span again, after zooming in with the range slider.
     [RelayCommand]
-    private void ZoomIn()
-        => Zoom(zoomIn: true);
-
-    [RelayCommand]
-    private void ZoomOut()
-        => Zoom(zoomIn: false);
-
-    [RelayCommand]
-    private void Earlier()
-        => Move(later: false);
-
-    [RelayCommand]
-    private void Later()
-        => Move(later: true);
-
-    // Around the place last played, or the middle; the span stays put until the next zoom or move.
-    private void Zoom(bool zoomIn)
-    {
-        var now = DateTimeOffset.UtcNow;
-        var focus = cursor ?? from + ((to - from) / 2);
-        (from, to) = zoomIn ? TimelineZoom.In(from, to, focus, now) : TimelineZoom.Out(from, to, focus, now);
-        zoomed = true;
-        LoadCommand.Execute(parameter: null);
-    }
-
-    private void Move(bool later)
-    {
-        (from, to) = TimelineZoom.Move(from, to, later, DateTimeOffset.UtcNow);
-        zoomed = true;
-        LoadCommand.Execute(parameter: null);
-    }
-
-    [RelayCommand]
-    private void ShowLast24Hours()
+    private void ResetZoom()
     {
         zoomed = false;
-        if (SelectedDay is null)
+        LoadCommand.Execute(parameter: null);
+    }
+
+    // The person moved the slider's ends and let go: the part between them is shown.
+    private void OnZoomSettled(
+        double start,
+        double end)
+    {
+        (from, to) = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineSpans.Within(spanFrom, spanTo, start, end);
+        zoomed = !Zoom.IsWhole;
+        LoadCommand.Execute(parameter: null);
+    }
+
+    private void OnSelectedSpanChanged()
+    {
+        zoomed = false;
+        cursor = null;
+        if (SelectedSpan.IsDay && SelectedDay is null)
         {
-            LoadCommand.Execute(parameter: null);
+            // Setting the day loads it.
+            SelectedDay = DateTime.Today;
             return;
         }
 
-        SelectedDay = null;
+        LoadCommand.Execute(parameter: null);
     }
 
     /// <summary>
@@ -226,7 +250,7 @@ public sealed partial class TimelineViewModel : ViewModelBase
     // after the last load, while the view shows a span up to now.
     private void ReloadLive()
     {
-        if (!IsShown || SelectedDay is not null || zoomed || Interlocked.Exchange(ref reloadPending, 1) == 1)
+        if (!IsShown || SelectedSpan.IsDay || zoomed || Interlocked.Exchange(ref reloadPending, 1) == 1)
         {
             return;
         }
