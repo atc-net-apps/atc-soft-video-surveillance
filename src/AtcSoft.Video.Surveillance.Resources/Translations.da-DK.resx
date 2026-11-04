@@ -2677,7 +2677,7 @@ Miniature:
     <value>Tidslinje</value>
   </data>
   <data name="TimelineHelp" xml:space="preserve">
-    <value>Alle kameraer over dagen. Gråt: intet optaget. Søjler: hvor meget der ændrede sig. Orange: noget flyttede sig. Klik på en bane for at afspille derfra.</value>
+    <value>Alle kameraer over den viste tid. Gråt: intet optaget. Søjler: hvor meget der ændrede sig. Orange: noget flyttede sig. Klik på en bane for at afspille derfra.</value>
   </data>
   <data name="Last24Hours" xml:space="preserve">
     <value>Seneste 24 timer</value>
@@ -2900,5 +2900,26 @@ Miniature:
   </data>
   <data name="ShowMotionBoxes" xml:space="preserve">
     <value>Vis bevægelsesbokse</value>
+  </data>
+  <data name="LastHour" xml:space="preserve">
+    <value>Seneste time</value>
+  </data>
+  <data name="LastHours1" xml:space="preserve">
+    <value>Seneste {0} timer</value>
+  </data>
+  <data name="ChooseADay" xml:space="preserve">
+    <value>Vælg en dag</value>
+  </data>
+  <data name="Shown2" xml:space="preserve">
+    <value>Vist: {0} – {1}</value>
+  </data>
+  <data name="BackToTimeline" xml:space="preserve">
+    <value>Tilbage til tidslinjen</value>
+  </data>
+  <data name="ZoomRange" xml:space="preserve">
+    <value>Træk i enderne for at zoome ind på et stykke</value>
+  </data>
+  <data name="PlayAllPosition" xml:space="preserve">
+    <value>Flyt gennem den viste tid</value>
   </data>
 </root>

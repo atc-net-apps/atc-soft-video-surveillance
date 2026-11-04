@@ -9,14 +9,15 @@ using TimelineDays = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineDays;
 using TimelineMark = AtcSoft.Video.Surveillance.Models.TimelineMark;
 using TimelineMarks = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineMarks;
 using TimelineRecording = AtcSoft.Video.Surveillance.Models.TimelineRecording;
-using TimelineZoom = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineZoom;
+using TimelineSpans = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineSpans;
 
 /// <summary>
-/// CameraWall's timeline of every camera, from its own recording folders: the last 24 hours or a
-/// chosen day, zoom and move, previous and next event, a click that plays from that moment on
-/// across the camera's recordings, and *play all from here*. While it shows a span up to now it
-/// grows: on every recording change, and every <see cref="LiveRefreshInterval"/> for the activity of
-/// the recordings in progress.
+/// CameraWall's timeline of every camera, from its own recording folders: the last 1 to 24 hours or
+/// a chosen day, a range slider to zoom into a part of it, previous and next event, a click that
+/// plays from that moment on across the camera's recordings, and *play all from here* inside the
+/// window (a dialog opens no other window), with a slider through the time shown. While it shows a
+/// span up to now it grows: on every recording change, and every <see cref="LiveRefreshInterval"/>
+/// for the activity of the recordings in progress.
 /// </summary>
 /// <remarks>
 /// CameraWall keeps no history of when a camera could be recorded, so a gap has no reason.
@@ -36,6 +37,9 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     // How often the recordings in progress are read again for their activity.
     private static readonly TimeSpan LiveRefreshInterval = TimeSpan.FromSeconds(15);
 
+    // A range slider's thumbs move many times a second: the lanes are read again once they rest.
+    private static readonly TimeSpan RangeSettleInterval = TimeSpan.FromMilliseconds(350);
+
     private readonly Func<IReadOnlyList<TimelineCamera>> cameras;
     private readonly Func<IReadOnlyList<string?>> folders;
     private readonly IActiveRecordings recordings;
@@ -45,6 +49,11 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     private readonly Func<Guid?, string, RecordingVerdictSaver?>? verdictSaverFor;
     private DateTimeOffset from;
     private DateTimeOffset to;
+    private DateTimeOffset spanFrom;
+    private DateTimeOffset spanTo;
+    private bool settingRange;
+    private bool seeking;
+    private DispatcherTimer? rangeTimer;
     private DateTimeOffset lastLoad;
     private bool zoomed;
     private int reloadPending;
@@ -65,6 +74,32 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     private string statusMessage = string.Empty;
+
+    [ObservableProperty(AfterChangedCallback = nameof(OnSelectedSpanChanged), DependentPropertyNames = [nameof(IsDayChosen)])]
+    private LocalTimelineSpanChoice selectedSpan;
+
+    // The range slider over the span, in minutes from its start: the part shown.
+    [ObservableProperty]
+    private double rangeMaximum = 24 * 60;
+
+    [ObservableProperty(AfterChangedCallback = nameof(OnRangeChanged))]
+    private double rangeStart;
+
+    [ObservableProperty(AfterChangedCallback = nameof(OnRangeChanged))]
+    private double rangeEnd = 24 * 60;
+
+    [ObservableProperty]
+    private string shownText = string.Empty;
+
+    // Play all from here, inside the window, with a slider through the time shown (seconds from its start).
+    [ObservableProperty(DependentPropertyNames = [nameof(IsPlayingAll)])]
+    private PlayAllWindowViewModel? playAllSession;
+
+    [ObservableProperty]
+    private double playAllPosition;
+
+    [ObservableProperty]
+    private double playAllMaximum = 1;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LocalTimelineViewModel"/> class.
@@ -100,7 +135,51 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         this.verdictSaverFor = verdictSaverFor;
         this.cache = cache;
         this.zone = zone ?? TimeZoneInfo.Local;
+        SpanChoices = LocalTimelineSpanChoice.All();
+        selectedSpan = SpanChoices.First(c => c.Hours == 24);
         recordings.RecordingStateChanged += OnRecordingStateChanged;
+    }
+
+    /// <summary>
+    /// Gets the spans the selector offers.
+    /// </summary>
+    public IReadOnlyList<LocalTimelineSpanChoice> SpanChoices { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether a day is chosen, so its picker shows.
+    /// </summary>
+    public bool IsDayChosen
+        => SelectedSpan.IsDay;
+
+    /// <summary>
+    /// Gets a value indicating whether *play all from here* shows over the lanes.
+    /// </summary>
+    public bool IsPlayingAll
+        => PlayAllSession is not null;
+
+    /// <summary>
+    /// Starts moving through the time shown with *play all*'s slider: its clock no longer moves it.
+    /// </summary>
+    public void BeginSeek()
+        => seeking = true;
+
+    /// <summary>
+    /// Plays all again from where *play all*'s slider was let go.
+    /// </summary>
+    public void EndSeek()
+    {
+        if (!seeking)
+        {
+            return;
+        }
+
+        seeking = false;
+        if (PlayAllSession is null)
+        {
+            return;
+        }
+
+        StartPlayAll(from + TimeSpan.FromSeconds(Math.Clamp(PlayAllPosition, 0, PlayAllMaximum)));
     }
 
     /// <summary>
@@ -128,6 +207,8 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         IsShown = false;
+        StopPlayAll();
+        rangeTimer?.Stop();
         recordings.RecordingStateChanged -= OnRecordingStateChanged;
         if (liveTimer is not null)
         {
@@ -207,8 +288,18 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         lastLoad = now;
         if (!zoomed)
         {
-            (from, to) = TimelineDays.Span(SelectedDay, now, zone);
+            (spanFrom, spanTo) = SelectedSpan.IsDay
+                ? TimelineDays.Span(SelectedDay ?? DateTime.Today, now, zone)
+                : TimelineSpans.LastHours(SelectedSpan.Hours, now);
+            (from, to) = (spanFrom, spanTo);
+            SetRange(0, (spanTo - spanFrom).TotalMinutes, (spanTo - spanFrom).TotalMinutes);
         }
+
+        ShownText = string.Format(
+            CultureInfo.CurrentCulture,
+            Translations.Shown2,
+            from.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
+            to.ToLocalTime().ToString(from.ToLocalTime().Date == to.ToLocalTime().Date ? "t" : "g", CultureInfo.CurrentCulture));
 
         IsLoading = true;
         StatusMessage = string.Empty;
@@ -233,34 +324,17 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         }
     }
 
+    // The whole span again, after zooming in with the range slider.
     [RelayCommand]
-    private void ZoomIn()
-        => Zoom(zoomIn: true);
-
-    [RelayCommand]
-    private void ZoomOut()
-        => Zoom(zoomIn: false);
-
-    [RelayCommand]
-    private void Earlier()
-        => Move(later: false);
-
-    [RelayCommand]
-    private void Later()
-        => Move(later: true);
-
-    [RelayCommand]
-    private void ShowLast24Hours()
+    private void ResetZoom()
     {
         zoomed = false;
-        if (SelectedDay is null)
-        {
-            LoadCommand.Execute(parameter: null);
-            return;
-        }
-
-        SelectedDay = null;
+        LoadCommand.Execute(parameter: null);
     }
+
+    [RelayCommand]
+    private void ClosePlayAll()
+        => StopPlayAll();
 
     [RelayCommand("NextEvent")]
     private Task NextEventAsync()
@@ -291,23 +365,63 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         }
 
         StatusMessage = string.Empty;
-        new PlayAllWindow(new PlayAllWindowViewModel(moment, tiles)).Show();
+        StartPlayAll(moment, tiles);
     }
 
-    // Around the place last played, or the middle; the span stays put until the next zoom or move.
-    private void Zoom(bool zoomIn)
+    // Play all from a moment, over the lanes; the slider follows its clock.
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Disposed by StopPlayAll, on the next start, on close and when the window closes.")]
+    private void StartPlayAll(
+        DateTimeOffset moment,
+        IReadOnlyList<PlayAllTileViewModel>? tiles = null)
     {
-        var now = DateTimeOffset.UtcNow;
-        var focus = cursor ?? from + ((to - from) / 2);
-        (from, to) = zoomIn ? TimelineZoom.In(from, to, focus, now) : TimelineZoom.Out(from, to, focus, now);
-        zoomed = true;
-        LoadCommand.Execute(parameter: null);
+        tiles ??= PlayAllTiles(Lanes, moment);
+        if (tiles.Count == 0)
+        {
+            StatusMessage = Translations.NothingRecordedThen;
+            return;
+        }
+
+        StopPlayAll();
+        var session = new PlayAllWindowViewModel(moment, tiles);
+        session.PropertyChanged += OnPlayAllChanged;
+        PlayAllMaximum = Math.Max(1, (to - from).TotalSeconds);
+        PlayAllPosition = Math.Clamp((moment - from).TotalSeconds, 0, PlayAllMaximum);
+        PlayAllSession = session;
     }
 
-    private void Move(bool later)
+    private void StopPlayAll()
     {
-        (from, to) = TimelineZoom.Move(from, to, later, DateTimeOffset.UtcNow);
-        zoomed = true;
+        if (PlayAllSession is not { } session)
+        {
+            return;
+        }
+
+        session.PropertyChanged -= OnPlayAllChanged;
+        session.Dispose();
+        PlayAllSession = null;
+    }
+
+    private void OnPlayAllChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (!seeking && sender is PlayAllWindowViewModel session && e.PropertyName == nameof(PlayAllWindowViewModel.Clock))
+        {
+            PlayAllPosition = Math.Clamp((session.Clock - from).TotalSeconds, 0, PlayAllMaximum);
+        }
+    }
+
+    private void OnSelectedSpanChanged()
+    {
+        zoomed = false;
+        cursor = null;
+        if (SelectedSpan.IsDay && SelectedDay is null)
+        {
+            // Setting the day loads it.
+            SelectedDay = DateTime.Today;
+            return;
+        }
+
         LoadCommand.Execute(parameter: null);
     }
 
@@ -315,6 +429,53 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     {
         zoomed = false;
         cursor = null;
+        LoadCommand.Execute(parameter: null);
+    }
+
+    // The slider's values from the code, without loading again.
+    private void SetRange(
+        double start,
+        double end,
+        double maximum)
+    {
+        settingRange = true;
+        try
+        {
+            RangeMaximum = maximum;
+            RangeStart = start;
+            RangeEnd = end;
+        }
+        finally
+        {
+            settingRange = false;
+        }
+    }
+
+    // The person moved a thumb: the part shown is loaded once the thumbs rest.
+    private void OnRangeChanged()
+    {
+        if (settingRange)
+        {
+            return;
+        }
+
+        if (rangeTimer is null)
+        {
+            rangeTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = RangeSettleInterval };
+            rangeTimer.Tick += OnRangeSettled;
+        }
+
+        rangeTimer.Stop();
+        rangeTimer.Start();
+    }
+
+    private void OnRangeSettled(
+        object? sender,
+        EventArgs e)
+    {
+        rangeTimer?.Stop();
+        (from, to) = TimelineSpans.Within(spanFrom, spanTo, RangeStart, RangeEnd);
+        zoomed = !TimelineSpans.IsWhole(RangeStart, RangeEnd, RangeMaximum);
         LoadCommand.Execute(parameter: null);
     }
 
@@ -413,7 +574,7 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
 
     private void ReloadLive()
     {
-        if (!IsShown || SelectedDay is not null || zoomed || Interlocked.Exchange(ref reloadPending, 1) == 1)
+        if (!IsShown || SelectedSpan.IsDay || zoomed || IsPlayingAll || Interlocked.Exchange(ref reloadPending, 1) == 1)
         {
             return;
         }

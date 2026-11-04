@@ -2677,7 +2677,7 @@ Vorschaubild:
     <value>Zeitleiste</value>
   </data>
   <data name="TimelineHelp" xml:space="preserve">
-    <value>Alle Kameras über den Tag. Grau: nichts aufgezeichnet. Balken: wie viel sich geändert hat. Orange: etwas hat sich fortbewegt. Klicken Sie auf eine Spur, um von dort abzuspielen.</value>
+    <value>Alle Kameras über die angezeigte Zeit. Grau: nichts aufgezeichnet. Balken: wie viel sich geändert hat. Orange: etwas hat sich fortbewegt. Klicken Sie auf eine Spur, um von dort abzuspielen.</value>
   </data>
   <data name="Last24Hours" xml:space="preserve">
     <value>Letzte 24 Stunden</value>
@@ -2900,5 +2900,26 @@ Vorschaubild:
   </data>
   <data name="ShowMotionBoxes" xml:space="preserve">
     <value>Bewegungsrahmen anzeigen</value>
+  </data>
+  <data name="LastHour" xml:space="preserve">
+    <value>Letzte Stunde</value>
+  </data>
+  <data name="LastHours1" xml:space="preserve">
+    <value>Letzte {0} Stunden</value>
+  </data>
+  <data name="ChooseADay" xml:space="preserve">
+    <value>Tag wählen</value>
+  </data>
+  <data name="Shown2" xml:space="preserve">
+    <value>Angezeigt: {0} – {1}</value>
+  </data>
+  <data name="BackToTimeline" xml:space="preserve">
+    <value>Zurück zur Zeitleiste</value>
+  </data>
+  <data name="ZoomRange" xml:space="preserve">
+    <value>Ziehen Sie an den Enden, um einen Teil zu vergrößern</value>
+  </data>
+  <data name="PlayAllPosition" xml:space="preserve">
+    <value>Durch die angezeigte Zeit bewegen</value>
   </data>
 </root>
