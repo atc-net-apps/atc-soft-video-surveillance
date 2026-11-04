@@ -43,16 +43,16 @@ internal static class E2ESettings
         => AppPath("AtcSoft.Video.Surveillance.Api", ServerTargetFramework);
 
     /// <summary>
-    /// Gets the bounding box sample, a developer tool under <c>sample/</c>.
+    /// Gets Motion Lab, a developer tool under <c>tools/</c>.
     /// </summary>
-    public static string BoundingBoxSampleExe
+    public static string MotionLabExe
     {
         get
         {
-            var path = Path.Combine(RepositoryRoot, "sample", "BoundingBoxWpfApp", "bin", Configuration, AppTargetFramework, "BoundingBoxWpfApp.exe");
+            var path = Path.Combine(RepositoryRoot, "tools", "AtcSoft.Video.Surveillance.Tools.MotionLab", "bin", Configuration, AppTargetFramework, "AtcSoft.Video.Surveillance.Tools.MotionLab.exe");
             return File.Exists(path)
                 ? path
-                : throw new FileNotFoundException($"Build BoundingBoxWpfApp ({Configuration}) first; the smoke tests start its executable.", path);
+                : throw new FileNotFoundException($"Build AtcSoft.Video.Surveillance.Tools.MotionLab ({Configuration}) first; the smoke tests start its executable.", path);
         }
     }
 
