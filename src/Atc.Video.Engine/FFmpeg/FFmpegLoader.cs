@@ -51,7 +51,7 @@ internal static class FFmpegLoader
     {
         var buffer = stackalloc byte[LogBufferSize];
         _ = av_strerror(errorCode, buffer, (nuint)LogBufferSize);
-        return BytePtrToStringUtf8(buffer);
+        return Helpers.FFmpegErrorText.Describe(errorCode, BytePtrToStringUtf8(buffer), OperatingSystem.IsWindows());
     }
 
     private static unsafe void ConfigureLogging(FFmpegLogLevel logLevel)
