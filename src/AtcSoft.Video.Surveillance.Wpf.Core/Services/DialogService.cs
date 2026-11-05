@@ -164,15 +164,16 @@ public class DialogService : IDialogService
         string message,
         string title)
     {
+        // Every question asked here deletes or stops something: Enter answers No.
+        var settings = Atc.Wpf.Forms.Dialogs.DialogBoxSettings.Create(Atc.Wpf.Forms.Dialogs.DialogBoxType.YesNo);
+        settings.TitleBarText = title;
+        settings.DefaultButton = Atc.Wpf.Forms.Dialogs.DialogBoxButton.Negative;
         var dialogBox = new QuestionDialogBox(
             Application.Current.MainWindow!,
-            title,
-            message)
-        {
-            Width = DialogBoxText.DefaultWidth,
-        };
+            settings,
+            message);
 
-        var dialogResult = DialogBoxText.Wrap(dialogBox).ShowDialog();
+        var dialogResult = dialogBox.ShowDialog();
         return dialogResult.HasValue && dialogResult.Value;
     }
 
@@ -186,13 +187,12 @@ public class DialogService : IDialogService
             Atc.LogCategoryType.Error)
         {
             TitleBarText = title ?? Translations.Error,
-            Width = DialogBoxText.DefaultWidth,
         };
         var dialog = new InfoDialogBox(
             Application.Current.MainWindow!,
             settings,
             message);
-        DialogBoxText.Wrap(dialog).ShowDialog();
+        dialog.ShowDialog();
     }
 
     /// <inheritdoc />
@@ -203,11 +203,8 @@ public class DialogService : IDialogService
         var dialog = new InfoDialogBox(
             Application.Current.MainWindow!,
             title ?? Translations.Information,
-            message)
-        {
-            Width = DialogBoxText.DefaultWidth,
-        };
-        DialogBoxText.Wrap(dialog).ShowDialog();
+            message);
+        dialog.ShowDialog();
     }
 
     /// <inheritdoc />
