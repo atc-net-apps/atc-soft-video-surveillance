@@ -2815,7 +2815,7 @@ Vorschaubild:
     <value>Lichtänderungen ignorieren</value>
   </data>
   <data name="IgnoreLightingChangesInfo" xml:space="preserve">
-    <value>Eine Änderung fast des ganzen Bildes auf einmal, etwa eine Wolke oder eine eingeschaltete Lampe, ist keine Bewegung. Für eine Kamera an einer Tür ausschalten, wo eine Person den Großteil des Bildes füllen kann; dann wird nach einer Lichtänderung eine Weile keine Bewegung erkannt.</value>
+    <value>Eine Änderung fast des ganzen Bildes auf einmal, etwa eine Wolke oder eine eingeschaltete Lampe, ist keine Bewegung, ebenso wenig eine Spiegelung oder ein Lichtfleck auf einem Teil davon. Für eine Kamera an einer Tür ausschalten, wo eine Person den Großteil des Bildes füllen kann; dann wird nach einer Lichtänderung eine Weile keine Bewegung erkannt.</value>
   </data>
   <data name="VerdictCorrect" xml:space="preserve">
     <value>Richtig markiert</value>

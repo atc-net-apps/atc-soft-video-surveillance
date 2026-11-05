@@ -897,6 +897,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             => state switch
             {
                 MotionCandidateState.TooSmall => "too small",
+                MotionCandidateState.Light => "light",
                 MotionCandidateState.TooNew => "too new",
                 MotionCandidateState.NotTravelled => "not travelled",
                 _ => "shown",
