@@ -34,6 +34,7 @@ public sealed record CandidateView(
         var label = candidate.State switch
         {
             MotionCandidateState.TooSmall => "too small",
+            MotionCandidateState.Light => "light",
             MotionCandidateState.TooNew => id + "too new",
             MotionCandidateState.NotTravelled => string.Create(CultureInfo.InvariantCulture, $"{id}not travelled {candidate.Travel:0.0}×"),
             _ => string.Create(CultureInfo.InvariantCulture, $"{id}{candidate.Travel:0.0}×{(candidate.Held ? " held" : string.Empty)}"),

@@ -30,7 +30,10 @@ public sealed record MotionDetectorOptions(
     double MinTravelShare = 0.03,
     double TrackLostSeconds = 1.0,
     bool FollowExposure = true,
-    bool RemoveGhosts = true)
+    bool RemoveGhosts = true,
+    bool RemoveLight = true,
+    double LightEdgeFactor = 1,
+    double LightOutlineShare = 0.25)
 {
     /// <summary>
     /// The smallest blob that counts by default, as a share of the picture's area.
@@ -100,6 +103,9 @@ public sealed record MotionDetectorOptions(
 
             // Following the camera's exposure is ignoring a (small) change of light too.
             FollowExposure = settings.IgnoreLightingChanges,
+
+            // A reflection or a patch of light on part of the picture: light too.
+            RemoveLight = settings.IgnoreLightingChanges,
         };
     }
 

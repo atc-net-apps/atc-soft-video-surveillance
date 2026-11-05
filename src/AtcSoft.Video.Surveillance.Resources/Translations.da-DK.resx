@@ -2815,7 +2815,7 @@ Miniature:
     <value>Ignorer lysændringer</value>
   </data>
   <data name="IgnoreLightingChangesInfo" xml:space="preserve">
-    <value>En ændring af det meste af billedet på én gang, fx en sky eller en lampe, der tændes, er ikke bevægelse. Slå det fra for et kamera ved en dør, hvor en person kan fylde det meste af billedet; så ses bevægelse ikke et stykke tid efter en ændring af lyset.</value>
+    <value>En ændring af det meste af billedet på én gang, fx en sky eller en lampe, der tændes, er ikke bevægelse, og det er en refleksion eller en plet lys på en del af det heller ikke. Slå det fra for et kamera ved en dør, hvor en person kan fylde det meste af billedet; så ses bevægelse ikke et stykke tid efter en ændring af lyset.</value>
   </data>
   <data name="VerdictCorrect" xml:space="preserve">
     <value>Korrekt markeret</value>

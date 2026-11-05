@@ -25,4 +25,9 @@ public enum MotionCandidateState
     /// A confirmed track: shown as a box.
     /// </summary>
     Shown,
+
+    /// <summary>
+    /// Light on a surface (a reflection, a patch of sun): no edge of its own.
+    /// </summary>
+    Light,
 }

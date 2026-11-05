@@ -160,6 +160,12 @@ public sealed class BuiltInMotionDetector : IMotionDetector
             found = RemoveGhosts(found, blurred, frame.Width, frame.Height);
         }
 
+        var light = KeepDiagnostics ? new List<Blob>() : null;
+        if (options.RemoveLight)
+        {
+            found = RemoveLight(found, blurred, frame.Width, frame.Height, light);
+        }
+
         var blobs = found
             .Where(b => b.Pixels >= SmallestShare(b, frame.Width, frame.Height) * area)
             .ToList();
@@ -173,6 +179,7 @@ public sealed class BuiltInMotionDetector : IMotionDetector
         {
             MotionCandidate[] candidates =
             [
+                .. light!.Select(b => new MotionCandidate(ToBox(b), MotionCandidateState.Light, TrackId: null, Travel: 0, Held: false)),
                 .. tooSmall!.Select(b => new MotionCandidate(ToBox(b), MotionCandidateState.TooSmall, TrackId: null, Travel: 0, Held: false)),
                 .. seen.Select(t => new MotionCandidate(ToBox(t.Box), t.State, t.Id, t.Travel, t.Certain)),
             ];
@@ -346,6 +353,32 @@ public sealed class BuiltInMotionDetector : IMotionDetector
             }
 
             kept.Add(blob);
+        }
+
+        return kept;
+    }
+
+    // The blobs without those that are light only (LightCheck): a reflection or a patch of light.
+    private List<Blob> RemoveLight(
+        List<Blob> found,
+        byte[] blurred,
+        int width,
+        int height,
+        List<Blob>? light)
+    {
+        // An edge of its own is one at least as strong as the change the pixel's zone sees as motion.
+        var minEdges = zoneMinThresholds.Select(t => options.LightEdgeFactor * t).ToArray();
+        var kept = new List<Blob>(found.Count);
+        foreach (var blob in found)
+        {
+            if (LightCheck.IsLight(blob, buffers.Labels, buffers.Roots, blurred, background.Mean, width, height, watched, minEdges, options.LightOutlineShare))
+            {
+                light?.Add(blob);
+            }
+            else
+            {
+                kept.Add(blob);
+            }
         }
 
         return kept;
