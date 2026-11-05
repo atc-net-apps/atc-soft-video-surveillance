@@ -251,14 +251,13 @@ public partial class CameraWallApp
         object sender,
         DispatcherUnhandledExceptionEventArgs args)
     {
-        var exceptionMessage = args.Exception.GetMessage(true);
-        if (exceptionMessage.Contains(
-                "BindingExpression:Path=HorizontalContentAlignment; DataItem=null; target element is 'ComboBoxItem'",
-                StringComparison.Ordinal))
+        if (Atc.Wpf.Dialogs.ExceptionReport.IsKnownHarmlessWpfBindingError(args.Exception))
         {
             args.Handled = true;
             return;
         }
+
+        var exceptionMessage = args.Exception.GetMessage(true);
 
         // A recorder goes on after an error in the UI: the recordings run on other threads and
         // must not end because a dialog or a view failed. The error is logged and shown briefly.
