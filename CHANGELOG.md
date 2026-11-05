@@ -1,5 +1,53 @@
 # Changelog
 
+## [1.6.0](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.5.0...v1.6.0) (2026-11-05)
+
+
+### New features
+
+* **camerawall:** a clearer timeline: the last 1 to 24 hours, a zoom slider, play all inside the window ([18287bc](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/18287bc248d9c90d94acd8ea4db3b9b245048c2d))
+* **camerawall:** ask before closing while cameras are set to record, with how many ([ba71f3a](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/ba71f3a3abc1034844d2cf852d362669b003c532))
+* **motion:** a reflection or a patch of light on part of the picture is not motion ([e7f3fa0](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/e7f3fa0e19b9fa703bd0edaf02f6a47e39e1c9a9))
+* **motion:** learn the ghost of something that lay still and left at once ([e04d506](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/e04d506c402c7aa623aae5094ff0d87f3697e53e))
+* **tools:** a bounding box review tool for tuning the detector on real recordings ([4578f85](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/4578f858706e839f552ebadf7331342bcffb3d3f))
+* **tools:** a busy spinner over the picture while the detector runs ([d2b1278](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/d2b127899f9e07ddaa3bed7362cd115c9bfed9b7))
+* **tools:** a comment per picture in the bounding box review ([75f9f77](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/75f9f773992f57832018d42604fc58e44776e38d))
+* **tools:** dark with the blue accent, and a log and --every for Detection Review ([1d38589](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/1d385894b9d767f6f8bcf508cbb7b32229427aed))
+* **tools:** progress over the picture while a review is made or rerun, and the comparison in a box ([fbf0d75](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/fbf0d754bba18c33b0c762ef235d587e0ea73920))
+* **tools:** quick verdicts on a picture's boxes: good, okay, bad, skip ([279005e](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/279005e65dc5bcb74174cca3fe63110cdf97cd4e))
+* **tools:** run the detector again over a review, and see what it saw ([075c054](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/075c054f5632a1069c2c16af70560ededfa39206))
+* **wpf,web:** the timeline's span selector and zoom slider in both clients ([9d29549](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/9d295496d9404ff9eecf238c19543117215eda12))
+* **wpf:** questions, errors and the profile editor inside their dialog ([8b09ab5](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/8b09ab5b21fd59a096cc1cee4392ca3a169ae89d))
+
+
+### Upgrades
+
+* **deps:** .NET servicing packages to 10.0.14 ([239c2ee](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/239c2ee9e07b03a1463aeccba68054cf234113ea))
+
+
+### Bug fixes
+
+* **engine:** a camera that cannot be reached is a one-line warning, with the reason named ([5c036db](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/5c036db87368d381a92ff73b0b2e5fe6381f5114))
+* **tools:** one progress bar in the busy overlay, its own ([8c554be](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/8c554be6b39024c800f94f72e5e8d8e5a41d1707))
+* **tools:** Run detector again did nothing ([b4d2cae](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/b4d2cae2c512cdd5ae6ed7e9d41cf55cba76b66f))
+* **wpf:** a dialog box's message wraps instead of scrolling sideways ([1edd8e6](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/1edd8e610a3a3b0b69b465a822b9b490438641a7))
+* **wpf:** an error the app does not go on from is shown with Atc's report ([724469c](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/724469cf6d7cdf2cf56bbc842c68e699a461d7d9))
+* **wpf:** Atc.Wpf 4.4.0, whose dialog boxes wrap their text; Enter answers No to a question that deletes or stops ([cf170b9](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/cf170b9f0fbacc26ea4cc771de79c7cc09484363))
+* **wpf:** Exit in the client goes through the window's close, as the X ([bea21aa](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/bea21aa0f9061e3a5b36bdb318480b114d7be6f5))
+* **wpf:** the Cameras page did not open ([613d9ae](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/613d9ae3a0fa25766ec5d856fcfe2911e81e518a))
+
+
+### Refactorings
+
+* **tools:** Motion Lab and Detection Review, both under tools/ ([2346286](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/2346286d11752527910c1963a90bfec03cefbca7))
+
+
+### Documentation
+
+* one dialog at a time, in every app ([e7da224](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/e7da224a29b5bdcf780a2c7c861cc05ffe89d38b))
+* the Developer tools page in the documentation table ([84ea9f9](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/84ea9f9fcd495c3e1f276f1cd25a183e6bca3967))
+* tools-data is where reviews are made for the detector work ([f161cdb](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/f161cdb2e4ba3a3ad41727a97c3b2534706cd69c))
+
 ## [1.5.0](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.4.0...v1.5.0) (2026-11-03)
 
 
