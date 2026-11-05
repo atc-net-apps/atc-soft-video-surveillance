@@ -47,11 +47,12 @@ internal static class UserDialog
             return false;
         }
 
-        var dialog = new QuestionDialogBox(owner, title, message)
-        {
-            Width = AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.DefaultWidth,
-        };
-        return AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.Wrap(dialog).ShowDialog() == true;
+        // Every question asked here deletes something: Enter answers No.
+        var settings = DialogBoxSettings.Create(DialogBoxType.YesNo);
+        settings.TitleBarText = title;
+        settings.DefaultButton = DialogBoxButton.Negative;
+        var dialog = new QuestionDialogBox(owner, settings, message);
+        return dialog.ShowDialog() == true;
     }
 
     private static void Show(
@@ -66,10 +67,9 @@ internal static class UserDialog
         }
 
         settings.TitleBarText = title;
-        settings.Width = AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.DefaultWidth;
 
         var dialog = new InfoDialogBox(owner, settings, message);
-        AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.Wrap(dialog).ShowDialog();
+        dialog.ShowDialog();
     }
 
     private static Window? ResolveOwner()

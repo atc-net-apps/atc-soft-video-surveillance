@@ -504,11 +504,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private static bool Confirm(string message)
     {
-        var dialog = new Atc.Wpf.Components.Dialogs.QuestionDialogBox(Application.Current.MainWindow!, "Save into the suite?", message)
-        {
-            Width = AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.DefaultWidth,
-        };
-        return AtcSoft.Video.Surveillance.Wpf.Core.Helpers.DialogBoxText.Wrap(dialog).ShowDialog() == true;
+        var dialog = new Atc.Wpf.Components.Dialogs.QuestionDialogBox(Application.Current.MainWindow!, "Save into the suite?", message);
+        return dialog.ShowDialog() == true;
     }
 
     [RelayCommand(CanExecute = nameof(CanReview))]
