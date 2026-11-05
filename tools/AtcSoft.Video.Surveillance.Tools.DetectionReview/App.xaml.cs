@@ -44,7 +44,7 @@ public partial class App
                 formatProvider: CultureInfo.InvariantCulture)
             .CreateLogger();
 
-        AppDomain.CurrentDomain.UnhandledException += (_, args) => Log.Fatal(args.ExceptionObject as Exception, "Unhandled exception");
+        AppDomain.CurrentDomain.UnhandledException += OnCurrentDomainUnhandledException;
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         base.OnStartup(e);
 
@@ -87,12 +87,37 @@ public partial class App
         base.OnExit(e);
     }
 
-    private static void OnDispatcherUnhandledException(
+    // The process ends, and the UI thread may be gone: the native message box, with the report saved
+    // and copied.
+    private static void OnCurrentDomainUnhandledException(
+        object sender,
+        UnhandledExceptionEventArgs args)
+    {
+        if (args is not { ExceptionObject: Exception ex })
+        {
+            return;
+        }
+
+        Log.Fatal(ex, "Unhandled exception");
+        Log.CloseAndFlush();
+        _ = Atc.Wpf.Dialogs.ExceptionReport.ShowMessageBox(ex, "Detection Review");
+    }
+
+    // Shown with the full report (Details, Ctrl+C or the copy button copies it), then the tool closes.
+    private void OnDispatcherUnhandledException(
         object sender,
         DispatcherUnhandledExceptionEventArgs args)
     {
+        if (Atc.Wpf.Dialogs.ExceptionReport.IsKnownHarmlessWpfBindingError(args.Exception))
+        {
+            args.Handled = true;
+            return;
+        }
+
         Log.Fatal(args.Exception, "Unhandled exception on the UI thread");
-        MessageBox.Show(args.Exception.Message, "Detection Review", MessageBoxButton.OK, MessageBoxImage.Error);
+        Atc.Wpf.Components.Dialogs.ExceptionDialog.Show(args.Exception, "Detection Review");
+
         args.Handled = true;
+        Shutdown(-1);
     }
 }

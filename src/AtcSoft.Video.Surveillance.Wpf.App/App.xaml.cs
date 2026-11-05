@@ -96,22 +96,24 @@ public partial class App
         var exceptionMessage = ex.GetMessage(true);
 
         LogCurrentDomainUnhandledException(exceptionMessage);
+        Log.CloseAndFlush();
 
-        ShowFatalErrorDialog(exceptionMessage, Translations.CurrentDomainUnhandledException);
+        // The process ends, and the UI thread may be gone: the native message box, with the report
+        // saved and copied.
+        _ = Atc.Wpf.Dialogs.ExceptionReport.ShowMessageBox(ex, Translations.CurrentDomainUnhandledException);
     }
 
     private void ApplicationOnDispatcherUnhandledException(
         object sender,
         DispatcherUnhandledExceptionEventArgs args)
     {
-        var exceptionMessage = args.Exception.GetMessage(true);
-        if (exceptionMessage.Contains(
-                "BindingExpression:Path=HorizontalContentAlignment; DataItem=null; target element is 'ComboBoxItem'",
-                StringComparison.Ordinal))
+        if (Atc.Wpf.Dialogs.ExceptionReport.IsKnownHarmlessWpfBindingError(args.Exception))
         {
             args.Handled = true;
             return;
         }
+
+        var exceptionMessage = args.Exception.GetMessage(true);
 
         // The client may be left on a wall for weeks: one failure on the UI thread
         // neither closes it nor waits for someone to close a dialog. It is logged
@@ -130,7 +132,7 @@ public partial class App
         // Before the main window is up the start-up itself failed: nothing to go on with.
         if (MainWindow is not AtcSoft.Video.Surveillance.Wpf.App.MainWindow)
         {
-            ShowFatalErrorDialog(exceptionMessage, Translations.DispatcherUnhandledException);
+            ExceptionDialog.Show(args.Exception, Translations.DispatcherUnhandledException);
             Shutdown(-1);
             return;
         }
@@ -148,33 +150,6 @@ public partial class App
         // A failed task nobody waited for: logged, and the app goes on.
         Log.Warning(args.Exception, "Unobserved task exception");
         args.SetObserved();
-    }
-
-    /// <summary>
-    /// Shows the fatal-error dialog using <see cref="InfoDialogBox"/>
-    /// when an owner window is reachable. The handler runs while the
-    /// app is collapsing — if no window is up yet (early-startup
-    /// crash) we silently skip the popup; the original exception is
-    /// already in the Serilog file sink.
-    /// </summary>
-    private static void ShowFatalErrorDialog(
-        string message,
-        string title)
-    {
-        var owner = Application.Current?.MainWindow
-                    ?? Application.Current?.Windows.OfType<Window>().FirstOrDefault();
-        if (owner is null)
-        {
-            return;
-        }
-
-        var settings = new DialogBoxSettings(DialogBoxType.Ok, LogCategoryType.Error)
-        {
-            TitleBarText = title,
-        };
-
-        var dialog = new InfoDialogBox(owner, settings, message);
-        dialog.ShowDialog();
     }
 
     private async void ApplicationStartup(

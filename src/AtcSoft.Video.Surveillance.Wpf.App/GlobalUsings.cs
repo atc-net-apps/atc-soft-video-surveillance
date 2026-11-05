@@ -16,14 +16,12 @@ global using System.Windows;
 global using System.Windows.Input;
 global using System.Windows.Threading;
 
-global using Atc;
 global using Atc.Helpers;
 global using Atc.Video.Engine;
 global using Atc.Video.Engine.DirectX;
 global using Atc.Wpf.Components.Dialogs;
 global using Atc.Wpf.Components.Notifications;
 global using Atc.Wpf.DependencyObjects;
-global using Atc.Wpf.Forms.Dialogs;
 global using Atc.Wpf.Notifications;
 global using Atc.Wpf.Theming.Helpers;
 global using Atc.Wpf.Translation;
