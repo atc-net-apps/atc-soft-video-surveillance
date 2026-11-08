@@ -17,6 +17,12 @@ public static class TimelineGapLook
     public static Brush UnknownBrush { get; } = Frozen(GapReason.Unknown);
 
     /// <summary>
+    /// Gets the brush of a text about a camera being offline: the offline colour, solid, readable
+    /// on the dark theme and the light.
+    /// </summary>
+    public static Brush OfflineTextBrush { get; } = FrozenSolid(GapReason.Offline);
+
+    /// <summary>
     /// Gets the brush of a reason.
     /// </summary>
     /// <param name="reason">Why nothing was recorded.</param>
@@ -43,6 +49,14 @@ public static class TimelineGapLook
             GapReason.NotRecording => Translations.GapNotRecording,
             _ => Translations.GapUnknown,
         };
+
+    private static SolidColorBrush FrozenSolid(GapReason reason)
+    {
+        var (_, r, g, b) = TimelineGapColors.Of(reason);
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
 
     private static SolidColorBrush Frozen(GapReason reason)
     {

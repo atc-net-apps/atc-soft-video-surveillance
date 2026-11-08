@@ -1,6 +1,11 @@
 namespace AtcSoft.Video.Surveillance.CameraWall.Wpf.Timeline;
 
 using ActivitySummaryCache = AtcSoft.Video.Surveillance.Helpers.Activity.ActivitySummaryCache;
+using AvailabilityChange = AtcSoft.Video.Surveillance.Enums.AvailabilityChange;
+using AvailabilityEntry = AtcSoft.Video.Surveillance.Models.AvailabilityEntry;
+using AvailabilityFolder = AtcSoft.Video.Surveillance.Helpers.Activity.AvailabilityFolder;
+using AvailabilityLog = AtcSoft.Video.Surveillance.Helpers.Activity.AvailabilityLog;
+using GapReason = AtcSoft.Video.Surveillance.Enums.GapReason;
 using IActiveRecordings = AtcSoft.Video.Surveillance.Services.IActiveRecordings;
 using TimelineCamera = AtcSoft.Video.Surveillance.Models.TimelineCamera;
 
@@ -92,6 +97,71 @@ public sealed class LocalTimelineViewModelTests : IDisposable
         viewModel.ClosePlayAllCommand.Execute(parameter: null);
 
         viewModel.IsPlayingAll.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_Camera_That_Dropped_Out_Has_A_Red_Gap_With_Its_Times_And_A_Summary_By_Its_Name()
+    {
+        var availability = Path.Combine(root, "availability");
+        var started = DateTimeOffset.UtcNow.AddHours(-5);
+        AvailabilityLog.Append(Path.Combine(availability, AvailabilityFolder.AppFileName), new AvailabilityEntry(started, AvailabilityChange.ServerStarted));
+        AvailabilityLog.Append(AvailabilityFolder.CameraFile(availability, garden.Id), new AvailabilityEntry(started.AddMinutes(1), AvailabilityChange.Online));
+        AvailabilityLog.Append(AvailabilityFolder.CameraFile(availability, garden.Id), new AvailabilityEntry(started.AddHours(1), AvailabilityChange.Offline));
+        AvailabilityLog.Append(AvailabilityFolder.CameraFile(availability, garden.Id), new AvailabilityEntry(started.AddHours(2).AddMinutes(30), AvailabilityChange.Online));
+        AvailabilityLog.Append(AvailabilityFolder.CameraFile(availability, porch.Id), new AvailabilityEntry(started.AddMinutes(1), AvailabilityChange.Online));
+        using var viewModel = new LocalTimelineViewModel(
+            () => [garden, porch],
+            () => [root],
+            recordings,
+            new ActivitySummaryCache(),
+            TimeZoneInfo.Utc,
+            availabilityFolder: availability,
+            folderHistory: new TimelineFolderHistory(Path.Combine(root, "folders.json")));
+
+        await viewModel.LoadCommand.ExecuteAsync(parameter: null);
+
+        var lane = viewModel.Lanes[0];
+        lane.GapBands.Should().Contain(g => g.Reason == GapReason.Offline && g.Text!.Contains("1 h 30 min", StringComparison.Ordinal));
+        lane.HasOffline.Should().BeTrue();
+        lane.OfflineText.Should().Contain("1×").And.Contain("1 h 30 min");
+        viewModel.Lanes[1].HasOffline.Should().BeFalse();
+        viewModel.Lanes[1].GapBands.Should().NotContain(g => g.Reason == GapReason.Offline);
+    }
+
+    [Fact]
+    public async Task Another_CameraWalls_Folder_Is_Shown_Remembered_And_Left_Again()
+    {
+        var shared = Path.Combine(root, "shared");
+        var other = new TimelineCamera(Guid.NewGuid(), "Yard");
+        Directory.CreateDirectory(Path.Combine(shared, "recordings", "Yard"));
+        await File.WriteAllTextAsync(Path.Combine(shared, "cameras.json"), $$"""{ "cameras": [ { "id": "{{other.Id}}", "display": { "displayName": "Yard" } } ] }""", TestContext.Current.CancellationToken);
+        var history = new TimelineFolderHistory(Path.Combine(root, "folders.json"));
+        var picked = shared;
+        using var viewModel = new LocalTimelineViewModel(
+            () => [garden],
+            () => [root],
+            recordings,
+            new ActivitySummaryCache(),
+            TimeZoneInfo.Utc,
+            pickFolder: () => picked,
+            folderHistory: history);
+
+        await viewModel.OpenFolderCommand.ExecuteAsync(parameter: null);
+
+        viewModel.IsExternal.Should().BeTrue();
+        viewModel.Lanes.Select(l => l.CameraName).Should().Equal("Yard");
+        viewModel.SelectedSource.Folder.Should().Be(shared);
+        history.Read().Should().Equal(shared);
+
+        picked = Path.Combine(root, "not-there");
+        await viewModel.OpenFolderCommand.ExecuteAsync(parameter: null);
+        viewModel.StatusMessage.Should().Contain("not-there");
+        viewModel.SelectedSource.Folder.Should().Be(shared, "a folder that does not open leaves what was shown");
+
+        viewModel.SelectedSource = TimelineSourceChoice.ThisComputer;
+        await viewModel.LoadCommand.ExecuteAsync(parameter: null);
+        viewModel.IsExternal.Should().BeFalse();
+        viewModel.Lanes.Select(l => l.CameraName).Should().Equal("Garden");
     }
 
     private string Record(

@@ -93,7 +93,24 @@ public sealed partial class CameraWallManager
                 }
             }
 
+            // No tile reports its connection: the timeline's history hears it from the player.
+            void OnStateChanged(
+                object? sender,
+                PlayerStateChangedEventArgs e)
+            {
+                switch (e.NewState)
+                {
+                    case PlayerState.Playing:
+                        availabilityNotes?.NoteConnection(cameraId, nameof(Atc.Network.ConnectionState.Connected));
+                        break;
+                    case PlayerState.Error:
+                        availabilityNotes?.NoteConnection(cameraId, nameof(Atc.Network.ConnectionState.ConnectionFailed));
+                        break;
+                }
+            }
+
             player.StateChanged += OnPlaying;
+            player.StateChanged += OnStateChanged;
             parking.Park(
                 cameraId,
                 player,

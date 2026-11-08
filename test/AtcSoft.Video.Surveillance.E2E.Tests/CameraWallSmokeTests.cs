@@ -234,6 +234,13 @@ public sealed class CameraWallSmokeTests
             TimeSpan.FromSeconds(20));
         DesktopApp.Screenshot(timeline, "camerawall-timeline");
 
+        // Where it reads from: this computer, or another CameraWall's folder (a system folder picker, not walked);
+        // why a lane has a gap, by colour.
+        app.Find(timeline, "Recordings from", ControlType.ComboBox);
+        app.Find(timeline, "Open another folder...", ControlType.Button);
+        app.Find(timeline, "Camera offline", ControlType.Text);
+        app.Find(timeline, "CameraWall not running", ControlType.Text);
+
         // The span: the last hours, or a chosen day; a range slider zooms into a part of it.
         app.Find(timeline, "Drag the ends to zoom in on a part", ControlType.Slider);
         var span = app.Find(timeline, "Timeline", ControlType.ComboBox).AsComboBox();

@@ -107,6 +107,15 @@ public partial class CameraWallApp
                 services.AddSingleton<IRecordingSegmentationService>(sp => sp.GetRequiredService<RecordingSegmentationService>());
                 services.AddHostedService(sp => sp.GetRequiredService<RecordingSegmentationService>());
 
+                // When each camera was online and when the app ran, for the timeline's gaps.
+                services.AddSingleton(new AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.CameraAvailabilityServiceOptions());
+                services.AddSingleton(sp => new AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.CameraAvailabilityService(
+                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.CameraAvailabilityService>>(),
+                    sp.GetRequiredService<AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.CameraAvailabilityServiceOptions>(),
+                    sp.GetRequiredService<IApplicationSettingsService>()));
+                services.AddSingleton<AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.ICameraAvailabilityNotes>(sp => sp.GetRequiredService<AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.CameraAvailabilityService>());
+                services.AddHostedService(sp => sp.GetRequiredService<AtcSoft.Video.Surveillance.CameraWall.Wpf.Services.CameraAvailabilityService>());
+
                 // An activity index beside every recording, for the timelines (shared with the server).
                 services.AddHostedService<ActivityIndexService>();
 
