@@ -31,6 +31,12 @@
         <KeyBinding Key="Escape" Command="{Binding Path=ClosePlayAllCommand}" />
     </atc:NiceWindow.InputBindings>
 
+    <!--  Busy while another CameraWall's folder is read: a share on another computer answers slowly  -->
+    <atc:BusyOverlay IsBusy="{Binding Path=IsReadingOtherFolder}">
+        <!--  A TextBlock, not a string: the control replaces string content with its own "Please wait..."  -->
+        <atc:BusyOverlay.BusyContent>
+            <TextBlock Text="{Binding Path=ReadingOtherFolderText}" />
+        </atc:BusyOverlay.BusyContent>
     <Grid>
         <!--  The timeline  -->
         <atc:GridEx Margin="16" Rows="Auto,Auto,Auto,*,Auto">
@@ -275,4 +281,5 @@
             </StackPanel>
         </atc:GridEx>
     </Grid>
+    </atc:BusyOverlay>
 </atc:NiceWindow>

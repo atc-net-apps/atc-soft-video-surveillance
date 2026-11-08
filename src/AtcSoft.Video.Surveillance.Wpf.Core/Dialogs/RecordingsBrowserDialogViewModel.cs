@@ -6,11 +6,33 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.Dialogs;
 [SuppressMessage("", "S2325:Make properties static", Justification = "XAML binding requires instance properties")]
 public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDisposable
 {
+    // How many files are read at once; a share answers each slowly, a local disk does not mind.
+    private const int ReadersAtOnce = 16;
+
+    // How many of a camera's newest files are asked whether they are still being written.
+    private const int MaybeOngoingPerCamera = 3;
+
     private readonly IApplicationSettingsService settingsService;
     private readonly Func<IEnumerable<string?>>? cameraRecordingPaths;
     private readonly Func<string, AtcSoft.Video.Surveillance.Models.CameraConfiguration?>? cameraByFolder;
+    private readonly Func<string?>? pickFolder;
+    private readonly RecordingFolderHistory folderHistory;
+
+    // Another CameraWall's folder, read only; null lists this computer's recordings.
+    private AtcSoft.Video.Surveillance.Models.TimelineFolderSource? external;
+    private string? externalFolder;
+    private bool choosingSource;
+
+    // Another CameraWall's folder being opened, before it is shown.
+    private string? openingFolder;
 
     private ObservableCollection<string> selectedCameraFilters = [];
+
+    [ObservableProperty]
+    private ObservableCollection<RecordingSourceChoice> sourceChoices = [];
+
+    [ObservableProperty(AfterChangedCallback = nameof(OnSelectedSourceChanged))]
+    private RecordingSourceChoice selectedSource = RecordingSourceChoice.ThisComputer;
 
     [ObservableProperty(AfterChangedCallback = nameof(OnSelectedDayFilterChanged))]
     private string selectedDayFilter = DropDownItemsFactory.DefaultDayFilter;
@@ -24,7 +46,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     [ObservableProperty]
     private ObservableCollection<RecordingEntry> recordings = [];
 
-    [ObservableProperty]
+    [ObservableProperty(DependentPropertyNames = [nameof(IsReadingOtherFolder), nameof(ReadingOtherFolderText)])]
     private bool isLoading;
 
     [ObservableProperty]
@@ -42,14 +64,24 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     /// Gets the camera whose recordings are in a camera folder, so *Analyse recording* uses its own
     /// motion settings and zones; <see langword="null"/> (or no camera) uses the app's settings.
     /// </param>
+    /// <param name="pickFolder">
+    /// Asks for another CameraWall's folder (the system's folder picker); <see langword="null"/>
+    /// lists this computer's recordings only.
+    /// </param>
+    /// <param name="folderHistory">The other folders opened before; the viewer's own when not given.</param>
     public RecordingsBrowserDialogViewModel(
         IApplicationSettingsService settingsService,
         Func<IEnumerable<string?>>? cameraRecordingPaths = null,
-        Func<string, AtcSoft.Video.Surveillance.Models.CameraConfiguration?>? cameraByFolder = null)
+        Func<string, AtcSoft.Video.Surveillance.Models.CameraConfiguration?>? cameraByFolder = null,
+        Func<string?>? pickFolder = null,
+        RecordingFolderHistory? folderHistory = null)
     {
         this.settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         this.cameraRecordingPaths = cameraRecordingPaths;
         this.cameraByFolder = cameraByFolder;
+        this.pickFolder = pickFolder;
+        this.folderHistory = folderHistory ?? new RecordingFolderHistory();
+        SetSourceChoices(pickFolder is null ? [] : this.folderHistory.Read(), RecordingSourceChoice.ThisComputer);
         selectedCameraFilters.CollectionChanged += OnSelectedCameraFiltersChanged;
 
         // The archive is read in the background: the dialog opens at once, and the list fills in.
@@ -171,16 +203,51 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
 
     /// <summary>
     /// Gets a value indicating whether a recording can be deleted. One that
-    /// is still being recorded cannot: the recorder has the file.
+    /// is still being recorded cannot: the recorder has the file. Nor can one in another
+    /// CameraWall's folder, which is only read.
     /// </summary>
-    public bool CanDelete => selectedIsFinished;
+    public bool CanDelete => selectedIsFinished && !IsExternal;
 
     /// <summary>
     /// Gets a value indicating whether the selected recording can be analysed for its activity
-    /// timeline: a finished recording without an index, while no other is being analysed.
+    /// timeline: a finished recording without an index, while no other is being analysed, and not in
+    /// another CameraWall's folder (the index would be written there).
     /// </summary>
     public bool CanAnalyse
-        => selectedIsFinished && SelectedRecording!.Activity is null && !IsAnalysing;
+        => selectedIsFinished && SelectedRecording!.Activity is null && !IsAnalysing && !IsExternal;
+
+    /// <summary>
+    /// Gets a value indicating whether another CameraWall's folder can be opened.
+    /// </summary>
+    public bool CanOpenOtherFolder
+        => pickFolder is not null;
+
+    /// <summary>
+    /// Gets a value indicating whether the list shows another CameraWall's folder, which is only
+    /// read: nothing is deleted, analysed, previewed or reviewed there.
+    /// </summary>
+    public bool IsExternal
+        => external is not null;
+
+    /// <summary>
+    /// Gets a value indicating whether another CameraWall's folder is being read: opened, or read
+    /// again. A share on another computer answers slowly, so the window says so.
+    /// </summary>
+    public bool IsReadingOtherFolder
+        => openingFolder is not null || (IsLoading && IsExternal);
+
+    /// <summary>
+    /// Gets what the window says while another CameraWall's folder is read.
+    /// </summary>
+    public string ReadingOtherFolderText
+        => string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderOpening1, openingFolder ?? externalFolder);
+
+    /// <summary>
+    /// Gets the app's previews in the making for a recording played: none for another CameraWall's
+    /// folder, where none are written.
+    /// </summary>
+    public IRecordingPreviews? PreviewsToMake
+        => IsExternal ? null : Previews;
 
     /// <summary>
     /// Gets a value indicating whether a recording is being analysed.
@@ -264,7 +331,8 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     /// </remarks>
     public async Task<bool> UpdateOngoingRecordingsAsync()
     {
-        if (updating || !Loading.IsCompleted || stopping.IsCancellationRequested)
+        // Another CameraWall's folder is read when opened and on Refresh.
+        if (updating || IsExternal || !Loading.IsCompleted || stopping.IsCancellationRequested)
         {
             return false;
         }
@@ -444,6 +512,115 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         CloseRequested?.Invoke(this, new DialogClosedEventArgs(dialogResult: true));
     }
 
+    [RelayCommand("OpenOtherFolder", CanExecute = nameof(CanOpenOtherFolder))]
+    private async Task OpenOtherFolderAsync()
+    {
+        if (pickFolder?.Invoke() is not { Length: > 0 } folder)
+        {
+            return;
+        }
+
+        await OpenSourceAsync(folder).ConfigureAwait(true);
+    }
+
+    private void OnSelectedSourceChanged()
+    {
+        if (choosingSource)
+        {
+            return;
+        }
+
+        if (SelectedSource.Folder is { } folder)
+        {
+            _ = OpenSourceAsync(folder);
+            return;
+        }
+
+        external = null;
+        externalFolder = null;
+        OnSourceChanged();
+        Loading = LoadRecordingsAsync();
+    }
+
+    // A folder on another computer can take a while to answer, or not answer: it is opened off the UI thread.
+    private async Task OpenSourceAsync(string folder)
+    {
+        SetOpeningFolder(folder);
+        try
+        {
+            StatusMessage = string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderOpening1, folder);
+            var source = await Task.Run(() => AtcSoft.Video.Surveillance.Helpers.Activity.TimelineFolders.Open(folder), stopping.Token).ConfigureAwait(true);
+            if (stopping.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (source is null)
+            {
+                // Back to what was shown; the folder stays offered, to try again.
+                SetSourceChoices(folderHistory.Read(), new RecordingSourceChoice(externalFolder));
+                StatusMessage = string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderNotOpened1, folder);
+                return;
+            }
+
+            external = source;
+            externalFolder = folder;
+            SetSourceChoices(folderHistory.Add(folder), new RecordingSourceChoice(folder));
+            OnSourceChanged();
+            Loading = LoadRecordingsAsync();
+            await Loading.ConfigureAwait(true);
+        }
+        finally
+        {
+            SetOpeningFolder(null);
+        }
+    }
+
+    private void OnSourceChanged()
+    {
+        SelectedRecording = null;
+        Recordings = [];
+        UpdateCameraFilters();
+        OnPropertyChanged(nameof(IsExternal));
+        OnPropertyChanged(nameof(PreviewsToMake));
+        OnReadingOtherFolderChanged();
+        OnSelectedRecordingChanged();
+    }
+
+    private void SetOpeningFolder(string? folder)
+    {
+        openingFolder = folder;
+        OnReadingOtherFolderChanged();
+    }
+
+    private void OnReadingOtherFolderChanged()
+    {
+        OnPropertyChanged(nameof(IsReadingOtherFolder));
+        OnPropertyChanged(nameof(ReadingOtherFolderText));
+    }
+
+    // The choices without opening one: this computer first, then the folders opened before.
+    private void SetSourceChoices(
+        IReadOnlyList<string> folders,
+        RecordingSourceChoice selected)
+    {
+        choosingSource = true;
+        try
+        {
+            SourceChoices = [RecordingSourceChoice.ThisComputer, .. folders.Select(f => new RecordingSourceChoice(f))];
+            SelectedSource = SourceChoices.FirstOrDefault(c => c == selected) ?? RecordingSourceChoice.ThisComputer;
+        }
+        finally
+        {
+            choosingSource = false;
+        }
+    }
+
+    // The camera a recording is of, for its settings and zones; none in another CameraWall's folder.
+    private AtcSoft.Video.Surveillance.Models.CameraConfiguration? CameraOf(
+        RecordingEntry recording)
+        => IsExternal ? null : cameraByFolder?.Invoke(recording.CameraName);
+
     private void OnSelectedCameraFiltersChanged(
         object? sender,
         NotifyCollectionChangedEventArgs e)
@@ -510,7 +687,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     {
         ArgumentNullException.ThrowIfNull(recording);
 
-        return RecordingBoxLoaders.FromFile(recording.FilePath, settingsService.MotionDetection, cameraByFolder?.Invoke(recording.CameraName));
+        return RecordingBoxLoaders.FromFile(recording.FilePath, settingsService.MotionDetection, CameraOf(recording));
     }
 
     /// <summary>
@@ -521,7 +698,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     {
         ArgumentNullException.ThrowIfNull(recording);
 
-        return RecordingAnalysis.SettingsFor(cameraByFolder?.Invoke(recording.CameraName), settingsService.MotionDetection).BoundingBox;
+        return RecordingAnalysis.SettingsFor(CameraOf(recording), settingsService.MotionDetection).BoundingBox;
     }
 
     /// <summary>
@@ -534,19 +711,22 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     {
         ArgumentNullException.ThrowIfNull(recording);
 
-        return cameraByFolder?.Invoke(recording.CameraName)?.MotionZones ?? [];
+        return CameraOf(recording)?.MotionZones ?? [];
     }
 
     /// <summary>
     /// Gets the saver of the verdicts given on a recording's timeline: they are written to the
-    /// review beside it, a new one with its camera's settings and zones.
+    /// review beside it, a new one with its camera's settings and zones. None in another CameraWall's
+    /// folder, which is only read: the player then offers no verdicts.
     /// </summary>
     /// <param name="recording">The recording.</param>
-    public RecordingVerdictSaver VerdictSaverFor(RecordingEntry recording)
+    public RecordingVerdictSaver? VerdictSaverFor(RecordingEntry recording)
     {
         ArgumentNullException.ThrowIfNull(recording);
 
-        return RecordingVerdictSavers.ToFile(recording.FilePath, cameraByFolder?.Invoke(recording.CameraName), settingsService.MotionDetection);
+        return IsExternal
+            ? null
+            : RecordingVerdictSavers.ToFile(recording.FilePath, CameraOf(recording), settingsService.MotionDetection);
     }
 
     [RelayCommand("Analyse", CanExecute = nameof(CanAnalyse))]
@@ -562,7 +742,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         try
         {
             var settings = settingsService.MotionDetection;
-            var camera = cameraByFolder?.Invoke(recording.CameraName);
+            var camera = CameraOf(recording);
             var stoppingToken = stopping.Token;
             await Task.Run(() => AnalyseFile(recording.FilePath, settings, camera, stoppingToken), stoppingToken).ConfigureAwait(true);
 
@@ -722,32 +902,44 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     }
 
     // The entries of every recording in the folders, except those in skip. Runs in the background.
+    // A share on another computer answers each file slowly, so the files are read side by side.
     private static List<RecordingEntry> ReadEntries(
         string basePath,
         IReadOnlyList<string?> cameraPaths,
         HashSet<string>? skip,
         CancellationToken cancellationToken)
     {
-        var entries = new List<RecordingEntry>();
+        var files = new List<(FileInfo Info, string CameraName, string Root, bool MayBeOngoing)>();
         foreach (var root in RecordingRoots.Collect(basePath, cameraPaths).Where(Directory.Exists))
         {
-            foreach (var (filePath, cameraName) in EnumerateRecordingFiles(root))
+            foreach (var (cameraName, cameraFiles) in EnumerateRecordingFiles(root))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (skip?.Contains(filePath) == true)
-                {
-                    continue;
-                }
-
-                if (CreateEntry(filePath, cameraName, root) is { } entry)
-                {
-                    entries.Add(entry);
-                }
+                var newest = NewestOf(cameraFiles);
+                files.AddRange(cameraFiles
+                    .Where(f => skip?.Contains(f.FullName) != true)
+                    .Select(f => (f, cameraName, root, newest.Contains(f))));
             }
         }
 
-        return entries;
+        return files
+            .AsParallel()
+            .WithDegreeOfParallelism(ReadersAtOnce)
+            .WithCancellation(cancellationToken)
+            .Select(f => CreateEntry(f.Info, f.CameraName, f.Root, f.MayBeOngoing))
+            .Where(e => e is not null)
+            .Select(e => e!)
+            .ToList();
     }
+
+    // A camera records into one file at a time (and a time-lapse beside it): only its newest files
+    // can still be open. Asking every file whether it is being written opened each one, which over
+    // a network share took most of a minute per thousand recordings.
+    private static HashSet<FileInfo> NewestOf(IReadOnlyList<FileInfo> files)
+        => files
+            .OrderByDescending(f => RecordingPathHelper.TryParseTimestamp(f.Name, out var t) ? t : f.LastWriteTime)
+            .Take(MaybeOngoingPerCamera)
+            .ToHashSet();
 
     // The ongoing recordings that have ended, with their length. Runs in the background.
     private static List<(string FilePath, long Length, TimeSpan Duration)> ReadEnded(
@@ -780,8 +972,9 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     // Each folder below a root is a camera. Its recordings may sit
     // directly in it or in a folder per day, so the whole camera folder is
     // searched. The thumbnails folder holds no recordings. A folder that goes away while it is
-    // read (the cleanup deleting a day), or cannot be read, ends its part of the walk.
-    private static IEnumerable<(string FilePath, string CameraName)> EnumerateRecordingFiles(
+    // read (the cleanup deleting a day), or cannot be read, ends its part of the walk. The files come
+    // with their size and times from the folder listing, without asking each file again.
+    private static IEnumerable<(string CameraName, IReadOnlyList<FileInfo> Files)> EnumerateRecordingFiles(
         string basePath)
     {
         foreach (var cameraFolder in WhileReadable(() => Directory.EnumerateDirectories(basePath)))
@@ -792,11 +985,8 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
                 continue;
             }
 
-            foreach (var file in WhileReadable(() => Directory.EnumerateFiles(cameraFolder, "*.*", AllFilesBelow))
-                .Where(IsVideoFile))
-            {
-                yield return (file, cameraName);
-            }
+            var folder = new DirectoryInfo(cameraFolder);
+            yield return (cameraName, [.. WhileReadable(() => folder.EnumerateFiles("*.*", AllFilesBelow)).Where(f => IsVideoFile(f.Name))]);
         }
     }
 
@@ -806,10 +996,10 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         IgnoreInaccessible = true,
     };
 
-    private static IEnumerable<string> WhileReadable(
-        Func<IEnumerable<string>> enumerate)
+    private static IEnumerable<T> WhileReadable<T>(
+        Func<IEnumerable<T>> enumerate)
     {
-        IEnumerator<string> items;
+        IEnumerator<T> items;
         try
         {
             items = enumerate().GetEnumerator();
@@ -874,13 +1064,14 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
 
     // Null for a file that went away or cannot be read while the list is read.
     private static RecordingEntry? CreateEntry(
-        string filePath,
+        FileInfo info,
         string cameraName,
-        string basePath)
+        string basePath,
+        bool mayBeOngoing)
     {
         try
         {
-            return CreateEntryOf(new FileInfo(filePath), cameraName, basePath);
+            return CreateEntryOf(info, cameraName, basePath, mayBeOngoing);
         }
         catch (Exception ex) when (IsFileSystemError(ex))
         {
@@ -891,7 +1082,8 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
     private static RecordingEntry CreateEntryOf(
         FileInfo info,
         string cameraName,
-        string basePath)
+        string basePath,
+        bool mayBeOngoing)
     {
         var filePath = info.FullName;
         var recordingTime = RecordingPathHelper.TryParseTimestamp(info.Name, out var timestamp)
@@ -900,7 +1092,7 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
 
         // A length not read before is read in the background (FillDurations): probing every file here
         // held the app up for close to a minute with a large archive.
-        var entry = RecordingPathHelper.IsBeingWritten(filePath)
+        var entry = mayBeOngoing && RecordingPathHelper.IsBeingWritten(filePath)
             ? RecordingEntry.Ongoing(filePath, cameraName, basePath, recordingTime, info.Length)
             : Durations.TryGet(filePath, out var duration)
                 ? RecordingEntry.Finished(filePath, cameraName, basePath, recordingTime, info.Length, duration)
@@ -908,14 +1100,16 @@ public partial class RecordingsBrowserDialogViewModel : ViewModelDialogBase, IDi
         return entry.WithActivity(Sparklines.Get(RecordingPathHelper.BuildActivityPath(filePath)));
     }
 
-    // Each camera's own recording folder, read on the UI thread for the background reading.
+    // Each camera's own recording folder, read on the UI thread for the background reading. Another
+    // CameraWall's folder is one folder of camera folders.
     private List<string?> GetCameraRecordingPaths()
-        => [.. cameraRecordingPaths?.Invoke() ?? []];
+        => IsExternal ? [] : [.. cameraRecordingPaths?.Invoke() ?? []];
 
     private string GetRecordingsBasePath()
-        => !string.IsNullOrEmpty(settingsService.Recording.RecordingPath)
-            ? settingsService.Recording.RecordingPath
-            : ApplicationPaths.DefaultRecordingsPath;
+        => external?.RecordingsFolder
+           ?? (!string.IsNullOrEmpty(settingsService.Recording.RecordingPath)
+               ? settingsService.Recording.RecordingPath
+               : ApplicationPaths.DefaultRecordingsPath);
 
     private void UpdateCameraFilters()
     {

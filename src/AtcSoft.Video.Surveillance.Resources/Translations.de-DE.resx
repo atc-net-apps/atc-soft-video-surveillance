@@ -865,7 +865,7 @@
     <value>Löschen</value>
   </data>
   <data name="OpenRecordingsFolder" xml:space="preserve">
-    <value>Ordner öffnen</value>
+    <value>Im Explorer anzeigen</value>
   </data>
   <data name="ConfirmDeleteRecording" xml:space="preserve">
     <value>Diese Aufnahme löschen?</value>
@@ -2935,7 +2935,7 @@ Vorschaubild:
     <value>Anderen Ordner öffnen...</value>
   </data>
   <data name="OpenAnotherFolderInfo" xml:space="preserve">
-    <value>Zeigt die Zeitleiste einer anderen CameraWall: ihren freigegebenen Datenordner (z. B. \\pc\CameraWall) oder ihren Aufnahmeordner. Darin wird nichts geändert.</value>
+    <value>Zeigt die Aufnahmen einer anderen CameraWall: ihren freigegebenen Datenordner (z. B. \\pc\CameraWall) oder ihren Aufnahmeordner. Darin wird nichts geändert.</value>
   </data>
   <data name="TimelineFolderOpening1" xml:space="preserve">
     <value>{0} wird geöffnet...</value>

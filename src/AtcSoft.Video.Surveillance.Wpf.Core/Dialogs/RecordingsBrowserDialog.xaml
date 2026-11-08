@@ -21,14 +21,50 @@
     WindowStyle="ToolWindow"
     mc:Ignorable="d">
 
+    <atc:NiceWindow.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </atc:NiceWindow.Resources>
+
+    <!--  Busy while another CameraWall's folder is read: a share on another computer answers slowly  -->
+    <atc:BusyOverlay IsBusy="{Binding Path=IsReadingOtherFolder}">
+        <!--  A TextBlock, not a string: the control replaces string content with its own "Please wait..."  -->
+        <atc:BusyOverlay.BusyContent>
+            <TextBlock Text="{Binding Path=ReadingOtherFolderText}" />
+        </atc:BusyOverlay.BusyContent>
     <Grid>
         <!--  Main Content  -->
         <atc:GridEx Margin="16" Rows="Auto,*,Auto,Auto">
 
+            <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                <!--  Where the recordings are read from: this computer, or another CameraWall's folder (read only)  -->
+                <DockPanel
+                    Margin="0,0,0,12"
+                    LastChildFill="False"
+                    Visibility="{Binding Path=CanOpenOtherFolder, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        DockPanel.Dock="Left"
+                        Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=TimelineSource}" />
+                    <ComboBox
+                        MinWidth="320"
+                        MaxWidth="560"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=TimelineSource}"
+                        DockPanel.Dock="Left"
+                        ItemsSource="{Binding Path=SourceChoices}"
+                        SelectedItem="{Binding Path=SelectedSource, Mode=TwoWay}" />
+                    <Button
+                        Padding="12,6"
+                        Command="{Binding Path=OpenOtherFolderCommand}"
+                        Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OpenAnotherFolder}"
+                        DockPanel.Dock="Left"
+                        ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OpenAnotherFolderInfo}" />
+                </DockPanel>
+
             <!--  Filter Row  -->
             <atc:GridEx
-                Grid.Row="0"
-                Margin="0,0,0,16"
                 Columns="Auto,200,Auto,140,Auto,140,Auto,*,Auto">
                 <TextBlock
                     Grid.Column="0"
@@ -89,6 +125,7 @@
                     Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
                                                   Key=Refresh}" />
             </atc:GridEx>
+            </StackPanel>
 
             <!--  Recordings DataGrid  -->
             <DataGrid
@@ -330,4 +367,5 @@
             </Grid>
         </Border>
     </Grid>
+    </atc:BusyOverlay>
 </atc:NiceWindow>

@@ -889,7 +889,7 @@
     <value>Delete</value>
   </data>
   <data name="OpenRecordingsFolder" xml:space="preserve">
-    <value>Open Folder</value>
+    <value>Show in Explorer</value>
   </data>
   <data name="ConfirmDeleteRecording" xml:space="preserve">
     <value>Delete this recording?</value>
@@ -2932,7 +2932,7 @@
     <value>Open another folder...</value>
   </data>
   <data name="OpenAnotherFolderInfo" xml:space="preserve">
-    <value>Show the timeline of another CameraWall: its shared data folder (such as \\pc\CameraWall) or its recordings folder. Nothing in it is changed.</value>
+    <value>Show the recordings of another CameraWall: its shared data folder (such as \\pc\CameraWall) or its recordings folder. Nothing in it is changed.</value>
   </data>
   <data name="TimelineFolderOpening1" xml:space="preserve">
     <value>Opening {0}...</value>

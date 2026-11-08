@@ -1022,26 +1022,11 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
                 settingsService.MotionDetection),
             availabilityFolder: AtcSoft.Video.Surveillance.Wpf.Core.ApplicationPaths.DefaultAvailabilityPath,
             logFolder: () => string.IsNullOrEmpty(settingsService.Advanced.LogPath) ? AtcSoft.Video.Surveillance.Wpf.Core.ApplicationPaths.DefaultLogsPath : settingsService.Advanced.LogPath,
-            pickFolder: PickTimelineFolder);
+            pickFolder: AtcSoft.Video.Surveillance.Wpf.Core.Helpers.OtherFolderPicker.Pick);
         new AtcSoft.Video.Surveillance.CameraWall.Wpf.Timeline.LocalTimelineWindow(viewModel)
         {
             Owner = Application.Current.MainWindow,
         }.Show();
-    }
-
-    // The system's folder picker, over the timeline window: another CameraWall's shared folder.
-    private static string? PickTimelineFolder()
-    {
-        var dialog = new Microsoft.Win32.OpenFolderDialog
-        {
-            Title = Translations.OpenAnotherFolder,
-            Multiselect = false,
-        };
-        var owner = Application.Current?.Windows.OfType<AtcSoft.Video.Surveillance.CameraWall.Wpf.Timeline.LocalTimelineWindow>().FirstOrDefault(w => w.IsActive)
-                    ?? Application.Current?.MainWindow;
-        return (owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner)) == true
-            ? dialog.FolderName
-            : null;
     }
 
     private string GlobalRecordingPath()

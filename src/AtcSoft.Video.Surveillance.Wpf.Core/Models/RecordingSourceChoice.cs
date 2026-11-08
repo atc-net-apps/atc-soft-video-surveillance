@@ -1,15 +1,15 @@
-namespace AtcSoft.Video.Surveillance.CameraWall.Wpf.Timeline;
+namespace AtcSoft.Video.Surveillance.Wpf.Core.Models;
 
 /// <summary>
-/// Where CameraWall's timeline reads from: this computer, or another CameraWall's folder.
+/// Where CameraWall's recordings and timeline are read from: this computer, or another CameraWall's folder.
 /// </summary>
 /// <param name="Folder">The folder, or <see langword="null"/> for this computer.</param>
-public sealed record TimelineSourceChoice(string? Folder)
+public sealed record RecordingSourceChoice(string? Folder)
 {
     /// <summary>
     /// Gets this computer.
     /// </summary>
-    public static TimelineSourceChoice ThisComputer { get; } = new(Folder: null);
+    public static RecordingSourceChoice ThisComputer { get; } = new(Folder: null);
 
     /// <summary>
     /// Gets a value indicating whether this is another CameraWall's folder.

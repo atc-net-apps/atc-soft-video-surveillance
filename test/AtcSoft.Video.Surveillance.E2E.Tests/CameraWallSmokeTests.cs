@@ -212,6 +212,11 @@ public sealed class CameraWallSmokeTests
     {
         var browser = app.OpenWindow(() => DesktopApp.Press(app.Find(main, "Browse Recordings", ControlType.Button)), "Browse Recordings");
         app.FindWhere(browser, e => e.ControlType == ControlType.DataItem, "a recording row");
+
+        // Where it reads from: this computer, or another CameraWall's folder (a system folder picker, not walked).
+        app.Find(browser, "Recordings from", ControlType.ComboBox);
+        app.Find(browser, "Open another folder...", ControlType.Button);
+        app.Find(browser, "Show in Explorer", ControlType.Button);
         var rows = browser.FindAllDescendants(app.Conditions.ByControlType(ControlType.DataItem));
         rows[^1].Patterns.SelectionItem.Pattern.Select();
 

@@ -189,7 +189,7 @@ public partial class RecordingsBrowserDialog : IDisposable
             overlaySettings,
             activityLoader: RecordingActivityLoaders.FromFile(recording.FilePath),
             zonesLoader: _ => Task.FromResult(viewModel.ZonesFor(recording)),
-            previewLoader: RecordingPreviewLoaders.FromFile(recording.FilePath, viewModel.Previews),
+            previewLoader: RecordingPreviewLoaders.FromFile(recording.FilePath, viewModel.PreviewsToMake),
             verdictSaver: viewModel.VerdictSaverFor(recording));
         fullScreenViewModel.UseMotionBoxes(viewModel.BoxLoaderFor(recording), viewModel.BoxStyleFor(recording));
         using var fullScreenWindow = new FullScreenRecordingWindow(fullScreenViewModel)
