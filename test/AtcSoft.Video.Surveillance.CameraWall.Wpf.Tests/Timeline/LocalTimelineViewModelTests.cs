@@ -116,7 +116,7 @@ public sealed class LocalTimelineViewModelTests : IDisposable
             new ActivitySummaryCache(),
             TimeZoneInfo.Utc,
             availabilityFolder: availability,
-            folderHistory: new TimelineFolderHistory(Path.Combine(root, "folders.json")));
+            folderHistory: new RecordingFolderHistory(Path.Combine(root, "folders.json")));
 
         await viewModel.LoadCommand.ExecuteAsync(parameter: null);
 
@@ -135,7 +135,7 @@ public sealed class LocalTimelineViewModelTests : IDisposable
         var other = new TimelineCamera(Guid.NewGuid(), "Yard");
         Directory.CreateDirectory(Path.Combine(shared, "recordings", "Yard"));
         await File.WriteAllTextAsync(Path.Combine(shared, "cameras.json"), $$"""{ "cameras": [ { "id": "{{other.Id}}", "display": { "displayName": "Yard" } } ] }""", TestContext.Current.CancellationToken);
-        var history = new TimelineFolderHistory(Path.Combine(root, "folders.json"));
+        var history = new RecordingFolderHistory(Path.Combine(root, "folders.json"));
         var picked = shared;
         using var viewModel = new LocalTimelineViewModel(
             () => [garden],
@@ -145,9 +145,20 @@ public sealed class LocalTimelineViewModelTests : IDisposable
             TimeZoneInfo.Utc,
             pickFolder: () => picked,
             folderHistory: history);
+        var busy = new List<(bool Busy, string Text)>();
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LocalTimelineViewModel.IsReadingOtherFolder))
+            {
+                busy.Add((viewModel.IsReadingOtherFolder, viewModel.ReadingOtherFolderText));
+            }
+        };
 
         await viewModel.OpenFolderCommand.ExecuteAsync(parameter: null);
 
+        // The window says it reads the folder while it does, and stops saying so.
+        busy.Should().Contain((true, $"Opening {shared}..."));
+        viewModel.IsReadingOtherFolder.Should().BeFalse();
         viewModel.IsExternal.Should().BeTrue();
         viewModel.Lanes.Select(l => l.CameraName).Should().Equal("Yard");
         viewModel.SelectedSource.Folder.Should().Be(shared);
@@ -158,7 +169,7 @@ public sealed class LocalTimelineViewModelTests : IDisposable
         viewModel.StatusMessage.Should().Contain("not-there");
         viewModel.SelectedSource.Folder.Should().Be(shared, "a folder that does not open leaves what was shown");
 
-        viewModel.SelectedSource = TimelineSourceChoice.ThisComputer;
+        viewModel.SelectedSource = RecordingSourceChoice.ThisComputer;
         await viewModel.LoadCommand.ExecuteAsync(parameter: null);
         viewModel.IsExternal.Should().BeFalse();
         viewModel.Lanes.Select(l => l.CameraName).Should().Equal("Garden");

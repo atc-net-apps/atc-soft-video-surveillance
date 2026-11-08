@@ -865,7 +865,7 @@
     <value>Slet</value>
   </data>
   <data name="OpenRecordingsFolder" xml:space="preserve">
-    <value>Åbn mappe</value>
+    <value>Vis i Stifinder</value>
   </data>
   <data name="ConfirmDeleteRecording" xml:space="preserve">
     <value>Slet denne optagelse?</value>
@@ -2935,7 +2935,7 @@ Miniature:
     <value>Åbn en anden mappe...</value>
   </data>
   <data name="OpenAnotherFolderInfo" xml:space="preserve">
-    <value>Vis tidslinjen for en anden CameraWall: dens delte datamappe (f.eks. \\pc\CameraWall) eller dens optagelsesmappe. Intet i den ændres.</value>
+    <value>Vis optagelserne fra en anden CameraWall: dens delte datamappe (f.eks. \\pc\CameraWall) eller dens optagelsesmappe. Intet i den ændres.</value>
   </data>
   <data name="TimelineFolderOpening1" xml:space="preserve">
     <value>Åbner {0}...</value>

@@ -57,11 +57,14 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     private readonly string? availabilityFolder;
     private readonly Func<string?> logFolder;
     private readonly Func<string?> pickFolder;
-    private readonly TimelineFolderHistory folderHistory;
+    private readonly RecordingFolderHistory folderHistory;
     private readonly LogHistoryCache logCache = new();
     private TimelineFolderSource? external;
     private string? externalFolder;
     private bool choosingSource;
+
+    // Another CameraWall's folder being opened, before it is shown.
+    private string? openingFolder;
     private DateTimeOffset from;
     private DateTimeOffset to;
     private DateTimeOffset spanFrom;
@@ -82,7 +85,7 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     [ObservableProperty(AfterChangedCallback = nameof(OnSelectedDayChanged))]
     private DateTime? selectedDay;
 
-    [ObservableProperty]
+    [ObservableProperty(DependentPropertyNames = [nameof(IsReadingOtherFolder), nameof(ReadingOtherFolderText)])]
     private bool isLoading;
 
     [ObservableProperty]
@@ -105,10 +108,10 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     private double playAllMaximum = 1;
 
     [ObservableProperty]
-    private ObservableCollection<TimelineSourceChoice> sourceChoices = [];
+    private ObservableCollection<RecordingSourceChoice> sourceChoices = [];
 
     [ObservableProperty(AfterChangedCallback = nameof(OnSelectedSourceChanged))]
-    private TimelineSourceChoice selectedSource = TimelineSourceChoice.ThisComputer;
+    private RecordingSourceChoice selectedSource = RecordingSourceChoice.ThisComputer;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LocalTimelineViewModel"/> class.
@@ -138,7 +141,7 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         string? availabilityFolder = null,
         Func<string?>? logFolder = null,
         Func<string?>? pickFolder = null,
-        TimelineFolderHistory? folderHistory = null)
+        RecordingFolderHistory? folderHistory = null)
     {
         ArgumentNullException.ThrowIfNull(cameras);
         ArgumentNullException.ThrowIfNull(folders);
@@ -155,8 +158,8 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         this.availabilityFolder = availabilityFolder;
         this.logFolder = logFolder ?? (() => null);
         this.pickFolder = pickFolder ?? (() => null);
-        this.folderHistory = folderHistory ?? new TimelineFolderHistory();
-        SetSourceChoices(this.folderHistory.Read(), TimelineSourceChoice.ThisComputer);
+        this.folderHistory = folderHistory ?? new RecordingFolderHistory();
+        SetSourceChoices(this.folderHistory.Read(), RecordingSourceChoice.ThisComputer);
         SpanChoices = TimelineSpanChoice.All();
         selectedSpan = SpanChoices.First(c => c.Hours == 24);
         Zoom = new TimelineZoomRange(OnZoomSettled);
@@ -190,6 +193,19 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     /// </summary>
     public bool IsExternal
         => external is not null;
+
+    /// <summary>
+    /// Gets a value indicating whether another CameraWall's folder is being read: opened, or read
+    /// again. A share on another computer answers slowly, so the window says so.
+    /// </summary>
+    public bool IsReadingOtherFolder
+        => openingFolder is not null || (IsLoading && IsExternal);
+
+    /// <summary>
+    /// Gets what the window says while another CameraWall's folder is read.
+    /// </summary>
+    public string ReadingOtherFolderText
+        => string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderOpening1, openingFolder ?? externalFolder);
 
     /// <summary>
     /// Starts moving through the time shown with *play all*'s slider: its clock no longer moves it.
@@ -610,35 +626,55 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     private async Task OpenSourceAsync(string folder)
     {
         StopPlayAll();
-        StatusMessage = string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderOpening1, folder);
-        var source = await Task.Run(() => TimelineFolders.Open(folder)).ConfigureAwait(true);
-        if (source is null)
+        SetOpeningFolder(folder);
+        try
         {
-            // Back to what was shown; the folder stays offered, to try again.
-            StatusMessage = string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderNotOpened1, folder);
-            SetSourceChoices(folderHistory.Read(), new TimelineSourceChoice(externalFolder));
-            return;
-        }
+            StatusMessage = string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderOpening1, folder);
+            var source = await Task.Run(() => TimelineFolders.Open(folder)).ConfigureAwait(true);
+            if (source is null)
+            {
+                // Back to what was shown; the folder stays offered, to try again.
+                StatusMessage = string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderNotOpened1, folder);
+                SetSourceChoices(folderHistory.Read(), new RecordingSourceChoice(externalFolder));
+                return;
+            }
 
-        external = source;
-        externalFolder = folder;
-        OnPropertyChanged(nameof(IsExternal));
-        StatusMessage = string.Empty;
-        cursor = null;
-        SetSourceChoices(folderHistory.Add(folder), new TimelineSourceChoice(folder));
-        await LoadAsync().ConfigureAwait(true);
+            external = source;
+            externalFolder = folder;
+            OnPropertyChanged(nameof(IsExternal));
+            StatusMessage = string.Empty;
+            cursor = null;
+            SetSourceChoices(folderHistory.Add(folder), new RecordingSourceChoice(folder));
+            await LoadAsync().ConfigureAwait(true);
+        }
+        finally
+        {
+            SetOpeningFolder(null);
+        }
+    }
+
+    private void SetOpeningFolder(string? folder)
+    {
+        openingFolder = folder;
+        OnReadingOtherFolderChanged();
+    }
+
+    private void OnReadingOtherFolderChanged()
+    {
+        OnPropertyChanged(nameof(IsReadingOtherFolder));
+        OnPropertyChanged(nameof(ReadingOtherFolderText));
     }
 
     // The choices without opening one: this computer first, then the folders opened before.
     private void SetSourceChoices(
         IReadOnlyList<string> folders,
-        TimelineSourceChoice selected)
+        RecordingSourceChoice selected)
     {
         choosingSource = true;
         try
         {
-            SourceChoices = [TimelineSourceChoice.ThisComputer, .. folders.Select(f => new TimelineSourceChoice(f))];
-            SelectedSource = SourceChoices.FirstOrDefault(c => c == selected) ?? TimelineSourceChoice.ThisComputer;
+            SourceChoices = [RecordingSourceChoice.ThisComputer, .. folders.Select(f => new RecordingSourceChoice(f))];
+            SelectedSource = SourceChoices.FirstOrDefault(c => c == selected) ?? RecordingSourceChoice.ThisComputer;
         }
         finally
         {

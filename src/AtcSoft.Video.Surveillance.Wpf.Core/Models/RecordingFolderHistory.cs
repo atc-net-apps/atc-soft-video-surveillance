@@ -1,11 +1,11 @@
-namespace AtcSoft.Video.Surveillance.CameraWall.Wpf.Timeline;
+namespace AtcSoft.Video.Surveillance.Wpf.Core.Models;
 
 /// <summary>
-/// The other CameraWall folders the timeline was opened on, the latest first, so the next time it
-/// offers them again: a JSON list of paths in the viewer's own data
-/// (<c>CameraWall\timeline-folders.json</c>). A file that cannot be read or written is no list.
+/// The other CameraWall folders the recordings or the timeline were opened on, the latest first, so
+/// both offer them again: a JSON list of paths in the viewer's own data
+/// (<c>CameraWall\recording-folders.json</c>). A file that cannot be read or written is no list.
 /// </summary>
-public sealed class TimelineFolderHistory
+public sealed class RecordingFolderHistory
 {
     /// <summary>
     /// How many folders are kept.
@@ -15,11 +15,11 @@ public sealed class TimelineFolderHistory
     private readonly string path;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="TimelineFolderHistory"/> class.
+    /// Initializes a new instance of the <see cref="RecordingFolderHistory"/> class.
     /// </summary>
     /// <param name="path">The file; the viewer's own when not given.</param>
-    public TimelineFolderHistory(string? path = null)
-        => this.path = path ?? AtcSoft.Video.Surveillance.Helpers.ApplicationPaths.GetLocalDataPath("CameraWall", "timeline-folders.json");
+    public RecordingFolderHistory(string? path = null)
+        => this.path = path ?? AtcSoft.Video.Surveillance.Helpers.ApplicationPaths.GetLocalDataPath("CameraWall", "recording-folders.json");
 
     /// <summary>
     /// Reads the folders, the latest first.

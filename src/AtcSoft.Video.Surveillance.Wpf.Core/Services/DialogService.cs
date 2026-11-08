@@ -364,7 +364,8 @@ public class DialogService : IDialogService
                     AtcSoft.Video.Surveillance.Helpers.RecordingPathHelper.GetCameraFolderName(c.Display.DisplayName, c.Id),
                     folder,
                     StringComparison.OrdinalIgnoreCase))
-                ?.Core)
+                ?.Core,
+            pickFolder: OtherFolderPicker.Pick)
         {
             Previews = recordingPreviews,
         };
