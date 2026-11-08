@@ -42,6 +42,12 @@ public static class ApplicationPaths
         => Path.Combine(baseDataPath, "cameras.json");
 
     /// <summary>
+    /// Gets the folder of the availability history: when each camera was online, and when the app ran.
+    /// </summary>
+    public static string DefaultAvailabilityPath
+        => Path.Combine(baseDataPath, AtcSoft.Video.Surveillance.Helpers.Activity.AvailabilityFolder.FolderName);
+
+    /// <summary>
     /// Configures the application folder name under AtcSoft in ProgramData.
     /// Must be called before any path properties are accessed. With
     /// ATCSOFT_DATA_PATH set the folder stays the override.

@@ -7,7 +7,9 @@ namespace AtcSoft.Video.Surveillance.Models;
 /// <param name="Start">Where the gap starts, 0 to 1.</param>
 /// <param name="End">Where the gap ends, 0 to 1.</param>
 /// <param name="Reason">Why nothing was recorded.</param>
+/// <param name="Text">What the pointer on the gap tells; the reason's text when not given.</param>
 public sealed record TimelineGapBand(
     double Start,
     double End,
-    GapReason Reason);
+    GapReason Reason,
+    string? Text = null);

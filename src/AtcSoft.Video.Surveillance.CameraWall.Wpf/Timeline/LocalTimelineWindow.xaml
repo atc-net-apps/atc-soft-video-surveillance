@@ -18,9 +18,9 @@
     d:DataContext="{d:DesignInstance Type=timeline:LocalTimelineViewModel,
                                      IsDesignTimeCreatable=False}"
     ResizeMode="CanResize"
-    ShowInTaskbar="True"
+    ShowInTaskbar="False"
     WindowStartupLocation="CenterOwner"
-    WindowStyle="SingleBorderWindow"
+    WindowStyle="ToolWindow"
     mc:Ignorable="d">
 
     <atc:NiceWindow.Resources>
@@ -33,7 +33,7 @@
 
     <Grid>
         <!--  The timeline  -->
-        <atc:GridEx Margin="16" Rows="Auto,Auto,*,Auto">
+        <atc:GridEx Margin="16" Rows="Auto,Auto,Auto,*,Auto">
 
             <!--  What the lanes show  -->
             <TextBlock
@@ -43,9 +43,36 @@
                 Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=TimelineHelp}"
                 TextWrapping="Wrap" />
 
-            <!--  The span, the events, play all  -->
+            <!--  Where the recordings are read from: this computer, or another CameraWall's folder (read only)  -->
             <DockPanel
                 Grid.Row="1"
+                Margin="0,0,0,12"
+                LastChildFill="False">
+                <TextBlock
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
+                    DockPanel.Dock="Left"
+                    Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=TimelineSource}" />
+                <ComboBox
+                    MinWidth="320"
+                    MaxWidth="560"
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=TimelineSource}"
+                    DockPanel.Dock="Left"
+                    ItemsSource="{Binding Path=SourceChoices}"
+                    SelectedItem="{Binding Path=SelectedSource, Mode=TwoWay}" />
+                <Button
+                    Padding="12,6"
+                    Command="{Binding Path=OpenFolderCommand}"
+                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OpenAnotherFolder}"
+                    DockPanel.Dock="Left"
+                    ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OpenAnotherFolderInfo}" />
+            </DockPanel>
+
+            <!--  The span, the events, play all  -->
+            <DockPanel
+                Grid.Row="2"
                 Margin="0,0,0,12"
                 LastChildFill="False">
                 <ComboBox
@@ -98,7 +125,7 @@
 
             <!--  One lane per camera  -->
             <ScrollViewer
-                Grid.Row="2"
+                Grid.Row="3"
                 HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto">
                 <StackPanel>
@@ -106,16 +133,26 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type timeline:LocalTimelineLaneViewModel}">
                                 <atc:GridEx Margin="0,0,0,4" Columns="160,*">
-                                    <TextBlock
+                                    <!--  The camera, and how often it dropped out in the time shown  -->
+                                    <StackPanel
                                         Grid.Column="0"
-                                        VerticalAlignment="Center"
-                                        Text="{Binding Path=CameraName}"
-                                        TextTrimming="CharacterEllipsis" />
+                                        Margin="0,0,8,0"
+                                        VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Path=CameraName}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock
+                                            FontSize="11"
+                                            Foreground="{x:Static coreControls:TimelineGapLook.OfflineTextBrush}"
+                                            Text="{Binding Path=OfflineText}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTip="{Binding Path=OfflineText}"
+                                            Visibility="{Binding Path=HasOffline, Converter={StaticResource BoolToVisibility}}" />
+                                    </StackPanel>
                                     <coreControls:CameraTimelineLane
                                         Grid.Column="1"
                                         Height="36"
                                         AutomationProperties.Name="{Binding Path=CameraName}"
                                         EventBands="{Binding Path=EventBands}"
+                                        GapBands="{Binding Path=GapBands}"
                                         NowFraction="{Binding Path=NowFraction}"
                                         SeekCommand="{Binding Path=PlayAtCommand}"
                                         Stretches="{Binding Path=Stretches}"
@@ -154,12 +191,50 @@
                             Step="1"
                             ToolTip="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ZoomRange}" />
                     </atc:GridEx>
+
+                    <!--  Why a lane has a gap  -->
+                    <atc:GridEx Margin="0,8,0,0" Columns="160,*">
+                        <WrapPanel Grid.Column="1">
+                            <StackPanel Margin="0,0,16,0" Orientation="Horizontal">
+                                <Rectangle
+                                    Width="14"
+                                    Height="14"
+                                    Margin="0,0,4,0"
+                                    Fill="{x:Static coreControls:TimelineGapLook.OfflineBrush}" />
+                                <TextBlock VerticalAlignment="Center" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GapOffline}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,16,0" Orientation="Horizontal">
+                                <Rectangle
+                                    Width="14"
+                                    Height="14"
+                                    Margin="0,0,4,0"
+                                    Fill="{x:Static coreControls:TimelineGapLook.ServerDownBrush}" />
+                                <TextBlock VerticalAlignment="Center" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GapCameraWallNotRunning}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,16,0" Orientation="Horizontal">
+                                <Rectangle
+                                    Width="14"
+                                    Height="14"
+                                    Margin="0,0,4,0"
+                                    Fill="{x:Static coreControls:TimelineGapLook.NotRecordingBrush}" />
+                                <TextBlock VerticalAlignment="Center" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GapNotRecording}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,16,0" Orientation="Horizontal">
+                                <Rectangle
+                                    Width="14"
+                                    Height="14"
+                                    Margin="0,0,4,0"
+                                    Fill="{x:Static coreControls:TimelineGapLook.UnknownBrush}" />
+                                <TextBlock VerticalAlignment="Center" Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=GapUnknown}" />
+                            </StackPanel>
+                        </WrapPanel>
+                    </atc:GridEx>
                 </StackPanel>
             </ScrollViewer>
 
             <!--  Status  -->
             <TextBlock
-                Grid.Row="3"
+                Grid.Row="4"
                 Margin="0,8,0,0"
                 Text="{Binding Path=StatusMessage}" />
         </atc:GridEx>

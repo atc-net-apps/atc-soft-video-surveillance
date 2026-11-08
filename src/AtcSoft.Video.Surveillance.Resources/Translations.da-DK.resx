@@ -2922,4 +2922,37 @@ Miniature:
   <data name="PlayAllPosition" xml:space="preserve">
     <value>Flyt gennem den viste tid</value>
   </data>
+  <data name="GapCameraWallNotRunning" xml:space="preserve">
+    <value>CameraWall kørte ikke</value>
+  </data>
+  <data name="TimelineSource" xml:space="preserve">
+    <value>Optagelser fra</value>
+  </data>
+  <data name="ThisComputer" xml:space="preserve">
+    <value>Denne computer</value>
+  </data>
+  <data name="OpenAnotherFolder" xml:space="preserve">
+    <value>Åbn en anden mappe...</value>
+  </data>
+  <data name="OpenAnotherFolderInfo" xml:space="preserve">
+    <value>Vis tidslinjen for en anden CameraWall: dens delte datamappe (f.eks. \\pc\CameraWall) eller dens optagelsesmappe. Intet i den ændres.</value>
+  </data>
+  <data name="TimelineFolderOpening1" xml:space="preserve">
+    <value>Åbner {0}...</value>
+  </data>
+  <data name="TimelineFolderNotOpened1" xml:space="preserve">
+    <value>Kunne ikke åbne {0}.</value>
+  </data>
+  <data name="OfflineSummary2" xml:space="preserve">
+    <value>Offline {0}× · {1}</value>
+  </data>
+  <data name="GapSpan4" xml:space="preserve">
+    <value>{0}: {1} – {2} ({3})</value>
+  </data>
+  <data name="DurationHoursMinutes2" xml:space="preserve">
+    <value>{0} t {1} min</value>
+  </data>
+  <data name="DurationMinutes1" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
 </root>

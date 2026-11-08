@@ -117,7 +117,7 @@ public sealed partial class CameraTimelineLane : FrameworkElement
         laneToolTip ??= ToolTip;
         var fraction = ActualWidth > 0 ? Mouse.GetPosition(this).X / ActualWidth : -1;
         var gap = GapBands?.FirstOrDefault(g => fraction >= g.Start && fraction <= g.End);
-        ToolTip = gap is null ? laneToolTip : TimelineGapLook.TextOf(gap.Reason);
+        ToolTip = gap is null ? laneToolTip : gap.Text ?? TimelineGapLook.TextOf(gap.Reason);
     }
 
     /// <inheritdoc />

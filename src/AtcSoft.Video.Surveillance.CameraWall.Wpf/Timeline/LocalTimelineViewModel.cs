@@ -1,11 +1,17 @@
 namespace AtcSoft.Video.Surveillance.CameraWall.Wpf.Timeline;
 
 using ActivitySummaryCache = AtcSoft.Video.Surveillance.Helpers.Activity.ActivitySummaryCache;
+using CameraWallAvailability = AtcSoft.Video.Surveillance.Helpers.Activity.CameraWallAvailability;
 using IActiveRecordings = AtcSoft.Video.Surveillance.Services.IActiveRecordings;
 using LocalTimeline = AtcSoft.Video.Surveillance.Helpers.Activity.LocalTimeline;
+using LogHistoryCache = AtcSoft.Video.Surveillance.Helpers.Activity.LogHistoryCache;
+using OfflineSummary = AtcSoft.Video.Surveillance.Helpers.Activity.OfflineSummary;
 using TimelineBuilder = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineBuilder;
 using TimelineCamera = AtcSoft.Video.Surveillance.Models.TimelineCamera;
 using TimelineDays = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineDays;
+using TimelineFolders = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineFolders;
+using TimelineFolderSource = AtcSoft.Video.Surveillance.Models.TimelineFolderSource;
+using TimelineGaps = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineGaps;
 using TimelineMark = AtcSoft.Video.Surveillance.Models.TimelineMark;
 using TimelineMarks = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineMarks;
 using TimelineRecording = AtcSoft.Video.Surveillance.Models.TimelineRecording;
@@ -20,7 +26,11 @@ using TimelineSpans = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineSpans;
 /// for the activity of the recordings in progress.
 /// </summary>
 /// <remarks>
-/// CameraWall keeps no history of when a camera could be recorded, so a gap has no reason.
+/// A gap is coloured by why nothing was recorded (camera offline, CameraWall not running, not
+/// recording), from CameraWall's availability history and, before it began, its log; beside each
+/// camera's name, how often it dropped out. The timeline can also read another CameraWall's folder
+/// (a shared data folder such as <c>\\pc\CameraWall</c>): read only, nothing is written there, and it
+/// does not grow live.
 /// </remarks>
 [SuppressMessage("", "S2325:Make properties static", Justification = "XAML binding requires instance properties")]
 public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
@@ -44,6 +54,14 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     private readonly TimeZoneInfo zone;
     private readonly IRecordingPreviews? previews;
     private readonly Func<Guid?, string, RecordingVerdictSaver?>? verdictSaverFor;
+    private readonly string? availabilityFolder;
+    private readonly Func<string?> logFolder;
+    private readonly Func<string?> pickFolder;
+    private readonly TimelineFolderHistory folderHistory;
+    private readonly LogHistoryCache logCache = new();
+    private TimelineFolderSource? external;
+    private string? externalFolder;
+    private bool choosingSource;
     private DateTimeOffset from;
     private DateTimeOffset to;
     private DateTimeOffset spanFrom;
@@ -86,6 +104,12 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private double playAllMaximum = 1;
 
+    [ObservableProperty]
+    private ObservableCollection<TimelineSourceChoice> sourceChoices = [];
+
+    [ObservableProperty(AfterChangedCallback = nameof(OnSelectedSourceChanged))]
+    private TimelineSourceChoice selectedSource = TimelineSourceChoice.ThisComputer;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="LocalTimelineViewModel"/> class.
     /// </summary>
@@ -99,6 +123,10 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     /// Gets the saver of the verdicts given on a recording's timeline, by the lane's camera and the
     /// recording; without one, the player offers no verdicts.
     /// </param>
+    /// <param name="availabilityFolder">CameraWall's availability history; without it, and without a log, a gap has no reason.</param>
+    /// <param name="logFolder">Gets CameraWall's log folder, for the days before its availability history began.</param>
+    /// <param name="pickFolder">Asks the person for another CameraWall's folder; <see langword="null"/> when they cancel.</param>
+    /// <param name="folderHistory">The other folders opened before; the viewer's own list when not given.</param>
     public LocalTimelineViewModel(
         Func<IReadOnlyList<TimelineCamera>> cameras,
         Func<IReadOnlyList<string?>> folders,
@@ -106,7 +134,11 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         ActivitySummaryCache cache,
         TimeZoneInfo? zone = null,
         IRecordingPreviews? previews = null,
-        Func<Guid?, string, RecordingVerdictSaver?>? verdictSaverFor = null)
+        Func<Guid?, string, RecordingVerdictSaver?>? verdictSaverFor = null,
+        string? availabilityFolder = null,
+        Func<string?>? logFolder = null,
+        Func<string?>? pickFolder = null,
+        TimelineFolderHistory? folderHistory = null)
     {
         ArgumentNullException.ThrowIfNull(cameras);
         ArgumentNullException.ThrowIfNull(folders);
@@ -120,6 +152,11 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         this.verdictSaverFor = verdictSaverFor;
         this.cache = cache;
         this.zone = zone ?? TimeZoneInfo.Local;
+        this.availabilityFolder = availabilityFolder;
+        this.logFolder = logFolder ?? (() => null);
+        this.pickFolder = pickFolder ?? (() => null);
+        this.folderHistory = folderHistory ?? new TimelineFolderHistory();
+        SetSourceChoices(this.folderHistory.Read(), TimelineSourceChoice.ThisComputer);
         SpanChoices = TimelineSpanChoice.All();
         selectedSpan = SpanChoices.First(c => c.Hours == 24);
         Zoom = new TimelineZoomRange(OnZoomSettled);
@@ -147,6 +184,12 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     /// </summary>
     public bool IsPlayingAll
         => PlayAllSession is not null;
+
+    /// <summary>
+    /// Gets a value indicating whether the timeline reads another CameraWall's folder.
+    /// </summary>
+    public bool IsExternal
+        => external is not null;
 
     /// <summary>
     /// Starts moving through the time shown with *play all*'s slider: its clock no longer moves it.
@@ -300,12 +343,22 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
             var built = await Task.Run(() =>
             {
                 var found = Find(sources, start, end, now);
+                var history = CameraWallAvailability.Read(sources.Cameras, sources.AvailabilityFolder, sources.LogFolder, start, end, zone, logCache);
                 return sources.Cameras
-                    .Select(c => (Camera: c, Timeline: TimelineBuilder.Build(found.GetValueOrDefault(c.Id) ?? [], start, end, span)))
+                    .Select(c =>
+                    {
+                        var timeline = TimelineBuilder.Build(found.GetValueOrDefault(c.Id) ?? [], start, end, span);
+                        var cameraHistory = history.GetValueOrDefault(c.Id) ?? [];
+
+                        // Nothing is told about time still to come.
+                        var gaps = TimelineGaps.Find(timeline.Coverage, start, end > now ? now : end, cameraHistory);
+                        var (drops, offline) = OfflineSummary.Of(cameraHistory, gaps, start, end);
+                        return (Camera: c, Timeline: timeline, Gaps: gaps, Drops: drops, Offline: offline);
+                    })
                     .ToList();
             }).ConfigureAwait(true);
 
-            Lanes = [.. built.Select(b => new LocalTimelineLaneViewModel(b.Camera.Id, b.Camera.Name, b.Timeline, start, end, now, PlayAt))];
+            Lanes = [.. built.Select(b => new LocalTimelineLaneViewModel(b.Camera.Id, b.Camera.Name, b.Timeline, start, end, now, PlayAt, b.Gaps, b.Drops, b.Offline))];
             Marks = TimelineMarks.For(start, end, zone, CultureInfo.CurrentCulture);
         }
         finally
@@ -491,9 +544,9 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
             recordingStartTime: (moment - offset).LocalDateTime,
             activityLoader: RecordingActivityLoaders.FromFile(videoPath),
             startPosition: offset,
-            nextSegment: lane is null ? null : NextSegments(lane, videoPath, previews, path => verdictSaverFor?.Invoke(lane.CameraId, path)),
-            previewLoader: RecordingPreviewLoaders.FromFile(videoPath, previews),
-            verdictSaver: verdictSaverFor?.Invoke(lane?.CameraId, videoPath));
+            nextSegment: lane is null ? null : NextSegments(lane, videoPath, LocalPreviews, path => VerdictSaver(lane.CameraId, path)),
+            previewLoader: RecordingPreviewLoaders.FromFile(videoPath, LocalPreviews),
+            verdictSaver: VerdictSaver(lane?.CameraId, videoPath));
 
         new FullScreenRecordingWindow(viewModel).Show();
     }
@@ -503,13 +556,98 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
         DateTimeOffset moment)
         => $"{cameraName} - {moment.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)}";
 
+    // Another CameraWall's folder is only read: no previews are made there, and no verdicts written.
+    private IRecordingPreviews? LocalPreviews
+        => external is null ? previews : null;
+
+    private RecordingVerdictSaver? VerdictSaver(
+        Guid? cameraId,
+        string videoPath)
+        => external is null ? verdictSaverFor?.Invoke(cameraId, videoPath) : null;
+
     // The cameras, folders and recordings in progress, read on the UI thread: the scan runs on
-    // another one, and must not touch the app's own lists while they change.
-    private (IReadOnlyList<TimelineCamera> Cameras, IReadOnlyList<string?> Folders, IReadOnlyList<RecordingSession> Sessions) Sources()
-        => ([.. cameras()], [.. folders()], [.. recordings.GetActiveSessions()]);
+    // another one, and must not touch the app's own lists while they change. Another CameraWall's
+    // folder has its own cameras and folders, and none of this app's recordings.
+    private TimelineSources Sources()
+        => external is { } source
+            ? new TimelineSources(source.Cameras, [source.RecordingsFolder], [], source.AvailabilityFolder, source.LogFolder)
+            : new TimelineSources([.. cameras()], [.. folders()], [.. recordings.GetActiveSessions()], availabilityFolder, logFolder());
+
+    [RelayCommand("OpenFolder")]
+    private async Task OpenFolderAsync()
+    {
+        if (pickFolder() is not { Length: > 0 } folder)
+        {
+            return;
+        }
+
+        await OpenSourceAsync(folder).ConfigureAwait(true);
+    }
+
+    private void OnSelectedSourceChanged()
+    {
+        if (choosingSource)
+        {
+            return;
+        }
+
+        if (SelectedSource.Folder is { } folder)
+        {
+            _ = OpenSourceAsync(folder);
+            return;
+        }
+
+        StopPlayAll();
+        external = null;
+        externalFolder = null;
+        OnPropertyChanged(nameof(IsExternal));
+        StatusMessage = string.Empty;
+        cursor = null;
+        LoadCommand.Execute(parameter: null);
+    }
+
+    // A folder on another computer can take a while to answer, or not answer: it is opened off the UI thread.
+    private async Task OpenSourceAsync(string folder)
+    {
+        StopPlayAll();
+        StatusMessage = string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderOpening1, folder);
+        var source = await Task.Run(() => TimelineFolders.Open(folder)).ConfigureAwait(true);
+        if (source is null)
+        {
+            // Back to what was shown; the folder stays offered, to try again.
+            StatusMessage = string.Format(CultureInfo.CurrentCulture, Translations.TimelineFolderNotOpened1, folder);
+            SetSourceChoices(folderHistory.Read(), new TimelineSourceChoice(externalFolder));
+            return;
+        }
+
+        external = source;
+        externalFolder = folder;
+        OnPropertyChanged(nameof(IsExternal));
+        StatusMessage = string.Empty;
+        cursor = null;
+        SetSourceChoices(folderHistory.Add(folder), new TimelineSourceChoice(folder));
+        await LoadAsync().ConfigureAwait(true);
+    }
+
+    // The choices without opening one: this computer first, then the folders opened before.
+    private void SetSourceChoices(
+        IReadOnlyList<string> folders,
+        TimelineSourceChoice selected)
+    {
+        choosingSource = true;
+        try
+        {
+            SourceChoices = [TimelineSourceChoice.ThisComputer, .. folders.Select(f => new TimelineSourceChoice(f))];
+            SelectedSource = SourceChoices.FirstOrDefault(c => c == selected) ?? TimelineSourceChoice.ThisComputer;
+        }
+        finally
+        {
+            choosingSource = false;
+        }
+    }
 
     private IReadOnlyDictionary<Guid, IReadOnlyList<TimelineRecording>> Find(
-        (IReadOnlyList<TimelineCamera> Cameras, IReadOnlyList<string?> Folders, IReadOnlyList<RecordingSession> Sessions) sources,
+        TimelineSources sources,
         DateTimeOffset start,
         DateTimeOffset end,
         DateTimeOffset now)
@@ -527,7 +665,7 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
 
     private void ReloadLive()
     {
-        if (!IsShown || SelectedSpan.IsDay || zoomed || IsPlayingAll || Interlocked.Exchange(ref reloadPending, 1) == 1)
+        if (!IsShown || IsExternal || SelectedSpan.IsDay || zoomed || IsPlayingAll || Interlocked.Exchange(ref reloadPending, 1) == 1)
         {
             return;
         }

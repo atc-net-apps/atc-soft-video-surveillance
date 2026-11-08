@@ -39,4 +39,10 @@ public enum AvailabilityChange
     /// The server stopped (in the server's own log, for every camera).
     /// </summary>
     ServerStopped = 6,
+
+    /// <summary>
+    /// The camera was let go of on purpose (CameraWall: taken off the layout shown, disconnected by
+    /// hand, the app closing): not offline, but not watched or recorded either.
+    /// </summary>
+    Released = 7,
 }

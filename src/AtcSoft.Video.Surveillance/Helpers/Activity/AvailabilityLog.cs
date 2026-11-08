@@ -149,6 +149,7 @@ public static class AvailabilityLog
             AvailabilityChange.DiskFull => "diskFull",
             AvailabilityChange.ServerStarted => "serverStarted",
             AvailabilityChange.ServerStopped => "serverStopped",
+            AvailabilityChange.Released => "released",
             _ => throw new ArgumentOutOfRangeException(nameof(change), change, message: null),
         };
 
@@ -162,6 +163,7 @@ public static class AvailabilityLog
             "diskFull" => AvailabilityChange.DiskFull,
             "serverStarted" => AvailabilityChange.ServerStarted,
             "serverStopped" => AvailabilityChange.ServerStopped,
+            "released" => AvailabilityChange.Released,
             _ => null,
         };
 }

@@ -126,6 +126,9 @@ public static class TimelineGaps
                     case AvailabilityChange.Offline:
                         offline = true;
                         break;
+                    case AvailabilityChange.Released:
+                        offline = false;
+                        break;
                     case AvailabilityChange.RecordingStarted:
                         diskFull = false;
                         break;

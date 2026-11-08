@@ -23,6 +23,7 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
     private readonly IUsbCameraWatcher usbCameraWatcher;
     private readonly ICameraConnectionTypeDetector? connectionTypeDetector;
     private readonly IRecordingPreviews? recordingPreviews;
+    private readonly ICameraAvailabilityNotes? availabilityNotes;
     private readonly ConcurrentDictionary<Guid, byte> connectionTypeProbedCameras = new();
 
     // The summaries of the activity indexes already read, kept while the app runs.
@@ -87,7 +88,8 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
         IVideoPlayerFactory videoPlayerFactory,
         IUsbCameraWatcher usbCameraWatcher,
         ICameraConnectionTypeDetector? connectionTypeDetector = null,
-        IRecordingPreviews? recordingPreviews = null)
+        IRecordingPreviews? recordingPreviews = null,
+        ICameraAvailabilityNotes? availabilityNotes = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(storageService);
@@ -114,6 +116,7 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
         this.usbCameraWatcher = usbCameraWatcher;
         this.connectionTypeDetector = connectionTypeDetector;
         this.recordingPreviews = recordingPreviews;
+        this.availabilityNotes = availabilityNotes;
 
         Layouts = new ObservableCollection<CameraLayout>(storageService.GetAllLayouts());
 
@@ -897,6 +900,7 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
             e.Camera.Display.DisplayName,
             e.PreviousState.ToString(),
             e.NewState.ToString());
+        availabilityNotes?.NoteConnection(e.Camera.Id, e.NewState.ToString());
 
         if (e.NewState == ConnectionState.Connected)
         {
@@ -1015,11 +1019,29 @@ public sealed partial class CameraWallManager : ObservableObject, ICameraWallMan
             verdictSaverFor: (cameraId, videoPath) => RecordingVerdictSavers.ToFile(
                 videoPath,
                 storageService.GetAllCameras().FirstOrDefault(c => c.Id == cameraId),
-                settingsService.MotionDetection));
+                settingsService.MotionDetection),
+            availabilityFolder: AtcSoft.Video.Surveillance.Wpf.Core.ApplicationPaths.DefaultAvailabilityPath,
+            logFolder: () => string.IsNullOrEmpty(settingsService.Advanced.LogPath) ? AtcSoft.Video.Surveillance.Wpf.Core.ApplicationPaths.DefaultLogsPath : settingsService.Advanced.LogPath,
+            pickFolder: PickTimelineFolder);
         new AtcSoft.Video.Surveillance.CameraWall.Wpf.Timeline.LocalTimelineWindow(viewModel)
         {
             Owner = Application.Current.MainWindow,
         }.Show();
+    }
+
+    // The system's folder picker, over the timeline window: another CameraWall's shared folder.
+    private static string? PickTimelineFolder()
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = Translations.OpenAnotherFolder,
+            Multiselect = false,
+        };
+        var owner = Application.Current?.Windows.OfType<AtcSoft.Video.Surveillance.CameraWall.Wpf.Timeline.LocalTimelineWindow>().FirstOrDefault(w => w.IsActive)
+                    ?? Application.Current?.MainWindow;
+        return (owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner)) == true
+            ? dialog.FolderName
+            : null;
     }
 
     private string GlobalRecordingPath()
