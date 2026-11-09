@@ -45,6 +45,11 @@ public static class MotionZoneEditing
     public const double DefaultSmallestObjectPercent = 0.02;
 
     /// <summary>
+    /// <see cref="DefaultSmallestObjectPercent"/> for a number box that edits a decimal.
+    /// </summary>
+    public const decimal DefaultSmallestObjectPercentDecimal = 0.02m;
+
+    /// <summary>
     /// Reads a watch zone's sensitivity as typed: empty is none (the camera's), a whole number is
     /// kept from 0 to 100.
     /// </summary>

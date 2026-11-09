@@ -107,6 +107,10 @@ public sealed class WatchZoneTests
     public void The_Editors_Default_Is_The_Detectors()
         => MotionZoneEditing.DefaultSmallestObjectPercent.Should().BeApproximately(MotionDetectorOptions.DefaultSmallestObjectPercent, 1e-12);
 
+    [Fact]
+    public void The_Editors_Decimal_Default_Is_The_Detectors()
+        => ((double)MotionZoneEditing.DefaultSmallestObjectPercentDecimal).Should().BeApproximately(MotionDetectorOptions.DefaultSmallestObjectPercent, 1e-12);
+
     private static MotionZone Zone(
         MotionZoneKind kind,
         double left,

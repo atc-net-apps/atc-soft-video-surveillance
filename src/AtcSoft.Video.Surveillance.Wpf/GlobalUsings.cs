@@ -94,6 +94,7 @@ global using ActivityEvent = AtcSoft.Video.Surveillance.Models.ActivityEvent;
 global using GapReason = AtcSoft.Video.Surveillance.Enums.GapReason;
 global using MotionDetectorOptions = AtcSoft.Video.Surveillance.Helpers.MotionDetection.MotionDetectorOptions;
 global using MotionZoneDraft = AtcSoft.Video.Surveillance.Helpers.MotionDetection.MotionZoneDraft;
+global using MotionZoneEditing = AtcSoft.Video.Surveillance.Helpers.MotionDetection.MotionZoneEditing;
 global using TimelineGapBand = AtcSoft.Video.Surveillance.Models.TimelineGapBand;
 global using TimelineMark = AtcSoft.Video.Surveillance.Models.TimelineMark;
 global using TimelineMarks = AtcSoft.Video.Surveillance.Helpers.Activity.TimelineMarks;

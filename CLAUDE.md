@@ -21,7 +21,7 @@ All user and developer documentation lives in the [wiki](https://github.com/atc-
 - `AtcSoft.Video.Surveillance.CameraWall.Wpf.App` - Thin shell WPF application using the library (standalone, connects directly to cameras)
 - `AtcSoft.Video.Surveillance.Wpf` - WPF library for the VideoSurveillance API client (GatewayService, SurveillanceEventService, OpenAPI-generated client)
 - `AtcSoft.Video.Surveillance.Wpf.App` - WPF management application for the API server (Fluent.Ribbon, Serilog, splash screen)
-- `AtcSoft.Video.Surveillance.Api.Contracts` - Generated API models, endpoints, handler interfaces (OpenAPI-first via Atc.Rest.Api.SourceGenerator 3.0.1 from nuget.org)
+- `AtcSoft.Video.Surveillance.Api.Contracts` - Generated API models, endpoints, handler interfaces (OpenAPI-first via Atc.Rest.Api.SourceGenerator 3.3.1 from nuget.org)
 - `AtcSoft.Video.Surveillance.Api.Domain` - Handler implementations calling Core services
 - `AtcSoft.Video.Surveillance.Api` - ASP.NET Core host (REST, `GET /events`, HLS streams, the web client at `/`); `net10.0-windows` on Windows, `net10.0` elsewhere (Linux, the Docker image), a console app or the Windows service `AtcSoftVideoSurveillance`
 - `AtcSoft.Video.Surveillance.Aspire` - Aspire AppHost for orchestrated startup and developer dashboard
