@@ -172,7 +172,7 @@ public partial class SettingsDialogViewModel : ViewModelDialogBase
 
     // Decimal, as the decimal box takes it.
     [ObservableProperty]
-    private decimal smallestObjectPercent = (decimal)MotionDetectorOptions.DefaultSmallestObjectPercent;
+    private decimal smallestObjectPercent = MotionZoneEditing.DefaultSmallestObjectPercentDecimal;
 
     [ObservableProperty]
     private int stoppedObjectSeconds = MotionDetectorOptions.DefaultStoppedObjectSeconds;
@@ -519,7 +519,7 @@ public partial class SettingsDialogViewModel : ViewModelDialogBase
 
         // Motion Detection Tab
         MotionSensitivity = DropDownItemsFactory.DefaultMotionSensitivity;
-        SmallestObjectPercent = (decimal)MotionDetectorOptions.DefaultSmallestObjectPercent;
+        SmallestObjectPercent = MotionZoneEditing.DefaultSmallestObjectPercentDecimal;
         StoppedObjectSeconds = MotionDetectorOptions.DefaultStoppedObjectSeconds;
         IgnoreLightingChanges = true;
         PostMotionDurationSeconds = DropDownItemsFactory.DefaultPostMotionDuration;

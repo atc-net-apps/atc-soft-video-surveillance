@@ -2132,6 +2132,7 @@ components:
     UpdateUserRequest:
       title: UpdateUserRequest
       type: object
+      required: []
       description: What is left out stays.
       properties:
         role:
@@ -2487,6 +2488,7 @@ components:
     UpdateCameraRequest:
       title: UpdateCameraRequest
       type: object
+      required: []
       properties:
         displayName:
           type: string
@@ -2696,6 +2698,7 @@ components:
     LayoutItem:
       title: LayoutItem
       type: object
+      required: []
       properties:
         cameraId:
           type: string
@@ -2728,6 +2731,7 @@ components:
     UpdateLayoutRequest:
       title: UpdateLayoutRequest
       type: object
+      required: []
       properties:
         name:
           type: string
@@ -3449,6 +3453,7 @@ components:
     UpdateSettingsRequest:
       title: UpdateSettingsRequest
       type: object
+      required: []
       description: A change of the settings. A setting that is left out keeps its value, so a client that does not know a setting yet does not reset it.
       properties:
         # General
@@ -3719,6 +3724,7 @@ components:
     ProblemDetails:
       title: ProblemDetails
       type: object
+      required: []
       description: An RFC 9457 problem, as every error response is written.
       properties:
         type:
@@ -4014,6 +4020,7 @@ components:
     WebhookPayloadData:
       title: WebhookPayloadData
       type: object
+      required: []
       description: What else is known about the event. A field the event has no value for is left out.
       properties:
         filePath:
