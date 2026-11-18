@@ -15,12 +15,12 @@ public partial class CameraOverlay
     [DependencyProperty]
     private string title = string.Empty;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnDescriptionChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private string description = string.Empty;
 
     [DependencyProperty(
         DefaultValue = ConnectionState.Disconnected,
-        PropertyChangedCallback = nameof(OnConnectionStateChanged))]
+        GeneratePartialHooks = true)]
     private ConnectionState connectionState;
 
     [DependencyProperty]
@@ -41,7 +41,7 @@ public partial class CameraOverlay
     [DependencyProperty(DefaultValue = true)]
     private bool showConnectionStatus;
 
-    [DependencyProperty(DefaultValue = false, PropertyChangedCallback = nameof(OnShowTimeChanged))]
+    [DependencyProperty(DefaultValue = false, GeneratePartialHooks = true)]
     private bool showTime;
 
     [DependencyProperty]
@@ -50,10 +50,10 @@ public partial class CameraOverlay
     [DependencyProperty(DefaultValue = 0.6)]
     private double overlayOpacity;
 
-    [DependencyProperty(DefaultValue = false, PropertyChangedCallback = nameof(OnIsRecordingChanged))]
+    [DependencyProperty(DefaultValue = false, GeneratePartialHooks = true)]
     private bool isRecording;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnRecordingDurationChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private TimeSpan recordingDuration;
 
     [DependencyProperty]
@@ -127,25 +127,15 @@ public partial class CameraOverlay
         RoutedEventArgs e)
         => StopTimeTimer();
 
-    private static void OnDescriptionChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraOverlay overlay)
-        {
-            overlay.HasDescription = !string.IsNullOrEmpty(e.NewValue as string);
-        }
-    }
+    partial void OnDescriptionChanged(
+        string oldValue,
+        string newValue)
+        => HasDescription = !string.IsNullOrEmpty(newValue);
 
-    private static void OnConnectionStateChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraOverlay overlay && e.NewValue is ConnectionState state)
-        {
-            overlay.UpdateConnectionVisuals(state);
-        }
-    }
+    partial void OnConnectionStateChanged(
+        ConnectionState oldValue,
+        ConnectionState newValue)
+        => UpdateConnectionVisuals(newValue);
 
     private void UpdateConnectionVisuals(ConnectionState state)
     {
@@ -168,22 +158,17 @@ public partial class CameraOverlay
         StatusTextBlock.Text = text;
     }
 
-    private static void OnShowTimeChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
+    partial void OnShowTimeChanged(
+        bool oldValue,
+        bool newValue)
     {
-        if (d is not CameraOverlay overlay || e.NewValue is not bool showTime)
+        if (newValue)
         {
-            return;
-        }
-
-        if (showTime)
-        {
-            overlay.StartTimeTimer();
+            StartTimeTimer();
         }
         else
         {
-            overlay.StopTimeTimer();
+            StopTimeTimer();
         }
     }
 
@@ -216,25 +201,15 @@ public partial class CameraOverlay
         CurrentTime = DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
     }
 
-    private static void OnIsRecordingChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraOverlay overlay && e.NewValue is bool isRecording)
-        {
-            overlay.UpdateRecordingAnimation(isRecording);
-        }
-    }
+    partial void OnIsRecordingChanged(
+        bool oldValue,
+        bool newValue)
+        => UpdateRecordingAnimation(newValue);
 
-    private static void OnRecordingDurationChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraOverlay overlay && e.NewValue is TimeSpan duration)
-        {
-            overlay.RecordingDurationText = duration.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
-        }
-    }
+    partial void OnRecordingDurationChanged(
+        TimeSpan oldValue,
+        TimeSpan newValue)
+        => RecordingDurationText = newValue.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
 
     private void UpdateRecordingAnimation(bool recording)
     {

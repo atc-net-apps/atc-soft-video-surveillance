@@ -6,7 +6,7 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.UserControls;
 /// </summary>
 public sealed partial class TimelineMarksBar : FrameworkElement
 {
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private IReadOnlyList<TimelineMark>? marks;
 
     /// <inheritdoc />
@@ -38,16 +38,6 @@ public sealed partial class TimelineMarksBar : FrameworkElement
                 dpi);
             var x = Math.Clamp((mark.Fraction * width) - (text.Width / 2), 0, Math.Max(width - text.Width, 0));
             drawingContext.DrawText(text, new Point(x, 0));
-        }
-    }
-
-    private static void OnLookChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is TimelineMarksBar bar)
-        {
-            bar.InvalidateVisual();
         }
     }
 }

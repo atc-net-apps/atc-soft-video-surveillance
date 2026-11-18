@@ -44,7 +44,7 @@ public partial class CameraGrid
 
     private bool isApplyingPage;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnCameraTilesChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private ObservableCollection<CameraConfiguration> cameraTiles = [];
 
     [DependencyProperty(DefaultValue = true)]
@@ -737,25 +737,23 @@ public partial class CameraGrid
         UpdateEmptyState();
     }
 
-    private static void OnCameraTilesChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
+    // A binding can still set null, whatever the property's type says.
+    partial void OnCameraTilesChanged(
+        ObservableCollection<CameraConfiguration> oldValue,
+        ObservableCollection<CameraConfiguration> newValue)
     {
-        if (d is CameraGrid grid)
+        UpdateGridLayout();
+        UpdateEmptyState();
+        UpdateSwapCapabilities();
+
+        if (oldValue is not null)
         {
-            grid.UpdateGridLayout();
-            grid.UpdateEmptyState();
-            grid.UpdateSwapCapabilities();
+            oldValue.CollectionChanged -= OnCameraTilesCollectionChanged;
+        }
 
-            if (e.OldValue is ObservableCollection<CameraConfiguration> oldCollection)
-            {
-                oldCollection.CollectionChanged -= grid.OnCameraTilesCollectionChanged;
-            }
-
-            if (e.NewValue is ObservableCollection<CameraConfiguration> newCollection)
-            {
-                newCollection.CollectionChanged += grid.OnCameraTilesCollectionChanged;
-            }
+        if (newValue is not null)
+        {
+            newValue.CollectionChanged += OnCameraTilesCollectionChanged;
         }
     }
 
