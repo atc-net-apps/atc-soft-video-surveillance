@@ -6,6 +6,8 @@
     <!-- The satellite assemblies of the four languages, and their date and number formats -->
     <SatelliteResourceLanguages>en-GB;da-DK;de-DE</SatelliteResourceLanguages>
     <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
+    <!-- The Gateway (dotnet run) answers a page address such as /cameras with index.html -->
+    <StaticWebAssetSpaFallbackEnabled>true</StaticWebAssetSpaFallbackEnabled>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +23,7 @@
     <PackageReference Include="Atc" Version="4.1.0" />
     <PackageReference Include="Atc.Rest.Client" Version="2.7.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="11.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="11.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Gateway" Version="11.0.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="11.0.0" />
     <PackageReference Include="MudBlazor" Version="9.14.0" />
   </ItemGroup>
