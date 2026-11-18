@@ -56,7 +56,7 @@ public partial class UsersDialogViewModel : ViewModelBase
     /// <summary>
     /// Gets the yes/no question shown inside the dialog: a dialog opens no other window.
     /// </summary>
-    public AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.DialogQuestion Question { get; } = new();
+    public AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.DialogConfirmation Question { get; } = new();
 
     public event EventHandler<DialogClosedEventArgs>? CloseRequested;
 

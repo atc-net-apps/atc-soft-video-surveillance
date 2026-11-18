@@ -33,14 +33,14 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Atc.Network" Version="2.0.0" />
-    <PackageReference Include="Atc.Wpf" Version="4.5.1" />
-    <PackageReference Include="Atc.Wpf.Components" Version="4.5.1" />
-    <PackageReference Include="Atc.Wpf.Controls" Version="4.5.1" />
-    <PackageReference Include="Atc.Wpf.FontIcons" Version="4.5.1" />
-    <PackageReference Include="Atc.Wpf.Forms" Version="4.5.1" />
-    <PackageReference Include="Atc.Wpf.Hardware" Version="4.5.1" />
-    <PackageReference Include="Atc.Wpf.Network" Version="4.5.1" />
-    <PackageReference Include="Atc.Wpf.Theming" Version="4.5.1" />
+    <PackageReference Include="Atc.Wpf" Version="4.6.0" />
+    <PackageReference Include="Atc.Wpf.Components" Version="4.6.0" />
+    <PackageReference Include="Atc.Wpf.Controls" Version="4.6.0" />
+    <PackageReference Include="Atc.Wpf.FontIcons" Version="4.6.0" />
+    <PackageReference Include="Atc.Wpf.Forms" Version="4.6.0" />
+    <PackageReference Include="Atc.Wpf.Hardware" Version="4.6.0" />
+    <PackageReference Include="Atc.Wpf.Network" Version="4.6.0" />
+    <PackageReference Include="Atc.Wpf.Theming" Version="4.6.0" />
     <PackageReference Include="Atc.XamlToolkit" Version="4.0.0" />
     <PackageReference Include="Atc.XamlToolkit.Wpf" Version="4.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="11.0.0" />
