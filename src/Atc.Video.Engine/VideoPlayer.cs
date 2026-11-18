@@ -869,13 +869,31 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             catch (FFmpegException ex) when (!ct.IsCancellationRequested)
             {
                 // A camera that is off or out of reach: expected, and the one who opened it tries
-                // again. One line, without the stack trace.
-                LogStreamOpenFailed(source, ex.Message);
+                // again, for days if it stays away. One line, without the stack trace: a warning
+                // the first time and once an hour, a debug line for each attempt in between.
+                var note = OpenFailureLog.Shared.Failed(source);
+                if (note.Attempts == 1)
+                {
+                    LogStreamOpenFailed(source, ex.Message);
+                }
+                else if (note.Level == Microsoft.Extensions.Logging.LogLevel.Warning)
+                {
+                    LogStreamStillNotOpen(source, note.Attempts, note.Since.TotalHours, ex.Message);
+                }
+                else
+                {
+                    LogStreamOpenFailedAgain(source, note.Attempts, ex.Message);
+                }
+
                 SetState(PlayerState.Error, ex.Message);
                 return;
             }
 
             LogStreamDemuxerOpened(source);
+            if (OpenFailureLog.Shared.Opened(source) is var failed and > 0)
+            {
+                LogStreamOpenedAfterFailures(source, failed);
+            }
 
             var threadCount = VideoEngineBootstrap.Config?.DecoderThreads ?? 0;
             decoderThreads = threadCount;

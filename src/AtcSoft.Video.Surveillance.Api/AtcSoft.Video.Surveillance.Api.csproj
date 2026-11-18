@@ -17,7 +17,7 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0" />
     <!-- Pinned above the 2.0.0 that Microsoft.AspNetCore.OpenApi 10.0.8 pulls in transitively (NU1903 / GHSA-v5pm-xwqc-g5wc). -->
     <PackageReference Include="Microsoft.OpenApi" Version="3.11.1" />
-    <PackageReference Include="Scalar.AspNetCore" Version="3.0.1" />
+    <PackageReference Include="Scalar.AspNetCore" Version="3.0.2" />
     <PackageReference Include="Serilog.AspNetCore" Version="11.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />

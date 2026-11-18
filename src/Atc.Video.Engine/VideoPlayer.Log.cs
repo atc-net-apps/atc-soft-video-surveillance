@@ -32,6 +32,15 @@ public sealed partial class VideoPlayer
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "[{Source}] Could not open the stream: {Reason}")]
     private partial void LogStreamOpenFailed(string source, string reason);
 
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "[{Source}] Could not open the stream again (attempt {Attempts}): {Reason}")]
+    private partial void LogStreamOpenFailedAgain(string source, int attempts, string reason);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "[{Source}] Still cannot open the stream after {Attempts} attempts in {Hours:F1} h: {Reason}")]
+    private partial void LogStreamStillNotOpen(string source, int attempts, double hours, string reason);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "[{Source}] The stream opened again after {Attempts} failed attempts")]
+    private partial void LogStreamOpenedAfterFailures(string source, int attempts);
+
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "[{Source}] Stream demuxer opened successfully")]
     private partial void LogStreamDemuxerOpened(string source);
 
