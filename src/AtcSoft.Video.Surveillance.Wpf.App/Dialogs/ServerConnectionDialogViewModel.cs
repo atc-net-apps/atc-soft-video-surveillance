@@ -46,7 +46,7 @@ public sealed partial class ServerConnectionDialogViewModel : ObservableObject
     /// <summary>
     /// Gets the yes/no question shown inside the dialog: a dialog opens no other window.
     /// </summary>
-    public AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.DialogQuestion Question { get; } = new();
+    public AtcSoft.Video.Surveillance.Wpf.Core.Dialogs.DialogConfirmation Question { get; } = new();
 
     /// <summary>
     /// Gets a value indicating whether a profile is being added or edited, over the dialog.

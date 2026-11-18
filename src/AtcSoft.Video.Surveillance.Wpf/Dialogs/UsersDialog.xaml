@@ -4,7 +4,6 @@
     xmlns:atcTranslation="https://github.com/atc-net/atc-wpf/tree/main/schemas/translations"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:atc="https://github.com/atc-net/atc-wpf/tree/main/schemas"
-    xmlns:coreDialogs="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.Dialogs;assembly=AtcSoft.Video.Surveillance.Wpf.Core"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:dialogs="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Dialogs"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -227,6 +226,6 @@
         </DockPanel>
 
         <!--  Questions are asked inside the dialog: a dialog opens no other window  -->
-        <coreDialogs:DialogQuestionOverlay DataContext="{Binding Path=Question}" />
+        <atc:FlyoutHost x:Name="QuestionHost" />
     </Grid>
 </atc:NiceWindow>

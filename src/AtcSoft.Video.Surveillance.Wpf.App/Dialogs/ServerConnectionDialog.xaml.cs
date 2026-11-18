@@ -16,6 +16,7 @@ public partial class ServerConnectionDialog
 
         InitializeComponent();
         DataContext = viewModel;
+        viewModel.Question.SetHost(QuestionHost);
 
         viewModel.CloseRequested += (_, result) =>
         {

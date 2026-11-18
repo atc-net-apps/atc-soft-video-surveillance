@@ -11,6 +11,7 @@ public partial class UsersDialog
 
         InitializeComponent();
         DataContext = viewModel;
+        viewModel.Question.SetHost(QuestionHost);
 
         viewModel.CloseRequested += (_, args) =>
         {

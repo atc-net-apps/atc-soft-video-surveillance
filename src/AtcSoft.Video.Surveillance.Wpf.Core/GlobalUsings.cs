@@ -34,6 +34,7 @@ global using Atc.Helpers;
 global using Atc.Network.Helpers;
 global using Atc.Video.Engine;
 global using Atc.Wpf.Components.Dialogs;
+global using Atc.Wpf.Components.Flyouts;
 global using Atc.Wpf.Components.Selectors;
 global using Atc.Wpf.DependencyObjects;
 global using Atc.Wpf.Forms;
