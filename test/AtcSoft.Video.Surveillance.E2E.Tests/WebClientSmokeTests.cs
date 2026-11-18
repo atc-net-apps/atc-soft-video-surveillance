@@ -44,10 +44,7 @@ public sealed class WebClientSmokeTests(ServerFixture server)
         var problems = new List<string>();
         page.Console += (_, message) =>
         {
-            // A Debug build's hot reload (.NET 11) asks for its settings, which the development
-            // server does not have: a 404 that the published web client never sees.
-            if (string.Equals(message.Type, "error", StringComparison.Ordinal) &&
-                message.Location?.Contains("/_framework/dotnet-browser-tools/", StringComparison.Ordinal) != true)
+            if (string.Equals(message.Type, "error", StringComparison.Ordinal))
             {
                 problems.Add($"console ({page.Url}): {message.Text} @ {message.Location}");
             }
