@@ -149,7 +149,7 @@ public sealed class RecordingPlayerParkingTests
             TimeSpan.FromSeconds(10),
             TimeSpan.FromSeconds(20),
             TimeSpan.FromSeconds(40),
-            RecordingPlayerParking.ReopenMaxDelay,
+            TimeSpan.FromSeconds(80),
             RecordingPlayerParking.ReopenMaxDelay);
         sut.IsParked(Camera).Should().BeTrue();
     }

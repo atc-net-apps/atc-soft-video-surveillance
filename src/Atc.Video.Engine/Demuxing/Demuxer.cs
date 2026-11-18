@@ -137,11 +137,21 @@ internal sealed unsafe partial class Demuxer : IDisposable
             {
                 if (ret == AvErrorExit)
                 {
+                    var elapsed = timeoutWatch.Elapsed.TotalSeconds;
+
+                    // The interrupt callback ended a camera that did not answer in time: said so,
+                    // in place of FFmpeg's "Immediate exit requested".
+                    if (!abortRequested && !cancellationToken.IsCancellationRequested && elapsed >= timeoutSeconds)
+                    {
+                        throw new FFmpegException(
+                            $"Failed to open input: no answer within {timeoutSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)} s");
+                    }
+
                     LogAvformatOpenInputAborted(
                         options.Source,
                         abortRequested,
                         cancellationToken.IsCancellationRequested,
-                        timeoutWatch.Elapsed.TotalSeconds,
+                        elapsed,
                         timeoutSeconds);
                 }
 

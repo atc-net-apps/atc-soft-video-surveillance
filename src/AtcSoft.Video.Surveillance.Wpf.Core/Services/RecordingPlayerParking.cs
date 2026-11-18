@@ -23,9 +23,10 @@ public sealed class RecordingPlayerParking : IDisposable
     public static readonly TimeSpan ReopenFirstDelay = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// The longest wait between attempts to open a parked camera's stream.
+    /// The longest wait between attempts to open a parked camera's stream: as long as a tile waits
+    /// (<see cref="ReconnectBackoff.CameraMaxDelay"/>).
     /// </summary>
-    public static readonly TimeSpan ReopenMaxDelay = TimeSpan.FromSeconds(60);
+    public static readonly TimeSpan ReopenMaxDelay = ReconnectBackoff.CameraMaxDelay;
 
     private readonly Dictionary<Guid, Parked> parked = [];
     private readonly Action<Action> post;
