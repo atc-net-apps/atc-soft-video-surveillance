@@ -1,15 +1,10 @@
 ﻿{
-  "projectTarget": "DotNet10",
+  "projectTarget": "DotNet11",
   "useLatestMinorNugetVersion": true,
   "useTemporarySuppressions": false,
   "temporarySuppressionAsExcel": false,
   "analyzerProviderCollectingMode": "LocalCache",
   "mappings": {
-    "sample": {
-      "paths": [
-        "sample"
-      ]
-    },
     "src": {
       "paths": [
         "src"
@@ -22,6 +17,10 @@
     }
   },
   "projectFrameworkMappings": [
+    {
+      "name": "AtcSoft.Video.Surveillance.Api",
+      "type": "WebApi"
+    },
     {
       "name": "AtcSoft.Video.Surveillance.E2E.Tests",
       "type": "None"
