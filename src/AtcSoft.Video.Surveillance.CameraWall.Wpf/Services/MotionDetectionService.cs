@@ -345,6 +345,14 @@ public partial class MotionDetectionService : IMotionDetectionService, IDisposab
         _ = CaptureAndProcessAsync(cameraId, context);
     }
 
+    /// <summary>
+    /// Analyses the camera's current picture once, as a tick of the scheduler does (for tests).
+    /// </summary>
+    internal Task AnalyzeOnceAsync(Guid cameraId)
+        => contexts.TryGetValue(cameraId, out var context)
+            ? CaptureAndProcessAsync(cameraId, context)
+            : Task.CompletedTask;
+
     private async Task CaptureAndProcessAsync(
         Guid cameraId,
         MotionDetectionContext context)
@@ -366,7 +374,7 @@ public partial class MotionDetectionService : IMotionDetectionService, IDisposab
                 return;
             }
 
-            ProcessCapturedFrame(cameraId, frameBytes, grey);
+            ProcessCapturedFrame(cameraId, frameBytes, grey, width, height);
             context.ConsecutiveFails = 0;
         }
         catch (Exception ex)
@@ -391,10 +399,15 @@ public partial class MotionDetectionService : IMotionDetectionService, IDisposab
         return MotionAnalysisSize.For(context.Settings.AnalysisWidth, displayWidth, displayHeight);
     }
 
+    // The picture is analysed at the size it was captured at. The display size can change in
+    // between (a tile made anew when the desktop session comes back), and a picture of one size
+    // taken for another made the detector read past its pixels.
     private void ProcessCapturedFrame(
         Guid cameraId,
         byte[]? frameBytes,
-        byte[]? grey)
+        byte[]? grey,
+        int analysisWidth,
+        int analysisHeight)
     {
         if (!contexts.TryGetValue(cameraId, out var context))
         {
@@ -403,8 +416,6 @@ public partial class MotionDetectionService : IMotionDetectionService, IDisposab
 
         try
         {
-            var (analysisWidth, analysisHeight) = AnalysisSize(context);
-
             // Grey from the pipeline, or a PNG made grey and downscaled by the same reader the server uses.
             var currentFrame = grey ?? (frameBytes is null ? null : frameReader.ReadGrayscale(frameBytes, analysisWidth, analysisHeight));
             if (currentFrame is null)
