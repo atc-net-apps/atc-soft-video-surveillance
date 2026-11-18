@@ -15,10 +15,10 @@ namespace AtcSoft.Video.Surveillance.Wpf.Core.UserControls;
 /// </remarks>
 public partial class CameraTile : IDisposable
 {
-    [DependencyProperty(PropertyChangedCallback = nameof(OnCameraChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private CameraConfiguration? camera;
 
-    [DependencyProperty(DefaultValue = ConnectionState.Disconnected, PropertyChangedCallback = nameof(OnConnectionStateChanged))]
+    [DependencyProperty(DefaultValue = ConnectionState.Disconnected, GeneratePartialHooks = true)]
     private ConnectionState connectionState;
 
     /// <summary>
@@ -30,7 +30,7 @@ public partial class CameraTile : IDisposable
     /// fighting the connection-state row (the two are orthogonal — see
     /// <see cref="CameraOverlay.IsDeviceUnplugged"/>).
     /// </summary>
-    [DependencyProperty(DefaultValue = false, PropertyChangedCallback = nameof(OnIsDeviceUnpluggedChanged))]
+    [DependencyProperty(DefaultValue = false, GeneratePartialHooks = true)]
     private bool isDeviceUnplugged;
 
     /// <summary>
@@ -41,19 +41,19 @@ public partial class CameraTile : IDisposable
     /// successful Connected transition (auto-reconnect path). Cascades to
     /// the overlay row the same way <see cref="IsDeviceUnplugged"/> does.
     /// </summary>
-    [DependencyProperty(DefaultValue = false, PropertyChangedCallback = nameof(OnIsDeviceBusyChanged))]
+    [DependencyProperty(DefaultValue = false, GeneratePartialHooks = true)]
     private bool isDeviceBusy;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnIsSelectedChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private bool isSelected;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnCameraNameChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private string cameraName = string.Empty;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnCameraDescriptionChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private string cameraDescription = string.Empty;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnPlayerPropertyChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private IVideoPlayer? player;
 
     [DependencyProperty(DefaultValue = HorizontalAlignment.Left)]
@@ -140,7 +140,7 @@ public partial class CameraTile : IDisposable
     private bool hardwareAcceleration;
 
     // Recording settings
-    [DependencyProperty(DefaultValue = RecordingState.Idle, PropertyChangedCallback = nameof(OnRecordingStateChanged))]
+    [DependencyProperty(DefaultValue = RecordingState.Idle, GeneratePartialHooks = true)]
     private RecordingState recordingState;
 
     [DependencyProperty]
@@ -1087,108 +1087,80 @@ public partial class CameraTile : IDisposable
         e.Handled = true;
     }
 
-    private static void OnCameraChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
+    partial void OnCameraChanged(
+        CameraConfiguration? oldValue,
+        CameraConfiguration? newValue)
     {
-        if (d is CameraTile tile)
+        if (oldValue is not null)
         {
-            if (e.OldValue is CameraConfiguration oldCamera)
-            {
-                oldCamera.PropertyChanged -= tile.OnCameraPropertyChanged;
-            }
+            oldValue.PropertyChanged -= OnCameraPropertyChanged;
+        }
 
-            if (e.NewValue is CameraConfiguration newCamera)
-            {
-                newCamera.PropertyChanged += tile.OnCameraPropertyChanged;
-            }
+        if (newValue is not null)
+        {
+            newValue.PropertyChanged += OnCameraPropertyChanged;
+        }
 
-            tile.OnCameraChangedInternal(e.NewValue as CameraConfiguration);
+        OnCameraChangedInternal(newValue);
+    }
+
+    partial void OnIsSelectedChanged(
+        bool oldValue,
+        bool newValue)
+        => SelectionBorderBrush = newValue
+            ? Brushes.DodgerBlue
+            : Brushes.Transparent;
+
+    partial void OnConnectionStateChanged(
+        ConnectionState oldValue,
+        ConnectionState newValue)
+    {
+        UpdateOverlayConnectionState(newValue);
+        UpdateConnectionTypeIcon();
+        UpdateQuickActionVisibility();
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    partial void OnIsDeviceUnpluggedChanged(
+        bool oldValue,
+        bool newValue)
+    {
+        if (GetCameraOverlay() is { } overlay)
+        {
+            overlay.IsDeviceUnplugged = newValue;
         }
     }
 
-    private static void OnIsSelectedChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
+    partial void OnIsDeviceBusyChanged(
+        bool oldValue,
+        bool newValue)
     {
-        if (d is CameraTile tile)
+        if (GetCameraOverlay() is { } overlay)
         {
-            tile.SelectionBorderBrush = (bool)e.NewValue
-                ? Brushes.DodgerBlue
-                : Brushes.Transparent;
+            overlay.IsDeviceBusy = newValue;
         }
     }
 
-    private static void OnConnectionStateChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
+    partial void OnPlayerChanged(
+        IVideoPlayer? oldValue,
+        IVideoPlayer? newValue)
+        => PlayerChanged?.Invoke(this, newValue);
+
+    // A binding can still set null, whatever the property's type says.
+    partial void OnCameraNameChanged(
+        string oldValue,
+        string newValue)
     {
-        if (d is CameraTile tile && e.NewValue is ConnectionState newState)
+        if (newValue is not null)
         {
-            tile.UpdateOverlayConnectionState(newState);
-            tile.UpdateConnectionTypeIcon();
-            tile.UpdateQuickActionVisibility();
-            CommandManager.InvalidateRequerySuggested();
+            UpdateOverlayTitle(newValue);
         }
     }
 
-    private static void OnIsDeviceUnpluggedChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraTile tile && e.NewValue is bool unplugged)
-        {
-            var overlay = tile.GetCameraOverlay();
-            if (overlay is not null)
-            {
-                overlay.IsDeviceUnplugged = unplugged;
-            }
-        }
-    }
-
-    private static void OnIsDeviceBusyChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraTile tile && e.NewValue is bool busy)
-        {
-            var overlay = tile.GetCameraOverlay();
-            if (overlay is not null)
-            {
-                overlay.IsDeviceBusy = busy;
-            }
-        }
-    }
-
-    private static void OnPlayerPropertyChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraTile tile)
-        {
-            tile.PlayerChanged?.Invoke(tile, e.NewValue as IVideoPlayer);
-        }
-    }
-
-    private static void OnCameraNameChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraTile tile && e.NewValue is string newName)
-        {
-            tile.UpdateOverlayTitle(newName);
-        }
-    }
-
-    private static void OnCameraDescriptionChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraTile tile)
-        {
-            tile.UpdateOverlayDescription(e.NewValue as string ?? string.Empty);
-        }
-    }
+    partial void OnCameraDescriptionChanged(
+        string oldValue,
+        string newValue)
+        => UpdateOverlayDescription(newValue ?? string.Empty);
 
     private static void OnOverlaySettingsChanged(
         DependencyObject d,
@@ -2878,15 +2850,12 @@ public partial class CameraTile : IDisposable
         });
     }
 
-    private static void OnRecordingStateChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
+    partial void OnRecordingStateChanged(
+        RecordingState oldValue,
+        RecordingState newValue)
     {
-        if (d is CameraTile tile && e.NewValue is RecordingState)
-        {
-            tile.UpdateOverlayRecordingState();
-            CommandManager.InvalidateRequerySuggested();
-        }
+        UpdateOverlayRecordingState();
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void UpdateRecordingDurationTimer()

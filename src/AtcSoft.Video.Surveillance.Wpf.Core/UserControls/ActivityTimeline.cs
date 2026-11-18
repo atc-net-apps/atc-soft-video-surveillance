@@ -47,17 +47,17 @@ public sealed partial class ActivityTimeline : FrameworkElement
     [DependencyProperty]
     private RecordingPreviewTiles? previews;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private double position;
 
     [DependencyProperty]
     private ICommand? seekCommand;
 
     // Where the part shown starts and ends, as fractions of the recording (ActivityTimelineZoom).
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private double visibleStart;
 
-    [DependencyProperty(DefaultValue = 1d, PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(DefaultValue = 1d, Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private double visibleEnd;
 
     // Takes an ActivityTimelineZoomRequest: where the mouse is in the recording, and which way.
@@ -68,19 +68,19 @@ public sealed partial class ActivityTimeline : FrameworkElement
     [DependencyProperty]
     private ICommand? verdictCommand;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private Brush? barBrush;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private Brush? eventBrush;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private Brush? notAnalysedBrush;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private Brush? positionBrush;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private IReadOnlyDictionary<string, Brush>? zoneBrushes;
 
     /// <summary>
@@ -351,16 +351,6 @@ public sealed partial class ActivityTimeline : FrameworkElement
         if (d is ActivityTimeline timeline)
         {
             timeline.events = null;
-            timeline.InvalidateVisual();
-        }
-    }
-
-    private static void OnLookChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is ActivityTimeline timeline)
-        {
             timeline.InvalidateVisual();
         }
     }

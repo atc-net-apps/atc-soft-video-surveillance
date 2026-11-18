@@ -23,16 +23,16 @@ public sealed partial class MotionZoneCanvas : FrameworkElement
 
     // The generator's backing fields: read through the generated properties only.
 #pragma warning disable CS0169, CS0414
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private IReadOnlyList<MotionZone>? zones;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private ImageSource? picture;
 
-    [DependencyProperty(DefaultValue = -1, PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(DefaultValue = -1, Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private int selectedZone = -1;
 
-    [DependencyProperty(DefaultValue = -1, PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(DefaultValue = -1, Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private int selectedCorner = -1;
 #pragma warning restore CS0169, CS0414
 
@@ -317,16 +317,6 @@ public sealed partial class MotionZoneCanvas : FrameworkElement
 
         geometry.Freeze();
         return geometry;
-    }
-
-    private static void OnLookChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is MotionZoneCanvas canvas)
-        {
-            canvas.InvalidateVisual();
-        }
     }
 
     private void DrawName(

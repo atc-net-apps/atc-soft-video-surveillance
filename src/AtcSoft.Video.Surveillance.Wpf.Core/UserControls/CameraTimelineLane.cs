@@ -18,17 +18,17 @@ public sealed partial class CameraTimelineLane : FrameworkElement
     private static readonly Brush EventBrush = Frozen(Color.FromRgb(0xFF, 0x8C, 0x00));
     private static readonly Brush NowBrush = Frozen(Color.FromRgb(0xE5, 0x39, 0x35));
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private IReadOnlyList<TimelineStretch>? stretches;
 
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private IReadOnlyList<ActivityEvent>? eventBands;
 
     // Null: the gaps come from the stretches, without a reason.
-    [DependencyProperty(PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private IReadOnlyList<TimelineGapBand>? gapBands;
 
-    [DependencyProperty(DefaultValue = -1d, PropertyChangedCallback = nameof(OnLookChanged))]
+    [DependencyProperty(DefaultValue = -1d, Flags = FrameworkPropertyMetadataOptions.AffectsRender)]
     private double nowFraction;
 
     [DependencyProperty]
@@ -144,15 +144,5 @@ public sealed partial class CameraTimelineLane : FrameworkElement
         var brush = new SolidColorBrush(color);
         brush.Freeze();
         return brush;
-    }
-
-    private static void OnLookChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is CameraTimelineLane lane)
-        {
-            lane.InvalidateVisual();
-        }
     }
 }

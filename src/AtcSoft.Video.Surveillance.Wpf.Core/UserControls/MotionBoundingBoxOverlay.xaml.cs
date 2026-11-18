@@ -30,7 +30,7 @@ public partial class MotionBoundingBoxOverlay
     private int lastVideoWidth;
     private int lastVideoHeight;
 
-    [DependencyProperty(DefaultValue = true, PropertyChangedCallback = nameof(OnIsOverlayEnabledChanged))]
+    [DependencyProperty(DefaultValue = true, GeneratePartialHooks = true)]
     private bool isOverlayEnabled;
 
     [DependencyProperty(DefaultValue = "Red", PropertyChangedCallback = nameof(OnBoxColorChanged))]
@@ -56,14 +56,14 @@ public partial class MotionBoundingBoxOverlay
     /// The boxes to draw, for a host that binds them (the server client's tiles); a host that
     /// drives the overlay from code calls <see cref="UpdateBoundingBoxes"/> instead.
     /// </summary>
-    [DependencyProperty(PropertyChangedCallback = nameof(OnBoundingBoxesChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private IReadOnlyList<Rect>? boundingBoxes;
 
     /// <summary>
     /// The boxes to draw with their track ids, for a host that binds them: each box is smoothed
     /// against the earlier box of its own track.
     /// </summary>
-    [DependencyProperty(PropertyChangedCallback = nameof(OnMotionBoxesChanged))]
+    [DependencyProperty(GeneratePartialHooks = true)]
     private IReadOnlyList<BoundingBox>? motionBoxes;
 
     [DependencyProperty(DefaultValue = 0)]
@@ -85,29 +85,15 @@ public partial class MotionBoundingBoxOverlay
         OverlayCanvas.SizeChanged += OnCanvasSizeChanged;
     }
 
-    private static void OnBoundingBoxesChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is MotionBoundingBoxOverlay overlay)
-        {
-            overlay.UpdateBoundingBoxes(
-                e.NewValue as IReadOnlyList<Rect>,
-                new Size(overlay.ActualWidth, overlay.ActualHeight));
-        }
-    }
+    partial void OnBoundingBoxesChanged(
+        IReadOnlyList<Rect>? oldValue,
+        IReadOnlyList<Rect>? newValue)
+        => UpdateBoundingBoxes(newValue, new Size(ActualWidth, ActualHeight));
 
-    private static void OnMotionBoxesChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        if (d is MotionBoundingBoxOverlay overlay)
-        {
-            overlay.UpdateMotionBoxes(
-                e.NewValue as IReadOnlyList<BoundingBox>,
-                new Size(overlay.ActualWidth, overlay.ActualHeight));
-        }
-    }
+    partial void OnMotionBoxesChanged(
+        IReadOnlyList<BoundingBox>? oldValue,
+        IReadOnlyList<BoundingBox>? newValue)
+        => UpdateMotionBoxes(newValue, new Size(ActualWidth, ActualHeight));
 
     /// <summary>
     /// Updates the bounding box display with new positions for multiple motion regions.
@@ -345,13 +331,13 @@ public partial class MotionBoundingBoxOverlay
         }
     }
 
-    private static void OnIsOverlayEnabledChanged(
-        DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
+    partial void OnIsOverlayEnabledChanged(
+        bool oldValue,
+        bool newValue)
     {
-        if (d is MotionBoundingBoxOverlay overlay && e.NewValue is false)
+        if (!newValue)
         {
-            overlay.HideBoundingBoxes();
+            HideBoundingBoxes();
         }
     }
 
