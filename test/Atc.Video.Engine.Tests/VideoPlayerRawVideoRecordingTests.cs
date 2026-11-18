@@ -44,6 +44,10 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
         var first = Path.Combine(directory, "first." + format);
         var second = Path.Combine(directory, "second." + format);
 
+        // How long each file was recording for: a busy machine waits longer than asked.
+        var firstSpan = TimeSpan.Zero;
+        var secondSpan = TimeSpan.Zero;
+
         using (var player = new VideoPlayer(Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoPlayer>.Instance))
         {
             try
@@ -55,13 +59,17 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
 
                 // Act
                 player.StartRecording(first);
+                var watch = System.Diagnostics.Stopwatch.StartNew();
                 player.IsRecording.Should().BeTrue();
                 await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
 
                 player.SwitchRecording(second);
+                firstSpan = watch.Elapsed;
+                watch.Restart();
                 await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
 
                 player.StopRecording();
+                secondSpan = watch.Elapsed;
                 player.IsRecording.Should().BeFalse();
             }
             finally
@@ -71,12 +79,13 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
             }
         }
 
-        // Assert — about two seconds of 15 pictures a second in each file
-        foreach (var path in new[] { first, second })
+        // Assert — 15 pictures a second for as long as each file was recording
+        foreach (var (path, span) in new[] { (first, firstSpan), (second, secondSpan) })
         {
             var recorded = ReadBack(path);
+            var expected = span.TotalSeconds * 15;
             recorded.Codec.Should().Be(AVCodecID.H264);
-            recorded.Frames.Should().BeInRange(20, 40);
+            recorded.Frames.Should().BeInRange((int)(expected * 0.6), (int)expected + 10);
             recorded.FirstIsKeyFrame.Should().BeTrue();
             new FileInfo(path).Length.Should().BeLessThan(2_000_000, "four seconds of raw 320x240 pictures would be 9 MB");
         }
@@ -97,6 +106,7 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
         var port = GetFreePort();
         using var source = StartRawVideoStream(tool!, port, withSound: true);
         var path = Path.Combine(directory, $"sound-{recordAudio}.mp4");
+        var recorded = TimeSpan.Zero;
 
         using (var player = new VideoPlayer(Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoPlayer>.Instance))
         {
@@ -108,8 +118,10 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
                 await WaitUntilAsync(() => player.State == PlayerState.Playing && player.FramesDecoded > 0, cancellationToken);
 
                 player.StartRecording(path);
+                var watch = System.Diagnostics.Stopwatch.StartNew();
                 await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
                 player.StopRecording();
+                recorded = watch.Elapsed;
             }
             finally
             {
@@ -124,8 +136,11 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
         if (recordAudio)
         {
             streams[1].Codec.Should().Be(AVCodecID.Aac);
-            streams[1].Seconds.Should().BeInRange(2.3, 3.5, "the sound runs as long as the picture");
-            streams[0].Seconds.Should().BeInRange(2.3, 3.5);
+
+            // As long as it was recording for: a busy machine waits longer than the 3 s asked.
+            var seconds = recorded.TotalSeconds;
+            streams[1].Seconds.Should().BeInRange(seconds - 0.7, seconds + 0.5, "the sound runs as long as the picture");
+            streams[0].Seconds.Should().BeInRange(seconds - 0.7, seconds + 0.5);
         }
     }
 
