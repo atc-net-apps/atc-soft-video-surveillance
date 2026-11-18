@@ -20,8 +20,11 @@ public sealed record LogAvailability(
     public IReadOnlyList<AvailabilityEntry> For(
         string cameraName,
         DateTimeOffset? before)
-        => [.. App
-            .Concat(Cameras.GetValueOrDefault(cameraName) ?? [])
-            .Where(e => before is null || e.Time < before)
-            .OrderBy(e => e.Time),];
+        =>
+        [
+            .. App
+                .Concat(Cameras.GetValueOrDefault(cameraName) ?? [])
+                .Where(e => before is null || e.Time < before)
+                .OrderBy(e => e.Time),
+        ];
 }

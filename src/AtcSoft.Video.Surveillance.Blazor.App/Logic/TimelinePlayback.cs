@@ -38,10 +38,13 @@ public sealed record TimelinePlayback(
     {
         ArgumentNullException.ThrowIfNull(lane);
 
-        return [.. lane.Coverage
-            .OrderBy(c => c.Start)
-            .SkipWhile(c => !string.Equals(c.FilePath, filePath, StringComparison.Ordinal))
-            .Skip(1),];
+        return
+        [
+            .. lane.Coverage
+                .OrderBy(c => c.Start)
+                .SkipWhile(c => !string.Equals(c.FilePath, filePath, StringComparison.Ordinal))
+                .Skip(1),
+        ];
     }
 
     /// <summary>

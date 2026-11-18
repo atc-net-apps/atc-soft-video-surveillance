@@ -279,14 +279,17 @@ public sealed partial class LocalTimelineViewModel : ViewModelBase, IDisposable
     {
         ArgumentNullException.ThrowIfNull(lanes);
 
-        return [.. lanes
-            .Select(l => (Lane: l, Segments: l.Coverage
-                .Where(c => c.End > moment)
-                .OrderBy(c => c.Start)
-                .Select(c => new PlayAllSegment(new Uri(c.VideoPath), c.Start, c.RecordingStart))
-                .ToList()))
-            .Where(l => l.Segments.Count > 0)
-            .Select(l => new PlayAllTileViewModel(l.Lane.CameraName, l.Segments)),];
+        return
+        [
+            .. lanes
+                .Select(l => (Lane: l, Segments: l.Coverage
+                    .Where(c => c.End > moment)
+                    .OrderBy(c => c.Start)
+                    .Select(c => new PlayAllSegment(new Uri(c.VideoPath), c.Start, c.RecordingStart))
+                    .ToList()))
+                .Where(l => l.Segments.Count > 0)
+                .Select(l => new PlayAllTileViewModel(l.Lane.CameraName, l.Segments)),
+        ];
     }
 
     /// <summary>

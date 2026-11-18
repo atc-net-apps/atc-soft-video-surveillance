@@ -41,8 +41,11 @@ public static class CameraWallAvailability
 
         return cameras.ToDictionary(
             c => c.Id,
-            c => (IReadOnlyList<AvailabilityEntry>)[.. (log?.For(c.Name, kept) ?? [])
-                .Concat(string.IsNullOrEmpty(availabilityFolder) ? [] : AvailabilityFolder.Read(availabilityFolder, c.Id))
-                .OrderBy(e => e.Time),]);
+            IReadOnlyList<AvailabilityEntry> (c) =>
+            [
+                .. (log?.For(c.Name, kept) ?? [])
+                    .Concat(string.IsNullOrEmpty(availabilityFolder) ? [] : AvailabilityFolder.Read(availabilityFolder, c.Id))
+                    .OrderBy(e => e.Time),
+            ]);
     }
 }

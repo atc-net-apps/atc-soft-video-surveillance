@@ -37,11 +37,14 @@ public static class ActivityTimelineShapes
         double end = 1)
     {
         var area = BoxHeight - BandHeight;
-        return [.. ActivityTimelineZoom.Bars(buckets, start, end, BoxWidth)
-            .Where(b => b.IsAnalysed)
-            .Select(b => (Bar: b, Height: ActivityTimelineLayout.BarHeight(b.Level) * area))
-            .Where(b => b.Height > 0)
-            .Select(b => new TimelineRect(b.Bar.Start * BoxWidth, area - b.Height, (b.Bar.End - b.Bar.Start) * BoxWidth, b.Height)),];
+        return
+        [
+            .. ActivityTimelineZoom.Bars(buckets, start, end, BoxWidth)
+                .Where(b => b.IsAnalysed)
+                .Select(b => (Bar: b, Height: ActivityTimelineLayout.BarHeight(b.Level) * area))
+                .Where(b => b.Height > 0)
+                .Select(b => new TimelineRect(b.Bar.Start * BoxWidth, area - b.Height, (b.Bar.End - b.Bar.Start) * BoxWidth, b.Height)),
+        ];
     }
 
     /// <summary>
@@ -54,9 +57,12 @@ public static class ActivityTimelineShapes
         IReadOnlyList<RecordingActivityBucket> buckets,
         double start = 0,
         double end = 1)
-        => [.. ActivityTimelineZoom.Bars(buckets, start, end, BoxWidth)
-            .Where(b => !b.IsAnalysed)
-            .Select(b => new TimelineRect(b.Start * BoxWidth, 0, (b.End - b.Start) * BoxWidth, BoxHeight - BandHeight)),];
+        =>
+        [
+            .. ActivityTimelineZoom.Bars(buckets, start, end, BoxWidth)
+                .Where(b => !b.IsAnalysed)
+                .Select(b => new TimelineRect(b.Start * BoxWidth, 0, (b.End - b.Start) * BoxWidth, BoxHeight - BandHeight)),
+        ];
 
     /// <summary>
     /// Gets the bands of the events with their colours, at least
@@ -72,9 +78,12 @@ public static class ActivityTimelineShapes
         IReadOnlyDictionary<string, string>? zoneColours,
         double start = 0,
         double end = 1)
-        => [.. ActivityTimelineZoom.Visible(events, start, end)
-            .Select(e => (Pixels: ActivityTimelineLayout.ToPixels(e, BoxWidth), e.Zone))
-            .Select(b => (new TimelineRect(b.Pixels.X, BoxHeight - BandHeight, b.Pixels.Width, BandHeight), MotionZoneColors.ForEvent(b.Zone, zoneColours))),];
+        =>
+        [
+            .. ActivityTimelineZoom.Visible(events, start, end)
+                .Select(e => (Pixels: ActivityTimelineLayout.ToPixels(e, BoxWidth), e.Zone))
+                .Select(b => (new TimelineRect(b.Pixels.X, BoxHeight - BandHeight, b.Pixels.Width, BandHeight), MotionZoneColors.ForEvent(b.Zone, zoneColours))),
+        ];
 
     /// <summary>
     /// Gets the playhead: a line the full height of the box where the player is, kept inside the box.

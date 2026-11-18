@@ -131,9 +131,12 @@ public sealed class ActivityTimelineTests
         {
             var timeline = new ActivityTimeline
             {
-                Buckets = [.. Enumerable.Range(0, 10).Select(i => i == 5
-                    ? new ActivityBucket(30, 2, IsAnalysed: true) { Zones = ["Gate"] }
-                    : new ActivityBucket(1, 0, IsAnalysed: true)),],
+                Buckets =
+                [
+                    .. Enumerable.Range(0, 10).Select(i => i == 5
+                        ? new ActivityBucket(30, 2, IsAnalysed: true) { Zones = ["Gate"] }
+                        : new ActivityBucket(1, 0, IsAnalysed: true)),
+                ],
                 RecordingStart = new DateTime(2026, 10, 20, 9, 0, 0, DateTimeKind.Local),
                 DurationSeconds = 100,
             };

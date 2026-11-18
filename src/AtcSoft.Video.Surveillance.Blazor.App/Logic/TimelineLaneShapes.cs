@@ -23,13 +23,16 @@ public static class TimelineLaneShapes
         ArgumentNullException.ThrowIfNull(span);
 
         var width = lane.Buckets.Count;
-        return [.. lane.Gaps
-            .Select(g => (Gap: g, Start: span.FractionOf(Clamp(g.Start, span)) ?? 0, End: span.FractionOf(Clamp(g.End, span)) ?? 1))
-            .Where(g => g.End > g.Start)
-            .Select(g => new TimelineGapShape(
-                new TimelineRect(g.Start * width, 0, (g.End - g.Start) * width, ActivityTimelineShapes.BoxHeight),
-                TimelineGapStyle.Fill(g.Gap.Reason.Value),
-                TimelineGapStyle.Text(g.Gap.Reason.Value))),];
+        return
+        [
+            .. lane.Gaps
+                .Select(g => (Gap: g, Start: span.FractionOf(Clamp(g.Start, span)) ?? 0, End: span.FractionOf(Clamp(g.End, span)) ?? 1))
+                .Where(g => g.End > g.Start)
+                .Select(g => new TimelineGapShape(
+                    new TimelineRect(g.Start * width, 0, (g.End - g.Start) * width, ActivityTimelineShapes.BoxHeight),
+                    TimelineGapStyle.Fill(g.Gap.Reason.Value),
+                    TimelineGapStyle.Text(g.Gap.Reason.Value))),
+        ];
     }
 
     /// <summary>
@@ -79,10 +82,13 @@ public static class TimelineLaneShapes
         ArgumentNullException.ThrowIfNull(span);
 
         var width = lane.Buckets.Count;
-        return [.. lane.Events
-            .Select(e => new ActivityTimelineEvent(span.FractionOf(Clamp(e.Start, span)) ?? 0, span.FractionOf(Clamp(e.End, span)) ?? 1))
-            .Select(e => ActivityTimelineLayout.ToPixels(e, width))
-            .Select(b => new TimelineRect(b.X, ActivityTimelineShapes.BoxHeight - ActivityTimelineShapes.BandHeight, b.Width, ActivityTimelineShapes.BandHeight)),];
+        return
+        [
+            .. lane.Events
+                .Select(e => new ActivityTimelineEvent(span.FractionOf(Clamp(e.Start, span)) ?? 0, span.FractionOf(Clamp(e.End, span)) ?? 1))
+                .Select(e => ActivityTimelineLayout.ToPixels(e, width))
+                .Select(b => new TimelineRect(b.X, ActivityTimelineShapes.BoxHeight - ActivityTimelineShapes.BandHeight, b.Width, ActivityTimelineShapes.BandHeight)),
+        ];
     }
 
     private static DateTimeOffset Clamp(

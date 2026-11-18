@@ -76,13 +76,16 @@ public sealed class RecordingsBrowserDialogViewModelLayoutTests : IDisposable
         using var viewModel = new RecordingsBrowserDialogViewModel(settingsService);
         await viewModel.Loading.ConfigureAwait(false);
 
-        return [.. viewModel.FilteredRecordings.Select(r =>
-            string.Join(
-                '|',
-                r.CameraName,
-                r.FileName,
-                r.RecordingTime.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
-                r.HasThumbnail ? "thumbnail" : "no thumbnail")),];
+        return
+        [
+            .. viewModel.FilteredRecordings.Select(r =>
+                string.Join(
+                    '|',
+                    r.CameraName,
+                    r.FileName,
+                    r.RecordingTime.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
+                    r.HasThumbnail ? "thumbnail" : "no thumbnail")),
+        ];
     }
 
     private void Touch(params string[] segments)

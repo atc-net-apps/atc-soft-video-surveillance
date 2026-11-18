@@ -15,11 +15,14 @@ public static class UsbFormatChoices
     /// </summary>
     public static IReadOnlyList<(int Width, int Height)> Sizes(
         IReadOnlyCollection<UsbStreamFormat>? capabilities)
-        => [.. (capabilities ?? [])
-            .Where(c => c is { Width: > 0, Height: > 0 })
-            .Select(c => (c.Width, c.Height))
-            .Distinct()
-            .OrderByDescending(s => (long)s.Width * s.Height),];
+        =>
+        [
+            .. (capabilities ?? [])
+                .Where(c => c is { Width: > 0, Height: > 0 })
+                .Select(c => (c.Width, c.Height))
+                .Distinct()
+                .OrderByDescending(s => (long)s.Width * s.Height),
+        ];
 
     /// <summary>
     /// Gets the frame rates a camera offers at one size, highest first.
@@ -28,11 +31,14 @@ public static class UsbFormatChoices
         IReadOnlyCollection<UsbStreamFormat>? capabilities,
         int width,
         int height)
-        => [.. (capabilities ?? [])
-            .Where(c => c.Width == width && c.Height == height && c.FrameRate > 0)
-            .Select(c => c.FrameRate)
-            .Distinct()
-            .OrderByDescending(rate => rate),];
+        =>
+        [
+            .. (capabilities ?? [])
+                .Where(c => c.Width == width && c.Height == height && c.FrameRate > 0)
+                .Select(c => c.FrameRate)
+                .Distinct()
+                .OrderByDescending(rate => rate),
+        ];
 
     /// <summary>
     /// Gets the format a new camera starts with: 1280 x 720 when the camera

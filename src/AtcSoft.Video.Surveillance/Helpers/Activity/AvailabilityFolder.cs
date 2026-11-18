@@ -50,9 +50,12 @@ public static class AvailabilityFolder
     {
         ArgumentException.ThrowIfNullOrEmpty(folder);
 
-        return [.. AvailabilityLog.Read(CameraFile(folder, cameraId))
-            .Concat(AvailabilityLog.Read(Path.Combine(folder, AppFileName)))
-            .OrderBy(e => e.Time),];
+        return
+        [
+            .. AvailabilityLog.Read(CameraFile(folder, cameraId))
+                .Concat(AvailabilityLog.Read(Path.Combine(folder, AppFileName)))
+                .OrderBy(e => e.Time),
+        ];
     }
 
     /// <summary>
