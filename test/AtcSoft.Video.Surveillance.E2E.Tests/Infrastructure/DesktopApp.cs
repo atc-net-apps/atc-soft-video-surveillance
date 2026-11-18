@@ -484,21 +484,25 @@ internal sealed class DesktopApp : IDisposable
 
     /// <summary>
     /// Checks that a full-screen window fills the screen: it covers the taskbar, not just the
-    /// space beside it. Passes when there is no taskbar to find.
+    /// space beside it. Passes when there is no taskbar on the window's screen.
     /// </summary>
     public void ShouldCoverTheTaskbar(Window window)
     {
+        // Every screen can have a taskbar: the main one and one on each other screen.
         var desktop = Automation.GetDesktop();
-        if (desktop.FindFirstChild(Conditions.ByClassName("Shell_TrayWnd")) is not { } taskbar)
-        {
-            return;
-        }
+        var taskbars = desktop.FindAllChildren(cf => cf.ByClassName("Shell_TrayWnd").Or(cf.ByClassName("Shell_SecondaryTrayWnd")));
 
         // An auto-hidden taskbar sits partly off the screen: only its part on the screen counts.
-        var visible = System.Drawing.Rectangle.Intersect(taskbar.BoundingRectangle, desktop.BoundingRectangle);
-        if (!window.BoundingRectangle.Contains(visible))
+        // The window's own taskbar is the one it covers or, maximised beside it, touches.
+        var bounds = window.BoundingRectangle;
+        var around = System.Drawing.Rectangle.Inflate(bounds, 1, 1);
+        var near = taskbars
+            .Select(taskbar => System.Drawing.Rectangle.Intersect(taskbar.BoundingRectangle, desktop.BoundingRectangle))
+            .Where(visible => !visible.IsEmpty && around.IntersectsWith(visible))
+            .ToList();
+        if (near.Count > 0 && !near.Exists(bounds.Contains))
         {
-            throw Fail($"The window '{SafeName(window)}' at {window.BoundingRectangle} does not cover the taskbar at {visible}.");
+            throw Fail($"The window '{SafeName(window)}' at {bounds} does not cover the taskbar at {near[0]}.");
         }
     }
 
