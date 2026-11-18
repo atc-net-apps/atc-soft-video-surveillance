@@ -5,10 +5,12 @@
 # release-please.yml.
 #
 # The builds are BtbN's FFmpeg-Builds (GPL, with libx264), the same licence as the Windows build.
+# Pin a month-end build (autobuild-YYYY-MM-<last day>-...): BtbN deletes the daily builds after
+# about two weeks, but keeps the month-end ones for months.
 set -eu
 
-BUILD="autobuild-2026-11-01-12-49"
-VERSION="n9.0.2-42-gd7643a0fe3"
+BUILD="autobuild-2026-10-31-12-59"
+VERSION="n9.0.2-39-g7adfbe40dc"
 
 # The architecture to install for: the first argument (Docker's TARGETARCH, amd64 or arm64), or
 # this machine's.
@@ -17,11 +19,11 @@ ARCH="${1:-$(uname -m)}"
 case "$ARCH" in
   x86_64|amd64)
     PLATFORM="linux64"
-    SHA256="16b7be9d17e4b91e661e88c50f4f42f7e5c3928a7c15529e6759e96a66cb786c"
+    SHA256="90a42a7d9689c031beacc3d03b139fd8243351d616988e8a74188df949fe5d08"
     ;;
   aarch64|arm64)
     PLATFORM="linuxarm64"
-    SHA256="5b9bf5bad16462c3ff9896e60c623d31d7778ae13c469be765cfcd29173c956e"
+    SHA256="d0a01c8a3c2e31f8613b42c2f7190869e2b87bb3044748702ec4fef71c0bd1b9"
     ;;
   *)
     echo "No FFmpeg build for $ARCH" >&2
