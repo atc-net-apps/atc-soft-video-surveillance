@@ -62,17 +62,20 @@ public static class ActivityLogReader
 
     // Should a second come twice, the most of both counts.
     private static List<ActivitySecond> Merge(List<ActivitySecond> seconds)
-        => [.. seconds
-            .GroupBy(s => s.Offset)
-            .OrderBy(g => g.Key)
-            .Select(g => g.Count() == 1
-                ? g.First()
-                : new ActivitySecond(
-                    g.Key,
-                    g.Max(s => s.Level),
-                    g.Max(s => s.Tracks),
-                    [.. g.SelectMany(s => s.TrackIds).Distinct().Order()])
-                {
-                    Zones = [.. g.SelectMany(s => s.Zones).Distinct(StringComparer.Ordinal)],
-                }),];
+        =>
+        [
+            .. seconds
+                .GroupBy(s => s.Offset)
+                .OrderBy(g => g.Key)
+                .Select(g => g.Count() == 1
+                    ? g.First()
+                    : new ActivitySecond(
+                        g.Key,
+                        g.Max(s => s.Level),
+                        g.Max(s => s.Tracks),
+                        [.. g.SelectMany(s => s.TrackIds).Distinct().Order()])
+                    {
+                        Zones = [.. g.SelectMany(s => s.Zones).Distinct(StringComparer.Ordinal)],
+                    }),
+        ];
 }

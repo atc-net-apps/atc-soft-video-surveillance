@@ -66,6 +66,9 @@ internal static class VerdictWalk
     /// <param name="folder">The app's or the server's data folder.</param>
     /// <returns>The stretches.</returns>
     public static IReadOnlyList<ReviewSpan> SpansUnder(string folder)
-        => [.. Directory.GetFiles(folder, "*" + RecordingPathHelper.ReviewExtension, SearchOption.AllDirectories)
-            .SelectMany(review => RecordingReviewFile.Read(review).Spans),];
+        =>
+        [
+            .. Directory.GetFiles(folder, "*" + RecordingPathHelper.ReviewExtension, SearchOption.AllDirectories)
+                .SelectMany(review => RecordingReviewFile.Read(review).Spans),
+        ];
 }

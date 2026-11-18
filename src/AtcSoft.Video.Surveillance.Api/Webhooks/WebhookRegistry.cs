@@ -239,10 +239,13 @@ public sealed partial class WebhookRegistry : IWebhookRegistry
     private static List<string> Tidy(IReadOnlyList<string>? events)
         => events is null
             ? []
-            : [.. events
-                .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Select(e => e.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase),];
+            :
+            [
+                .. events
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .Select(e => e.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase),
+            ];
 
     private static Guid CreateConfiguredId(
         int index,

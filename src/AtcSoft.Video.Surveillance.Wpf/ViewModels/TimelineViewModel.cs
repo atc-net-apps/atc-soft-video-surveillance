@@ -203,14 +203,17 @@ public sealed partial class TimelineViewModel : ViewModelBase
         ArgumentNullException.ThrowIfNull(lanes);
         ArgumentNullException.ThrowIfNull(fileUrl);
 
-        return [.. lanes
-            .Select(l => (Lane: l, Segments: l.Coverage
-                .Where(c => c.End > moment)
-                .OrderBy(c => c.Start)
-                .Select(c => new AtcSoft.Video.Surveillance.Wpf.Core.Windows.PlayAllSegment(fileUrl(c.FilePath), c.Start, c.RecordingStart))
-                .ToList()))
-            .Where(l => l.Segments.Count > 0)
-            .Select(l => new AtcSoft.Video.Surveillance.Wpf.Core.Windows.PlayAllTileViewModel(l.Lane.CameraName, l.Segments)),];
+        return
+        [
+            .. lanes
+                .Select(l => (Lane: l, Segments: l.Coverage
+                    .Where(c => c.End > moment)
+                    .OrderBy(c => c.Start)
+                    .Select(c => new AtcSoft.Video.Surveillance.Wpf.Core.Windows.PlayAllSegment(fileUrl(c.FilePath), c.Start, c.RecordingStart))
+                    .ToList()))
+                .Where(l => l.Segments.Count > 0)
+                .Select(l => new AtcSoft.Video.Surveillance.Wpf.Core.Windows.PlayAllTileViewModel(l.Lane.CameraName, l.Segments)),
+        ];
     }
 
     // From the place last clicked or played, else from the first recording in the span.

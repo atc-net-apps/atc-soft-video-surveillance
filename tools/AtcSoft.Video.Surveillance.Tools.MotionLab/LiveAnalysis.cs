@@ -124,9 +124,12 @@ public sealed class LiveAnalysis
             [.. shown.Select(b => new DetectedBox(new PixelBox(b.X * scaleX, b.Y * scaleY, b.Width * scaleX, b.Height * scaleY), b.TrackId))],
             DetectorMilliseconds: milliseconds));
 
-        IReadOnlyList<BoundingBox> objects = [.. truth
-            .Where(t => !t.IsDistractor && t.State == TruthState.MustBox)
-            .Select(t => new BoundingBox { X = t.Box.X, Y = t.Box.Y, Width = t.Box.Width, Height = t.Box.Height }),];
+        IReadOnlyList<BoundingBox> objects =
+        [
+            .. truth
+                .Where(t => !t.IsDistractor && t.State == TruthState.MustBox)
+                .Select(t => new BoundingBox { X = t.Box.X, Y = t.Box.Y, Width = t.Box.Width, Height = t.Box.Height }),
+        ];
         return (shown, objects);
     }
 

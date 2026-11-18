@@ -11,10 +11,13 @@ internal static class RepositoryFiles
     public static IReadOnlyList<string> Find(
         string pattern,
         params string[] underFolders)
-        => [.. underFolders
-            .SelectMany(folder => Directory.EnumerateFiles(Path.Combine(Root, folder), pattern, SearchOption.AllDirectories))
-            .Where(path => !IsBuildOutput(path))
-            .Order(StringComparer.Ordinal),];
+        =>
+        [
+            .. underFolders
+                .SelectMany(folder => Directory.EnumerateFiles(Path.Combine(Root, folder), pattern, SearchOption.AllDirectories))
+                .Where(path => !IsBuildOutput(path))
+                .Order(StringComparer.Ordinal),
+        ];
 
     public static string Relative(string path)
         => Path.GetRelativePath(Root, path).Replace('\\', '/');

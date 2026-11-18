@@ -310,8 +310,11 @@ public sealed class RecordingLayoutReorganizerTests : IDisposable
 
     private List<string> Files()
         => Directory.Exists(root)
-            ? [.. Directory
-                .EnumerateFiles(root, "*", SearchOption.AllDirectories)
-                .Select(f => Path.GetRelativePath(root, f)),]
+            ?
+            [
+                .. Directory
+                    .EnumerateFiles(root, "*", SearchOption.AllDirectories)
+                    .Select(f => Path.GetRelativePath(root, f)),
+            ]
             : [];
 }

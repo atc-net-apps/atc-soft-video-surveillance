@@ -174,8 +174,11 @@ public sealed class CameraGridPagingTests
     }
 
     private static List<int> VisibleTiles(CameraGrid grid)
-        => [.. Containers(grid)
-            .Select((container, index) => (container, index))
-            .Where(x => x.container.Visibility == System.Windows.Visibility.Visible)
-            .Select(x => x.index),];
+        =>
+        [
+            .. Containers(grid)
+                .Select((container, index) => (container, index))
+                .Where(x => x.container.Visibility == System.Windows.Visibility.Visible)
+                .Select(x => x.index),
+        ];
 }

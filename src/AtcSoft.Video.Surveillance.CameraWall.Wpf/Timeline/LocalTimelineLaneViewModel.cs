@@ -54,19 +54,25 @@ public sealed partial class LocalTimelineLaneViewModel : ViewModelBase
         var length = (to - from).TotalSeconds;
         EventBands = length <= 0
             ? []
-            : [.. timeline.Events.Select(e => new ActivityEvent(
-                Math.Clamp((e.Start - from).TotalSeconds / length, 0, 1),
-                Math.Clamp((e.End - from).TotalSeconds / length, 0, 1))),];
+            :
+            [
+                .. timeline.Events.Select(e => new ActivityEvent(
+                    Math.Clamp((e.Start - from).TotalSeconds / length, 0, 1),
+                    Math.Clamp((e.End - from).TotalSeconds / length, 0, 1))),
+            ];
         NowFraction = now >= from && now <= to && length > 0 ? (now - from).TotalSeconds / length : -1;
         GapBands = gaps is null || length <= 0
             ? null
-            : [.. gaps
-                .Select(g => new TimelineGapBand(
-                    Math.Clamp((g.Start - from).TotalSeconds / length, 0, 1),
-                    Math.Clamp((g.End - from).TotalSeconds / length, 0, 1),
-                    g.Reason,
-                    GapText(g)))
-                .Where(g => g.End > g.Start),];
+            :
+            [
+                .. gaps
+                    .Select(g => new TimelineGapBand(
+                        Math.Clamp((g.Start - from).TotalSeconds / length, 0, 1),
+                        Math.Clamp((g.End - from).TotalSeconds / length, 0, 1),
+                        g.Reason,
+                        GapText(g)))
+                    .Where(g => g.End > g.Start),
+            ];
         OfflineText = drops > 0 || offline >= TimeSpan.FromMinutes(1)
             ? string.Format(CultureInfo.CurrentCulture, Translations.OfflineSummary2, drops, FormatDuration(offline))
             : string.Empty;

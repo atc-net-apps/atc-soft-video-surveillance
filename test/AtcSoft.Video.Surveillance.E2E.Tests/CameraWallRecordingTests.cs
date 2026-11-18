@@ -286,11 +286,14 @@ public sealed class CameraWallRecordingTests
     // The recordings being written: those whose file a recorder has open.
     private static List<string> Ongoing(string recordings)
         => Directory.Exists(recordings)
-            ? [.. Directory
-                .EnumerateFiles(recordings, "*.*", SearchOption.AllDirectories)
-                .Where(f => f.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".mkv", StringComparison.OrdinalIgnoreCase))
-                .Where(RecordingPathHelper.IsBeingWritten)
-                .Order(StringComparer.OrdinalIgnoreCase),]
+            ?
+            [
+                .. Directory
+                    .EnumerateFiles(recordings, "*.*", SearchOption.AllDirectories)
+                    .Where(f => f.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".mkv", StringComparison.OrdinalIgnoreCase))
+                    .Where(RecordingPathHelper.IsBeingWritten)
+                    .Order(StringComparer.OrdinalIgnoreCase),
+            ]
             : [];
 
     private static (List<string> Files, DateTime At) WaitForRecordings(

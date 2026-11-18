@@ -199,13 +199,16 @@ public static class ActivityTimelineZoom
     {
         ArgumentNullException.ThrowIfNull(events);
 
-        return [.. events
-            .Where(e => e.End > start && e.Start < end)
-            .Select(e => e with
-            {
-                Start = Math.Max(ToShare(start, end, e.Start), 0),
-                End = Math.Min(ToShare(start, end, e.End), 1),
-            }),];
+        return
+        [
+            .. events
+                .Where(e => e.End > start && e.Start < end)
+                .Select(e => e with
+                {
+                    Start = Math.Max(ToShare(start, end, e.Start), 0),
+                    End = Math.Min(ToShare(start, end, e.End), 1),
+                }),
+        ];
     }
 
     private static double Shortest(double durationSeconds)

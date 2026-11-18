@@ -61,9 +61,12 @@ public sealed partial class AvailabilityHistoryService : BackgroundServiceBase<A
 
     /// <inheritdoc />
     public IReadOnlyList<AvailabilityEntry> For(Guid cameraId)
-        => [.. ReadCached(CameraFile(cameraId))
-            .Concat(ReadCached(Path.Combine(folder, ServerFileName)))
-            .OrderBy(e => e.Time),];
+        =>
+        [
+            .. ReadCached(CameraFile(cameraId))
+                .Concat(ReadCached(Path.Combine(folder, ServerFileName)))
+                .OrderBy(e => e.Time),
+        ];
 
     /// <summary>
     /// Drops the history older than what is kept, from every file.
