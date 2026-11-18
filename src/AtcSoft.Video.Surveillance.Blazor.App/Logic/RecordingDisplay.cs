@@ -146,7 +146,7 @@ public static class RecordingDisplay
             return false;
         }
 
-        if (duration.StartsWith('P'))
+        if (duration.StartsWith('P', StringComparison.Ordinal))
         {
             try
             {

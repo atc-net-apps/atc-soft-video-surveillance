@@ -73,7 +73,7 @@ public sealed class MotionEyeHubProvider : ICameraHubProvider
             builder.Port = DefaultPort;
         }
 
-        if (!builder.Path.EndsWith('/'))
+        if (!builder.Path.EndsWith('/', StringComparison.Ordinal))
         {
             builder.Path += "/";
         }

@@ -26,8 +26,8 @@ public sealed class CorpusTests
 
         var acceptedPath = Path.Combine(corpus!, AcceptedFile);
         var accepted = File.Exists(acceptedPath)
-            ? JsonSerializer.Deserialize<Dictionary<string, AcceptedScore>>(File.ReadAllText(acceptedPath)) ?? []
-            : [];
+            ? JsonSerializer.Deserialize<Dictionary<string, AcceptedScore>>(File.ReadAllText(acceptedPath)) ?? new Dictionary<string, AcceptedScore>(StringComparer.Ordinal)
+            : new Dictionary<string, AcceptedScore>(StringComparer.Ordinal);
         var update = string.Equals(Environment.GetEnvironmentVariable(UpdateVariable), "1", StringComparison.Ordinal);
         var problems = new List<string>();
         var reviews = Directory.GetFiles(corpus!, "*" + RecordingPathHelper.ReviewExtension, SearchOption.AllDirectories).Order(StringComparer.Ordinal).ToList();

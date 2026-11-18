@@ -9,7 +9,7 @@
   <PropertyGroup>
     <!-- The live test camera suspends its FFmpeg process to make a camera hang (ntdll). -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>AtcSoft.Video.Surveillance.E2E</RootNamespace>
     <IsPackable>false</IsPackable>
@@ -34,7 +34,7 @@
 
   <ItemGroup>
     <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Playwright" Version="1.64.1" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.65.0" />
   </ItemGroup>
 
 </Project>

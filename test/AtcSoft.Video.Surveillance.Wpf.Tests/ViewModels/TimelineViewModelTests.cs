@@ -110,7 +110,7 @@ public sealed class TimelineViewModelTests
     [Fact]
     public void Play_All_Gives_A_Tile_To_Every_Lane_With_A_Recording_Ending_After_The_Moment()
     {
-        TimelineLaneViewModel Lane(
+        static TimelineLaneViewModel Lane(
             string name,
             params TimelineCoverage[] coverage)
             => new(new TimelineLane(Guid.NewGuid(), name, [.. coverage], [], [], []), Nine, Nine.AddHours(4), Nine, (_, _) => { });

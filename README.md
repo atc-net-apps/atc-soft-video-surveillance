@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/atc-net-apps/atc-soft-video-surveillance?include_prereleases&logo=github&style=for-the-badge)](https://github.com/atc-net-apps/atc-soft-video-surveillance/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/atc-net-apps/atc-soft-video-surveillance/ci.yml?branch=main&label=build&logo=github&style=for-the-badge)](https://github.com/atc-net-apps/atc-soft-video-surveillance/actions/workflows/ci.yml)
-[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&style=for-the-badge)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![.NET 11](https://img.shields.io/badge/.NET-11-512BD4?logo=dotnet&style=for-the-badge)](https://dotnet.microsoft.com/download/dotnet/11.0)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 Live view, recording, motion detection and an activity timeline for your RTSP, HTTP and USB cameras, on your own hardware. **No cloud, no subscription, no camera licences.**
@@ -56,7 +56,7 @@ Live view, recording, motion detection and an activity timeline for your RTSP, H
 ## 📋 Requirements
 
 - **Windows 10** (version 2004 or later) or **Windows 11**, 64-bit
-- The **[.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0)** for the installers (the server needs the ASP.NET Core Runtime 10)
+- The **[.NET 11 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/11.0)** for the installers (the server needs the ASP.NET Core Runtime 11)
 - Cameras that stream **RTSP**, **HTTP** or **HTTPS**, or **USB** webcams
 - **FFmpeg 9** is included in the installers; see [FFmpeg](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-FFmpeg) when building from source
 
@@ -92,7 +92,7 @@ dotnet run --project src/AtcSoft.Video.Surveillance.Aspire                # serv
 dotnet test
 ```
 
-Needs the .NET 10 SDK and FFmpeg 9 (the apps offer to install it). More in **[Building from source](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Building-from-Source)**.
+Needs the .NET 11 SDK and FFmpeg 9 (the apps offer to install it). More in **[Building from source](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Building-from-Source)**.
 
 ## 📚 WIKI - Documentation
 

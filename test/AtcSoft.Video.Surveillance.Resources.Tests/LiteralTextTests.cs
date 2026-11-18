@@ -7,10 +7,12 @@ namespace AtcSoft.Video.Surveillance.Resources;
 /// </summary>
 public sealed partial class LiteralTextTests
 {
-    private static readonly HashSet<string> Allowed = [.. File
-        .ReadAllLines(Path.Combine(AppContext.BaseDirectory, "literal-text-allowed.txt"))
-        .Where(line => line.Length > 0 && !line.StartsWith('#'))
-        .Select(line => string.Join('|', line.Split('|').Take(2))),];
+    private static readonly HashSet<string> Allowed = new(
+        File
+            .ReadAllLines(Path.Combine(AppContext.BaseDirectory, "literal-text-allowed.txt"))
+            .Where(line => line.Length > 0 && !line.StartsWith('#', StringComparison.Ordinal))
+            .Select(line => string.Join('|', line.Split('|').Take(2))),
+        StringComparer.Ordinal);
 
     [Theory]
     [InlineData("src/AtcSoft.Video.Surveillance.Wpf")]
@@ -70,7 +72,7 @@ public sealed partial class LiteralTextTests
 
     // A C# statement in the markup (var x = ...;) or the rest of a call's arguments over several lines.
     private static bool IsCode(string text)
-        => text.EndsWith(';') || text.StartsWith(',');
+        => text.EndsWith(';', StringComparison.Ordinal) || text.StartsWith(',', StringComparison.Ordinal);
 
     // A visible-text attribute whose value is not a markup extension and has a letter in it.
     [GeneratedRegex(@"\b(?:Text|Header|Title|Content|LabelText|ToolTip|WatermarkText|Description|InformationText|Message|Caption)=""(?<text>(?!\{)[^""]*\p{L}[^""]*)""", RegexOptions.None, matchTimeoutMilliseconds: 1000)]

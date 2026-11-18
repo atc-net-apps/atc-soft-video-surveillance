@@ -267,7 +267,7 @@ public sealed partial class OnvifConnectionTypeDetector : ICameraConnectionTypeD
         string ipAddress,
         int port)
     {
-        var host = ipAddress.Contains(':', StringComparison.Ordinal) && !ipAddress.StartsWith('[')
+        var host = ipAddress.Contains(':', StringComparison.Ordinal) && !ipAddress.StartsWith('[', StringComparison.Ordinal)
             ? $"[{ipAddress}]"
             : ipAddress;
 

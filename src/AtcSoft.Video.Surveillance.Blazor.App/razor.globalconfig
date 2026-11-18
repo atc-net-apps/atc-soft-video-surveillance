@@ -1,0 +1,6 @@
+is_global = true
+
+# The rules in .editorconfig reach only the files under this folder. A diagnostic in a .razor file
+# comes from the Razor generator's .g.cs, which lives elsewhere: give these the same severity there.
+dotnet_diagnostic.BL0012.severity = suggestion      # Unnecessary StateHasChanged call
+dotnet_diagnostic.BL0016.severity = suggestion      # Unguarded JS interop call (no try/catch)

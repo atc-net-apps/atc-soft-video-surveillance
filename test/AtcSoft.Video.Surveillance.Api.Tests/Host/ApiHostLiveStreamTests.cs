@@ -450,7 +450,7 @@ public sealed class ApiHostLiveStreamTests(ApiHostFixture host)
             text.Should().StartWith("#EXTM3U");
 
             var segment = text.Split('\n').Select(l => l.Trim()).First(l => l.EndsWith(".ts", StringComparison.Ordinal));
-            var segmentUrl = playlistUrl[..(playlistUrl.LastIndexOf('/') + 1)] + segment;
+            var segmentUrl = playlistUrl[..(playlistUrl.LastIndexOf('/', StringComparison.Ordinal) + 1)] + segment;
             (await client.GetAsync(new Uri(segmentUrl, UriKind.Relative), cancellationToken)).StatusCode.Should().Be(HttpStatusCode.OK);
 
             // The viewer renews its lease while it watches, and gives it back when it is done

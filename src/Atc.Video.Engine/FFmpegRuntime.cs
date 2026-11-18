@@ -216,7 +216,7 @@ public static class FFmpegRuntime
         if (fileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
         {
             var stem = fileName[..^4];
-            var dash = stem.LastIndexOf('-');
+            var dash = stem.LastIndexOf('-', StringComparison.Ordinal);
             if (dash <= 0)
             {
                 return false;
