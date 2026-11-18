@@ -44,7 +44,7 @@ public static class ServerPasswordReset
             return false;
         }
 
-        var hasName = index + 1 < args.Length && !args[index + 1].StartsWith('-');
+        var hasName = index + 1 < args.Length && !args[index + 1].StartsWith('-', StringComparison.Ordinal);
         userName = hasName ? args[index + 1] : null;
         rest = args.Where((_, i) => i != index && !(hasName && i == index + 1)).ToArray();
         return true;

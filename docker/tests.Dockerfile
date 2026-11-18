@@ -1,7 +1,7 @@
 # Runs the cross-platform test projects on Linux with FFmpeg 9, as CI and the image use it:
 #   docker build -f docker/tests.Dockerfile -t atc-soft-video-surveillance-tests .
 #   docker run --rm atc-soft-video-surveillance-tests
-FROM mcr.microsoft.com/dotnet/sdk:10.0
+FROM mcr.microsoft.com/dotnet/sdk:11.0
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends xz-utils \

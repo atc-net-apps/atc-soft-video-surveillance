@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net11.0-windows</TargetFramework>
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Description>Windows-only parts shared by the standalone app and the server — USB camera enumeration (Media Foundation), hot-plug watching (WMI) and recording thumbnails and previews (GDI+).</Description>
@@ -14,10 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
-    <PackageReference Include="System.Drawing.Common" Version="10.0.14" />
-    <PackageReference Include="System.Management" Version="10.0.14" />
+    <PackageReference Include="System.Drawing.Common" Version="11.0.0" />
+    <PackageReference Include="System.Management" Version="11.0.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,7 +4,7 @@ WPF controls for showing live camera streams: `CameraTile`, `CameraGrid` and `Ca
 
 This is the entry point for embedding cameras in your own WPF application. The other AtcSoft.* packages come along as dependencies.
 
-Target framework: `net10.0-windows10.0.19041.0`.
+Target framework: `net11.0-windows10.0.19041.0`.
 
 ## Usage
 

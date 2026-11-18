@@ -10,8 +10,8 @@ internal static class E2ESettings
     /// </summary>
     public const string EnableVariable = "ATCSOFT_E2E";
 
-    private const string AppTargetFramework = "net10.0-windows10.0.19041.0";
-    private const string ServerTargetFramework = "net10.0-windows";
+    private const string AppTargetFramework = "net11.0-windows10.0.19041.0";
+    private const string ServerTargetFramework = "net11.0-windows";
 
     public static bool IsEnabled
         => string.Equals(Environment.GetEnvironmentVariable(EnableVariable), "1", StringComparison.Ordinal);

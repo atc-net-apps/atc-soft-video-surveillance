@@ -91,6 +91,12 @@ global using IGitHubReleaseService = AtcSoft.Video.Surveillance.Services.IGitHub
 global using IMediaPipeline = AtcSoft.Video.Surveillance.Services.IMediaPipeline;
 global using IMotionDetectionService = AtcSoft.Video.Surveillance.Services.IMotionDetectionService;
 global using IRecordingPreviews = AtcSoft.Video.Surveillance.Services.IRecordingPreviews;
+
+// Core has an IRecordingService and an ITimelapseService too. Atc.XamlToolkit 4.0.0 writes the
+// dependency properties with short type names and a using for each type's namespace, so name ours.
+global using IRecordingService = AtcSoft.Video.Surveillance.Wpf.Core.Services.IRecordingService;
+global using ITimelapseService = AtcSoft.Video.Surveillance.Wpf.Core.Services.ITimelapseService;
+
 global using MediaCleanupRunner = AtcSoft.Video.Surveillance.Helpers.MediaCleanupRunner;
 global using MotionAnalysisSize = AtcSoft.Video.Surveillance.Helpers.MotionDetection.MotionAnalysisSize;
 global using MotionBoxMapper = AtcSoft.Video.Surveillance.Helpers.MotionBoxMapper;

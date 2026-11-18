@@ -2,7 +2,7 @@
 
 WPF `VideoHost` control that renders video from [`Atc.Video.Engine`](https://www.nuget.org/packages/Atc.Video.Engine) onto a DirectComposition surface, with a XAML overlay layer on top for your own content.
 
-Target framework: `net10.0-windows`.
+Target framework: `net11.0-windows`.
 
 This is the low-level rendering control. If you want a ready-made camera tile with connection state, overlays and a grid layout, use [`AtcSoft.Video.Surveillance.Wpf.Core`](https://www.nuget.org/packages/AtcSoft.Video.Surveillance.Wpf.Core) instead — it builds on this package.
 

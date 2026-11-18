@@ -92,7 +92,7 @@ public static class StorybookWriter
         // The file's own line endings, whatever the writer's are on this machine.
         var result = root.ToJsonString(WriteOptions).ReplaceLineEndings(json.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n");
 
-        if (json.EndsWith('\n'))
+        if (json.EndsWith('\n', StringComparison.Ordinal))
         {
             result += json.EndsWith("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         }

@@ -11,22 +11,22 @@ All user and developer documentation lives in the [wiki](https://github.com/atc-
 - Wiki commits go in the wiki repo, separately; the user pushes them. After a push, check the anchor links on the live pages: a heading that starts with 🖥️ or 🗄️ keeps a hidden character in its anchor (`#%EF%B8%8F-…`).
 
 ## Solution Structure
-- `AtcSoft.Video.Surveillance` - Shared library: models, enums, events, service interfaces, helpers (net10.0, no WPF)
-- `AtcSoft.Video.Surveillance.Resources` - The texts of every client: `Translations.resx` in US English (neutral), `en-GB`, `da-DK`, `de-DE` (net10.0, no WPF, published)
-- `Atc.Video.Engine` - Cross-platform video engine (net10.0): demux, decode, record, capture via in-process FFmpeg
-- `Atc.Video.Engine.DirectX` - D3D11VA GPU acceleration, Video Processor, swap chain (net10.0-windows)
-- `AtcSoft.Video.Surveillance.Windows` - Windows-only parts shared by the standalone app and the server, not published: USB camera enumeration (Media Foundation) + hot-plug watcher (WMI), and the recording thumbnail generator (GDI+) (net10.0-windows)
-- `Atc.Video.Player.Wpf` - WPF VideoHost control with DComp surface + XAML overlay (net10.0-windows)
+- `AtcSoft.Video.Surveillance` - Shared library: models, enums, events, service interfaces, helpers (net11.0, no WPF)
+- `AtcSoft.Video.Surveillance.Resources` - The texts of every client: `Translations.resx` in US English (neutral), `en-GB`, `da-DK`, `de-DE` (net11.0, no WPF, published)
+- `Atc.Video.Engine` - Cross-platform video engine (net11.0): demux, decode, record, capture via in-process FFmpeg
+- `Atc.Video.Engine.DirectX` - D3D11VA GPU acceleration, Video Processor, swap chain (net11.0-windows)
+- `AtcSoft.Video.Surveillance.Windows` - Windows-only parts shared by the standalone app and the server, not published: USB camera enumeration (Media Foundation) + hot-plug watcher (WMI), and the recording thumbnail generator (GDI+) (net11.0-windows)
+- `Atc.Video.Player.Wpf` - WPF VideoHost control with DComp surface + XAML overlay (net11.0-windows)
 - `AtcSoft.Video.Surveillance.CameraWall.Wpf` - WPF library with the complete camera wall: UI, dialogs, Video.Engine integration (not published; consumed by the CameraWall app)
 - `AtcSoft.Video.Surveillance.CameraWall.Wpf.App` - Thin shell WPF application using the library (standalone, connects directly to cameras)
 - `AtcSoft.Video.Surveillance.Wpf` - WPF library for the VideoSurveillance API client (GatewayService, SurveillanceEventService, OpenAPI-generated client)
 - `AtcSoft.Video.Surveillance.Wpf.App` - WPF management application for the API server (Fluent.Ribbon, Serilog, splash screen)
-- `AtcSoft.Video.Surveillance.Api.Contracts` - Generated API models, endpoints, handler interfaces (OpenAPI-first via Atc.Rest.Api.SourceGenerator 3.3.1 from nuget.org)
+- `AtcSoft.Video.Surveillance.Api.Contracts` - Generated API models, endpoints, handler interfaces (OpenAPI-first via Atc.Rest.Api.SourceGenerator 3.3.2 from nuget.org)
 - `AtcSoft.Video.Surveillance.Api.Domain` - Handler implementations calling Core services
-- `AtcSoft.Video.Surveillance.Api` - ASP.NET Core host (REST, `GET /events`, HLS streams, the web client at `/`); `net10.0-windows` on Windows, `net10.0` elsewhere (Linux, the Docker image), a console app or the Windows service `AtcSoftVideoSurveillance`
+- `AtcSoft.Video.Surveillance.Api` - ASP.NET Core host (REST, `GET /events`, HLS streams, the web client at `/`); `net11.0-windows` on Windows, `net11.0` elsewhere (Linux, the Docker image), a console app or the Windows service `AtcSoftVideoSurveillance`
 - `AtcSoft.Video.Surveillance.Aspire` - Aspire AppHost for orchestrated startup and developer dashboard
 - `AtcSoft.Video.Surveillance.Blazor.App` - Blazor WebAssembly client for the API server (MudBlazor). Its logic lives in plain classes under `Logic/`, tested in `AtcSoft.Video.Surveillance.Blazor.App.Tests`
-- `AtcSoft.Video.Surveillance.Storybook` - Scenes with known content for measuring motion detection: the storybook model, a deterministic renderer with its truth, the scorer (net10.0, not published; see [Motion-Detection-Storybook in the wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Motion-Detection-Storybook))
+- `AtcSoft.Video.Surveillance.Storybook` - Scenes with known content for measuring motion detection: the storybook model, a deterministic renderer with its truth, the scorer (net11.0, not published; see [Motion-Detection-Storybook in the wiki](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Motion-Detection-Storybook))
 - `tools/AtcSoft.Video.Surveillance.Tools.MotionLab` - Developer tool, not published (WPF, *Motion Lab*): a storybook or a recording through the real detector and box overlay, picture by picture, with the truth and the score; walked by `MotionLabSmokeTests`
 - `tools/AtcSoft.Video.Surveillance.Tools.DetectionReview` - Developer tool, not published (WPF, *Detection Review*): a recording's pictures with the detector's boxes (yellow), a person draws where they should be (red), saved as coordinates in `boxes.json`, and a comparison (`compare.md`); see its README; walked by `DetectionReviewSmokeTests`
 - `tools-data/` (git-ignored) is scratch data for the detector work: the user drops recordings there and reviews them in Detection Review (verdicts, red boxes, comments in each `*-review/boxes.json`); Claude reads the reviews and improves the detector, measured by `--rerun` (`compare.md`) and the storybook baseline. A review's boxes and comments are the user's work and exist only there: rerun, `--masks` and experiments run on a copy (with its `original` folder), never in the user's review

@@ -189,5 +189,5 @@ public static class CameraUriHelper
     }
 
     private static string BracketIfIPv6(string host)
-        => host.StartsWith('[') ? host : host.Contains(':', StringComparison.Ordinal) ? $"[{host}]" : host;
+        => host.StartsWith('[', StringComparison.Ordinal) ? host : host.Contains(':', StringComparison.Ordinal) ? $"[{host}]" : host;
 }

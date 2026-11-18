@@ -70,7 +70,7 @@ public sealed class GitHubReleaseService : IGitHubReleaseService, IDisposable
                 if (!string.IsNullOrEmpty(versionString))
                 {
                     // Remove leading 'v' if present (e.g., "v1.0.0" -> "1.0.0")
-                    if (versionString.StartsWith('v'))
+                    if (versionString.StartsWith('v', StringComparison.Ordinal))
                     {
                         versionString = versionString[1..];
                     }

@@ -1,24 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <!-- On Windows: net10.0-windows, with USB cameras (Media Foundation, WMI), GDI+ thumbnails
-         and previews, and D3D11 decoding. Elsewhere (Linux, macOS, the Docker image): net10.0,
+    <!-- On Windows: net11.0-windows, with USB cameras (Media Foundation, WMI), GDI+ thumbnails
+         and previews, and D3D11 decoding. Elsewhere (Linux, macOS, the Docker image): net11.0,
          the same server without those (WINDOWS is not defined). -->
-    <TargetFramework Condition="'$(OS)' == 'Windows_NT'">net10.0-windows</TargetFramework>
-    <TargetFramework Condition="'$(OS)' != 'Windows_NT'">net10.0</TargetFramework>
+    <TargetFramework Condition="'$(OS)' == 'Windows_NT'">net11.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(OS)' != 'Windows_NT'">net11.0</TargetFramework>
     <NoWarn>$(NoWarn);SA1649;MA0048;CA1416</NoWarn>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Atc.Hosting" Version="2.0.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.14" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="11.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="11.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0" />
     <!-- Pinned above the 2.0.0 that Microsoft.AspNetCore.OpenApi 10.0.8 pulls in transitively (NU1903 / GHSA-v5pm-xwqc-g5wc). -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.13.0" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.19.0" />
-    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.OpenApi" Version="3.11.1" />
+    <PackageReference Include="Scalar.AspNetCore" Version="3.0.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="11.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
   </ItemGroup>
@@ -35,7 +35,7 @@
 
   <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
     <!-- The same exe runs as a console app or as a Windows service (the server MSI). -->
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="11.0.0" />
     <ProjectReference Include="..\Atc.Video.Engine.DirectX\Atc.Video.Engine.DirectX.csproj" />
     <ProjectReference Include="..\AtcSoft.Video.Surveillance.Windows\AtcSoft.Video.Surveillance.Windows.csproj" />
   </ItemGroup>

@@ -56,7 +56,7 @@ public sealed class MotionZoneEditingTests
             Pairs(MotionZoneEditing.NewZoneCorners(count)).Should().Equal(Pairs(CoreEditing.NewZoneCorners(count)));
         }
 
-        string Name(int n) => $"Zone {n}";
+        static string Name(int n) => $"Zone {n}";
         MotionZoneEditing.NextNumber(["Zone 1", "zone 3"], Name).Should().Be(CoreEditing.NextNumber(["Zone 1", "zone 3"], Name));
     }
 

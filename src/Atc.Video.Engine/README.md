@@ -2,7 +2,7 @@
 
 Cross-platform video engine built on in-process FFmpeg: demuxing, decoding, recording and frame capture for RTSP, HTTP and DirectShow (USB) sources.
 
-Target framework: `net10.0`.
+Target framework: `net11.0`.
 
 ## Usage
 

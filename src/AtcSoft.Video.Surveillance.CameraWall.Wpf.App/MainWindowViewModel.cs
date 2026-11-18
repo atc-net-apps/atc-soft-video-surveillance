@@ -90,7 +90,7 @@ public partial class MainWindowViewModel : MainWindowViewModelBase
     /// Key = layout ID (string), Value = layout name.
     /// </summary>
     [ObservableProperty]
-    private Dictionary<string, string> layoutItems = [];
+    private Dictionary<string, string> layoutItems = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Gets or sets the selected layout ID for LabelComboBox binding.

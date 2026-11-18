@@ -13,7 +13,7 @@ var scratchDataPath = builder.Configuration["AtcSoft:DataPath"];
 var useScratch = !string.IsNullOrWhiteSpace(scratchDataPath);
 
 var api = builder
-    .AddProject<Projects.AtcSoft_Video_Surveillance_Api>("VideoSurveillance-Api")
+    .AddDotnetProject("VideoSurveillance-Api", "../AtcSoft.Video.Surveillance.Api/AtcSoft.Video.Surveillance.Api.csproj")
     .WithHttpEndpoint(port: 8585, name: "public");
 
 if (useScratch)
@@ -22,18 +22,18 @@ if (useScratch)
 }
 
 builder
-    .AddProject<Projects.AtcSoft_Video_Surveillance_Blazor_App>("VideoSurveillance-BlazorApp")
+    .AddDotnetProject("VideoSurveillance-BlazorApp", "../AtcSoft.Video.Surveillance.Blazor.App/AtcSoft.Video.Surveillance.Blazor.App.csproj")
     .WithReference(api, apiReferenceName)
     .WaitFor(api)
     .WithExternalHttpEndpoints();
 
 var wpfApp = builder
-    .AddProject<Projects.AtcSoft_Video_Surveillance_Wpf_App>("VideoSurveillance-WpfApp")
+    .AddDotnetProject("VideoSurveillance-WpfApp", "../AtcSoft.Video.Surveillance.Wpf.App/AtcSoft.Video.Surveillance.Wpf.App.csproj")
     .WithReference(api, apiReferenceName)
     .WaitFor(api);
 
 var cameraWall = builder
-    .AddProject<Projects.AtcSoft_Video_Surveillance_CameraWall_Wpf_App>("CameraWall-WpfApp");
+    .AddDotnetProject("CameraWall-WpfApp", "../AtcSoft.Video.Surveillance.CameraWall.Wpf.App/AtcSoft.Video.Surveillance.CameraWall.Wpf.App.csproj");
 
 if (useScratch)
 {
