@@ -109,7 +109,9 @@ internal sealed class ActivityFileCache<T>
                 return;
             }
 
-            foreach (var path in entries.OrderBy(e => e.Value.LastUsed).Take(excess).Select(e => e.Key).ToList())
+            // ToArray takes a snapshot: other threads go on adding while this one sorts, and
+            // sorting the dictionary itself copies it into an array sized before they did.
+            foreach (var path in entries.ToArray().OrderBy(e => e.Value.LastUsed).Take(excess).Select(e => e.Key).ToList())
             {
                 entries.TryRemove(path, out _);
             }

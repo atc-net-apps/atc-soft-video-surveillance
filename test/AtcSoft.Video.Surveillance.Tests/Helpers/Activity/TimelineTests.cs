@@ -143,6 +143,26 @@ public sealed class TimelineTests : IDisposable
     }
 
     [Fact]
+    public void A_Full_Cache_Read_From_Many_Threads_At_Once_Trims_Without_Throwing()
+    {
+        // A timeline reads its files in parallel: the cache is trimmed while other threads add to it.
+        var files = Enumerable.Range(0, 400).Select(i => WriteIndex($"p{i}", 3)).ToList();
+
+        for (var round = 0; round < 20; round++)
+        {
+            var cache = new ActivitySummaryCache(capacity: 20);
+
+            var read = () => Parallel.ForEach(
+                files,
+                new ParallelOptions { MaxDegreeOfParallelism = 16 },
+                f => cache.Get(f));
+
+            read.Should().NotThrow();
+            cache.Count.Should().BeLessThanOrEqualTo(20 + 16, "each thread adds at most one entry past a trim");
+        }
+    }
+
+    [Fact]
     public void A_Week_Of_Hour_Long_Indexes_For_Ten_Cameras_Is_Read_Fast_Enough_For_A_Timeline()
     {
         // A cold timeline request summarizes every index in its span once. Here: 24 hour-long
