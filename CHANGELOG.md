@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.7.0](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.6.0...v1.7.0) (2026-11-18)
+
+
+### New features
+
+* **camerawall:** the recordings browser opens another PC's recordings ([1c2dac3](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/1c2dac3772a6e3db217bf38b776d03ad2ddf3460))
+* **camerawall:** the timeline shows when a camera was offline and opens another PC's recordings ([420dddb](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/420dddb76b54f641fdae351f11efe75c71f0e21d))
+* move to .NET 11 and update the NuGet packages ([645430a](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/645430a7302f5fca030d580cb5e762c034a76b58))
+
+
+### Bug fixes
+
+* **engine:** log a camera that stays out of reach once an hour, not on every attempt ([21bf43c](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/21bf43c1d6104c8f34fb5dc2e36f6a7b63e2b99b))
+* **motion:** analyse a picture at the size it was captured at ([9c764ae](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/9c764ae103ce9ad8025c95fbccf2af2e3cceb5db))
+* **timeline:** trim the activity cache from a snapshot while other threads read ([6b4f34e](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/6b4f34ebad5c81b02cc29bac5f249ec83a28019a))
+
+
+### Refactorings
+
+* **wpf:** ask the dialogs' yes/no questions with Atc.Wpf's in-window confirmation ([5f9b122](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/5f9b122c1e6c97d1153e5a17c4252ccf2d610f90))
+* **wpf:** use AffectsRender and typed change hooks from Atc.XamlToolkit 4 ([ab9aa34](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/ab9aa34caec4bf226e8f9728fa43a14a34d7c43d))
+
 ## [1.6.0](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.5.0...v1.6.0) (2026-11-05)
 
 
