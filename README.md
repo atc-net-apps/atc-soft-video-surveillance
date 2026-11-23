@@ -18,7 +18,7 @@ Live view, recording, motion detection and an activity timeline for your RTSP, H
 | **Watch from** | That PC | The Windows desktop client, or a browser (web client) |
 | **Users and roles** | The PC's own login | Users with roles, API keys, an audit log |
 | **Integrations** | — | REST API (OpenAPI), live events, webhooks |
-| **Runs on** | Windows | Windows today; Docker, Linux and NAS are [coming](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support) |
+| **Runs on** | Windows | Windows (a service), or Docker on a NAS, Linux or a Mac ([platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support)) |
 
 ## ✨ Key Features
 
@@ -51,16 +51,19 @@ Live view, recording, motion detection and an activity timeline for your RTSP, H
 |---|---|---|
 | CameraWall | `AtcSoft.Video.Surveillance.CameraWall.Installer.msi` | [Install CameraWall](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-CameraWall) |
 | The desktop client of the Video Surveillance system | `AtcSoft.Video.Surveillance.Client.Installer.msi` | [Install Video Surveillance](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance) |
-| The server | No installer yet: built from source today | [The server on Windows today](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance#-the-server-on-windows-today) |
+| The server on Windows, as a Windows service | `AtcSoft.Video.Surveillance.Server.Installer.msi` | [The server on Windows](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance#-the-server-on-windows) |
+| The server on a NAS, Linux, a Mac or Docker on Windows | The image `ghcr.io/atc-net-apps/atc-soft-video-surveillance-server` (`amd64`, `arm64`) | [Install with Docker](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Docker) |
+| The web client | Nothing: the server serves it at `http://<server>:8585` | [The web client](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance#-the-web-client) |
 
 ## 📋 Requirements
 
-- **Windows 10** (version 2004 or later) or **Windows 11**, 64-bit
-- The **[.NET 11 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/11.0)** for the installers (the server needs the ASP.NET Core Runtime 11)
+- **Windows 10** (version 2004 or later) or **Windows 11**, 64-bit, for CameraWall, the desktop client and the server installer (also Windows Server 2019 and later)
+- The **[.NET 11 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/11.0)** for CameraWall and the desktop client; the server installer brings its own runtime
+- For the server in Docker: a 64-bit Intel/AMD or ARM machine with Docker
 - Cameras that stream **RTSP**, **HTTP** or **HTTPS**, or **USB** webcams
 - **FFmpeg 9** is included in the installers; see [FFmpeg](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-FFmpeg) when building from source
 
-What runs where, and what is coming (a server installer, Docker, Linux, UGREEN and Synology NAS): **[Platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support)**.
+What runs where on Windows, Linux, macOS and NAS, and what is coming: **[Platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support)**.
 
 ## 🏗️ Architecture
 
@@ -102,6 +105,7 @@ Read the full documentation on the **[WIKI](https://github.com/atc-net-apps/atc-
 |---|---|
 | [🖥️ Install CameraWall](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-CameraWall) | Install, first start, where data is kept, updating |
 | [🌍 Install Video Surveillance](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance) | The server, the desktop client and the web client, per platform |
+| [🐳 Install with Docker](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Docker) | The server on a NAS (UGREEN, Synology), Linux, a Mac or Docker on Windows |
 | [🧭 Platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support) | What runs on Windows, Linux, macOS and NAS today, and what is coming |
 | [🎞️ FFmpeg](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-FFmpeg) | The FFmpeg 9 the apps need, and where they look for it |
 | [⚙️ Settings reference](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Settings-Reference) | Every setting, application-wide and per camera |
