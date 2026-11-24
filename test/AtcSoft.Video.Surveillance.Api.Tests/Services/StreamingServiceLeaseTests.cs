@@ -46,7 +46,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task A_Viewer_Gets_A_Lease_And_The_Playlist_When_The_Stream_Can_Be_Played()
     {
-        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var start = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
 
         start.Outcome.Should().Be(LiveStreamOutcome.Started);
         start.LeaseId.Should().NotBeEmpty();
@@ -60,8 +60,8 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task The_Stream_Runs_Until_The_Last_Lease_On_It_Is_Given_Back()
     {
-        var first = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
-        var second = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var first = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
+        var second = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
 
         sut.Release(camera.Id, first.LeaseId);
         sut.Release(camera.Id, first.LeaseId);
@@ -75,7 +75,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task A_Lease_That_Is_Not_Renewed_Runs_Out_And_The_Stream_Stops_With_It()
     {
-        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var start = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
 
         time.Advance((sut.RenewInterval * 2) + TimeSpan.FromSeconds(1));
         sut.ReapIdleSessions();
@@ -87,7 +87,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task A_Renewed_Lease_Keeps_The_Stream_Running()
     {
-        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var start = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
 
         for (var i = 0; i < 4; i++)
         {
@@ -102,11 +102,11 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task A_Stale_Lease_From_An_Earlier_Stream_Does_Not_Stop_A_Later_One()
     {
-        var old = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var old = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
         time.Advance((sut.RenewInterval * 2) + TimeSpan.FromSeconds(1));
         sut.ReapIdleSessions();
 
-        var current = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var current = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
         sut.Release(camera.Id, old.LeaseId);
 
         sut.IsStreaming(camera.Id).Should().BeTrue();
@@ -116,7 +116,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task A_Lease_Is_Renewed_Only_On_Its_Own_Camera()
     {
-        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var start = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
 
         sut.Renew(Guid.NewGuid(), start.LeaseId).Should().BeFalse();
         sut.Release(Guid.NewGuid(), start.LeaseId);
@@ -127,7 +127,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task A_Camera_The_Server_Does_Not_Know_Gets_No_Lease()
     {
-        var start = await sut.StartAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var start = await sut.StartAsync(Guid.NewGuid(), AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
 
         start.Outcome.Should().Be(LiveStreamOutcome.CameraNotFound);
     }
@@ -137,7 +137,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     {
         host.Acquire(camera, CameraPipelineUse.Viewing).Returns((IMediaPipeline?)null);
 
-        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var start = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
 
         start.Outcome.Should().Be(LiveStreamOutcome.Failed);
         start.Reason.Should().Contain("unplugged");
@@ -147,7 +147,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task A_Lease_On_A_Stream_That_Ended_By_Itself_Is_Not_Renewed_So_The_Viewer_Starts_Again()
     {
-        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var start = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
 
         // The camera rebooted: the stream stopped while the viewer watched.
         pipeline.IsLiveStreamActive.Returns(false);
@@ -160,7 +160,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task The_Sweep_Stops_A_Stream_That_Ended_By_Itself_Although_Its_Lease_Is_Fresh()
     {
-        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var start = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
         pipeline.IsLiveStreamActive.Returns(false);
 
         sut.ReapIdleSessions();
@@ -172,12 +172,12 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task A_New_Viewer_Of_A_Stream_That_Ended_By_Itself_Gets_A_New_Stream()
     {
-        var old = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var old = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
         pipeline.ConnectionStateChanged += Raise.EventWith(
             new ConnectionStateChangedEventArgs(ConnectionState.Connected, ConnectionState.Error));
         sut.HasProcessExited(camera.Id).Should().BeTrue();
 
-        var current = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var current = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
 
         current.Outcome.Should().Be(LiveStreamOutcome.Started);
         host.Received(2).Acquire(camera, CameraPipelineUse.Viewing);
@@ -200,7 +200,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
         });
 
         var starts = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(
-            () => sut.StartAsync(camera.Id, TestContext.Current.CancellationToken),
+            () => sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken),
             TestContext.Current.CancellationToken)));
 
         starts.Should().OnlyContain(s => s.Outcome == LiveStreamOutcome.Started);
@@ -211,7 +211,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     [Fact]
     public async Task A_Viewer_Leaving_Is_Not_Failed_By_A_Stream_That_Cannot_Be_Stopped_Cleanly()
     {
-        var start = await sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var start = await sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
         pipeline.When(p => p.StopLiveStream()).Do(_ => throw new IOException("The pipe has been ended."));
 
         var leave = () => sut.Release(camera.Id, start.LeaseId);
@@ -225,7 +225,7 @@ public sealed class StreamingServiceLeaseTests : IDisposable
     {
         // The camera was unplugged while the viewer waited.
         pipeline.FramesDecoded.Returns(0);
-        var starting = sut.StartAsync(camera.Id, TestContext.Current.CancellationToken);
+        var starting = sut.StartAsync(camera.Id, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main, TestContext.Current.CancellationToken);
         pipeline.ConnectionStateChanged += Raise.EventWith(
             new ConnectionStateChangedEventArgs(ConnectionState.Connecting, ConnectionState.Error));
 

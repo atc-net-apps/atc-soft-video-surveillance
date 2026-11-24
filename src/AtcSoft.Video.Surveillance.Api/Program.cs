@@ -193,6 +193,7 @@ try
     var gpuFactory = ServerVideoDecoding.Choose(builder.Configuration, ffmpegLog.CreateLogger("AtcSoft.Video.Surveillance.Api.Video"));
     builder.Services.AddSingleton<IVideoPlayerFactory>(sp =>
         new VideoPlayerFactory(sp.GetRequiredService<ILoggerFactory>(), gpuFactory));
+    builder.Services.AddSingleton<SubStreamAvailability>();
     builder.Services.AddSingleton<IMediaPipelineFactory, VideoEngineMediaPipelineFactory>();
 
     // The streaming service asks for the host of the USB cameras' pipelines

@@ -12,7 +12,8 @@ public sealed class UpdateCameraHandler(
     ICameraStorageService storage,
     IMotionDetectionService? motionDetection = null,
     ICameraRuntime? runtime = null,
-    ILiveStreamService? liveStreams = null) : IUpdateCameraHandler
+    ILiveStreamService? liveStreams = null,
+    SubStreamAvailability? subStreams = null) : IUpdateCameraHandler
 {
     public Task<UpdateCameraResult> ExecuteAsync(
         UpdateCameraParameters parameters,
@@ -43,6 +44,6 @@ public sealed class UpdateCameraHandler(
             liveStreams?.EndStream(updated.Id);
         }
 
-        return Task.FromResult(UpdateCameraResult.Ok(updated.ToApiModel()));
+        return Task.FromResult(UpdateCameraResult.Ok(updated.ToApiModel(subStreamFailing: subStreams?.IsFailing(updated) == true)));
     }
 }

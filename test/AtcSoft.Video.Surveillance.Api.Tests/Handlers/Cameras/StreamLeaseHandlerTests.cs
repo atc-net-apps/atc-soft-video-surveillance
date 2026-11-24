@@ -15,7 +15,7 @@ public class StreamLeaseHandlerTests
     [Fact]
     public async Task A_Started_Stream_Is_The_Lease_And_The_Playlist()
     {
-        streams.StartAsync(cameraId, Arg.Any<CancellationToken>()).Returns(LiveStreamStart.Started(leaseId, "/streams/a/stream.m3u8"));
+        streams.StartAsync(cameraId, CameraStreamRole.Main, Arg.Any<CancellationToken>()).Returns(LiveStreamStart.Started(leaseId, "/streams/a/stream.m3u8"));
         var handler = new StartStreamHandler(streams);
 
         var result = await handler.ExecuteAsync(new StartStreamParameters(cameraId), CancellationToken.None);
@@ -32,7 +32,7 @@ public class StreamLeaseHandlerTests
     [Fact]
     public async Task A_Camera_The_Server_Does_Not_Know_Is_Not_Found()
     {
-        streams.StartAsync(cameraId, Arg.Any<CancellationToken>()).Returns(LiveStreamStart.CameraNotFound(cameraId));
+        streams.StartAsync(cameraId, CameraStreamRole.Main, Arg.Any<CancellationToken>()).Returns(LiveStreamStart.CameraNotFound(cameraId));
         var handler = new StartStreamHandler(streams);
 
         var result = await handler.ExecuteAsync(new StartStreamParameters(cameraId), CancellationToken.None);
@@ -43,7 +43,7 @@ public class StreamLeaseHandlerTests
     [Fact]
     public async Task A_Stream_That_Could_Not_Start_Is_Unavailable_With_The_Reason_And_When_To_Try_Again()
     {
-        streams.StartAsync(cameraId, Arg.Any<CancellationToken>()).Returns(LiveStreamStart.Failed("The camera could not be opened."));
+        streams.StartAsync(cameraId, CameraStreamRole.Main, Arg.Any<CancellationToken>()).Returns(LiveStreamStart.Failed("The camera could not be opened."));
         var handler = new StartStreamHandler(streams);
 
         var result = await handler.ExecuteAsync(new StartStreamParameters(cameraId), CancellationToken.None);

@@ -1004,6 +1004,14 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: stream
+          in: query
+          required: false
+          description: >-
+            Which of the camera's streams: the main stream (full screen; the default) or the
+            sub-stream (the live grid). A camera without a sub-stream plays its main stream for either.
+          schema:
+            $ref: "#/components/schemas/CameraStream"
       responses:
         '200':
           description: The stream can be played
@@ -2257,6 +2265,7 @@ components:
         - streamBufferDurationMs
         - isRecording
         - motionZones
+        - subStreamStatus
       properties:
         id:
           type: string
@@ -2294,6 +2303,8 @@ components:
           type: integer
           format: int32
           description: The sub-stream's port, when it differs from port.
+        subStreamStatus:
+          $ref: "#/components/schemas/CameraSubStreamStatus"
         username:
           type: string
         # USB-camera fields — populated only when source = usb
@@ -3871,6 +3882,17 @@ components:
           type: string
           description: The status in words, for a status bar ("120 GB free of 500 GB").
 
+    CameraSubStreamStatus:
+      type: string
+      description: >-
+        Whether the live grid and motion detection use the camera's sub-stream: it has none
+        (notConfigured), it is used (inUse), or it would not open lately and the main stream is used
+        until it is tried again (unavailable).
+      enum: [notConfigured, inUse, unavailable]
+    CameraStream:
+      type: string
+      description: One of a camera's streams.
+      enum: [main, sub]
     CameraConnectionState:
       type: string
       description: How the server's connection to a camera is.

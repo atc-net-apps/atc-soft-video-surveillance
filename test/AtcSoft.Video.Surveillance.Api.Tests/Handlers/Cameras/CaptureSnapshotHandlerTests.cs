@@ -158,6 +158,34 @@ public class CaptureSnapshotHandlerTests
     }
 
     [Fact]
+    public async Task A_Camera_With_A_Sub_Stream_Is_Taken_From_Its_Main_Stream_Not_The_Recording()
+    {
+        // The server's pipelines show the sub-stream; a snapshot is of the main stream, full size.
+        var storage = Substitute.For<ICameraStorageService>();
+        var pipelineFactory = Substitute.For<IMediaPipelineFactory>();
+        var settingsService = Substitute.For<IApplicationSettingsService>();
+        settingsService.CameraDisplay.Returns(new CameraDisplayAppSettings { SnapshotPath = Path.Combine(Path.GetTempPath(), "atcsoft-snapshot-" + Guid.NewGuid().ToString("N")) });
+        var recordings = Substitute.For<IRecordingService>();
+        var recording = Substitute.For<IMediaPipeline>();
+        var main = Substitute.For<IMediaPipeline>();
+        var camera = new CameraConfiguration();
+        camera.Connection.SubStreamPath = "/stream2";
+        storage.GetCameraById(camera.Id).Returns(camera);
+        recordings.FindPipeline(camera.Id).Returns(recording);
+        recording.CaptureFrameAsync(Arg.Any<CancellationToken>()).Returns(new byte[] { 9 });
+        pipelineFactory.Create(camera, AtcSoft.Video.Surveillance.Enums.CameraStreamRole.Main).Returns(main);
+        main.FramesDecoded.Returns(1);
+        main.CaptureFrameAsync(Arg.Any<CancellationToken>()).Returns(new byte[] { 1, 2, 3 });
+        var handler = new CaptureSnapshotHandler(storage, pipelineFactory, settingsService, recordings: recordings);
+
+        var result = await handler.ExecuteAsync(new CaptureSnapshotParameters(camera.Id), TestContext.Current.CancellationToken);
+
+        (await result.Result.ExecuteAsync()).StatusCode.Should().Be(StatusCodes.Status200OK);
+        await main.Received(1).CaptureFrameAsync(Arg.Any<CancellationToken>());
+        await recording.DidNotReceive().CaptureFrameAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task A_Recording_That_Gives_No_Picture_Leaves_The_Camera_To_Be_Opened()
     {
         var storage = Substitute.For<ICameraStorageService>();

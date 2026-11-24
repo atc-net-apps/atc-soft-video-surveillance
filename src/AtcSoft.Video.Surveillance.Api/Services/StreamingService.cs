@@ -33,7 +33,9 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     private readonly ICameraStorageService storage;
     private readonly ILogger<StreamingService> logger;
     private readonly IServiceProvider? services;
-    private readonly ConcurrentDictionary<Guid, StreamSession> sessions = new();
+    // One stream per camera and stream: a camera with a sub-stream can have both going at once
+    // (the live grid on the sub-stream, full screen on the main stream).
+    private readonly ConcurrentDictionary<StreamKey, StreamSession> sessions = new();
 
     // One gate per camera: a stream is started, joined, left and stopped under
     // it, so two viewers never start two FFmpeg processes for one camera, and
@@ -110,17 +112,20 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     /// <inheritdoc />
     public async Task<LiveStreamStart> StartAsync(
         Guid cameraId,
+        CameraStreamRole stream,
         CancellationToken cancellationToken)
     {
-        if (storage.GetCameraById(cameraId) is null)
+        if (storage.GetCameraById(cameraId) is not { } camera)
         {
             return LiveStreamStart.CameraNotFound(cameraId);
         }
 
+        // A camera without a sub-stream has one stream, whichever is asked for.
+        var key = new StreamKey(cameraId, camera.Connection.HasSubStream ? stream : CameraStreamRole.Main);
         StreamSession session;
         try
         {
-            session = AddViewer(cameraId);
+            session = AddViewer(key);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
         {
@@ -140,7 +145,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
                 if (session.HasExited)
                 {
                     var errors = session.GetRecentErrors();
-                    RemoveViewer(cameraId, session);
+                    RemoveViewer(key, session);
                     return LiveStreamStart.Failed(string.IsNullOrWhiteSpace(errors)
                         ? "The camera could not be opened."
                         : $"The stream ended before it had started. Output: {errors}");
@@ -149,7 +154,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
                 if (time.GetUtcNow() - started > StartTimeout)
                 {
                     var errors = session.GetRecentErrors();
-                    RemoveViewer(cameraId, session);
+                    RemoveViewer(key, session);
                     return LiveStreamStart.Failed(
                         $"The stream did not produce its HLS playlist within {StartTimeout.TotalSeconds:F0}s. " +
                         "The most common cause is a very long camera GOP (keyframe interval); " +
@@ -163,12 +168,12 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         catch (OperationCanceledException)
         {
             // The viewer left before it could watch.
-            RemoveViewer(cameraId, session);
+            RemoveViewer(key, session);
             throw;
         }
 
         var leaseId = Guid.NewGuid();
-        leases[leaseId] = new StreamLeaseEntry(cameraId, session, time.GetUtcNow());
+        leases[leaseId] = new StreamLeaseEntry(key, session, time.GetUtcNow());
 
         // The lease is in the address: the playlist and its segments are
         // served to whoever has it, for as long as it lives.
@@ -210,7 +215,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
             // dropped): the viewer is told to start again, which starts a new one.
             if (leases.TryRemove(leaseId, out _))
             {
-                RemoveViewer(cameraId, lease.Session);
+                RemoveViewer(lease.Key, lease.Session);
             }
 
             return false;
@@ -233,15 +238,18 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
             return;
         }
 
-        RemoveViewer(cameraId, lease.Session);
+        RemoveViewer(lease.Key, lease.Session);
     }
 
     /// <inheritdoc />
     public void EndStream(Guid cameraId)
     {
-        if (sessions.TryGetValue(cameraId, out var session))
+        foreach (var (key, session) in sessions)
         {
-            ReapSession(cameraId, session);
+            if (key.CameraId == cameraId)
+            {
+                ReapSession(key, session);
+            }
         }
 
         // Its leases are no longer current: they go now rather than at the next sweep.
@@ -258,34 +266,37 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         => File.Exists(playlistPath) &&
            Directory.EnumerateFiles(Path.GetDirectoryName(playlistPath)!, "*.ts").Any();
 
+    private static StreamKey MainOf(Guid cameraId)
+        => new(cameraId, CameraStreamRole.Main);
+
     private Lock GateFor(Guid cameraId)
         => cameraGates.GetOrAdd(cameraId, _ => new Lock());
 
     private bool IsCurrent(StreamLeaseEntry lease)
-        => sessions.TryGetValue(lease.CameraId, out var current) &&
+        => sessions.TryGetValue(lease.Key, out var current) &&
            ReferenceEquals(current, lease.Session);
 
     [SuppressMessage(
         "Reliability",
         "CA2000:Dispose objects before losing scope",
         Justification = "The session is kept in the dictionary and disposed when it stops.")]
-    private StreamSession AddViewer(Guid cameraId)
+    private StreamSession AddViewer(StreamKey key)
     {
-        lock (GateFor(cameraId))
+        lock (GateFor(key.CameraId))
         {
-            if (sessions.TryGetValue(cameraId, out var ended) &&
+            if (sessions.TryGetValue(key, out var ended) &&
                 ended.HasExited &&
-                sessions.TryRemove(new KeyValuePair<Guid, StreamSession>(cameraId, ended)))
+                sessions.TryRemove(new KeyValuePair<StreamKey, StreamSession>(key, ended)))
             {
                 // The stream ended by itself; the new viewer gets a new one. The
                 // old one is stopped first: the new one writes into its folder.
-                DisposeSession(cameraId, ended);
+                DisposeSession(key.CameraId, ended);
             }
 
-            if (!sessions.TryGetValue(cameraId, out var session))
+            if (!sessions.TryGetValue(key, out var session))
             {
-                session = CreateSession(cameraId);
-                sessions[cameraId] = session;
+                session = CreateSession(key);
+                sessions[key] = session;
             }
 
             session.IncrementViewers();
@@ -297,21 +308,21 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     // A viewer of this session goes; one of a session that has since ended
     // (reaped, or replaced by a later one) changes nothing.
     private void RemoveViewer(
-        Guid cameraId,
+        StreamKey key,
         StreamSession session)
     {
-        lock (GateFor(cameraId))
+        lock (GateFor(key.CameraId))
         {
-            if (!sessions.TryGetValue(cameraId, out var current) || !ReferenceEquals(current, session))
+            if (!sessions.TryGetValue(key, out var current) || !ReferenceEquals(current, session))
             {
                 return;
             }
 
             if (session.DecrementViewers() <= 0 &&
-                sessions.TryRemove(new KeyValuePair<Guid, StreamSession>(cameraId, session)))
+                sessions.TryRemove(new KeyValuePair<StreamKey, StreamSession>(key, session)))
             {
-                DisposeSession(cameraId, session);
-                LogHlsStreamStopped(cameraId);
+                DisposeSession(key.CameraId, session);
+                LogHlsStreamStopped(key.CameraId);
             }
         }
     }
@@ -337,7 +348,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     /// when it is the first. Returns the playlist path.
     /// </summary>
     public string StartStream(Guid cameraId)
-        => AddViewer(cameraId).PlaylistPath;
+        => AddViewer(MainOf(cameraId)).PlaylistPath;
 
     /// <summary>
     /// Removes a viewer added by <see cref="StartStream"/>; the stream stops
@@ -345,9 +356,9 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     /// </summary>
     public void StopStream(Guid cameraId)
     {
-        if (sessions.TryGetValue(cameraId, out var session))
+        if (sessions.TryGetValue(MainOf(cameraId), out var session))
         {
-            RemoveViewer(cameraId, session);
+            RemoveViewer(MainOf(cameraId), session);
         }
     }
 
@@ -355,13 +366,13 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     /// Gets whether a camera is currently streaming.
     /// </summary>
     public bool IsStreaming(Guid cameraId)
-        => sessions.ContainsKey(cameraId);
+        => sessions.ContainsKey(MainOf(cameraId));
 
     /// <summary>
     /// Gets the current viewer count for a camera stream.
     /// </summary>
     public int GetViewerCount(Guid cameraId)
-        => sessions.TryGetValue(cameraId, out var session)
+        => sessions.TryGetValue(MainOf(cameraId), out var session)
             ? session.ViewerCount
             : 0;
 
@@ -369,7 +380,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     /// Gets the HLS playlist path for a camera, or null if not streaming.
     /// </summary>
     public string? GetPlaylistPath(Guid cameraId)
-        => sessions.TryGetValue(cameraId, out var session)
+        => sessions.TryGetValue(MainOf(cameraId), out var session)
             ? session.PlaylistPath
             : null;
 
@@ -378,13 +389,13 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     /// process exited, or the camera's pipeline failed or was closed.
     /// </summary>
     public bool HasProcessExited(Guid cameraId)
-        => sessions.TryGetValue(cameraId, out var session) && session.HasExited;
+        => sessions.TryGetValue(MainOf(cameraId), out var session) && session.HasExited;
 
     /// <summary>
     /// Gets recent FFmpeg stderr output for a camera session.
     /// </summary>
     public string GetProcessError(Guid cameraId)
-        => sessions.TryGetValue(cameraId, out var session)
+        => sessions.TryGetValue(MainOf(cameraId), out var session)
             ? session.GetRecentErrors()
             : string.Empty;
 
@@ -398,9 +409,9 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
 
         disposed = true;
 
-        foreach (var (cameraId, session) in sessions)
+        foreach (var (key, session) in sessions)
         {
-            DisposeSession(cameraId, session);
+            DisposeSession(key.CameraId, session);
         }
 
         sessions.Clear();
@@ -441,7 +452,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
             if ((now - lease.RenewedUtc > LeaseTimeout || !IsCurrent(lease)) &&
                 leases.TryRemove(leaseId, out _))
             {
-                RemoveViewer(lease.CameraId, lease.Session);
+                RemoveViewer(lease.Key, lease.Session);
             }
         }
 
@@ -449,22 +460,23 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         // FFmpeg exited when the camera rebooted), or one of a camera that was
         // deleted, is stopped.
         var cutoff = now.UtcDateTime - InactivityTimeout;
-        foreach (var (cameraId, session) in sessions)
+        foreach (var (key, session) in sessions)
         {
-            if (session.LastActivityUtc < cutoff || session.HasExited || storage.GetCameraById(cameraId) is null)
+            if (session.LastActivityUtc < cutoff || session.HasExited || storage.GetCameraById(key.CameraId) is null)
             {
-                ReapSession(cameraId, session);
+                ReapSession(key, session);
             }
         }
     }
 
     private void ReapSession(
-        Guid cameraId,
+        StreamKey key,
         StreamSession session)
     {
+        var cameraId = key.CameraId;
         lock (GateFor(cameraId))
         {
-            if (!sessions.TryRemove(new KeyValuePair<Guid, StreamSession>(cameraId, session)))
+            if (!sessions.TryRemove(new KeyValuePair<StreamKey, StreamSession>(key, session)))
             {
                 return;
             }
@@ -474,12 +486,13 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         }
     }
 
-    private StreamSession CreateSession(Guid cameraId)
+    private StreamSession CreateSession(StreamKey key)
     {
+        var cameraId = key.CameraId;
         var camera = storage.GetCameraById(cameraId)
             ?? throw new InvalidOperationException($"Camera {cameraId} not found.");
 
-        var outputDir = Path.Combine(hlsOutputRoot, cameraId.ToString("N"));
+        var outputDir = Path.Combine(hlsOutputRoot, cameraId.ToString("N") + (key.Stream == CameraStreamRole.Sub ? "-sub" : string.Empty));
 
         // A stream that ended before may have left its files. When they
         // cannot be deleted (still held), this stream gets a folder of its own.
@@ -502,8 +515,11 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         // A USB camera is always streamed from its one pipeline. A network camera the server has
         // open already (watched or recorded) is too, rather than through a second connection the
         // camera may refuse; one it does not have open is streamed by the FFmpeg tool below.
+        // A camera with a sub-stream shares the pipeline for its sub-stream only: the server's
+        // pipeline shows the sub-stream. Its main stream (full screen) is the FFmpeg tool's.
         pipelineHost ??= services?.GetService<ICameraPipelineHost>();
-        var pipeline = pipelineHost?.Acquire(camera, CameraPipelineUse.Viewing);
+        var shares = !camera.Connection.HasSubStream || key.Stream == CameraStreamRole.Sub;
+        var pipeline = shares ? pipelineHost?.Acquire(camera, CameraPipelineUse.Viewing) : null;
         if (pipeline is null && camera.Connection.Source == CameraSource.Usb)
         {
             throw new InvalidOperationException(
@@ -522,7 +538,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
                 outputDir);
         }
 
-        var args = HlsStreamCommand.BuildArguments(camera, playlistPath);
+        var args = HlsStreamCommand.BuildArguments(camera, playlistPath, key.Stream);
 
         var psi = new ProcessStartInfo
         {
@@ -863,14 +879,20 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         }
     }
 
+    private readonly record struct StreamKey(
+        Guid CameraId,
+        CameraStreamRole Stream);
+
     private sealed class StreamLeaseEntry(
-        Guid cameraId,
+        StreamKey key,
         StreamSession session,
         DateTimeOffset renewedUtc)
     {
         private long renewedUtcTicks = renewedUtc.UtcTicks;
 
-        public Guid CameraId { get; } = cameraId;
+        public StreamKey Key { get; } = key;
+
+        public Guid CameraId => Key.CameraId;
 
         public StreamSession Session { get; } = session;
 

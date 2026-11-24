@@ -9,7 +9,9 @@ namespace AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Cameras;
 /// or recording on. Nor is a camera being recorded: its picture is taken
 /// from the recording, so a camera that allows few sessions is not opened
 /// a second time; nor is a camera the server watches for motion: its
-/// picture is taken from the pipeline that watches it.
+/// picture is taken from the pipeline that watches it. A camera with a sub-stream is the
+/// exception: its main stream is opened for the picture, as the server's pipelines show the
+/// sub-stream.
 /// </summary>
 public sealed class CaptureSnapshotHandler(
     ICameraStorageService storage,
@@ -41,6 +43,18 @@ public sealed class CaptureSnapshotHandler(
         if (pipelineHost?.Hosts(camera) == true)
         {
             return await CaptureFromSharedPipelineAsync(pipelineHost, camera, cancellationToken).ConfigureAwait(false);
+        }
+
+        // A camera with a sub-stream: the server's pipelines show the sub-stream, so the snapshot
+        // is taken from the main stream, at full size. A camera that refuses one more session
+        // gets the sub-stream's picture after all.
+        if (camera.Connection.HasSubStream)
+        {
+            using var main = pipelineFactory.Create(camera, CameraStreamRole.Main);
+            if (await PipelineConnectionWaiter.WaitForPicturesAsync(main, ConnectionTimeout, cancellationToken).ConfigureAwait(false))
+            {
+                return await CaptureAndSaveAsync(main, camera, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         if (await CaptureFromRecordingAsync(camera.Id, cancellationToken).ConfigureAwait(false) is { } recorded)

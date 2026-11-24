@@ -45,6 +45,19 @@ public sealed partial class VideoEngineMediaPipeline : IMediaPipeline
     /// </summary>
     public bool TranscodeRecordingToH264 { get; set; }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether the pictures are decoded. Off for a camera's main
+    /// stream held only to record it (its sub-stream is the one analysed). Read when the pipeline is
+    /// opened.
+    /// </summary>
+    public bool DecodeVideo { get; set; } = true;
+
+    /// <summary>
+    /// Gets the camera's picture size as the stream reports it, decoded or not.
+    /// </summary>
+    public (int Width, int Height) StreamSize
+        => player.StreamInfo is { Width: > 0, Height: > 0 } stream ? (stream.Width, stream.Height) : (0, 0);
+
     /// <inheritdoc />
     public bool IsLiveStreamActive => player.IsStreaming;
 
@@ -77,6 +90,7 @@ public sealed partial class VideoEngineMediaPipeline : IMediaPipeline
             RecordAudio = locator.IncludesAudio,
             RecordingPreRoll = AtcSoft.Video.Surveillance.Helpers.RecordingPreRoll.Motion,
             TranscodeRecordingToH264 = TranscodeRecordingToH264,
+            DecodeVideo = DecodeVideo,
             VideoSize = locator.VideoSize,
             FrameRate = locator.FrameRate,
             PixelFormat = locator.PixelFormat,

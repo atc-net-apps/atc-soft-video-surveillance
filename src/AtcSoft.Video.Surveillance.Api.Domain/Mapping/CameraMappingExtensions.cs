@@ -21,7 +21,8 @@ internal static class CameraMappingExtensions
     public static Camera ToApiModel(
         this CoreCameraConfiguration core,
         CoreConnectionState? connectionState = null,
-        bool isRecording = false)
+        bool isRecording = false,
+        bool subStreamFailing = false)
     {
         var usb = core.Connection.Usb;
         var format = usb?.Format;
@@ -54,7 +55,10 @@ internal static class CameraMappingExtensions
             ConnectionState: connectionState?.ToApiConnectionState(),
             IsRecording: isRecording,
             MotionZones: [.. core.MotionZones.Select(ToApiZone)],
-            Hub: core.Connection.Hub.ToApiModel())
+            Hub: core.Connection.Hub.ToApiModel(),
+            SubStreamStatus: !core.Connection.HasSubStream
+                ? CameraSubStreamStatus.NotConfigured
+                : subStreamFailing ? CameraSubStreamStatus.Unavailable : CameraSubStreamStatus.InUse)
         {
             SubStreamPath = core.Connection.HasSubStream ? core.Connection.SubStreamPath : null,
             SubStreamPort = core.Connection.HasSubStream ? core.Connection.SubStreamPort : null,

@@ -4,7 +4,8 @@ namespace AtcSoft.Video.Surveillance.Api.Domain.ApiHandlers.Cameras;
 /// Handler business logic for the GetCameraById operation.
 /// </summary>
 public sealed class GetCameraByIdHandler(
-    ICameraStorageService storage) : IGetCameraByIdHandler
+    ICameraStorageService storage,
+    SubStreamAvailability? subStreams = null) : IGetCameraByIdHandler
 {
     public Task<GetCameraByIdResult> ExecuteAsync(
         GetCameraByIdParameters parameters,
@@ -18,6 +19,6 @@ public sealed class GetCameraByIdHandler(
             return Task.FromResult(GetCameraByIdResult.NotFound($"Camera {parameters.CameraId} not found."));
         }
 
-        return Task.FromResult(GetCameraByIdResult.Ok(camera.ToApiModel()));
+        return Task.FromResult(GetCameraByIdResult.Ok(camera.ToApiModel(subStreamFailing: subStreams?.IsFailing(camera) == true)));
     }
 }

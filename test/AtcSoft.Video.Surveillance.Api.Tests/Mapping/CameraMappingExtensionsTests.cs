@@ -607,7 +607,18 @@ public class CameraMappingExtensionsTests
         (core.Connection.SubStreamPath, core.Connection.SubStreamPort).Should().Be(("/cam/realmonitor?channel=1&subtype=1", null));
     }
 
-    private static CreateCameraRequest NetworkCreateRequest(
+    [Fact]
+    public void The_Sub_Stream_Status_Tells_Whether_It_Is_Used()
+    {
+        var camera = new CameraConfiguration();
+        camera.ToApiModel().SubStreamStatus.Should().Be(CameraSubStreamStatus.NotConfigured);
+
+        camera.Connection.SubStreamPath = "/stream2";
+        camera.ToApiModel().SubStreamStatus.Should().Be(CameraSubStreamStatus.InUse);
+        camera.ToApiModel(subStreamFailing: true).SubStreamStatus.Should().Be(CameraSubStreamStatus.Unavailable);
+    }
+
+        private static CreateCameraRequest NetworkCreateRequest(
         string displayName,
         string description = "",
         string ipAddress = "",

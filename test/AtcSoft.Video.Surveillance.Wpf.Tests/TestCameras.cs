@@ -18,6 +18,7 @@ internal static class TestCameras
             Port: 554,
             Protocol: global::VideoSurveillance.Generated.Cameras.Models.CameraProtocol.Rtsp,
             Path: "/stream1",
+            SubStreamStatus: global::VideoSurveillance.Generated.Cameras.Models.CameraSubStreamStatus.NotConfigured,
             Username: string.Empty,
             OverlayPosition: global::VideoSurveillance.Generated.Cameras.Models.CameraOverlayPosition.TopLeft,
             StreamUseLowLatencyMode: false,

@@ -16,8 +16,10 @@ public sealed class StartStreamHandler(ILiveStreamService streams) : IStartStrea
     {
         ArgumentNullException.ThrowIfNull(parameters);
 
+        // Left out (a client from before sub-streams), the main stream.
+        var stream = parameters.Stream == CameraStream.Sub ? CameraStreamRole.Sub : CameraStreamRole.Main;
         var start = await streams
-            .StartAsync(parameters.CameraId, cancellationToken)
+            .StartAsync(parameters.CameraId, stream, cancellationToken)
             .ConfigureAwait(false);
 
         return start.Outcome switch

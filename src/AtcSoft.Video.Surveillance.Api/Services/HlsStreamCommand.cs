@@ -49,7 +49,8 @@ public static class HlsStreamCommand
     /// </returns>
     public static IReadOnlyList<string> BuildArguments(
         CameraConfiguration camera,
-        string playlistPath)
+        string playlistPath,
+        CameraStreamRole stream = CameraStreamRole.Main)
     {
         ArgumentNullException.ThrowIfNull(camera);
         ArgumentException.ThrowIfNullOrEmpty(playlistPath);
@@ -61,7 +62,7 @@ public static class HlsStreamCommand
                 nameof(camera));
         }
 
-        return BuildNetworkArguments(camera, playlistPath);
+        return BuildNetworkArguments(camera, playlistPath, stream);
     }
 
     /// <summary>
@@ -83,9 +84,10 @@ public static class HlsStreamCommand
 
     private static List<string> BuildNetworkArguments(
         CameraConfiguration camera,
-        string playlistPath)
+        string playlistPath,
+        CameraStreamRole stream)
     {
-        var streamUri = camera.BuildUri();
+        var streamUri = camera.BuildUri(stream);
 
         var arguments = new List<string>
         {

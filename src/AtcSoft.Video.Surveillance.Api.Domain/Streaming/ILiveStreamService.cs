@@ -12,10 +12,12 @@ public interface ILiveStreamService
     TimeSpan RenewInterval { get; }
 
     /// <summary>
-    /// Takes a lease on a camera's stream, and answers when it can be played.
+    /// Takes a lease on one of a camera's streams, and answers when it can be played. A camera
+    /// without a sub-stream plays its main stream for either.
     /// </summary>
     Task<LiveStreamStart> StartAsync(
         Guid cameraId,
+        CameraStreamRole stream,
         CancellationToken cancellationToken);
 
     /// <summary>
