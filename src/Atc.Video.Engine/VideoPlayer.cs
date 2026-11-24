@@ -49,6 +49,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
     // Guarded by encoderLock.
     private PacketHistory? history;
     private TimeSpan recordingPreRoll;
+    private bool decodeVideo = true;
     private volatile bool recordAudio;
     private volatile bool transcodeToH264;
 
@@ -151,6 +152,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         recordAudio = options.RecordAudio;
         transcodeToH264 = options.TranscodeRecordingToH264;
         recordingPreRoll = options.RecordingPreRoll;
+        decodeVideo = options.DecodeVideo;
         var runCts = new CancellationTokenSource();
         demuxCts = runCts;
 
@@ -220,7 +222,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
         {
             var source = demuxer;
             var sourceDecoder = decoder;
-            if (state != PlayerState.Playing || source is null || sourceDecoder is null)
+            if (state != PlayerState.Playing || source is null)
             {
                 throw new InvalidOperationException("Cannot record: player is not playing.");
             }
@@ -234,7 +236,11 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
 
             if (FrameEncoder.IsNeededFor(source.VideoCodecParameters->codec_id, transcodeToH264))
             {
-                StartEncodedRecording(outputFilePath, source, sourceDecoder);
+                // Such a stream is always decoded (DecodeVideo or not).
+                StartEncodedRecording(
+                    outputFilePath,
+                    source,
+                    sourceDecoder ?? throw new InvalidOperationException("Cannot record: the stream is not decoded."));
             }
             else
             {
@@ -547,7 +553,7 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
 
         var source = demuxer;
         var sourceDecoder = decoder;
-        if (state != PlayerState.Playing || source is null || sourceDecoder is null)
+        if (state != PlayerState.Playing || source is null)
         {
             throw new InvalidOperationException("Cannot stream: player is not playing.");
         }
@@ -572,7 +578,9 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
                 {
                     // The encoder is shared with a recording, whichever of
                     // the two came first. A stream starts with a key frame.
-                    var encoder = frameEncoder ?? OpenFrameEncoder(source, sourceDecoder);
+                    var encoder = frameEncoder ?? OpenFrameEncoder(
+                        source,
+                        sourceDecoder ?? throw new InvalidOperationException("Cannot stream: the stream is not decoded."));
                     frameEncoder = encoder;
                     encoder.RequestKeyFrame();
                     live.OpenLive(playlistPath, encoder.CodecParameters, encoder.TimeBase, soundParameters);
@@ -859,7 +867,6 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             }
 
             localDemuxer = new Demuxer(logger);
-            localDecoder = new VideoDecoder();
 
             LogOpeningStream(source, UriRedactor.Redact(streamUri));
             try
@@ -898,15 +905,28 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
             var threadCount = VideoEngineBootstrap.Config?.DecoderThreads ?? 0;
             decoderThreads = threadCount;
             decoderRecoveries = 0;
-            decodingStopped = false;
-            var useHwAccel = options.HardwareAcceleration
-                && gpuAccelerator is { IsInitialized: true };
-            var hwDeviceCtx = useHwAccel
-                ? gpuAccelerator!.HwDeviceContext
-                : null;
+            var codecId = localDemuxer.VideoCodecParameters->codec_id;
 
-            localDecoder.Open(localDemuxer.VideoCodecParameters, threadCount, hwDeviceCtx);
-            LogDecoderOpened(source, localDecoder.IsHardwareAccelerated);
+            // A stream held only to be recorded is not decoded, unless it has to be encoded to be
+            // recorded: then its pictures are what goes into the file.
+            var decodes = decodeVideo || FrameEncoder.IsNeededFor(codecId, transcodeToH264);
+            decodingStopped = !decodes;
+            if (decodes)
+            {
+                var useHwAccel = options.HardwareAcceleration
+                    && gpuAccelerator is { IsInitialized: true };
+                var hwDeviceCtx = useHwAccel
+                    ? gpuAccelerator!.HwDeviceContext
+                    : null;
+
+                localDecoder = new VideoDecoder();
+                localDecoder.Open(localDemuxer.VideoCodecParameters, threadCount, hwDeviceCtx);
+                LogDecoderOpened(source, localDecoder.IsHardwareAccelerated);
+            }
+            else
+            {
+                LogStreamNotDecoded(source);
+            }
 
             // A run keeps its own packets: none from a run before (another stream, perhaps
             // another codec) can go into a file of this one.
@@ -925,14 +945,24 @@ public sealed unsafe partial class VideoPlayer : IVideoPlayer
 
             latestFrame = av_frame_alloc();
 
-            StreamInfo = new VideoStreamInfo
-            {
-                Width = localDecoder.Width,
-                Height = localDecoder.Height,
-                CodecName = localDecoder.CodecName,
-                PixelFormat = localDecoder.PixelFormat.ToString(),
-                IsHardwareAccelerated = localDecoder.IsHardwareAccelerated,
-            };
+            StreamInfo = localDecoder is not null
+                ? new VideoStreamInfo
+                {
+                    Width = localDecoder.Width,
+                    Height = localDecoder.Height,
+                    CodecName = localDecoder.CodecName,
+                    PixelFormat = localDecoder.PixelFormat.ToString(),
+                    IsHardwareAccelerated = localDecoder.IsHardwareAccelerated,
+                }
+                : new VideoStreamInfo
+                {
+                    // Not decoded: what the stream says it is.
+                    Width = localDemuxer.VideoCodecParameters->width,
+                    Height = localDemuxer.VideoCodecParameters->height,
+                    CodecName = avcodec_get_name(codecId),
+                    PixelFormat = ((AVPixelFormat)localDemuxer.VideoCodecParameters->format).ToString(),
+                    IsHardwareAccelerated = false,
+                };
 
             LogStreamOpened(source, StreamInfo, UriRedactor.Redact(streamUri));
 

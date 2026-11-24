@@ -47,6 +47,9 @@ public sealed partial class VideoPlayer
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "[{Source}] Decoder opened: HwAccel={HwAccel}")]
     private partial void LogDecoderOpened(string source, bool hwAccel);
 
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "[{Source}] Not decoded: the stream is read to be recorded only")]
+    private partial void LogStreamNotDecoded(string source);
+
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "[{Source}] Stream opened: {StreamInfo} from {Uri}")]
     private partial void LogStreamOpened(string source, VideoStreamInfo streamInfo, string uri);
 

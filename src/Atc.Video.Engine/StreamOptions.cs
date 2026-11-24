@@ -121,6 +121,17 @@ public sealed class StreamOptions
     public TimeSpan RecordingPreRoll { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the pictures are decoded. Off, the player still
+    /// reads the stream, keeps its packets for the pre-roll, records them and passes them on to a
+    /// live stream, but decodes nothing: no picture to show, capture or analyse, and
+    /// <see cref="IVideoPlayer.FramesDecoded"/> stays 0. For a camera's main stream held only to
+    /// record it, while its sub-stream is shown and analysed. A stream that has to be encoded to
+    /// be recorded (uncompressed pictures, or any codec but H.264 with
+    /// <see cref="TranscodeRecordingToH264"/>) is decoded anyway. On by default.
+    /// </summary>
+    public bool DecodeVideo { get; set; } = true;
+
+    /// <summary>
     /// The FFmpeg input-format string corresponding to
     /// <see cref="InputFormat"/>, or <see langword="null"/> when set
     /// to <see cref="InputFormatKind.Auto"/> (let FFmpeg sniff).
