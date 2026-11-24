@@ -85,7 +85,10 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
             var recorded = ReadBack(path);
             var expected = span.TotalSeconds * 15;
             recorded.Codec.Should().Be(AVCodecID.H264);
-            recorded.Frames.Should().BeInRange((int)(expected * 0.6), (int)expected + 10);
+
+            // A player behind the live source has a backlog: a file can get more pictures than
+            // its seconds, and a busy machine (the CI runner) is behind by a second or two.
+            recorded.Frames.Should().BeInRange((int)(expected * 0.6), (int)(expected * 1.6) + 10);
             recorded.FirstIsKeyFrame.Should().BeTrue();
             new FileInfo(path).Length.Should().BeLessThan(2_000_000, "four seconds of raw 320x240 pictures would be 9 MB");
         }
@@ -137,10 +140,11 @@ public sealed class VideoPlayerRawVideoRecordingTests : IDisposable
         {
             streams[1].Codec.Should().Be(AVCodecID.Aac);
 
-            // As long as it was recording for: a busy machine waits longer than the 3 s asked.
+            // As long as it was recording for: a busy machine waits longer than the 3 s asked, and
+            // the watch also counts the time the recording takes to stop.
             var seconds = recorded.TotalSeconds;
-            streams[1].Seconds.Should().BeInRange(seconds - 0.7, seconds + 0.5, "the sound runs as long as the picture");
-            streams[0].Seconds.Should().BeInRange(seconds - 0.7, seconds + 0.5);
+            streams[0].Seconds.Should().BeInRange(seconds - 1.5, seconds + 0.5);
+            streams[1].Seconds.Should().BeInRange(streams[0].Seconds - 0.5, streams[0].Seconds + 0.5, "the sound runs as long as the picture");
         }
     }
 

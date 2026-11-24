@@ -33,15 +33,13 @@ public sealed class ApiHostRateLimitTests(ApiHostFixture host)
         var address = IPAddress.Parse("192.0.2.54");
         var path = $"/cameras/{Guid.NewGuid()}/snapshot";
 
-        for (var i = 0; i < 20; i++)
-        {
-            var allowed = await SendAsync(address, path, HttpMethods.Get);
-            allowed.Response.StatusCode.Should().Be(StatusCodes.Status404NotFound);
-        }
+        // All at once: one after the other, twenty calls on a busy machine (the CI runner) took
+        // longer than the ten seconds, and the twenty-first came in a new window.
+        var calls = await Task.WhenAll(Enumerable.Range(0, 21).Select(_ => SendAsync(address, path, HttpMethods.Get)));
 
-        var refused = await SendAsync(address, path, HttpMethods.Get);
-
-        refused.Response.StatusCode.Should().Be(StatusCodes.Status429TooManyRequests);
+        var statuses = Array.ConvertAll(calls, call => call.Response.StatusCode);
+        statuses.Count(status => status == StatusCodes.Status404NotFound).Should().Be(20, "twenty are let through (the camera is unknown)");
+        statuses.Count(status => status == StatusCodes.Status429TooManyRequests).Should().Be(1);
     }
 
     [Fact]
