@@ -1,0 +1,27 @@
+# Monthly update PRs, at most two open per ecosystem: minor and patch versions in one PR, major versions in another.
+# "chore(deps)" keeps release-please's changelog clean. The actions are pinned by SHA, so Dependabot keeps them current.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      nuget-minor-and-patch:
+        update-types: [minor, patch]
+      nuget-major:
+        update-types: [major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      actions:
+        patterns: ['*']
