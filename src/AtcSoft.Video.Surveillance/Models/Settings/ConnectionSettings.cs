@@ -27,6 +27,28 @@ public class ConnectionSettings
     public string? Path { get; set; }
 
     /// <summary>
+    /// Gets or sets the path of the camera's sub-stream: a low-resolution stream for the live
+    /// grid and motion detection (<c>/stream2</c>, <c>/Streaming/Channels/102</c>). The host,
+    /// protocol and credentials are the main stream's. <see langword="null"/> or empty when the
+    /// camera has no sub-stream.
+    /// </summary>
+    public string? SubStreamPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the sub-stream's port, when it differs from <see cref="Port"/>;
+    /// <see langword="null"/> for the main stream's port.
+    /// </summary>
+    [Range(1, 65535, ErrorMessage = "Port must be between 1 and 65535.")]
+    public int? SubStreamPort { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether this is a network camera with a sub-stream.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool HasSubStream
+        => Source == CameraSource.Network && !string.IsNullOrWhiteSpace(SubStreamPath);
+
+    /// <summary>
     /// USB-specific settings. Populated when <see cref="Source"/> equals
     /// <see cref="CameraSource.Usb"/>; <see langword="null"/> otherwise.
     /// </summary>
@@ -60,6 +82,8 @@ public class ConnectionSettings
             Protocol = Protocol,
             Port = Port,
             Path = Path,
+            SubStreamPath = SubStreamPath,
+            SubStreamPort = SubStreamPort,
             Usb = Usb?.Clone(),
             ConnectionType = ConnectionType,
             Hub = Hub?.Clone(),
@@ -73,6 +97,8 @@ public class ConnectionSettings
         Protocol = source.Protocol;
         Port = source.Port;
         Path = source.Path;
+        SubStreamPath = source.SubStreamPath;
+        SubStreamPort = source.SubStreamPort;
         Usb = source.Usb?.Clone();
         ConnectionType = source.ConnectionType;
         Hub = source.Hub?.Clone();
@@ -99,6 +125,8 @@ public class ConnectionSettings
                Protocol == other.Protocol &&
                Port == other.Port &&
                string.Equals(Path, other.Path, StringComparison.Ordinal) &&
+               string.Equals(SubStreamPath, other.SubStreamPath, StringComparison.Ordinal) &&
+               SubStreamPort == other.SubStreamPort &&
                ConnectionType == other.ConnectionType &&
                usbEqual &&
                hubEqual;

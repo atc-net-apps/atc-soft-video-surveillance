@@ -42,6 +42,21 @@
 
         <atc:LabelTextBox LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Path}" Text="{Binding Path=Camera.Connection.Path, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
+        <!--  The sub-stream: the live grid and motion detection use it; full screen and recordings keep the main stream.  -->
+        <atc:LabelTextBox
+            InformationText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                                  Key=SubStreamHelp}"
+            LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                            Key=SubStreamPath}"
+            Text="{Binding Path=Camera.Connection.SubStreamPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <atc:LabelIntegerBox
+            LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                            Key=SubStreamPort}"
+            Maximum="65535"
+            Minimum="0"
+            Value="{Binding Path=SubStreamPortValue, Mode=TwoWay}" />
+
         <!--  Connection type (LAN / Wi-Fi) for the connection-type icon. Editable even for existing cameras: it is display-only.  -->
         <atc:LabelComboBox
             Items="{Binding Path=ConnectionTypeItems}"

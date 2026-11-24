@@ -43,6 +43,8 @@ public static class CameraModelMappingExtensions
         config.Connection.Port = camera.Port;
         config.Connection.Protocol = camera.Protocol.ToCoreProtocol();
         config.Connection.Path = camera.Path;
+        config.Connection.SubStreamPath = camera.SubStreamPath;
+        config.Connection.SubStreamPort = camera.SubStreamPort;
         config.Connection.ConnectionType = camera.ConnectionType.ToCoreConnectionType();
 
         config.Authentication.UserName = camera.Username ?? string.Empty;
@@ -90,7 +92,11 @@ public static class CameraModelMappingExtensions
             StreamMaxLatencyMs: config.Stream.MaxLatencyMs,
             StreamRtspTransport: config.Stream.RtspTransport.ToApiRtspTransport(),
             StreamBufferDurationMs: config.Stream.BufferDurationMs,
-            Port: config.Connection.Port);
+            Port: config.Connection.Port)
+        {
+            SubStreamPath = config.Connection.HasSubStream ? config.Connection.SubStreamPath : null,
+            SubStreamPort = config.Connection.HasSubStream ? config.Connection.SubStreamPort : null,
+        };
     }
 
     /// <summary>
@@ -121,7 +127,12 @@ public static class CameraModelMappingExtensions
             StreamUseLowLatencyMode: config.Stream.UseLowLatencyMode,
             StreamMaxLatencyMs: config.Stream.MaxLatencyMs,
             StreamRtspTransport: config.Stream.RtspTransport.ToApiRtspTransport(),
-            StreamBufferDurationMs: config.Stream.BufferDurationMs);
+            StreamBufferDurationMs: config.Stream.BufferDurationMs)
+        {
+            // An empty path removes the sub-stream on the server; 0 is the main stream's port.
+            SubStreamPath = config.Connection.HasSubStream ? config.Connection.SubStreamPath : string.Empty,
+            SubStreamPort = config.Connection.HasSubStream ? config.Connection.SubStreamPort ?? 0 : 0,
+        };
     }
 
     /// <summary>

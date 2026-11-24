@@ -28,6 +28,13 @@ public partial class CameraEditDialogViewModel : ViewModelBase
     [ObservableProperty]
     private string path = string.Empty;
 
+    // The sub-stream, for the live grid and motion detection; empty for none. Port 0 is the main port.
+    [ObservableProperty]
+    private string subStreamPath = string.Empty;
+
+    [ObservableProperty]
+    private int subStreamPort;
+
     [ObservableProperty]
     private string username = string.Empty;
 
@@ -202,6 +209,8 @@ public partial class CameraEditDialogViewModel : ViewModelBase
         port = camera.Port;
         selectedProtocol = camera.Protocol;
         path = camera.Path ?? string.Empty;
+        subStreamPath = camera.SubStreamPath ?? string.Empty;
+        subStreamPort = camera.SubStreamPort ?? 0;
         username = camera.Username ?? string.Empty;
         selectedOverlayPosition = camera.OverlayPosition;
         selectedConnectionType = camera.ConnectionType;
@@ -233,7 +242,11 @@ public partial class CameraEditDialogViewModel : ViewModelBase
             StreamRtspTransport: SelectedRtspTransport,
             StreamBufferDurationMs: StreamBufferDurationMs,
             Port: Port,
-            MotionZones: ZonesToSend);
+            MotionZones: ZonesToSend)
+        {
+            SubStreamPath = string.IsNullOrWhiteSpace(SubStreamPath) ? null : SubStreamPath.Trim(),
+            SubStreamPort = string.IsNullOrWhiteSpace(SubStreamPath) || SubStreamPort <= 0 ? null : SubStreamPort,
+        };
 
     /// <summary>
     /// Builds an <see cref="UpdateCameraRequest"/> from the form fields.
@@ -260,7 +273,12 @@ public partial class CameraEditDialogViewModel : ViewModelBase
             StreamMaxLatencyMs: StreamMaxLatencyMs,
             StreamRtspTransport: SelectedRtspTransport,
             StreamBufferDurationMs: StreamBufferDurationMs,
-            MotionZones: ZonesToSend);
+            MotionZones: ZonesToSend)
+        {
+            // An empty path removes the sub-stream on the server, and its port; 0 is the main port.
+            SubStreamPath = SubStreamPath.Trim(),
+            SubStreamPort = string.IsNullOrWhiteSpace(SubStreamPath) ? 0 : Math.Max(SubStreamPort, 0),
+        };
 
     /// <summary>
     /// Gets the camera ID for update operations.

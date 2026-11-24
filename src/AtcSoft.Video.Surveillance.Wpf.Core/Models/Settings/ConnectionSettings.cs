@@ -101,6 +101,49 @@ public partial class ConnectionSettings : ObservableObject
     }
 
     /// <summary>
+    /// Gets or sets the path of the camera's sub-stream, for the live grid and motion detection;
+    /// <see langword="null"/> or empty for none.
+    /// </summary>
+    public string? SubStreamPath
+    {
+        get => Core.SubStreamPath;
+        set
+        {
+            if (string.Equals(Core.SubStreamPath, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            Core.SubStreamPath = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSubStream));
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the sub-stream's port; <see langword="null"/> for the main stream's.
+    /// </summary>
+    public int? SubStreamPort
+    {
+        get => Core.SubStreamPort;
+        set
+        {
+            if (Core.SubStreamPort == value)
+            {
+                return;
+            }
+
+            Core.SubStreamPort = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether this is a network camera with a sub-stream.
+    /// </summary>
+    public bool HasSubStream => Core.HasSubStream;
+
+    /// <summary>
     /// Gets or sets the source kind (Network vs USB). USB cameras
     /// surface their device identity through <see cref="Usb"/>.
     /// </summary>
@@ -117,6 +160,7 @@ public partial class ConnectionSettings : ObservableObject
             Core.Source = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(EffectiveConnectionType));
+            OnPropertyChanged(nameof(HasSubStream));
         }
     }
 

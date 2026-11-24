@@ -118,6 +118,16 @@ else
                                       Label="@Translations.Path"
                                       Placeholder="/stream1"
                                       Class="mt-3" />
+                        <MudTextField @bind-Value="subStreamPath"
+                                      Label="@Translations.SubStreamPath"
+                                      Placeholder="/stream2"
+                                      HelperText="@Translations.SubStreamHelp"
+                                      Class="mt-3" />
+                        <MudNumericField @bind-Value="subStreamPort"
+                                         Label="@Translations.SubStreamPort"
+                                         Min="0"
+                                         Max="65535"
+                                         Class="mt-3" />
                         <MudSelect @bind-Value="connectionType"
                                    Label="@Translations.ConnectionType"
                                    Class="mt-3">
@@ -241,6 +251,8 @@ else
     private int port = 554;
     private CameraProtocol protocol = CameraProtocol.Rtsp;
     private string path = string.Empty;
+    private string subStreamPath = string.Empty;
+    private int subStreamPort;
     private string username = string.Empty;
     private string password = string.Empty;
 
@@ -413,6 +425,8 @@ else
                 port = camera.Port;
                 protocol = camera.Protocol;
                 path = camera.Path ?? string.Empty;
+                subStreamPath = camera.SubStreamPath ?? string.Empty;
+                subStreamPort = camera.SubStreamPort ?? 0;
                 username = camera.Username ?? string.Empty;
                 overlayPosition = camera.OverlayPosition;
                 connectionType = camera.ConnectionType;
@@ -499,7 +513,11 @@ else
                 StreamMaxLatencyMs: streamMaxLatencyMs,
                 StreamRtspTransport: streamRtspTransport,
                 StreamBufferDurationMs: streamBufferDurationMs,
-                MotionZones: MotionZoneDraft.ToSend(zoneDraft, isNew: false));
+                MotionZones: MotionZoneDraft.ToSend(zoneDraft, isNew: false))
+            {
+                SubStreamPath = SubStreamFields.Path(IsUsb, subStreamPath, isUpdate: true),
+                SubStreamPort = SubStreamFields.Port(IsUsb, subStreamPath, subStreamPort, isUpdate: true),
+            };
 
             var result = await Gateway.UpdateCameraAsync(CameraId!.Value, request);
             if (result.IsSuccess)
@@ -539,7 +557,11 @@ else
                 StreamRtspTransport: streamRtspTransport,
                 StreamBufferDurationMs: streamBufferDurationMs,
                 Port: port,
-                MotionZones: MotionZoneDraft.ToSend(zoneDraft, isNew: true));
+                MotionZones: MotionZoneDraft.ToSend(zoneDraft, isNew: true))
+            {
+                SubStreamPath = SubStreamFields.Path(IsUsb, subStreamPath, isUpdate: false),
+                SubStreamPort = SubStreamFields.Port(IsUsb, subStreamPath, subStreamPort, isUpdate: false),
+            };
 
             var result = await Gateway.CreateCameraAsync(request);
             if (result.IsSuccess)

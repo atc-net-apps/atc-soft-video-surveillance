@@ -54,7 +54,11 @@ internal static class CameraMappingExtensions
             ConnectionState: connectionState?.ToApiConnectionState(),
             IsRecording: isRecording,
             MotionZones: [.. core.MotionZones.Select(ToApiZone)],
-            Hub: core.Connection.Hub.ToApiModel());
+            Hub: core.Connection.Hub.ToApiModel())
+        {
+            SubStreamPath = core.Connection.HasSubStream ? core.Connection.SubStreamPath : null,
+            SubStreamPort = core.Connection.HasSubStream ? core.Connection.SubStreamPort : null,
+        };
     }
 
     public static CoreCameraConfiguration ToCoreModel(
@@ -71,6 +75,8 @@ internal static class CameraMappingExtensions
                 Port = request.Port,
                 Protocol = request.Protocol.ToCoreProtocol(),
                 Path = request.Path,
+                SubStreamPath = string.IsNullOrWhiteSpace(request.SubStreamPath) ? null : request.SubStreamPath,
+                SubStreamPort = string.IsNullOrWhiteSpace(request.SubStreamPath) || request.SubStreamPort is null or 0 ? null : request.SubStreamPort,
                 Usb = source == CoreCameraSource.Usb ? BuildUsbSettings(request) : null,
                 ConnectionType = request.ConnectionType?.ToCoreConnectionType() ?? CoreCameraConnectionType.None,
             },
@@ -157,6 +163,21 @@ internal static class CameraMappingExtensions
         if (request.Path is not null)
         {
             core.Connection.Path = request.Path;
+        }
+
+        // "" removes the sub-stream, and its port with it; 0 is the main stream's port.
+        if (request.SubStreamPath is { } subStreamPath)
+        {
+            core.Connection.SubStreamPath = string.IsNullOrWhiteSpace(subStreamPath) ? null : subStreamPath;
+            if (core.Connection.SubStreamPath is null)
+            {
+                core.Connection.SubStreamPort = null;
+            }
+        }
+
+        if (request.SubStreamPort is { } subStreamPort)
+        {
+            core.Connection.SubStreamPort = subStreamPort == 0 || core.Connection.SubStreamPath is null ? null : subStreamPort;
         }
 
         if (request.ConnectionType is not null)

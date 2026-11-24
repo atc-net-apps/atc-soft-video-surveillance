@@ -71,13 +71,25 @@ public static class CameraUriHelper
     /// USB camera has no <see cref="UsbConnectionSettings.DeviceId"/>.
     /// </exception>
     public static SourceLocator BuildSourceLocator(CameraConfiguration camera)
+        => BuildSourceLocator(camera, CameraStreamRole.Main);
+
+    /// <summary>
+    /// Builds the FFmpeg-ready locator for one of the camera's streams. A USB camera has one
+    /// stream, whatever the role; a network camera without a sub-stream gives its main stream.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// USB camera has no <see cref="UsbConnectionSettings.DeviceId"/>.
+    /// </exception>
+    public static SourceLocator BuildSourceLocator(
+        CameraConfiguration camera,
+        CameraStreamRole role)
     {
         ArgumentNullException.ThrowIfNull(camera);
 
         return camera.Connection.Source switch
         {
             CameraSource.Usb => BuildUsbLocator(camera),
-            _ => new SourceLocator(camera.BuildUri()),
+            _ => new SourceLocator(camera.BuildUri(role)),
         };
     }
 

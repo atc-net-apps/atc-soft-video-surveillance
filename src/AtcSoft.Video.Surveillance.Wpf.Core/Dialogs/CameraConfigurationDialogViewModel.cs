@@ -347,6 +347,25 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
         }
     }
 
+    /// <summary>
+    /// Gets or sets the sub-stream's port for the integer box: 0 is the main stream's port.
+    /// </summary>
+    public int SubStreamPortValue
+    {
+        get => Camera.Connection.SubStreamPort ?? 0;
+        set
+        {
+            var port = value <= 0 ? (int?)null : value;
+            if (Camera.Connection.SubStreamPort == port)
+            {
+                return;
+            }
+
+            Camera.Connection.SubStreamPort = port;
+            RaisePropertyChanged();
+        }
+    }
+
     public IDictionary<string, string> OverlayPositionItems
         => DropDownItemsFactory.OverlayPositionItems;
 

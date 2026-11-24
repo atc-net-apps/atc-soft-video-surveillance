@@ -552,6 +552,61 @@ public class CameraMappingExtensionsTests
         core.Connection.ConnectionType.Should().Be(CoreCameraConnectionType.Lan);
     }
 
+    [Fact]
+    public void A_New_Camera_Gets_Its_Sub_Stream()
+    {
+        var core = (NetworkCreateRequest("Cam", ipAddress: "10.0.0.1") with { SubStreamPath = "/stream2", SubStreamPort = 8554 }).ToCoreModel();
+
+        (core.Connection.SubStreamPath, core.Connection.SubStreamPort).Should().Be(("/stream2", 8554));
+        core.ToApiModel(connectionState: null, isRecording: false).SubStreamPath.Should().Be("/stream2");
+    }
+
+    [Fact]
+    public void A_New_Camera_With_Port_Zero_Uses_The_Main_Port_And_One_Without_A_Path_Has_No_Sub_Stream()
+    {
+        (NetworkCreateRequest("Cam", ipAddress: "10.0.0.1") with { SubStreamPath = "/stream2", SubStreamPort = 0 }).ToCoreModel()
+            .Connection.SubStreamPort.Should().BeNull();
+        var none = (NetworkCreateRequest("Cam", ipAddress: "10.0.0.1") with { SubStreamPath = " ", SubStreamPort = 8554 }).ToCoreModel();
+        (none.Connection.SubStreamPath, none.Connection.SubStreamPort).Should().Be((null, null));
+        none.ToApiModel(connectionState: null, isRecording: false).SubStreamPath.Should().BeNull("a camera without a sub-stream sends none");
+    }
+
+    [Fact]
+    public void An_Update_That_Leaves_The_Sub_Stream_Out_Keeps_It()
+    {
+        var core = new CameraConfiguration();
+        core.Connection.SubStreamPath = "/stream2";
+        core.Connection.SubStreamPort = 8554;
+
+        core.ApplyUpdate(NetworkUpdateRequest(displayName: "Updated"));
+
+        (core.Connection.SubStreamPath, core.Connection.SubStreamPort).Should().Be(("/stream2", 8554));
+    }
+
+    [Fact]
+    public void An_Update_With_An_Empty_Sub_Stream_Path_Removes_It_And_Its_Port()
+    {
+        var core = new CameraConfiguration();
+        core.Connection.SubStreamPath = "/stream2";
+        core.Connection.SubStreamPort = 8554;
+
+        core.ApplyUpdate(NetworkUpdateRequest() with { SubStreamPath = string.Empty });
+
+        (core.Connection.SubStreamPath, core.Connection.SubStreamPort).Should().Be((null, null));
+    }
+
+    [Fact]
+    public void An_Update_Changes_The_Sub_Stream_And_Port_Zero_Is_The_Main_Port()
+    {
+        var core = new CameraConfiguration();
+        core.Connection.SubStreamPath = "/stream2";
+        core.Connection.SubStreamPort = 8554;
+
+        core.ApplyUpdate(NetworkUpdateRequest() with { SubStreamPath = "/cam/realmonitor?channel=1&subtype=1", SubStreamPort = 0 });
+
+        (core.Connection.SubStreamPath, core.Connection.SubStreamPort).Should().Be(("/cam/realmonitor?channel=1&subtype=1", null));
+    }
+
     private static CreateCameraRequest NetworkCreateRequest(
         string displayName,
         string description = "",

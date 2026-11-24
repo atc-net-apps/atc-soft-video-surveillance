@@ -387,6 +387,15 @@
   <data name="Path" xml:space="preserve">
     <value>Pfad</value>
   </data>
+  <data name="SubStreamPath" xml:space="preserve">
+    <value>Pfad des Substreams</value>
+  </data>
+  <data name="SubStreamPort" xml:space="preserve">
+    <value>Port des Substreams</value>
+  </data>
+  <data name="SubStreamHelp" xml:space="preserve">
+    <value>Ein Stream in niedriger Auflösung für das Live-Raster und die Bewegungserkennung, zum Beispiel /stream2. Leer lassen, wenn die Kamera keinen hat. Port 0 ist der Port oben.</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Benutzername</value>
   </data>

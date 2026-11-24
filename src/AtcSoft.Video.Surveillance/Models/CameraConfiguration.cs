@@ -54,6 +54,19 @@ public class CameraConfiguration
     /// is not <see cref="CameraSource.Network"/>.
     /// </exception>
     public Uri BuildUri()
+        => BuildUri(CameraStreamRole.Main);
+
+    /// <summary>
+    /// Builds the URI of one of the camera's streams. <see cref="CameraStreamRole.Sub"/> on a
+    /// camera without a sub-stream gives the main stream.
+    /// </summary>
+    /// <param name="role">The stream to open.</param>
+    /// <returns>The constructed URI for that stream.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <see cref="Models.Settings.ConnectionSettings.Source"/>
+    /// is not <see cref="CameraSource.Network"/>.
+    /// </exception>
+    public Uri BuildUri(CameraStreamRole role)
     {
         if (Connection.Source != CameraSource.Network)
         {
@@ -67,11 +80,15 @@ public class CameraConfiguration
             ? $"{Uri.EscapeDataString(Authentication.UserName)}:{Uri.EscapeDataString(Authentication.Password ?? string.Empty)}@"
             : string.Empty;
 
-        var normalizedPath = string.IsNullOrEmpty(Connection.Path)
-            ? string.Empty
-            : $"/{Connection.Path.TrimStart('/')}";
+        var sub = role == CameraStreamRole.Sub && Connection.HasSubStream;
+        var path = sub ? Connection.SubStreamPath : Connection.Path;
+        var port = sub ? Connection.SubStreamPort ?? Connection.Port : Connection.Port;
 
-        return new Uri($"{scheme}://{userInfo}{BracketIfIPv6(Connection.IpAddress)}:{Connection.Port}{normalizedPath}");
+        var normalizedPath = string.IsNullOrEmpty(path)
+            ? string.Empty
+            : $"/{path.TrimStart('/')}";
+
+        return new Uri($"{scheme}://{userInfo}{BracketIfIPv6(Connection.IpAddress)}:{port}{normalizedPath}");
     }
 
     private static string BracketIfIPv6(string host)

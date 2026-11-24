@@ -2287,6 +2287,13 @@ components:
           enum: [rtsp, http, https]
         path:
           type: string
+        subStreamPath:
+          type: string
+          description: The path of the camera's low-resolution stream, for the live grid and motion detection; the host, protocol and credentials are the main stream's. Absent when the camera has none.
+        subStreamPort:
+          type: integer
+          format: int32
+          description: The sub-stream's port, when it differs from port.
         username:
           type: string
         # USB-camera fields — populated only when source = usb
@@ -2434,6 +2441,16 @@ components:
           default: rtsp
         path:
           type: string
+        subStreamPath:
+          type: string
+          maxLength: 1024
+          description: The path of the camera's low-resolution stream, for the live grid and motion detection; the host, protocol and credentials are the main stream's.
+        subStreamPort:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 65535
+          description: The sub-stream's port when it differs from port; 0 or absent for the main stream's port.
         username:
           type: string
         password:
@@ -2519,6 +2536,16 @@ components:
           enum: [rtsp, http, https]
         path:
           type: string
+        subStreamPath:
+          type: string
+          maxLength: 1024
+          description: The path of the camera's low-resolution stream, for the live grid and motion detection; the host, protocol and credentials are the main stream's. An empty string removes the sub-stream (and its port).
+        subStreamPort:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 65535
+          description: The sub-stream's port when it differs from port; 0 for the main stream's port.
         username:
           type: string
         password:

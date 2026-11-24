@@ -51,6 +51,25 @@ public sealed class CameraModelMappingExtensionsTests
     }
 
     [Fact]
+    public void The_Sub_Stream_Goes_To_The_Tile_And_Back_To_The_Server()
+    {
+        var config = (TestCameras.Network() with { SubStreamPath = "/stream2", SubStreamPort = 8554 }).ToCameraConfiguration();
+
+        config.Connection.HasSubStream.Should().BeTrue();
+        (config.ToUpdateCameraRequest().SubStreamPath, config.ToUpdateCameraRequest().SubStreamPort).Should().Be(("/stream2", 8554));
+        (config.ToCreateCameraRequest().SubStreamPath, config.ToCreateCameraRequest().SubStreamPort).Should().Be(("/stream2", 8554));
+    }
+
+    [Fact]
+    public void A_Camera_Without_A_Sub_Stream_Removes_It_On_Update_And_Leaves_It_Out_On_Create()
+    {
+        var config = TestCameras.Network().ToCameraConfiguration();
+
+        (config.ToUpdateCameraRequest().SubStreamPath, config.ToUpdateCameraRequest().SubStreamPort).Should().Be((string.Empty, 0));
+        (config.ToCreateCameraRequest().SubStreamPath, config.ToCreateCameraRequest().SubStreamPort).Should().Be((null, null));
+    }
+
+    [Fact]
     public void ToUpdateCameraRequest_Without_A_Password_Leaves_The_Password_Out()
     {
         var config = TestCameras.Network().ToCameraConfiguration();

@@ -61,6 +61,17 @@
                     Margin="0,4"
                     LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Path}"
                     Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}" />
+                <atc:LabelTextBox
+                    Margin="0,4"
+                    InformationText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStreamHelp}"
+                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStreamPath}"
+                    Text="{Binding SubStreamPath, UpdateSourceTrigger=PropertyChanged}" />
+                <atc:LabelIntegerBox
+                    Margin="0,4"
+                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStreamPort}"
+                    Maximum="65535"
+                    Minimum="0"
+                    Value="{Binding SubStreamPort, UpdateSourceTrigger=PropertyChanged}" />
                 <atc:LabelComboBox
                     Margin="0,4"
                     Items="{Binding ConnectionTypeItems}"

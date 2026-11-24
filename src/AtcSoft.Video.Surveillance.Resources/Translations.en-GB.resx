@@ -390,6 +390,15 @@
   <data name="Path" xml:space="preserve">
     <value>Path</value>
   </data>
+  <data name="SubStreamPath" xml:space="preserve">
+    <value>Sub-stream path</value>
+  </data>
+  <data name="SubStreamPort" xml:space="preserve">
+    <value>Sub-stream port</value>
+  </data>
+  <data name="SubStreamHelp" xml:space="preserve">
+    <value>A low-resolution stream for the live grid and motion detection, for example /stream2. Leave it empty if the camera has none. Port 0 is the port above.</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Username</value>
   </data>

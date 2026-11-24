@@ -204,12 +204,29 @@ public partial class CameraConfiguration : ObservableObject
         => Core.BuildUri();
 
     /// <summary>
+    /// Builds the URI of one of the camera's streams; <see cref="CameraStreamRole.Sub"/> on a
+    /// camera without a sub-stream gives the main stream. Throws on USB cameras.
+    /// </summary>
+    /// <param name="role">The stream to open.</param>
+    /// <returns>The constructed URI for that stream.</returns>
+    public Uri BuildUri(CameraStreamRole role)
+        => Core.BuildUri(role);
+
+    /// <summary>
     /// Builds an FFmpeg-ready locator that handles both network and
     /// USB cameras. Prefer this over <see cref="BuildUri"/> in new
     /// code.
     /// </summary>
     public AtcSoft.Video.Surveillance.Helpers.SourceLocator BuildSourceLocator()
         => AtcSoft.Video.Surveillance.Helpers.CameraUriHelper.BuildSourceLocator(Core);
+
+    /// <summary>
+    /// Builds an FFmpeg-ready locator for one of the camera's streams.
+    /// </summary>
+    /// <param name="role">The stream to open.</param>
+    /// <returns>The locator.</returns>
+    public AtcSoft.Video.Surveillance.Helpers.SourceLocator BuildSourceLocator(CameraStreamRole role)
+        => AtcSoft.Video.Surveillance.Helpers.CameraUriHelper.BuildSourceLocator(Core, role);
 
     /// <summary>
     /// Returns the display name of the camera.

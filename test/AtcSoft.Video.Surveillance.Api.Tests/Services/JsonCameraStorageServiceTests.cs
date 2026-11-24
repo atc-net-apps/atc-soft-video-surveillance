@@ -179,6 +179,35 @@ public sealed class JsonCameraStorageServiceTests : IDisposable
         File.ReadAllText(FilePath).Should().Be(before, "nothing was loaded, so nothing is written back");
     }
 
+    [Fact]
+    public void The_Sub_Stream_Is_Kept_In_The_File()
+    {
+        var camera = CreateCamera();
+        camera.Connection.SubStreamPath = "/stream2";
+        camera.Connection.SubStreamPort = 8554;
+
+        CreateSut().AddOrUpdateCamera(camera);
+
+        var read = CreateSut().GetCameraById(camera.Id)!;
+        (read.Connection.SubStreamPath, read.Connection.SubStreamPort).Should().Be(("/stream2", 8554));
+        File.ReadAllText(FilePath).Should().NotContain("hasSubStream");
+    }
+
+    [Fact]
+    public void A_File_From_Before_Sub_Streams_Is_Read_Without_One()
+    {
+        var camera = CreateCamera();
+        camera.Connection.Path = "/stream1";
+        WritePlainFile(camera);
+        File.WriteAllText(FilePath, File.ReadAllText(FilePath).Replace("\"subStreamPath\": null,", string.Empty, StringComparison.Ordinal).Replace("\"subStreamPort\": null,", string.Empty, StringComparison.Ordinal));
+        File.ReadAllText(FilePath).Should().NotContain("subStream", "the file is as 1.7.0 wrote it");
+
+        var read = CreateSut().GetCameraById(camera.Id)!;
+
+        read.Connection.Path.Should().Be("/stream1");
+        read.Connection.HasSubStream.Should().BeFalse();
+    }
+
     private static CameraConfiguration CreateCamera()
     {
         var camera = new CameraConfiguration();
