@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.7.0...v1.7.1) (2026-11-24)
+
+
+### Documentation
+
+* list the server installer, the Docker image and the web client the server serves in the README ([e07befc](https://github.com/atc-net-apps/atc-soft-video-surveillance/commit/e07befca047dcbfbad72742207a51a241e79fade))
+
 ## [1.7.0](https://github.com/atc-net-apps/atc-soft-video-surveillance/compare/v1.6.0...v1.7.0) (2026-11-18)
 
 
