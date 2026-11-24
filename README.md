@@ -106,6 +106,8 @@ Read the full documentation on the **[WIKI](https://github.com/atc-net-apps/atc-
 | [🖥️ Install CameraWall](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-CameraWall) | Install, first start, where data is kept, updating |
 | [🌍 Install Video Surveillance](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Video-Surveillance) | The server, the desktop client and the web client, per platform |
 | [🐳 Install with Docker](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Docker) | The server on a NAS (UGREEN, Synology), Linux, a Mac or Docker on Windows |
+| [🪟 Docker on Windows](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-Docker-Windows) | The server's image with Docker Desktop, or with Docker Engine in WSL2 |
+| [🌐 IIS in front of the server](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-IIS) | IIS as a reverse proxy in front of the Windows service: certificate, host name, a path |
 | [🧭 Platform support](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Platform-Support) | What runs on Windows, Linux, macOS and NAS today, and what is coming |
 | [🎞️ FFmpeg](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Install-FFmpeg) | The FFmpeg 9 the apps need, and where they look for it |
 | [⚙️ Settings reference](https://github.com/atc-net-apps/atc-soft-video-surveillance/wiki/Settings-Reference) | Every setting, application-wide and per camera |
