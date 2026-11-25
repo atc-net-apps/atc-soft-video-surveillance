@@ -456,6 +456,21 @@
   <data name="OnvifNoRtspProfile" xml:space="preserve">
     <value>Kameraet tilbyder ingen RTSP-strøm.</value>
   </data>
+  <data name="FindCamera" xml:space="preserve">
+    <value>Find kamera</value>
+  </data>
+  <data name="OnvifFindHeader" xml:space="preserve">
+    <value>ONVIF-kameraer på netværket</value>
+  </data>
+  <data name="OnvifFindHelp" xml:space="preserve">
+    <value>De fleste IP-kameraer taler ONVIF. Find kameraerne på netværket, og vælg et: dets adresse udfyldes på fanen Kamera, hvor dets strømme kan læses.</value>
+  </data>
+  <data name="OnvifReadHelp" xml:space="preserve">
+    <value>Læs strømmene over ONVIF: skriv adressen, brugeren og adgangskoden, og læs så. Hovedstrømmen og understrømmen udfyldes.</value>
+  </data>
+  <data name="ScannerHostPicked1" xml:space="preserve">
+    <value>{0} er udfyldt på fanen Kamera.</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Brugernavn</value>
   </data>

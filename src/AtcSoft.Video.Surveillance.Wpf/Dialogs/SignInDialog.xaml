@@ -10,6 +10,7 @@
     Title="{Binding Title}"
     Width="420"
     ResizeMode="NoResize"
+    MaxHeight="900"
     SizeToContent="Height"
     WindowStartupLocation="CenterScreen"
     d:DataContext="{d:DesignInstance Type=dialogs:SignInDialogViewModel}"

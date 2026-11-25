@@ -164,6 +164,7 @@ public sealed class WpfClientSmokeTests(ServerFixture server)
         Window main)
     {
         var dialog = app.OpenWindow(() => DesktopApp.Press(RowButtons(app, main, "Edit", 0)), "Edit");
+        DesktopApp.Press(app.Find(dialog, "Motion zones", ControlType.TabItem));
         DesktopApp.Press(app.Find(dialog, "Take Snapshot", ControlType.Button));
         app.WaitUntilGone(dialog, "No picture yet: take a snapshot to draw on the camera's picture.", ControlType.Text, TimeSpan.FromSeconds(45))
             .Should().BeTrue("the snapshot either comes or is reported missing");

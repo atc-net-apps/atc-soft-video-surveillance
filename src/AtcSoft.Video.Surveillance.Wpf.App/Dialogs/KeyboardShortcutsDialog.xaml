@@ -10,6 +10,7 @@
     Title="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=KeyboardShortcuts}"
     Width="400"
     ResizeMode="NoResize"
+    MaxHeight="900"
     SizeToContent="Height"
     WindowStartupLocation="CenterOwner"
     WindowStyle="ToolWindow"

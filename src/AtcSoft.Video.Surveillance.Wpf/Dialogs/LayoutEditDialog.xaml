@@ -9,6 +9,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="{Binding DialogTitle}"
     Width="400"
+    MaxHeight="900"
     SizeToContent="Height"
     WindowStartupLocation="CenterOwner"
     d:DataContext="{d:DesignInstance Type=dialogs:LayoutEditDialogViewModel}"

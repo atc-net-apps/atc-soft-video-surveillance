@@ -46,7 +46,18 @@ public sealed class CameraEditDialogViewModelOnvifTests
             Arg.Is<OnvifProfilesRequest>(r => r.Address == "192.168.1.64" && r.UserName == "admin" && r.Password == "secret" && r.Port == null),
             Arg.Any<CancellationToken>());
         (vm.Path, vm.SubStreamPath, vm.SubStreamPort).Should().Be(("/cam/realmonitor?channel=1&subtype=0", "/cam/realmonitor?channel=1&subtype=1", 0));
-        vm.OnvifStatus.Should().Be(AtcSoft.Video.Surveillance.Resources.Translations.OnvifReadWithSubStream);
+        vm.OnvifReadStatus.Should().Be(AtcSoft.Video.Surveillance.Resources.Translations.OnvifReadWithSubStream, "the read says how it went on the Camera tab");
+    }
+
+    [Fact]
+    public void A_Camera_Picked_Fills_In_Its_Address_On_The_Camera_Tab()
+    {
+        var vm = new CameraEditDialogViewModel { Onvif = onvif, SelectedTabIndex = CameraEditDialogViewModel.FindTabIndex };
+
+        vm.UseOnvifDeviceCommand.Execute(new OnvifDiscoveredDevice(Address: "192.168.1.130", Port: 2020, Name: "C100", Hardware: "C100"));
+
+        (vm.IpAddress, vm.OnvifPort, vm.DisplayName).Should().Be(("192.168.1.130", 2020, "C100"));
+        vm.SelectedTabIndex.Should().Be(CameraEditDialogViewModel.CameraTabIndex);
     }
 
     [Fact]

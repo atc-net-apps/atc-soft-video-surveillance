@@ -11,220 +11,253 @@
     xmlns:userControls="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.UserControls;assembly=AtcSoft.Video.Surveillance.Wpf.Core"
     Title="{Binding DialogTitle}"
     Width="960"
-    SizeToContent="Height"
+    Height="760"
+    MinWidth="720"
+    MinHeight="560"
     WindowStartupLocation="CenterOwner"
     d:DataContext="{d:DesignInstance Type=dialogs:CameraEditDialogViewModel}"
     mc:Ignorable="d">
 
     <Grid Margin="16">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="16" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
 
-        <!--  Connection Settings (left)  -->
-        <GroupBox
+        <TabControl
             Grid.Row="0"
-            Grid.Column="0"
-            Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Connection}">
-            <StackPanel Margin="8">
-                <atc:LabelTextBox
-                    Margin="0,4"
-                    IsMandatory="True"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=DisplayName}"
-                    Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
-                <atc:LabelTextBox
-                    Margin="0,4"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Description}"
-                    Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" />
-                <atc:LabelTextBox
-                    Margin="0,4"
-                    AutomationProperties.AutomationId="IpAddress"
-                    IsMandatory="True"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=IpAddress}"
-                    Text="{Binding IpAddress, UpdateSourceTrigger=PropertyChanged}" />
-                <atc:LabelIntegerBox
-                    Margin="0,4"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Port}"
-                    Value="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
-                <atc:LabelComboBox
-                    Margin="0,4"
-                    Items="{Binding ProtocolItems}"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Protocol}"
-                    SelectedKey="{Binding SelectedProtocolKey, UpdateSourceTrigger=PropertyChanged}" />
-                <atc:LabelTextBox
-                    Margin="0,4"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Path}"
-                    Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}" />
-                <atc:LabelTextBox
-                    Margin="0,4"
-                    InformationText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStreamHelp}"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStreamPath}"
-                    Text="{Binding SubStreamPath, UpdateSourceTrigger=PropertyChanged}" />
-                <atc:LabelIntegerBox
-                    Margin="0,4"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStreamPort}"
-                    Maximum="65535"
-                    Minimum="0"
-                    Value="{Binding SubStreamPort, UpdateSourceTrigger=PropertyChanged}" />
+            atc:TabControlHelper.UnderlinePlacement="Bottom"
+            atc:TabControlHelper.Underlined="TabPanel"
+            BorderThickness="0"
+            SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
 
-                <!--  ONVIF, through the server: find the cameras on its networks, or read the streams of the one at the address above  -->
-                <atc:GroupBoxExpander
-                    Margin="0,8,0,4"
-                    Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifHeader}"
-                    IsExpanded="False"
-                    Visibility="{Binding CanUseOnvif, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
-                    <StackPanel Margin="0,8,0,0">
-                        <TextBlock
-                            Margin="0,0,0,8"
-                            Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifHelp}"
-                            TextWrapping="Wrap" />
-                        <atc:GridEx Columns="Auto,12,*,12,Auto" Rows="Auto">
+            <!--  Camera: what it is, where, how to sign in, and its streams read over ONVIF  -->
+            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Camera}">
+                <ScrollViewer
+                    Padding="0,0,12,0"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <GroupBox Grid.Column="0" Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Connection}">
+                            <StackPanel Margin="8">
+                                <atc:LabelTextBox
+                                    Margin="0,4"
+                                    IsMandatory="True"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=DisplayName}"
+                                    Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                                <atc:LabelTextBox
+                                    Margin="0,4"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Description}"
+                                    Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" />
+                                <atc:LabelTextBox
+                                    Margin="0,4"
+                                    AutomationProperties.AutomationId="IpAddress"
+                                    IsMandatory="True"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=IpAddress}"
+                                    Text="{Binding IpAddress, UpdateSourceTrigger=PropertyChanged}" />
+                                <atc:LabelIntegerBox
+                                    Margin="0,4"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Port}"
+                                    Value="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
+                                <atc:LabelComboBox
+                                    Margin="0,4"
+                                    Items="{Binding ProtocolItems}"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Protocol}"
+                                    SelectedKey="{Binding SelectedProtocolKey, UpdateSourceTrigger=PropertyChanged}" />
+                                <atc:LabelTextBox
+                                    Margin="0,4"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Path}"
+                                    Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}" />
+                                <atc:LabelTextBox
+                                    Margin="0,4"
+                                    InformationText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStreamHelp}"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStreamPath}"
+                                    Text="{Binding SubStreamPath, UpdateSourceTrigger=PropertyChanged}" />
+                                <atc:LabelIntegerBox
+                                    Margin="0,4"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStreamPort}"
+                                    Maximum="65535"
+                                    Minimum="0"
+                                    Value="{Binding SubStreamPort, UpdateSourceTrigger=PropertyChanged}" />
+                                <atc:LabelComboBox
+                                    Margin="0,4"
+                                    Items="{Binding ConnectionTypeItems}"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ConnectionType}"
+                                    SelectedKey="{Binding SelectedConnectionTypeKey, UpdateSourceTrigger=PropertyChanged}" />
+                                <atc:LabelComboBox
+                                    Margin="0,4"
+                                    Items="{Binding RotationItems}"
+                                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=RotationClockwise}"
+                                    SelectedKey="{Binding SelectedRotationKey, UpdateSourceTrigger=PropertyChanged}" />
+                                <!--  Server-side ONVIF detection (edit mode only; uses the stored credentials)  -->
+                                <StackPanel
+                                    Margin="0,4"
+                                    Orientation="Horizontal"
+                                    Visibility="{Binding IsConnectionTypeDetectionAvailable, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                                    <Button
+                                        Padding="10,2"
+                                        Command="{Binding DetectConnectionTypeCommand}"
+                                        Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=DetectConnectionType}" />
+                                    <TextBlock
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding ConnectionTypeDetectionStatus}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <StackPanel Grid.Column="2">
+                            <GroupBox Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Authentication}">
+                                <StackPanel Margin="8">
+                                    <atc:LabelTextBox
+                                        Margin="0,4"
+                                        LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Username}"
+                                        Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" />
+                                    <atc:LabelPasswordBox
+                                        Margin="0,4"
+                                        LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Password}"
+                                        Text="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!--  Read from camera needs the address, user and password: next to them  -->
+                            <GroupBox
+                                Margin="0,8,0,0"
+                                Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ReadFromCamera}"
+                                Visibility="{Binding CanUseOnvif, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                                <StackPanel Margin="8">
+                                    <TextBlock
+                                        Margin="0,0,0,8"
+                                        Opacity="0.8"
+                                        Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifReadHelp}"
+                                        TextWrapping="Wrap" />
+                                    <atc:GridEx Columns="*,12,Auto" Rows="Auto">
+                                        <atc:LabelIntegerBox
+                                            Grid.Column="0"
+                                            LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifPort}"
+                                            Maximum="65535"
+                                            Minimum="0"
+                                            Value="{Binding OnvifPort, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button
+                                            Grid.Column="2"
+                                            Padding="10,2"
+                                            VerticalAlignment="Bottom"
+                                            Command="{Binding ReadFromCameraCommand}"
+                                            Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ReadFromCamera}" />
+                                    </atc:GridEx>
+                                    <TextBlock
+                                        Margin="0,8,0,0"
+                                        Text="{Binding OnvifReadStatus}"
+                                        TextWrapping="Wrap"
+                                        Visibility="{Binding OnvifReadStatus, Converter={x:Static atcValueConverters:StringNullOrEmptyToVisibilityCollapsedValueConverter.Instance}}" />
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!--  Find camera: the ONVIF cameras on the server's networks; one picked fills in the Camera tab  -->
+            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=FindCamera}" Visibility="{Binding CanUseOnvif, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                <ScrollViewer
+                    Padding="0,0,12,0"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+                    <GroupBox Margin="0,12,0,0" Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifFindHeader}">
+                        <StackPanel Margin="8">
+                            <TextBlock
+                                Margin="0,0,0,8"
+                                Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifFindHelp}"
+                                TextWrapping="Wrap" />
                             <Button
-                                Grid.Column="0"
                                 Padding="10,2"
-                                VerticalAlignment="Bottom"
+                                HorizontalAlignment="Left"
                                 Command="{Binding FindOnvifCamerasCommand}"
                                 Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=FindOnvifCameras}" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                Text="{Binding OnvifStatus}"
+                                TextWrapping="Wrap"
+                                Visibility="{Binding OnvifStatus, Converter={x:Static atcValueConverters:StringNullOrEmptyToVisibilityCollapsedValueConverter.Instance}}" />
+                            <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding OnvifDevices}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button
+                                            Margin="0,0,0,4"
+                                            Padding="8,4"
+                                            HorizontalContentAlignment="Left"
+                                            Command="{Binding DataContext.UseOnvifDeviceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                                <TextBlock Margin="8,0,0,0" Text="{Binding Hardware}" />
+                                                <TextBlock Margin="8,0,0,0" Text="{Binding Address}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </GroupBox>
+                </ScrollViewer>
+            </TabItem>
+
+            <!--  Stream: how the stream is played  -->
+            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=StreamSettings}">
+                <ScrollViewer
+                    Padding="0,0,12,0"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+                    <GroupBox Margin="0,12,0,0" Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=StreamSettings}">
+                        <StackPanel Margin="8">
+                            <atc:LabelComboBox
+                                Margin="0,4"
+                                Items="{Binding OverlayPositionItems}"
+                                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OverlayPosition}"
+                                SelectedKey="{Binding SelectedOverlayPositionKey, UpdateSourceTrigger=PropertyChanged}" />
+                            <atc:LabelComboBox
+                                Margin="0,4"
+                                Items="{Binding RtspTransportItems}"
+                                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=RtspTransport}"
+                                SelectedKey="{Binding SelectedRtspTransportKey, UpdateSourceTrigger=PropertyChanged}" />
+                            <atc:LabelCheckBox
+                                Margin="0,4"
+                                IsChecked="{Binding StreamUseLowLatencyMode}"
+                                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=UseLowLatencyMode}" />
                             <atc:LabelIntegerBox
-                                Grid.Column="2"
-                                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifPort}"
-                                Maximum="65535"
-                                Minimum="0"
-                                Value="{Binding OnvifPort, UpdateSourceTrigger=PropertyChanged}" />
-                            <Button
-                                Grid.Column="4"
-                                Padding="10,2"
-                                VerticalAlignment="Bottom"
-                                Command="{Binding ReadFromCameraCommand}"
-                                Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ReadFromCamera}" />
-                        </atc:GridEx>
-                        <TextBlock
-                            Margin="0,8,0,0"
-                            Text="{Binding OnvifStatus}"
-                            TextWrapping="Wrap"
-                            Visibility="{Binding OnvifStatus, Converter={x:Static atcValueConverters:StringNullOrEmptyToVisibilityCollapsedValueConverter.Instance}}" />
-                        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding OnvifDevices}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button
-                                        Margin="0,0,0,4"
-                                        Padding="8,4"
-                                        HorizontalContentAlignment="Left"
-                                        Command="{Binding DataContext.UseOnvifDeviceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                        CommandParameter="{Binding}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
-                                            <TextBlock Margin="8,0,0,0" Text="{Binding Hardware}" />
-                                            <TextBlock Margin="8,0,0,0" Text="{Binding Address}" />
-                                        </StackPanel>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </atc:GroupBoxExpander>
-                <atc:LabelComboBox
-                    Margin="0,4"
-                    Items="{Binding ConnectionTypeItems}"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ConnectionType}"
-                    SelectedKey="{Binding SelectedConnectionTypeKey, UpdateSourceTrigger=PropertyChanged}" />
-                <atc:LabelComboBox
-                    Margin="0,4"
-                    Items="{Binding RotationItems}"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=RotationClockwise}"
-                    SelectedKey="{Binding SelectedRotationKey, UpdateSourceTrigger=PropertyChanged}" />
-                <!--  Server-side ONVIF detection (edit mode only; uses the stored credentials)  -->
-                <StackPanel
-                    Margin="0,4"
-                    Orientation="Horizontal"
-                    Visibility="{Binding IsConnectionTypeDetectionAvailable, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
-                    <Button
-                        Padding="10,2"
-                        Command="{Binding DetectConnectionTypeCommand}"
-                        Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=DetectConnectionType}" />
-                    <TextBlock
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
-                        Text="{Binding ConnectionTypeDetectionStatus}" />
-                </StackPanel>
-            </StackPanel>
-        </GroupBox>
+                                Margin="0,4"
+                                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=MaxLatencyMs}"
+                                Value="{Binding StreamMaxLatencyMs, UpdateSourceTrigger=PropertyChanged}" />
+                            <atc:LabelIntegerBox
+                                Margin="0,4"
+                                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=BufferDurationMs}"
+                                Value="{Binding StreamBufferDurationMs, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </GroupBox>
+                </ScrollViewer>
+            </TabItem>
 
-        <!--  Authentication and Stream Settings (right)  -->
-        <StackPanel Grid.Row="0" Grid.Column="2">
-            <GroupBox Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Authentication}">
-                <StackPanel Margin="8">
-                    <atc:LabelTextBox
-                        Margin="0,4"
-                        LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Username}"
-                        Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" />
-                    <atc:LabelPasswordBox
-                        Margin="0,4"
-                        LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Password}"
-                        Text="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                </StackPanel>
-            </GroupBox>
-
-            <GroupBox
-                Margin="0,8,0,0"
-                Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=StreamSettings}">
-                <StackPanel Margin="8">
-                    <atc:LabelComboBox
-                        Margin="0,4"
-                        Items="{Binding OverlayPositionItems}"
-                        LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OverlayPosition}"
-                        SelectedKey="{Binding SelectedOverlayPositionKey, UpdateSourceTrigger=PropertyChanged}" />
-                    <atc:LabelComboBox
-                        Margin="0,4"
-                        Items="{Binding RtspTransportItems}"
-                        LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=RtspTransport}"
-                        SelectedKey="{Binding SelectedRtspTransportKey, UpdateSourceTrigger=PropertyChanged}" />
-                    <atc:LabelCheckBox
-                        Margin="0,4"
-                        IsChecked="{Binding StreamUseLowLatencyMode}"
-                        LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=UseLowLatencyMode}" />
-                    <atc:LabelIntegerBox
-                        Margin="0,4"
-                        LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=MaxLatencyMs}"
-                        Value="{Binding StreamMaxLatencyMs, UpdateSourceTrigger=PropertyChanged}" />
-                    <atc:LabelIntegerBox
-                        Margin="0,4"
-                        LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=BufferDurationMs}"
-                        Value="{Binding StreamBufferDurationMs, UpdateSourceTrigger=PropertyChanged}" />
-                </StackPanel>
-            </GroupBox>
-        </StackPanel>
-
-        <!--  Motion zones, drawn on a snapshot from the server  -->
-        <GroupBox
-            Grid.Row="1"
-            Grid.Column="0"
-            Grid.ColumnSpan="3"
-            Margin="0,8,0,0"
-            Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=MotionZones}">
-            <atc:BusyOverlay IsBusy="{Binding IsTakingZonePicture}">
-                <userControls:MotionZoneEditor
-                    Height="400"
-                    Margin="8"
-                    Picture="{Binding ZonePicture}"
-                    Status="{Binding ZonePictureStatus}"
-                    TakePictureCommand="{Binding TakeZonePictureCommand}"
-                    Zones="{Binding MotionZones, Mode=TwoWay}" />
-            </atc:BusyOverlay>
-        </GroupBox>
+            <!--  Motion zones, drawn on a snapshot from the server  -->
+            <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=MotionZones}">
+                <atc:BusyOverlay Margin="0,12,0,0" IsBusy="{Binding IsTakingZonePicture}">
+                    <userControls:MotionZoneEditor
+                        Picture="{Binding ZonePicture}"
+                        Status="{Binding ZonePictureStatus}"
+                        TakePictureCommand="{Binding TakeZonePictureCommand}"
+                        Zones="{Binding MotionZones, Mode=TwoWay}" />
+                </atc:BusyOverlay>
+            </TabItem>
+        </TabControl>
 
         <!--  Buttons  -->
         <StackPanel
-            Grid.Row="2"
-            Grid.Column="0"
-            Grid.ColumnSpan="3"
+            Grid.Row="1"
             Margin="0,16,0,0"
             HorizontalAlignment="Right"
             Orientation="Horizontal">

@@ -12,7 +12,7 @@
     xmlns:userControls="clr-namespace:AtcSoft.Video.Surveillance.Wpf.Core.UserControls"
     Title="{Binding Path=DialogTitle}"
     Width="1200"
-    Height="1000"
+    Height="860"
     d:DataContext="{d:DesignInstance Type=dialogs:CameraConfigurationDialogViewModel,
                                      IsDesignTimeCreatable=False}"
     ResizeMode="CanResize"
@@ -58,9 +58,11 @@
                 atc:TabControlHelper.UnderlinePlacement="Bottom"
                 atc:TabControlHelper.Underlined="TabPanel"
                 BorderThickness="0"
+                SelectedIndex="{Binding Path=SelectedTabIndex, Mode=TwoWay}"
                 TabStripPlacement="Top">
 
-                <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=General}">
+                <!--  Camera: the source, then what the camera is, where and how to sign in to it  -->
+                <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Camera}">
                     <ScrollViewer
                         Padding="0,0,20,0"
                         HorizontalScrollBarVisibility="Disabled"
@@ -71,54 +73,33 @@
                             <!--  Source picker (Network / USB)  -->
                             <cameraConfigs:SourceTypePart />
 
-                            <!--  Network Scanner (only when adding a new *network* camera)  -->
-                            <ContentControl Content="{Binding}">
-                                <ContentControl.Style>
-                                    <Style TargetType="ContentControl">
-                                        <Setter Property="ContentTemplate" Value="{StaticResource EmptyTemplate}" />
-                                        <Style.Triggers>
-                                            <MultiDataTrigger>
-                                                <MultiDataTrigger.Conditions>
-                                                    <Condition Binding="{Binding Path=IsNew}" Value="True" />
-                                                    <Condition Binding="{Binding Path=IsNetworkSource}" Value="True" />
-                                                </MultiDataTrigger.Conditions>
-                                                <Setter Property="ContentTemplate" Value="{StaticResource NetworkScannerTemplate}" />
-                                            </MultiDataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ContentControl.Style>
-                            </ContentControl>
-
-                            <!--  Camera hub (motionEye, motionEyeOS): a new network camera from a hub's cameras  -->
-                            <cameraConfigs:CameraHubPart Visibility="{Binding Path=CanUseCameraHub, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
-
-                            <!--  ONVIF: find the cameras on the network, or read the streams of the one at the address typed  -->
-                            <cameraConfigs:OnvifPart Visibility="{Binding Path=CanUseOnvif, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
-
-                            <!--  Network branch — 3-column basic settings  -->
-                            <atc:GroupBoxExpander
+                            <!--  Network branch: display, connection and sign-in side by side, ONVIF read under the sign-in  -->
+                            <GroupBox
                                 Margin="0,0,0,20"
-                                Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                                             Key=CameraConfiguration}"
+                                Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=CameraConfiguration}"
                                 Visibility="{Binding Path=IsNetworkSource, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
                                 <atc:GridEx
-                                    Margin="0,20,0,0"
+                                    Margin="0,10,0,0"
                                     Columns="*,20,*,20,*"
                                     Rows="Auto">
                                     <cameraConfigs:BasicDisplaySettingsPart Grid.Row="0" Grid.Column="0" />
                                     <cameraConfigs:BasicConnectionSettingsPart Grid.Row="0" Grid.Column="2" />
-                                    <cameraConfigs:BasicAuthenticationSettingsPart Grid.Row="0" Grid.Column="4" />
-                                </atc:GridEx>
-                            </atc:GroupBoxExpander>
+                                    <StackPanel Grid.Row="0" Grid.Column="4">
+                                        <cameraConfigs:BasicAuthenticationSettingsPart />
 
-                            <!--  USB branch — display name + device picker side by side  -->
-                            <atc:GroupBoxExpander
+                                        <!--  Read from camera needs the address, user and password: next to them  -->
+                                        <cameraConfigs:OnvifReadPart Visibility="{Binding Path=CanUseOnvif, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
+                                    </StackPanel>
+                                </atc:GridEx>
+                            </GroupBox>
+
+                            <!--  USB branch: display name + device picker side by side  -->
+                            <GroupBox
                                 Margin="0,0,0,20"
-                                Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                                             Key=CameraConfiguration}"
+                                Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=CameraConfiguration}"
                                 Visibility="{Binding Path=IsUsbSource, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
                                 <atc:GridEx
-                                    Margin="0,20,0,0"
+                                    Margin="0,10,0,0"
                                     Columns="*,20,*"
                                     Rows="Auto">
                                     <cameraConfigs:BasicDisplaySettingsPart Grid.Row="0" Grid.Column="0" />
@@ -145,20 +126,65 @@
                                         </ContentControl.Style>
                                     </ContentControl>
                                 </atc:GridEx>
-                            </atc:GroupBoxExpander>
-
-                            <!--
-                                Advanced Settings — RTSP-only knobs
-                                (low-latency, jitter buffer, transport).
-                                None apply to local DirectShow USB
-                                capture, so the whole groupbox is
-                                hidden when Source = USB.
-                            -->
-                            <atc:GroupBoxExpander Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AdvancedSettings}" Visibility="{Binding Path=IsNetworkSource, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
-                                <cameraConfigs:AdvancedStreamSettingsPart Margin="10,15,0,-5" />
-                            </atc:GroupBoxExpander>
+                            </GroupBox>
 
                         </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--  Find camera: the network scanner, an ONVIF search, a camera hub; each fills in the Camera tab  -->
+                <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=FindCamera}" Visibility="{Binding Path=ShowFindTab, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                    <ScrollViewer
+                        Padding="0,0,20,0"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+
+                        <atc:UniformSpacingPanel
+                            Margin="15,15,0,15"
+                            Orientation="Vertical"
+                            Spacing="20">
+
+                            <!--  Network Scanner (only when adding a new *network* camera)  -->
+                            <ContentControl Content="{Binding}">
+                                <ContentControl.Style>
+                                    <Style TargetType="ContentControl">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource EmptyTemplate}" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding Path=IsNew}" Value="True" />
+                                                    <Condition Binding="{Binding Path=IsNetworkSource}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="ContentTemplate" Value="{StaticResource NetworkScannerTemplate}" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ContentControl.Style>
+                            </ContentControl>
+
+                            <!--  ONVIF: find the cameras on the network  -->
+                            <cameraConfigs:OnvifPart Visibility="{Binding Path=CanFindOnvifCameras, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
+
+                            <!--  Camera hub (motionEye, motionEyeOS): a new network camera from a hub's cameras  -->
+                            <cameraConfigs:CameraHubPart Visibility="{Binding Path=CanUseCameraHub, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
+
+                        </atc:UniformSpacingPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--
+                    Stream: the RTSP-only knobs (low-latency, jitter buffer,
+                    transport). None apply to local DirectShow USB capture,
+                    so the tab is hidden when Source = USB.
+                -->
+                <TabItem Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=StreamSettings}" Visibility="{Binding Path=ShowStreamTab, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                    <ScrollViewer
+                        Padding="0,0,20,0"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+                        <GroupBox Margin="15" Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AdvancedSettings}">
+                            <cameraConfigs:AdvancedStreamSettingsPart Margin="0,15,0,-5" />
+                        </GroupBox>
                     </ScrollViewer>
                 </TabItem>
 

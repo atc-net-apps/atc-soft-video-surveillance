@@ -273,7 +273,7 @@ public sealed class WebClientSmokeTests(ServerFixture server)
     {
         await page.GotoAsync("/cameras/create");
         await page.WaitForTimeoutAsync(1500);
-        await page.GetByText(OnvifWalk.Header).First.ClickAsync();
+        await page.GetByText(OnvifWalk.WebHeader).First.ClickAsync();
         await page.WaitForTimeoutAsync(500);
 
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Find cameras" }).ClickAsync();

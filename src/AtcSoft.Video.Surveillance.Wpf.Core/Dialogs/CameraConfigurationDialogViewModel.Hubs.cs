@@ -50,6 +50,7 @@ public partial class CameraConfigurationDialogViewModel
     {
         cameraHubProvider = provider;
         OnPropertyChanged(nameof(CanUseCameraHub));
+        OnTabsChanged();
     }
 
     private static void OnHubInputChanged()
@@ -167,6 +168,7 @@ public partial class CameraConfigurationDialogViewModel
         OnPropertyChanged(nameof(UseDefaultTranscodeVideoCodec));
         OnPropertyChanged(nameof(OverrideTranscodeVideoCodec));
         HubStatus = string.Format(CultureInfo.CurrentCulture, Translations.HubCameraUsed1, item.Name);
+        ShowCameraTab();
     }
 
     private static string StatusOf(

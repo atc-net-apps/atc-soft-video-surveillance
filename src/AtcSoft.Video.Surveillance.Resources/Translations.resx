@@ -459,6 +459,21 @@
   <data name="OnvifNoRtspProfile" xml:space="preserve">
     <value>The camera offers no RTSP stream.</value>
   </data>
+  <data name="FindCamera" xml:space="preserve">
+    <value>Find camera</value>
+  </data>
+  <data name="OnvifFindHeader" xml:space="preserve">
+    <value>ONVIF cameras on the network</value>
+  </data>
+  <data name="OnvifFindHelp" xml:space="preserve">
+    <value>Most IP cameras speak ONVIF. Find the cameras on the network and pick one: its address is filled in on the Camera tab, where its streams can be read.</value>
+  </data>
+  <data name="OnvifReadHelp" xml:space="preserve">
+    <value>Read the streams over ONVIF: type the address, user and password, then read. The main stream and the sub-stream are filled in.</value>
+  </data>
+  <data name="ScannerHostPicked1" xml:space="preserve">
+    <value>{0} is filled in on the Camera tab.</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Username</value>
   </data>

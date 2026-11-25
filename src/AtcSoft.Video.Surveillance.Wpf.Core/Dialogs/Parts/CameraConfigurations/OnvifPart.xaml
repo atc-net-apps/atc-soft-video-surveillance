@@ -13,45 +13,21 @@
     d:DesignWidth="700"
     mc:Ignorable="d">
 
-    <!--  ONVIF: find the cameras on the network, or read the streams of the one at the address typed  -->
-    <atc:GroupBoxExpander
-        x:Name="Onvif"
-        Margin="0,0,0,20"
-        Padding="0,15,0,0"
-        Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                     Key=OnvifHeader}"
-        IsExpanded="False">
-        <StackPanel>
+    <!--  ONVIF: find the cameras on the network; a camera picked fills in the address on the Camera tab  -->
+    <GroupBox Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifFindHeader}">
+        <StackPanel Margin="0,10,0,0">
             <TextBlock
                 Margin="0,0,0,10"
                 Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                           Key=OnvifHelp}"
+                                           Key=OnvifFindHelp}"
                 TextWrapping="Wrap" />
 
-            <atc:GridEx Columns="Auto,20,*,20,Auto" Rows="Auto">
-                <Button
-                    Grid.Column="0"
-                    MinWidth="120"
-                    VerticalAlignment="Bottom"
-                    Command="{Binding Path=FindOnvifCamerasCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                                  Key=FindOnvifCameras}"
-                    Visibility="{Binding Path=CanFindOnvifCameras, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
-                <atc:LabelIntegerBox
-                    Grid.Column="2"
-                    LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                                    Key=OnvifPort}"
-                    Maximum="65535"
-                    Minimum="0"
-                    Value="{Binding Path=OnvifPort, Mode=TwoWay}" />
-                <Button
-                    Grid.Column="4"
-                    MinWidth="120"
-                    VerticalAlignment="Bottom"
-                    Command="{Binding Path=ReadFromCameraCommand}"
-                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                                  Key=ReadFromCamera}" />
-            </atc:GridEx>
+            <Button
+                MinWidth="120"
+                HorizontalAlignment="Left"
+                Command="{Binding Path=FindOnvifCamerasCommand}"
+                Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
+                                              Key=FindOnvifCameras}" />
 
             <TextBlock
                 Margin="0,10,0,0"
@@ -73,5 +49,5 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </StackPanel>
-    </atc:GroupBoxExpander>
+    </GroupBox>
 </UserControl>

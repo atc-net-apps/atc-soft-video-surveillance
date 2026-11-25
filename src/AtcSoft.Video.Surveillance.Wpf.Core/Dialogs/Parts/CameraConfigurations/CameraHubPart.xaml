@@ -14,14 +14,8 @@
     mc:Ignorable="d">
 
     <!--  A camera of a camera hub (motionEye or motionEyeOS on a Raspberry Pi): list its cameras, pick one  -->
-    <atc:GroupBoxExpander
-        x:Name="CameraHub"
-        Margin="0,0,0,20"
-        Padding="0,15,0,0"
-        Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
-                                     Key=CameraHubHeader}"
-        IsExpanded="False">
-        <StackPanel>
+    <GroupBox x:Name="CameraHub" Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=CameraHubHeader}">
+        <StackPanel Margin="0,10,0,0">
             <TextBlock
                 Margin="0,0,0,10"
                 Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations,
@@ -109,5 +103,5 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </StackPanel>
-    </atc:GroupBoxExpander>
+    </GroupBox>
 </UserControl>

@@ -1,17 +1,29 @@
 namespace AtcSoft.Video.Surveillance.E2E.Infrastructure;
 
 /// <summary>
-/// The ONVIF part of a camera dialog (CameraWall, the WPF client, the web client): open it, search
-/// the network, and read the streams of a camera at an address. No ONVIF camera is needed: what the
+/// ONVIF in a camera dialog: search the network, and read the streams of a camera at an address. In
+/// the WPF dialogs the search is on the Find camera tab and the read on the Camera tab, next to the
+/// address; in the web client both are in one panel of the form. No ONVIF camera is needed: what the
 /// search and the read answer on the test machine (none found, a network that cannot be searched,
-/// a camera that does not answer ONVIF) is fine, as long as the part says one of its own answers.
+/// a camera that does not answer ONVIF) is fine, as long as the dialog says one of its own answers.
+/// A camera found and picked brings the Camera tab back.
 /// </summary>
 internal static class OnvifWalk
 {
     /// <summary>
-    /// The part's header.
+    /// The web client's ONVIF panel.
     /// </summary>
-    public const string Header = "Find and read ONVIF cameras";
+    public const string WebHeader = "Find and read ONVIF cameras";
+
+    /// <summary>
+    /// The WPF dialogs' tab with the search.
+    /// </summary>
+    public const string FindTab = "Find camera";
+
+    /// <summary>
+    /// The WPF dialogs' tab with the address and the read.
+    /// </summary>
+    public const string CameraTab = "Camera";
 
     /// <summary>
     /// The address read from: this machine, where no ONVIF camera answers.
@@ -48,7 +60,8 @@ internal static class OnvifWalk
     public static readonly TimeSpan AnswerTimeout = TimeSpan.FromSeconds(45);
 
     /// <summary>
-    /// Opens the part in a WPF camera dialog, searches, types the address and reads from it.
+    /// Searches on a WPF camera dialog's Find camera tab, then types the address on its Camera tab
+    /// and reads from it.
     /// </summary>
     public static void FindAndRead(
         DesktopApp app,
@@ -57,11 +70,12 @@ internal static class OnvifWalk
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(dialog);
 
-        Expand(app, dialog);
-
+        SelectTab(app, dialog, FindTab);
         DesktopApp.Press(app.Find(dialog, "Find cameras", ControlType.Button));
         WaitForAnswer(app, dialog, SearchAnswers, "a search's answer");
+        PickAFoundCamera(app, dialog);
 
+        SelectTab(app, dialog, CameraTab);
         TypeAddress(app, dialog);
         var read = app.Find(dialog, "Read from camera", ControlType.Button);
         WaitUntilEnabled(read, "Read from camera is enabled once an address is typed");
@@ -69,16 +83,33 @@ internal static class OnvifWalk
         WaitForAnswer(app, dialog, ReadAnswers, "a read's answer");
     }
 
-    // The header's text sits next to its toggle button, which has no name of its own.
-    private static void Expand(
+    private static void SelectTab(
+        DesktopApp app,
+        Window dialog,
+        string name)
+    {
+        DesktopApp.Press(app.Find(dialog, name, ControlType.TabItem));
+        DesktopApp.Settle(TimeSpan.FromMilliseconds(500));
+    }
+
+    // A camera the search found (CameraWall names its button "name · model · address"): picked, it
+    // fills in the address on the Camera tab, which comes back. Nothing to pick on a network without one.
+    private static void PickAFoundCamera(
         DesktopApp app,
         Window dialog)
     {
-        var header = app.Find(dialog, Header, ControlType.Text);
-        var toggle = header.Parent?.FindFirstChild(cf => cf.ByAutomationId("ExpanderToggleButton"))
-                     ?? throw app.Fail($"No toggle button next to '{Header}'.");
-        DesktopApp.Press(toggle);
-        app.Find(dialog, "Find cameras", ControlType.Button);
+        var found = dialog
+            .FindAllDescendants(cf => cf.ByControlType(ControlType.Button))
+            .FirstOrDefault(button => button.Name?.Contains(" · ", StringComparison.Ordinal) == true);
+        if (found is null)
+        {
+            return;
+        }
+
+        DesktopApp.Press(found);
+        DesktopApp.Settle(TimeSpan.FromMilliseconds(500));
+        app.Find(dialog, CameraTab, ControlType.TabItem).Patterns.SelectionItem.Pattern.IsSelected.Value
+            .Should().BeTrue("a camera picked on the Find camera tab brings the Camera tab back");
     }
 
     // The address box is a labelled text box, which shows no name to UI Automation: it is found

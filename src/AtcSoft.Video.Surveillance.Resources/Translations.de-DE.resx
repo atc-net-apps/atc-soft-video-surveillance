@@ -456,6 +456,21 @@
   <data name="OnvifNoRtspProfile" xml:space="preserve">
     <value>Die Kamera bietet keinen RTSP-Stream an.</value>
   </data>
+  <data name="FindCamera" xml:space="preserve">
+    <value>Kamera finden</value>
+  </data>
+  <data name="OnvifFindHeader" xml:space="preserve">
+    <value>ONVIF-Kameras im Netzwerk</value>
+  </data>
+  <data name="OnvifFindHelp" xml:space="preserve">
+    <value>Die meisten IP-Kameras sprechen ONVIF. Finden Sie die Kameras im Netzwerk und wählen Sie eine aus: Ihre Adresse wird auf der Registerkarte Kamera ausgefüllt, wo ihre Streams ausgelesen werden können.</value>
+  </data>
+  <data name="OnvifReadHelp" xml:space="preserve">
+    <value>Streams über ONVIF auslesen: Geben Sie Adresse, Benutzer und Passwort ein und lesen Sie dann aus. Hauptstream und Substream werden ausgefüllt.</value>
+  </data>
+  <data name="ScannerHostPicked1" xml:space="preserve">
+    <value>{0} ist auf der Registerkarte Kamera eingetragen.</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Benutzername</value>
   </data>

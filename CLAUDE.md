@@ -353,6 +353,10 @@ Use Atc controls instead of standard WPF controls:
 - `atc:LabelIntegerBox` for numeric inputs
 - **One dialog at a time, in every app of the repo** (CameraWall, the WPF client, the web client and the tools): a dialog or a secondary window never opens another window or dialog box. The exceptions are the system's own pickers (open folder, open file) and the full-screen players (`FullScreenCameraWindow`, `FullScreenRecordingWindow`). A confirmation, an error, or a second view (a player, a grid of recordings) is shown inside it instead: an overlay, an Atc `Flyout`, or an inline message (a yes/no question: `DialogConfirmation`, Wpf.Core, on Atc.Wpf's `InWindowDialogService` in an `atc:FlyoutHost` last in the dialog's root grid); in the web client, never a `MudDialog` from a `MudDialog`. A message box over the main window (or page) is fine
 - Every window and dialog has `atc:NiceWindow` as its root (or an Atc dialog box: `InfoDialogBox`, `QuestionDialogBox`, `InputDialogBox`, all `NiceDialogBox`), never a plain `Window`: a plain one does not follow the dark and light theme. A full-screen video window is a `NiceWindow` with `UseNoneWindowStyle="True"`, black whatever the theme; the walks check it still covers the taskbar. Only `VideoHost`'s hidden surface windows are plain
+- **A dialog keeps an overview** (the WPF apps and the tools; `DialogLayoutTests` checks the first two):
+  - No dialog is larger than its app's main window (1500 x 1000 for CameraWall and the WPF client; a tool's own main window for its windows). A dialog that sizes itself to its content has a `MaxHeight` (`MaxWidth`) within it, and what can grow (a list) scrolls inside it
+  - A `GroupBox` or `GroupBoxExpander` never holds another one, also not through a part (a user control) it shows
+  - Many group boxes go in tabs, a few each, as Settings does (tabs on the left, two to four group boxes a tab) and the camera dialogs (Camera, Find camera, Stream, ...). What one control needs stays on its tab: **Read from camera** sits by the address, user and password it reads with
 - A yes/no question that deletes or stops something (delete a camera or layout, close while recording) has `DefaultButton = DialogBoxButton.Negative` in its `DialogBoxSettings`, so Enter answers No: `DialogService.ShowConfirmation`, `UserDialog.Confirm` and `DialogConfirmation` do it
 
 ## Models
@@ -398,7 +402,7 @@ public enum CameraSource
 - Subscribe to model `PropertyChanged` to react to changes
 
 ## Dialogs (in Library)
-- `CameraConfigurationDialog` - Add/Edit camera with integrated network scanner
+- `CameraConfigurationDialog` - Add/Edit camera; tabs Camera (source, display, connection, sign-in, ONVIF read), Find camera (network scanner, ONVIF search, camera hub; a camera picked with a button brings the Camera tab back), Stream, Overrides, Motion zones. A tab that is hidden (USB has no Find camera or Stream tab) is never left selected (`SelectedTabIndex`)
 - `InputBox` - Simple text input dialog (for layout names)
 - `SettingsDialog` - Configure general and display settings (uses extracted UserControls from `Dialogs/Parts/Settings/`)
 - `CheckForUpdatesDialog` - Check for and display available updates from GitHub

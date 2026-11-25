@@ -28,6 +28,7 @@ public sealed class CameraConfigurationDialogViewModelOnvifTests
         vm.Camera.Connection.IpAddress.Should().Be("192.168.1.64");
         vm.OnvifPort.Should().Be(8000);
         vm.Camera.Display.DisplayName.Should().Be("Front Door");
+        vm.SelectedTabIndex.Should().Be(CameraConfigurationDialogViewModel.CameraTabIndex, "the address picked is on the Camera tab");
     }
 
     [Fact]
@@ -58,7 +59,8 @@ public sealed class CameraConfigurationDialogViewModelOnvifTests
         vm.Camera.Connection.IpAddress.Should().Be("192.168.1.64", "the address typed is kept");
         (vm.Camera.Connection.Protocol, vm.Camera.Connection.Port, vm.Camera.Connection.Path).Should().Be((CameraProtocol.Rtsp, 554, "/Streaming/Channels/101"));
         (vm.Camera.Connection.SubStreamPath, vm.SubStreamPortValue).Should().Be(("/Streaming/Channels/102", 8554));
-        vm.OnvifStatus.Should().Be(Translations.OnvifReadWithSubStream);
+        vm.OnvifReadStatus.Should().Be(Translations.OnvifReadWithSubStream, "the read says how it went on the Camera tab");
+        vm.OnvifStatus.Should().BeNull("the search status on the Find tab is the search's");
     }
 
     [Fact]
@@ -73,7 +75,7 @@ public sealed class CameraConfigurationDialogViewModelOnvifTests
         await vm.ReadFromCameraCommand.ExecuteAsync(null);
 
         vm.Camera.Connection.Path.Should().Be("/typed");
-        vm.OnvifStatus.Should().Be(Translations.OnvifUnauthorized);
+        vm.OnvifReadStatus.Should().Be(Translations.OnvifUnauthorized);
     }
 
     [Fact]
@@ -85,7 +87,37 @@ public sealed class CameraConfigurationDialogViewModelOnvifTests
         vm.CanUseOnvif.Should().BeFalse();
     }
 
-    private CameraConfigurationDialogViewModel BuildVm()
+    [Fact]
+    public void A_New_Network_Camera_Has_The_Find_And_Stream_Tabs()
+    {
+        var vm = BuildVm();
+
+        (vm.ShowFindTab, vm.ShowStreamTab).Should().Be((true, true));
+    }
+
+    [Fact]
+    public void A_Usb_Camera_Leaves_The_Find_Tab_For_The_Camera_Tab()
+    {
+        var vm = BuildVm();
+        vm.SelectedTabIndex = CameraConfigurationDialogViewModel.FindTabIndex;
+
+        vm.IsUsbSource = true;
+
+        (vm.ShowFindTab, vm.ShowStreamTab).Should().Be((false, false), "a USB camera is neither found on the network nor streamed over it");
+        vm.SelectedTabIndex.Should().Be(CameraConfigurationDialogViewModel.CameraTabIndex, "a hidden tab is not left selected");
+    }
+
+    [Fact]
+    public void A_Camera_Edited_Without_An_Onvif_Search_Has_No_Find_Tab()
+    {
+        var vm = BuildVm(isNew: false);
+        vm.UseOnvif(discovery: null, client);
+
+        vm.ShowFindTab.Should().BeFalse("the scanner and the hubs are for a new camera, and there is no search");
+        vm.ShowStreamTab.Should().BeTrue();
+    }
+
+    private CameraConfigurationDialogViewModel BuildVm(bool isNew = true)
     {
         var settingsService = Substitute.For<IWpfCoreSettingsService>();
         settingsService.CameraDisplay.Returns(new CameraDisplayAppSettings());
@@ -96,7 +128,7 @@ public sealed class CameraConfigurationDialogViewModelOnvifTests
 
         var vm = new CameraConfigurationDialogViewModel(
             new CameraConfiguration(),
-            isNew: true,
+            isNew,
             [],
             settingsService,
             Substitute.For<IVideoPlayerFactory>(),

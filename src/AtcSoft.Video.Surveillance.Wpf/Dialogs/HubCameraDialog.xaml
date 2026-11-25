@@ -10,18 +10,24 @@
     Title="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=CameraHubHeader}"
     Width="720"
     MinHeight="300"
+    MaxHeight="900"
     SizeToContent="Height"
     WindowStartupLocation="CenterOwner"
     d:DataContext="{d:DesignInstance Type=dialogs:HubCameraDialogViewModel}"
     mc:Ignorable="d">
 
-    <StackPanel Margin="16">
+    <!--  The hub's address on top, the buttons at the bottom, the hub's cameras scroll between  -->
+    <DockPanel Margin="16" LastChildFill="True">
         <TextBlock
             Margin="0,0,0,10"
+            DockPanel.Dock="Top"
             Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=CameraHubHelp}"
             TextWrapping="Wrap" />
 
-        <atc:GridEx Columns="2*,16,*,16,*,16,Auto" Rows="Auto">
+        <atc:GridEx
+            Columns="2*,16,*,16,*,16,Auto"
+            DockPanel.Dock="Top"
+            Rows="Auto">
             <atc:LabelTextBox
                 Grid.Column="0"
                 LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Address}"
@@ -45,63 +51,26 @@
 
         <TextBlock
             Margin="0,10,0,0"
+            DockPanel.Dock="Top"
             Text="{Binding Status}"
             TextWrapping="Wrap" />
         <TextBlock
             Margin="0,4,0,0"
+            DockPanel.Dock="Top"
             Foreground="DarkOrange"
             Text="{Binding Warning}"
             TextWrapping="Wrap" />
         <TextBlock
             Margin="0,4,0,0"
+            DockPanel.Dock="Top"
             Foreground="IndianRed"
             Text="{Binding Problem}"
             TextWrapping="Wrap" />
 
-        <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding Cameras}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <WrapPanel />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="{x:Type dialogs:HubCameraRowViewModel}">
-                    <Border
-                        Width="210"
-                        Margin="0,0,10,10"
-                        Padding="8"
-                        BorderBrush="{DynamicResource AtcApps.Brushes.Control.Border}"
-                        BorderThickness="1">
-                        <StackPanel>
-                            <Image
-                                Height="110"
-                                Source="{Binding Picture}"
-                                Stretch="Uniform" />
-                            <TextBlock
-                                Margin="0,6,0,0"
-                                FontWeight="SemiBold"
-                                Text="{Binding Name}"
-                                TextTrimming="CharacterEllipsis" />
-                            <TextBlock Opacity="0.7" Text="{Binding Details}" />
-                            <TextBlock
-                                Foreground="IndianRed"
-                                Text="{Binding Problem}"
-                                TextWrapping="Wrap" />
-                            <Button
-                                Margin="0,6,0,0"
-                                Command="{Binding DataContext.AddCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                CommandParameter="{Binding}"
-                                Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AddCamera}"
-                                IsEnabled="{Binding CanAdd}" />
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
         <StackPanel
             Margin="0,10,0,0"
             HorizontalAlignment="Right"
+            DockPanel.Dock="Bottom"
             Orientation="Horizontal">
             <Button
                 MinWidth="80"
@@ -109,5 +78,51 @@
                 Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Cancel}"
                 IsCancel="True" />
         </StackPanel>
-    </StackPanel>
+
+        <ScrollViewer
+            Margin="0,10,0,0"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Cameras}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type dialogs:HubCameraRowViewModel}">
+                        <Border
+                            Width="210"
+                            Margin="0,0,10,10"
+                            Padding="8"
+                            BorderBrush="{DynamicResource AtcApps.Brushes.Control.Border}"
+                            BorderThickness="1">
+                            <StackPanel>
+                                <Image
+                                    Height="110"
+                                    Source="{Binding Picture}"
+                                    Stretch="Uniform" />
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding Name}"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock Opacity="0.7" Text="{Binding Details}" />
+                                <TextBlock
+                                    Foreground="IndianRed"
+                                    Text="{Binding Problem}"
+                                    TextWrapping="Wrap" />
+                                <Button
+                                    Margin="0,6,0,0"
+                                    Command="{Binding DataContext.AddCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}"
+                                    Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=AddCamera}"
+                                    IsEnabled="{Binding CanAdd}" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
 </atc:NiceWindow>

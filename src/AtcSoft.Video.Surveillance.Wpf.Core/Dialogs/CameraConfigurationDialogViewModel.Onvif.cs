@@ -1,9 +1,9 @@
 namespace AtcSoft.Video.Surveillance.Wpf.Core.Dialogs;
 
 /// <summary>
-/// A network camera over ONVIF: find the cameras on the network and pick one for its address, or
-/// read the streams of the camera at the address typed, which fills in the main stream and the
-/// sub-stream. All within the dialog.
+/// A network camera over ONVIF: find the cameras on the network and pick one for its address (the
+/// Find camera tab), or read the streams of the camera at the address typed, which fills in the
+/// main stream and the sub-stream (the Camera tab, next to them). Each says how it went on its own tab.
 /// </summary>
 public partial class CameraConfigurationDialogViewModel
 {
@@ -15,6 +15,9 @@ public partial class CameraConfigurationDialogViewModel
 
     [ObservableProperty]
     private string? onvifStatus;
+
+    [ObservableProperty]
+    private string? onvifReadStatus;
 
     [ObservableProperty]
     private int onvifPort;
@@ -49,6 +52,7 @@ public partial class CameraConfigurationDialogViewModel
         onvifMediaClient = mediaClient;
         OnPropertyChanged(nameof(CanUseOnvif));
         OnPropertyChanged(nameof(CanFindOnvifCameras));
+        OnTabsChanged();
     }
 
     private static void OnOnvifBusyChanged()
@@ -98,6 +102,8 @@ public partial class CameraConfigurationDialogViewModel
         {
             Camera.Display.DisplayName = item.Device.Name;
         }
+
+        ShowCameraTab();
     }
 
     private bool CanReadFromCamera()
@@ -107,7 +113,7 @@ public partial class CameraConfigurationDialogViewModel
     private async Task ReadFromCameraAsync()
     {
         IsOnvifBusy = true;
-        OnvifStatus = Translations.OnvifReading;
+        OnvifReadStatus = Translations.OnvifReading;
         try
         {
             var read = await onvifMediaClient!
@@ -132,7 +138,7 @@ public partial class CameraConfigurationDialogViewModel
                 OnPropertyChanged(nameof(SelectedProtocolKey));
             }
 
-            OnvifStatus = StatusOf(read);
+            OnvifReadStatus = StatusOf(read);
         }
         finally
         {

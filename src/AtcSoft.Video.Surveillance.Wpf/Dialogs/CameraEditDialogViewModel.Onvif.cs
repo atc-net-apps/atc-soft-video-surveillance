@@ -2,8 +2,10 @@ namespace AtcSoft.Video.Surveillance.Wpf.Dialogs;
 
 /// <summary>
 /// A camera over ONVIF, through the server: the cameras on the server's networks, one picked for
-/// its address, and the streams of the camera at the address typed, which fill in the main stream
-/// and the sub-stream. The camera's password is the one typed here: the client never has a stored one.
+/// its address (the Find camera tab, which then gives way to the Camera tab), and the streams of the
+/// camera at the address typed, which fill in the main stream and the sub-stream (the Camera tab).
+/// Each says how it went on its own tab. The camera's password is the one typed here: the client
+/// never has a stored one.
 /// </summary>
 public partial class CameraEditDialogViewModel
 {
@@ -12,6 +14,9 @@ public partial class CameraEditDialogViewModel
 
     [ObservableProperty]
     private string? onvifStatus;
+
+    [ObservableProperty]
+    private string? onvifReadStatus;
 
     [ObservableProperty]
     private int onvifPort;
@@ -81,6 +86,8 @@ public partial class CameraEditDialogViewModel
         {
             DisplayName = device.Name;
         }
+
+        SelectedTabIndex = CameraTabIndex;
     }
 
     private bool CanReadFromCamera()
@@ -90,7 +97,7 @@ public partial class CameraEditDialogViewModel
     private async Task ReadFromCameraAsync()
     {
         IsOnvifBusy = true;
-        OnvifStatus = Translations.OnvifReading;
+        OnvifReadStatus = Translations.OnvifReading;
         try
         {
             var read = await Onvif!
@@ -111,7 +118,7 @@ public partial class CameraEditDialogViewModel
                 SubStreamPort = read.SubStreamPort ?? 0;
             }
 
-            OnvifStatus = read.Outcome.Value switch
+            OnvifReadStatus = read.Outcome.Value switch
             {
                 OnvifProfilesResultOutcome.Names.Read => read.SubStreamPath is null ? Translations.OnvifReadMainOnly : Translations.OnvifReadWithSubStream,
                 OnvifProfilesResultOutcome.Names.Unauthorized => Translations.OnvifUnauthorized,
@@ -122,7 +129,7 @@ public partial class CameraEditDialogViewModel
         }
         catch (HttpRequestException ex)
         {
-            OnvifStatus = ex.Message;
+            OnvifReadStatus = ex.Message;
         }
         finally
         {

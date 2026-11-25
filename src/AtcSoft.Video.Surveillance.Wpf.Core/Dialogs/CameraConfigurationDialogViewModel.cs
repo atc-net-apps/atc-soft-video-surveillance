@@ -213,6 +213,7 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
         OnPropertyChanged(nameof(IsUsbSource));
         OnPropertyChanged(nameof(SourceIndex));
         OnPropertyChanged(nameof(SelectedConnectionTypeKey));
+        OnTabsChanged();
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -240,6 +241,7 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
         OnPropertyChanged(nameof(SourceIndex));
         OnPropertyChanged(nameof(SelectedProtocolKey));
         OnPropertyChanged(nameof(SelectedConnectionTypeKey));
+        OnTabsChanged();
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -1688,8 +1690,9 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
             return;
         }
 
-        // Populate IP address
+        // Populate IP address; the Find tab stays (the pick is a click in the list), and says where it went.
         Camera.Connection.IpAddress = e.SelectedHost.IpAddress.ToString();
+        ScannerPickStatus = string.Format(CultureInfo.CurrentCulture, Translations.ScannerHostPicked1, Camera.Connection.IpAddress);
 
         // Set display name from hostname if available and display name is default
         if (!string.IsNullOrWhiteSpace(e.SelectedHost.Hostname) &&
