@@ -39,8 +39,10 @@ public sealed class ApiHostOnvifTests(ApiHostFixture host)
         viewer.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", session.GetProperty("accessToken").GetString());
 
         var answer = await viewer.PostAsJsonAsync("/onvif/profiles", new { address = "127.0.0.1", port = 1 }, TestContext.Current.CancellationToken);
+        var search = await viewer.PostAsync(new Uri("/onvif/discover", UriKind.Relative), content: null, TestContext.Current.CancellationToken);
 
         answer.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        search.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -56,6 +58,38 @@ public sealed class ApiHostOnvifTests(ApiHostFixture host)
             context.Request.Path = "/onvif/profiles";
             context.Request.ContentType = "application/json";
             context.Request.Body = new MemoryStream("""{"address":"no address!"}"""u8.ToArray());
+            context.Request.Headers.Authorization = "Bearer " + token;
+            context.Connection.RemoteIpAddress = address;
+        })));
+
+        Array.ConvertAll(calls, call => call.Response.StatusCode)
+            .Count(status => status == StatusCodes.Status429TooManyRequests).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_Search_Answers_With_What_Was_Found()
+    {
+        // Whatever this machine's networks hold: a CI runner has no cameras, a test PC may have some.
+        using var client = host.CreateClient();
+
+        var answer = await client.PostAsync(new Uri("/onvif/discover", UriKind.Relative), content: null, TestContext.Current.CancellationToken);
+
+        answer.StatusCode.Should().Be(HttpStatusCode.OK, await answer.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var result = await answer.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        result.GetProperty("devices").ValueKind.Should().Be(JsonValueKind.Array);
+        result.GetProperty("couldProbe").ValueKind.Should().BeOneOf(JsonValueKind.True, JsonValueKind.False);
+    }
+
+    [Fact]
+    public async Task The_Seventh_Search_In_A_Minute_Is_Turned_Away()
+    {
+        var address = IPAddress.Parse("192.0.2.72");
+        var token = host.GetAdminAccessToken();
+
+        var calls = await Task.WhenAll(Enumerable.Range(0, 7).Select(_ => host.SendAsync(context =>
+        {
+            context.Request.Method = HttpMethods.Post;
+            context.Request.Path = "/onvif/discover";
             context.Request.Headers.Authorization = "Bearer " + token;
             context.Connection.RemoteIpAddress = address;
         })));

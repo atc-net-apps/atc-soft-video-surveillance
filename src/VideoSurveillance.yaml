@@ -573,6 +573,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /onvif/discover:
+    post:
+      summary: Find the ONVIF cameras on the server's networks
+      description: >-
+        Sends a WS-Discovery probe from each of the server's network cards and lists the ONVIF devices that answer
+        within three seconds, with the address and port of their device service (for readOnvifProfiles), their name
+        and model. Only devices on a private or link-local network are listed. couldProbe is false when no network
+        card could send the probe: in Docker on a bridge network, the server needs host networking to search;
+        readOnvifProfiles works without it.
+      operationId: discoverOnvifCameras
+      x-authorize-roles:
+        - operator
+        - admin
+      # Not a change: nothing is stored.
+      x-audit: false
+      x-retry-enabled: false
+      # Each search listens for three seconds on every network card.
+      x-ratelimit-policy: onvif-discovery
+      x-ratelimit-permit-limit: 6
+      x-ratelimit-window-seconds: 60
+      x-ratelimit-algorithm: fixed
+      x-ratelimit-partition: ip
+      tags:
+        - onvif
+      responses:
+        '200':
+          description: The devices that answered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnvifDiscoveryResult"
+        '429':
+          description: Too many searches from this address; Retry-After says when to try again.
+          headers:
+            Retry-After:
+              description: Seconds to wait before trying again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /onvif/profiles:
     post:
       summary: Read a camera's streams over ONVIF
@@ -4235,6 +4278,45 @@ components:
         cameraName:
           type: string
           description: The camera's name on the hub, when it was added.
+
+    OnvifDiscoveryResult:
+      title: OnvifDiscoveryResult
+      type: object
+      required:
+        - devices
+        - couldProbe
+      properties:
+        devices:
+          type: array
+          maxItems: 256
+          items:
+            $ref: "#/components/schemas/OnvifDiscoveredDevice"
+        couldProbe:
+          type: boolean
+          description: Whether any network card could send the probe; false in Docker without host networking.
+
+    OnvifDiscoveredDevice:
+      title: OnvifDiscoveredDevice
+      type: object
+      required:
+        - address
+        - port
+        - name
+        - hardware
+      properties:
+        address:
+          type: string
+          description: The device's address, as a camera's address is typed.
+        port:
+          type: integer
+          format: int32
+          description: Its ONVIF port, for readOnvifProfiles.
+        name:
+          type: string
+          description: Its name as it gives it, or empty.
+        hardware:
+          type: string
+          description: Its model as it gives it, or empty.
 
     OnvifProfilesRequest:
       title: OnvifProfilesRequest

@@ -22,6 +22,11 @@ services:
     # The server runs as user 1654 ("app"). With folders of a NAS mounted below instead of the
     # volume, run it as the user that owns them (its id and group id, "id <name>" on the NAS):
     # user: "1026:100"
+    # Finding ONVIF cameras ("Find cameras" when adding one) sends a multicast probe on the
+    # network, which a container on its own network cannot. To search from here, on a Linux host
+    # or a NAS: put "network_mode: host" in place of the ports and networks of this service (not
+    # with the https profile). Reading a camera's streams by its address works without it.
+    # network_mode: host
     ports:
       - "${PORT:-8585}:8585"
     environment:
