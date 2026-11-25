@@ -12,6 +12,8 @@ public class DialogService : IDialogService
     private readonly IVideoPlayerFactory videoPlayerFactory;
     private readonly AtcSoft.Video.Surveillance.Services.IUsbCameraEnumerator usbCameraEnumerator;
     private readonly AtcSoft.Video.Surveillance.Services.ICameraConnectionTypeDetector? connectionTypeDetector;
+    private readonly AtcSoft.Video.Surveillance.Services.Onvif.IOnvifDiscovery? onvifDiscovery;
+    private readonly AtcSoft.Video.Surveillance.Services.Onvif.IOnvifMediaClient? onvifMediaClient;
     private readonly AtcSoft.Video.Surveillance.Services.Hubs.ICameraHubProvider? cameraHubProvider;
     private readonly ICameraStorageService? cameraStorage;
     private readonly IRecordingLayoutSynchronizer? recordingLayoutSynchronizer;
@@ -48,7 +50,9 @@ public class DialogService : IDialogService
         ICameraStorageService? cameraStorage = null,
         IRecordingPreviews? recordingPreviews = null,
         ILoggerFactory? loggerFactory = null,
-        AtcSoft.Video.Surveillance.Services.Hubs.ICameraHubProvider? cameraHubProvider = null)
+        AtcSoft.Video.Surveillance.Services.Hubs.ICameraHubProvider? cameraHubProvider = null,
+        AtcSoft.Video.Surveillance.Services.Onvif.IOnvifDiscovery? onvifDiscovery = null,
+        AtcSoft.Video.Surveillance.Services.Onvif.IOnvifMediaClient? onvifMediaClient = null)
     {
         this.settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         this.motionDetectionService = motionDetectionService ?? throw new ArgumentNullException(nameof(motionDetectionService));
@@ -60,6 +64,8 @@ public class DialogService : IDialogService
         this.recordingPreviews = recordingPreviews;
         this.loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
         this.cameraHubProvider = cameraHubProvider;
+        this.onvifDiscovery = onvifDiscovery;
+        this.onvifMediaClient = onvifMediaClient;
     }
 
     /// <inheritdoc />
@@ -87,6 +93,7 @@ public class DialogService : IDialogService
             connectionTypeDetector,
             livePicture);
         viewModel.UseCameraHubs(cameraHubProvider);
+        viewModel.UseOnvif(onvifDiscovery, onvifMediaClient);
 
         var dialog = new CameraConfigurationDialog(viewModel)
         {

@@ -92,6 +92,9 @@
                             <!--  Camera hub (motionEye, motionEyeOS): a new network camera from a hub's cameras  -->
                             <cameraConfigs:CameraHubPart Visibility="{Binding Path=CanUseCameraHub, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
 
+                            <!--  ONVIF: find the cameras on the network, or read the streams of the one at the address typed  -->
+                            <cameraConfigs:OnvifPart Visibility="{Binding Path=CanUseOnvif, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}" />
+
                             <!--  Network branch — 3-column basic settings  -->
                             <atc:GroupBoxExpander
                                 Margin="0,0,0,20"

@@ -139,6 +139,10 @@ public partial class CameraWallApp
                 // Camera hubs (motionEye, motionEyeOS) for the camera dialog's "Camera Hub" part.
                 services.AddSingleton<AtcSoft.Video.Surveillance.Services.Hubs.ICameraHubProvider, AtcSoft.Video.Surveillance.Services.Hubs.MotionEyeHubProvider>();
 
+                // ONVIF for the camera dialog: find cameras on the network, read a camera's streams.
+                services.AddSingleton<AtcSoft.Video.Surveillance.Services.Onvif.IOnvifDiscovery, AtcSoft.Video.Surveillance.Services.Onvif.OnvifDiscovery>();
+                services.AddSingleton<AtcSoft.Video.Surveillance.Services.Onvif.IOnvifMediaClient, AtcSoft.Video.Surveillance.Services.Onvif.OnvifMediaClient>();
+
                 // Diagnostics for a long test run: a system report and health samples (Advanced.EnableDiagnostics).
                 services.AddSingleton(new AtcSoft.Video.Surveillance.CameraWall.Wpf.App.Diagnostics.DiagnosticsServiceOptions
                 {

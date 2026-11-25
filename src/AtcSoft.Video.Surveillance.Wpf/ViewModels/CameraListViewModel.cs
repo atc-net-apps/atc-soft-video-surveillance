@@ -91,7 +91,7 @@ public partial class CameraListViewModel : ViewModelBase
     [RelayCommand("AddCamera")]
     private async Task AddCameraAsync()
     {
-        var viewModel = new CameraEditDialogViewModel();
+        var viewModel = new CameraEditDialogViewModel { Onvif = gatewayService };
         var dialog = new CameraEditDialog(viewModel)
         {
             Owner = Application.Current.MainWindow,
@@ -173,7 +173,10 @@ public partial class CameraListViewModel : ViewModelBase
             viewModel = new CameraEditDialogViewModel(
                 camera,
                 id => gatewayService.DetectConnectionTypeAsync(id),
-                (id, cancellationToken) => gatewayService.CaptureSnapshotAsync(id, cancellationToken));
+                (id, cancellationToken) => gatewayService.CaptureSnapshotAsync(id, cancellationToken))
+            {
+                Onvif = gatewayService,
+            };
             var dialog = new CameraEditDialog(viewModel)
             {
                 Owner = Application.Current.MainWindow,

@@ -128,6 +128,33 @@ else
                                          Min="0"
                                          Max="65535"
                                          Class="mt-3" />
+                        <MudExpansionPanels Class="mt-3">
+                            <MudExpansionPanel Text="@Translations.OnvifHeader">
+                                <MudText Typo="Typo.body2" Class="mb-2">@Translations.OnvifHelp</MudText>
+                                <MudStack Row="true" AlignItems="AlignItems.End" Wrap="Wrap.Wrap">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Disabled="@onvifBusy"
+                                               OnClick="FindOnvifCamerasAsync">@Translations.FindOnvifCameras</MudButton>
+                                    <MudNumericField @bind-Value="onvifPort"
+                                                     Label="@Translations.OnvifPort"
+                                                     Min="0"
+                                                     Max="65535" />
+                                    <MudButton Variant="Variant.Outlined"
+                                               Disabled="@(onvifBusy || string.IsNullOrWhiteSpace(ipAddress))"
+                                               OnClick="ReadFromCameraAsync">@Translations.ReadFromCamera</MudButton>
+                                </MudStack>
+                                @if (!string.IsNullOrEmpty(onvifStatus))
+                                {
+                                    <MudText Typo="Typo.caption" Class="mt-2">@onvifStatus</MudText>
+                                }
+                                @foreach (var device in onvifDevices)
+                                {
+                                    <MudButton Variant="Variant.Text"
+                                               Class="d-block"
+                                               OnClick="@(() => UseOnvifDevice(device))">@OnvifImport.Describe(device)</MudButton>
+                                }
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
                         <MudSelect @bind-Value="connectionType"
                                    Label="@Translations.ConnectionType"
                                    Class="mt-3">
@@ -253,6 +280,12 @@ else
     private string path = string.Empty;
     private string subStreamPath = string.Empty;
     private int subStreamPort;
+
+    // ONVIF, through the server: the cameras it found, and the camera read at the address typed.
+    private bool onvifBusy;
+    private string? onvifStatus;
+    private int onvifPort;
+    private List<OnvifDiscoveredDevice> onvifDevices = [];
     private string username = string.Empty;
     private string password = string.Empty;
 
@@ -576,5 +609,72 @@ else
         }
 
         isSaving = false;
+    }
+
+    private async Task FindOnvifCamerasAsync()
+    {
+        onvifBusy = true;
+        onvifStatus = Translations.OnvifSearching;
+        onvifDevices = [];
+        try
+        {
+            var found = await Gateway.DiscoverOnvifCamerasAsync();
+            if (found.Value is { } result)
+            {
+                onvifDevices = [.. result.Devices];
+                onvifStatus = OnvifImport.Describe(result);
+            }
+            else
+            {
+                onvifStatus = ProblemText.WithReason(Translations.FindOnvifCameras, found.Problem);
+            }
+        }
+        finally
+        {
+            onvifBusy = false;
+        }
+    }
+
+    private void UseOnvifDevice(OnvifDiscoveredDevice device)
+    {
+        ipAddress = device.Address;
+        onvifPort = device.Port;
+        if (string.IsNullOrWhiteSpace(displayName) && !string.IsNullOrWhiteSpace(device.Name))
+        {
+            displayName = device.Name;
+        }
+    }
+
+    private async Task ReadFromCameraAsync()
+    {
+        onvifBusy = true;
+        onvifStatus = Translations.OnvifReading;
+        try
+        {
+            var read = await Gateway.ReadOnvifProfilesAsync(new OnvifProfilesRequest(Address: ipAddress.Trim())
+            {
+                Port = onvifPort > 0 ? onvifPort : null,
+                UserName = string.IsNullOrEmpty(username) ? null : username,
+                Password = string.IsNullOrEmpty(password) ? null : password,
+            });
+            if (read.Value is { } result)
+            {
+                if (OnvifImport.Fields(result) is { } fields)
+                {
+                    protocol = CameraProtocol.Rtsp;
+                    (port, path, subStreamPath, subStreamPort) = fields;
+                }
+
+                onvifStatus = OnvifImport.Describe(result);
+            }
+            else
+            {
+                onvifStatus = ProblemText.WithReason(Translations.ReadFromCamera, read.Problem);
+            }
+        }
+        finally
+        {
+            onvifBusy = false;
+        }
     }
 }

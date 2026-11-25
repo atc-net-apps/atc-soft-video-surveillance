@@ -408,6 +408,54 @@
   <data name="SubStreamUnavailable" xml:space="preserve">
     <value>Understrøm ikke tilgængelig: hovedstrømmen bruges</value>
   </data>
+  <data name="OnvifHeader" xml:space="preserve">
+    <value>Find og læs ONVIF-kameraer</value>
+  </data>
+  <data name="OnvifHelp" xml:space="preserve">
+    <value>De fleste IP-kameraer taler ONVIF. Find kameraerne på netværket, eller skriv et kameras adresse og bruger ovenfor, og læs så dets strømme: hovedstrømmen og understrømmen udfyldes.</value>
+  </data>
+  <data name="FindOnvifCameras" xml:space="preserve">
+    <value>Find kameraer</value>
+  </data>
+  <data name="ReadFromCamera" xml:space="preserve">
+    <value>Læs fra kamera</value>
+  </data>
+  <data name="OnvifPort" xml:space="preserve">
+    <value>ONVIF-port (0: prøv de sædvanlige)</value>
+  </data>
+  <data name="OnvifSearching" xml:space="preserve">
+    <value>Søger på netværket…</value>
+  </data>
+  <data name="OnvifFound1" xml:space="preserve">
+    <value>{0} fundet. Vælg et for at udfylde dets adresse.</value>
+  </data>
+  <data name="OnvifNoneFound" xml:space="preserve">
+    <value>Ingen ONVIF-kameraer svarede.</value>
+  </data>
+  <data name="OnvifNoMulticast" xml:space="preserve">
+    <value>Netværket kan ikke gennemsøges herfra. I Docker skal serveren bruge værtens netværk til det. At læse et kamera via dets adresse virker alligevel.</value>
+  </data>
+  <data name="OnvifReading" xml:space="preserve">
+    <value>Læser kameraets strømme…</value>
+  </data>
+  <data name="OnvifReadWithSubStream" xml:space="preserve">
+    <value>Hovedstrømmen og understrømmen er udfyldt.</value>
+  </data>
+  <data name="OnvifReadMainOnly" xml:space="preserve">
+    <value>Hovedstrømmen er udfyldt. Kameraet har ingen mindre strøm til en understrøm.</value>
+  </data>
+  <data name="OnvifNotOnvif" xml:space="preserve">
+    <value>Kameraet svarer ikke på ONVIF på denne adresse og port.</value>
+  </data>
+  <data name="OnvifUnauthorized" xml:space="preserve">
+    <value>Kameraet afviste brugeren og adgangskoden.</value>
+  </data>
+  <data name="OnvifTimeout" xml:space="preserve">
+    <value>Kameraet svarede ikke i tide.</value>
+  </data>
+  <data name="OnvifNoRtspProfile" xml:space="preserve">
+    <value>Kameraet tilbyder ingen RTSP-strøm.</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Brugernavn</value>
   </data>

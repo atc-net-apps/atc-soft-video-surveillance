@@ -72,6 +72,63 @@
                     Maximum="65535"
                     Minimum="0"
                     Value="{Binding SubStreamPort, UpdateSourceTrigger=PropertyChanged}" />
+
+                <!--  ONVIF, through the server: find the cameras on its networks, or read the streams of the one at the address above  -->
+                <atc:GroupBoxExpander
+                    Margin="0,8,0,4"
+                    Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifHeader}"
+                    IsExpanded="False"
+                    Visibility="{Binding CanUseOnvif, Converter={x:Static atcValueConverters:BoolToVisibilityVisibleValueConverter.Instance}}">
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            Text="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifHelp}"
+                            TextWrapping="Wrap" />
+                        <atc:GridEx Columns="Auto,12,*,12,Auto" Rows="Auto">
+                            <Button
+                                Grid.Column="0"
+                                Padding="10,2"
+                                VerticalAlignment="Bottom"
+                                Command="{Binding FindOnvifCamerasCommand}"
+                                Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=FindOnvifCameras}" />
+                            <atc:LabelIntegerBox
+                                Grid.Column="2"
+                                LabelText="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=OnvifPort}"
+                                Maximum="65535"
+                                Minimum="0"
+                                Value="{Binding OnvifPort, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button
+                                Grid.Column="4"
+                                Padding="10,2"
+                                VerticalAlignment="Bottom"
+                                Command="{Binding ReadFromCameraCommand}"
+                                Content="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=ReadFromCamera}" />
+                        </atc:GridEx>
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            Text="{Binding OnvifStatus}"
+                            TextWrapping="Wrap"
+                            Visibility="{Binding OnvifStatus, Converter={x:Static atcValueConverters:StringNullOrEmptyToVisibilityCollapsedValueConverter.Instance}}" />
+                        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding OnvifDevices}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button
+                                        Margin="0,0,0,4"
+                                        Padding="8,4"
+                                        HorizontalContentAlignment="Left"
+                                        Command="{Binding DataContext.UseOnvifDeviceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                            <TextBlock Margin="8,0,0,0" Text="{Binding Hardware}" />
+                                            <TextBlock Margin="8,0,0,0" Text="{Binding Address}" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </atc:GroupBoxExpander>
                 <atc:LabelComboBox
                     Margin="0,4"
                     Items="{Binding ConnectionTypeItems}"

@@ -411,6 +411,54 @@
   <data name="SubStreamUnavailable" xml:space="preserve">
     <value>Sub-stream unavailable: the main stream is used</value>
   </data>
+  <data name="OnvifHeader" xml:space="preserve">
+    <value>Find and read ONVIF cameras</value>
+  </data>
+  <data name="OnvifHelp" xml:space="preserve">
+    <value>Most IP cameras speak ONVIF. Find the cameras on the network, or type a camera's address and user above, then read its streams: the main stream and the sub-stream are filled in.</value>
+  </data>
+  <data name="FindOnvifCameras" xml:space="preserve">
+    <value>Find cameras</value>
+  </data>
+  <data name="ReadFromCamera" xml:space="preserve">
+    <value>Read from camera</value>
+  </data>
+  <data name="OnvifPort" xml:space="preserve">
+    <value>ONVIF port (0: try the usual ones)</value>
+  </data>
+  <data name="OnvifSearching" xml:space="preserve">
+    <value>Searching the network…</value>
+  </data>
+  <data name="OnvifFound1" xml:space="preserve">
+    <value>{0} found. Pick one to fill in its address.</value>
+  </data>
+  <data name="OnvifNoneFound" xml:space="preserve">
+    <value>No ONVIF cameras answered.</value>
+  </data>
+  <data name="OnvifNoMulticast" xml:space="preserve">
+    <value>This network cannot be searched from here. In Docker the server needs host networking for it. Reading a camera by its address works anyway.</value>
+  </data>
+  <data name="OnvifReading" xml:space="preserve">
+    <value>Reading the camera's streams…</value>
+  </data>
+  <data name="OnvifReadWithSubStream" xml:space="preserve">
+    <value>The main stream and the sub-stream are filled in.</value>
+  </data>
+  <data name="OnvifReadMainOnly" xml:space="preserve">
+    <value>The main stream is filled in. The camera has no smaller stream for a sub-stream.</value>
+  </data>
+  <data name="OnvifNotOnvif" xml:space="preserve">
+    <value>The camera does not answer ONVIF at this address and port.</value>
+  </data>
+  <data name="OnvifUnauthorized" xml:space="preserve">
+    <value>The camera refused the user and password.</value>
+  </data>
+  <data name="OnvifTimeout" xml:space="preserve">
+    <value>The camera did not answer in time.</value>
+  </data>
+  <data name="OnvifNoRtspProfile" xml:space="preserve">
+    <value>The camera offers no RTSP stream.</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Username</value>
   </data>

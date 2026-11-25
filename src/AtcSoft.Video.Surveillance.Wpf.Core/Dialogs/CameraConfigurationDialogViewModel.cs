@@ -209,6 +209,7 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
         ClearTestResult();
         OnPropertyChanged(nameof(IsNetworkSource));
         OnPropertyChanged(nameof(CanUseCameraHub));
+        OnPropertyChanged(nameof(CanUseOnvif));
         OnPropertyChanged(nameof(IsUsbSource));
         OnPropertyChanged(nameof(SourceIndex));
         OnPropertyChanged(nameof(SelectedConnectionTypeKey));
@@ -234,6 +235,7 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
         IpAddressError = null;
         OnPropertyChanged(nameof(IsNetworkSource));
         OnPropertyChanged(nameof(CanUseCameraHub));
+        OnPropertyChanged(nameof(CanUseOnvif));
         OnPropertyChanged(nameof(IsUsbSource));
         OnPropertyChanged(nameof(SourceIndex));
         OnPropertyChanged(nameof(SelectedProtocolKey));

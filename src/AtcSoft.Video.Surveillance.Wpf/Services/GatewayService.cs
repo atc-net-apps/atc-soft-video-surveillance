@@ -14,7 +14,7 @@ namespace AtcSoft.Video.Surveillance.Wpf.Services;
     "Design",
     "CA1056:URI properties should not be strings",
     Justification = "ApiBaseUrl is a configured string, not a constructed Uri; matches the OpenAPI-generated client signature.")]
-public sealed partial class GatewayService : IStreamLeaseGateway
+public sealed partial class GatewayService : IStreamLeaseGateway, IOnvifGateway
 {
     private readonly JsonSerializerOptions jsonOptions = Atc.Serialization.JsonSerializerOptionsFactory.Create();
 
