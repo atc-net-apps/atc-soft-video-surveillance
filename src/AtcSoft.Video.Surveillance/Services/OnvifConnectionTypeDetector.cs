@@ -15,11 +15,6 @@ namespace AtcSoft.Video.Surveillance.Services;
 public sealed partial class OnvifConnectionTypeDetector : ICameraConnectionTypeDetector
 {
     private const string DeviceWsdlNamespace = "http://www.onvif.org/ver10/device/wsdl";
-    private const string SoapNamespace = "http://www.w3.org/2003/05/soap-envelope";
-    private const string WsseNamespace = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd";
-    private const string WsuNamespace = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd";
-    private const string PasswordDigestType = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest";
-    private const string Base64EncodingType = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary";
 
     // One client for the process when no HttpClient is injected (avoids socket
     // exhaustion). No proxy: cameras sit on private addresses that a system
@@ -106,7 +101,7 @@ public sealed partial class OnvifConnectionTypeDetector : ICameraConnectionTypeD
 
     /// <summary>
     /// Builds a SOAP 1.2 Device-service request, with a WS-Security
-    /// UsernameToken when <paramref name="userName"/> is set.
+    /// UsernameToken when <paramref name="userName"/> is set (<see cref="OnvifSoap"/>).
     /// </summary>
     internal static string BuildEnvelope(
         string operation,
@@ -115,65 +110,18 @@ public sealed partial class OnvifConnectionTypeDetector : ICameraConnectionTypeD
         DateTimeOffset createdUtc,
         byte[] nonce)
     {
-        XNamespace s = SoapNamespace;
         XNamespace tds = DeviceWsdlNamespace;
-
-        var header = new XElement(s + "Header");
-        if (!string.IsNullOrEmpty(userName))
-        {
-            XNamespace wsse = WsseNamespace;
-            XNamespace wsu = WsuNamespace;
-            var created = createdUtc.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
-
-            header.Add(
-                new XElement(
-                    wsse + "Security",
-                    new XAttribute(s + "mustUnderstand", "1"),
-                    new XElement(
-                        wsse + "UsernameToken",
-                        new XElement(wsse + "Username", userName),
-                        new XElement(
-                            wsse + "Password",
-                            new XAttribute("Type", PasswordDigestType),
-                            ComputePasswordDigest(nonce, created, password ?? string.Empty)),
-                        new XElement(
-                            wsse + "Nonce",
-                            new XAttribute("EncodingType", Base64EncodingType),
-                            Convert.ToBase64String(nonce)),
-                        new XElement(wsu + "Created", created))));
-        }
-
-        var envelope = new XElement(
-            s + "Envelope",
-            new XAttribute(XNamespace.Xmlns + "s", SoapNamespace),
-            new XAttribute(XNamespace.Xmlns + "tds", DeviceWsdlNamespace),
-            header,
-            new XElement(s + "Body", new XElement(tds + operation)));
-
-        return envelope.ToString(SaveOptions.DisableFormatting);
+        return OnvifSoap.BuildEnvelope(new XElement(tds + operation), userName, password, createdUtc, nonce);
     }
 
     /// <summary>
-    /// WS-Security PasswordDigest: Base64(SHA-1(nonce + created + password)),
-    /// where <paramref name="nonce"/> is the <em>raw</em> nonce bytes (not its
-    /// Base64 text).
+    /// WS-Security PasswordDigest (<see cref="OnvifSoap.ComputePasswordDigest"/>).
     /// </summary>
-    [SuppressMessage("Security", "CA5350:Do Not Use Weak Cryptographic Algorithms", Justification = "SHA-1 is mandated by the WS-Security UsernameToken profile that ONVIF devices implement.")]
-    [SuppressMessage("Security", "S4790:Using weak hashing algorithms is security-sensitive", Justification = "SHA-1 is mandated by the WS-Security UsernameToken profile that ONVIF devices implement.")]
     internal static string ComputePasswordDigest(
         byte[] nonce,
         string created,
         string password)
-    {
-        var createdBytes = Encoding.UTF8.GetBytes(created);
-        var passwordBytes = Encoding.UTF8.GetBytes(password);
-        var buffer = new byte[nonce.Length + createdBytes.Length + passwordBytes.Length];
-        nonce.CopyTo(buffer, 0);
-        createdBytes.CopyTo(buffer, nonce.Length);
-        passwordBytes.CopyTo(buffer, nonce.Length + createdBytes.Length);
-
-        return Convert.ToBase64String(SHA1.HashData(buffer));
-    }
+        => OnvifSoap.ComputePasswordDigest(nonce, created, password);
 
     /// <summary>
     /// Asks one port for the camera's clock, which needs no credentials.

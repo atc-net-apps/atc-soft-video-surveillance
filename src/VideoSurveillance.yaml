@@ -573,6 +573,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /onvif/profiles:
+    post:
+      summary: Read a camera's streams over ONVIF
+      description: >-
+        Signs in to the camera with the user and password given, which are not kept, and reads its ONVIF media
+        profiles: the streams it offers, with their encoding, size and RTSP address. The largest is proposed as the
+        main stream, and the smallest at least 320 wide and at most half as wide as the sub-stream. The addresses
+        are given as a port and a path (with its query); the camera's address is the one asked for, and no user or
+        password is in them.
+      operationId: readOnvifProfiles
+      x-authorize-roles:
+        - operator
+        - admin
+      # Not a change: nothing is stored.
+      x-audit: false
+      x-retry-enabled: false
+      # Each call signs in to another machine; a client in a loop would keep doing so.
+      x-ratelimit-policy: onvif-profiles
+      x-ratelimit-permit-limit: 20
+      x-ratelimit-window-seconds: 60
+      x-ratelimit-algorithm: fixed
+      x-ratelimit-partition: ip
+      tags:
+        - onvif
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnvifProfilesRequest"
+      responses:
+        '200':
+          description: What the camera answered, with its streams when it gave them
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnvifProfilesResult"
+        '400':
+          description: The address is no address
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        '429':
+          description: Too many tries from this address; Retry-After says when to try again.
+          headers:
+            Retry-After:
+              description: Seconds to wait before trying again.
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /hubs/probe:
     post:
       summary: List the cameras of a camera hub (motionEye or motionEyeOS)
@@ -4180,6 +4235,91 @@ components:
         cameraName:
           type: string
           description: The camera's name on the hub, when it was added.
+
+    OnvifProfilesRequest:
+      title: OnvifProfilesRequest
+      type: object
+      required:
+        - address
+      properties:
+        address:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: The camera's address, as a person types it (192.168.1.64 or a host name).
+        port:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+          description: The camera's ONVIF port; left out, 80, 8080, 8000 and 2020 are tried.
+        userName:
+          type: string
+          maxLength: 128
+        password:
+          type: string
+          maxLength: 256
+
+    OnvifProfilesResult:
+      title: OnvifProfilesResult
+      type: object
+      required:
+        - outcome
+        - profiles
+      properties:
+        outcome:
+          type: string
+          enum: [read, notOnvif, unauthorized, timeout, noRtspProfile]
+        profiles:
+          type: array
+          maxItems: 32
+          items:
+            $ref: "#/components/schemas/OnvifProfile"
+        port:
+          type: integer
+          format: int32
+          description: The main stream's RTSP port, when the profiles were read.
+        path:
+          type: string
+          description: The main stream's path, with its query, when the profiles were read.
+        subStreamPath:
+          type: string
+          description: The sub-stream's path, with its query, when the camera has one.
+        subStreamPort:
+          type: integer
+          format: int32
+          description: The sub-stream's port, when it differs from the main stream's.
+
+    OnvifProfile:
+      title: OnvifProfile
+      type: object
+      required:
+        - token
+        - name
+        - encoding
+        - width
+        - height
+      properties:
+        token:
+          type: string
+        name:
+          type: string
+        encoding:
+          type: string
+          description: H264, H265, JPEG or MPEG4, as the camera names it.
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        port:
+          type: integer
+          format: int32
+          description: The stream's RTSP port.
+        path:
+          type: string
+          description: The stream's path, with its query.
 
     HubProbeRequest:
       title: HubProbeRequest

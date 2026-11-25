@@ -19,6 +19,7 @@ global using AtcSoft.Video.Surveillance.Helpers;
 global using AtcSoft.Video.Surveillance.Helpers.Activity;
 global using AtcSoft.Video.Surveillance.Services;
 global using AtcSoft.Video.Surveillance.Services.Hubs;
+global using AtcSoft.Video.Surveillance.Services.Onvif;
 
 global using Microsoft.AspNetCore.Http;
 
@@ -54,6 +55,10 @@ global using VideoSurveillance.Generated.Layouts.Models;
 global using VideoSurveillance.Generated.Layouts.Parameters;
 global using VideoSurveillance.Generated.Layouts.Results;
 global using VideoSurveillance.Generated.Models;
+global using VideoSurveillance.Generated.Onvif.Handlers;
+global using VideoSurveillance.Generated.Onvif.Models;
+global using VideoSurveillance.Generated.Onvif.Parameters;
+global using VideoSurveillance.Generated.Onvif.Results;
 global using VideoSurveillance.Generated.Recordings.Handlers;
 global using VideoSurveillance.Generated.Recordings.Models;
 global using VideoSurveillance.Generated.Recordings.Parameters;

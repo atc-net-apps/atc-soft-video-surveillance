@@ -116,6 +116,7 @@ try
 
     // Camera hubs (motionEye, motionEyeOS): POST /hubs/probe and /hubs/cameras.
     builder.Services.AddSingleton<AtcSoft.Video.Surveillance.Services.Hubs.ICameraHubProvider, AtcSoft.Video.Surveillance.Services.Hubs.MotionEyeHubProvider>();
+    builder.Services.AddSingleton<AtcSoft.Video.Surveillance.Services.Onvif.IOnvifMediaClient, AtcSoft.Video.Surveillance.Services.Onvif.OnvifMediaClient>();
 
     // Register Core service implementations for the server. Storage:DataPath
     // moves the server's files out of the shared application data folder, so
