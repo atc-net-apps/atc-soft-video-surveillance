@@ -1,7 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Api.Services;
 
-using Atc.Video.Engine;
-
 /// <summary>
 /// A camera with a sub-stream is two connections used as one: the sub-stream gives the
 /// pictures, the main stream records.
@@ -103,6 +101,7 @@ public sealed class SubStreamMediaPipelineTests
         PlayerState state)
         => player.StateChanged += NSubstitute.Raise.EventWith(player, new PlayerStateChangedEventArgs(PlayerState.Opening, state));
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The composite owns both pipelines and disposes them.")]
     private SubStreamMediaPipeline CreateSut()
         => new(
             new VideoEngineMediaPipeline(mainPlayer, "Gate"),

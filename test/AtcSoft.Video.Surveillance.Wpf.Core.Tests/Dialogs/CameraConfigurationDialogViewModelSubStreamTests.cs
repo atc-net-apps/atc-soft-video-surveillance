@@ -40,7 +40,8 @@ public sealed class CameraConfigurationDialogViewModelSubStreamTests
         changed.Should().Contain(nameof(camera.Connection.HasSubStream));
     }
 
-    private static CameraConfigurationDialogViewModel BuildVm(CameraConfiguration camera)
+    private static CameraConfigurationDialogViewModel BuildVm(
+        CameraConfiguration camera)
     {
         var settingsService = Substitute.For<IWpfCoreSettingsService>();
         settingsService.CameraDisplay.Returns(new CameraDisplayAppSettings());

@@ -197,7 +197,7 @@ public partial class CameraConfiguration : ObservableObject
     /// <summary>
     /// Builds the camera stream URI based on the configuration.
     /// Throws on USB cameras — use
-    /// <see cref="BuildSourceLocator"/> instead.
+    /// <see cref="BuildSourceLocator()"/> instead.
     /// </summary>
     /// <returns>The constructed URI for the camera stream.</returns>
     public Uri BuildUri()
@@ -214,7 +214,7 @@ public partial class CameraConfiguration : ObservableObject
 
     /// <summary>
     /// Builds an FFmpeg-ready locator that handles both network and
-    /// USB cameras. Prefer this over <see cref="BuildUri"/> in new
+    /// USB cameras. Prefer this over <see cref="BuildUri()"/> in new
     /// code.
     /// </summary>
     public AtcSoft.Video.Surveillance.Helpers.SourceLocator BuildSourceLocator()
@@ -225,7 +225,8 @@ public partial class CameraConfiguration : ObservableObject
     /// </summary>
     /// <param name="role">The stream to open.</param>
     /// <returns>The locator.</returns>
-    public AtcSoft.Video.Surveillance.Helpers.SourceLocator BuildSourceLocator(CameraStreamRole role)
+    public AtcSoft.Video.Surveillance.Helpers.SourceLocator BuildSourceLocator(
+        CameraStreamRole role)
         => AtcSoft.Video.Surveillance.Helpers.CameraUriHelper.BuildSourceLocator(Core, role);
 
     /// <summary>

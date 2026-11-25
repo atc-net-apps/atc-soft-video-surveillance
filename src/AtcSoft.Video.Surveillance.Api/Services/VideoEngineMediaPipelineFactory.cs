@@ -76,15 +76,23 @@ public sealed class VideoEngineMediaPipelineFactory : IMediaPipelineFactory
         // Pre-pipeline construction failures (or pipeline.Open throwing) used
         // to leak the half-constructed player/pipeline because the caller's
         // `using var` never received the reference.
+        var name = role == CameraStreamRole.Sub && camera.Connection.HasSubStream
+            ? camera.Display.DisplayName + " (sub-stream)"
+            : camera.Display.DisplayName;
         var player = videoPlayerFactory.Create();
-        VideoEngineMediaPipeline? pipeline = null;
+        VideoEngineMediaPipeline pipeline;
         try
         {
-            var name = role == CameraStreamRole.Sub && camera.Connection.HasSubStream
-                ? camera.Display.DisplayName + " (sub-stream)"
-                : camera.Display.DisplayName;
             pipeline = new VideoEngineMediaPipeline(player, name, pipelineLogger);
+        }
+        catch
+        {
+            (player as IDisposable)?.Dispose();
+            throw;
+        }
 
+        try
+        {
             // Recorded as H.264 or as it is sent: the application's choice,
             // or the camera's own.
             pipeline.TranscodeRecordingToH264 = RecordingPolicyHelper.ResolveTranscodeCodec(
@@ -108,15 +116,7 @@ public sealed class VideoEngineMediaPipelineFactory : IMediaPipelineFactory
         }
         catch
         {
-            if (pipeline is not null)
-            {
-                pipeline.Dispose();
-            }
-            else
-            {
-                (player as IDisposable)?.Dispose();
-            }
-
+            pipeline.Dispose();
             throw;
         }
     }

@@ -11,7 +11,7 @@ public static class CameraUriHelper
     /// <exception cref="InvalidOperationException">
     /// Thrown when the camera's <see cref="ConnectionSettings.Source"/>
     /// is not <see cref="CameraSource.Network"/> (USB cameras must be
-    /// resolved through <see cref="BuildSourceLocator"/> instead).
+    /// resolved through <see cref="BuildSourceLocator(CameraConfiguration)"/> instead).
     /// </exception>
     public static Uri BuildUri(CameraConfiguration camera)
     {

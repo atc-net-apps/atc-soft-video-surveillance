@@ -618,7 +618,7 @@ public class CameraMappingExtensionsTests
         camera.ToApiModel(subStreamFailing: true).SubStreamStatus.Should().Be(CameraSubStreamStatus.Unavailable);
     }
 
-        private static CreateCameraRequest NetworkCreateRequest(
+    private static CreateCameraRequest NetworkCreateRequest(
         string displayName,
         string description = "",
         string ipAddress = "",

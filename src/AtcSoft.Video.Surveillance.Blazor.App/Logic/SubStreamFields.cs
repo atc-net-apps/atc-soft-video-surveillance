@@ -13,6 +13,7 @@ public static class SubStreamFields
         string path,
         bool isUpdate)
     {
+        ArgumentNullException.ThrowIfNull(path);
         if (isUsb)
         {
             return null;

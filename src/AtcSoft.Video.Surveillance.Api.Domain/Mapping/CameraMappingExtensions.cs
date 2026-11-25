@@ -26,6 +26,9 @@ internal static class CameraMappingExtensions
     {
         var usb = core.Connection.Usb;
         var format = usb?.Format;
+        var subStreamStatus = !core.Connection.HasSubStream
+            ? CameraSubStreamStatus.NotConfigured
+            : subStreamFailing ? CameraSubStreamStatus.Unavailable : CameraSubStreamStatus.InUse;
 
         return new Camera(
             Id: core.Id,
@@ -56,9 +59,7 @@ internal static class CameraMappingExtensions
             IsRecording: isRecording,
             MotionZones: [.. core.MotionZones.Select(ToApiZone)],
             Hub: core.Connection.Hub.ToApiModel(),
-            SubStreamStatus: !core.Connection.HasSubStream
-                ? CameraSubStreamStatus.NotConfigured
-                : subStreamFailing ? CameraSubStreamStatus.Unavailable : CameraSubStreamStatus.InUse)
+            SubStreamStatus: subStreamStatus)
         {
             SubStreamPath = core.Connection.HasSubStream ? core.Connection.SubStreamPath : null,
             SubStreamPort = core.Connection.HasSubStream ? core.Connection.SubStreamPort : null,

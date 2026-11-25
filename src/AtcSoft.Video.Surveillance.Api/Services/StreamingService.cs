@@ -33,6 +33,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
     private readonly ICameraStorageService storage;
     private readonly ILogger<StreamingService> logger;
     private readonly IServiceProvider? services;
+
     // One stream per camera and stream: a camera with a sub-stream can have both going at once
     // (the live grid on the sub-stream, full screen on the main stream).
     private readonly ConcurrentDictionary<StreamKey, StreamSession> sessions = new();
@@ -879,7 +880,7 @@ public sealed partial class StreamingService : ILiveStreamService, IDisposable
         }
     }
 
-    private readonly record struct StreamKey(
+    private sealed record StreamKey(
         Guid CameraId,
         CameraStreamRole Stream);
 

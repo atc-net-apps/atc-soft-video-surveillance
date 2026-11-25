@@ -1,7 +1,5 @@
 namespace AtcSoft.Video.Surveillance.Api.Services;
 
-using Atc.Video.Engine;
-
 /// <summary>
 /// The factory opens a camera with a sub-stream as two connections, its main stream undecoded,
 /// unless the sub-stream failed lately; a snapshot or a recording of one stream gets that one.

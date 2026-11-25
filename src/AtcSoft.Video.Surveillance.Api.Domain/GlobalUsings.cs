@@ -74,5 +74,4 @@ global using VideoSurveillance.Generated.Webhooks.Handlers;
 global using VideoSurveillance.Generated.Webhooks.Models;
 global using VideoSurveillance.Generated.Webhooks.Parameters;
 global using VideoSurveillance.Generated.Webhooks.Results;
-global using VideoSurveillance.Generated.Webhooks.Results;
 global using CameraStreamRole = AtcSoft.Video.Surveillance.Enums.CameraStreamRole;
