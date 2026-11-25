@@ -7,11 +7,14 @@ namespace AtcSoft.Video.Surveillance.Wpf.Services;
 public interface IStreamLeaseGateway
 {
     /// <summary>
-    /// Takes a lease on a camera's stream; answered when it can be played.
+    /// Takes a lease on one of a camera's streams (the sub-stream for the grid, the main stream
+    /// for full screen); answered when it can be played. A camera without a sub-stream plays its
+    /// main stream for either.
     /// </summary>
     /// <exception cref="HttpRequestException">The server refused, with its reason, or could not be reached.</exception>
     Task<StreamLease> StartStreamAsync(
         Guid cameraId,
+        CameraStream stream,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -391,6 +391,7 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
                     tile.ConnectionType = camera.ConnectionType.ToCoreConnectionType();
                     tile.ShowConnectionTypeIcon = showConnectionTypeIcon;
                     tile.Rotation = camera.Rotation.ToCoreRotation();
+                    tile.HasSubStream = camera.SubStreamStatus == CameraSubStreamStatus.InUse;
                 }
 
                 // Size the grid, and leave out what the filter and the page leave out
@@ -483,10 +484,29 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
     {
         ArgumentNullException.ThrowIfNull(tile);
 
+        // The grid's tile plays the camera's sub-stream when it has one: full screen takes the
+        // main stream on a lease of its own, for as long as the window is open.
+        var mainStream = tile.HasSubStream
+            ? new CameraTileViewModel(videoPlayerFactory, gatewayService, eventService, apiBaseAddress, logger: loggerFactory.CreateLogger<CameraTileViewModel>())
+            {
+                CameraId = tile.CameraId,
+                Stream = CameraStream.Main,
+                DisplayName = tile.DisplayName,
+                Description = tile.Description,
+                Rotation = tile.Rotation,
+            }
+            : null;
+
+        // Shown full screen: its stream starts, and plays though no grid shows it.
+        if (mainStream is not null)
+        {
+            mainStream.IsShownFullScreen = true;
+        }
+
         var viewModel = new FullScreenCameraWindowViewModel(
             eventService,
             tile.CameraId,
-            tile.Player,
+            (mainStream ?? tile).Player,
             tile.DisplayName,
             tile.Description,
             tile.Rotation);
@@ -500,6 +520,16 @@ public sealed partial class LiveViewViewModel : ViewModelBase, IDisposable
         {
             following.Dispose();
             tile.IsShownFullScreen = false;
+
+            // Closing a player waits for its reader: off the UI thread.
+            if (mainStream is not null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await mainStream.StopStreamAsync().ConfigureAwait(false);
+                    mainStream.Dispose();
+                });
+            }
         };
 
         // A camera shown full screen plays even while the grid leaves it out.

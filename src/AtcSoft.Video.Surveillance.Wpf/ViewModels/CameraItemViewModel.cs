@@ -30,6 +30,11 @@ public partial class CameraItemViewModel : ViewModelBase
     private bool isRecording;
 
     /// <summary>
+    /// Gets what the list says about the camera's sub-stream: empty for a camera without one.
+    /// </summary>
+    public string SubStream { get; init; } = string.Empty;
+
+    /// <summary>
     /// Creates a <see cref="CameraItemViewModel"/> from a generated <see cref="Camera"/> model.
     /// </summary>
     /// <summary>
@@ -69,6 +74,15 @@ public partial class CameraItemViewModel : ViewModelBase
             Protocol = camera.Protocol,
             ConnectionState = HubStates.ToText(camera.ConnectionState),
             IsRecording = camera.IsRecording,
+            SubStream = DescribeSubStream(camera.SubStreamStatus),
         };
     }
+
+    internal static string DescribeSubStream(CameraSubStreamStatus status)
+        => status.Value switch
+        {
+            CameraSubStreamStatus.Names.InUse => Translations.SubStreamInUse,
+            CameraSubStreamStatus.Names.Unavailable => Translations.SubStreamUnavailable,
+            _ => string.Empty,
+        };
 }

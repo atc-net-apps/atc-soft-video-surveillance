@@ -188,6 +188,18 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         eventService.ConnectedChanged += OnEventServiceConnectedChanged;
     }
 
+    /// <summary>
+    /// Gets which of the camera's streams the tile plays: the sub-stream in the grid (the
+    /// server plays the main stream of a camera without one), the main stream full screen.
+    /// </summary>
+    public CameraStream Stream { get; init; } = CameraStream.Sub;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the camera has a sub-stream in use, so full screen
+    /// takes a stream of its own (the main stream) rather than the tile's.
+    /// </summary>
+    public bool HasSubStream { get; set; }
+
     public bool IsRecording
     {
         get => isRecording;
@@ -244,7 +256,7 @@ public sealed partial class CameraTileViewModel : ViewModelBase, IDisposable
         stoppedByUser = false;
 
         var lease = await streams
-            .StartStreamAsync(CameraId)
+            .StartStreamAsync(CameraId, Stream)
             .ConfigureAwait(false);
 
         // The tile went (or was left out of the grid) while the server started

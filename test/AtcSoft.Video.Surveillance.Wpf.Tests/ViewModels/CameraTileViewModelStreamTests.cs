@@ -19,7 +19,7 @@ public sealed class CameraTileViewModelStreamTests : IDisposable
         var factory = Substitute.For<IVideoPlayerFactory>();
         factory.Create().Returns(player);
         streams
-            .StartStreamAsync(cameraId, Arg.Any<CancellationToken>())
+            .StartStreamAsync(cameraId, Arg.Any<global::VideoSurveillance.Generated.Cameras.Models.CameraStream>(), Arg.Any<CancellationToken>())
             .Returns(new global::VideoSurveillance.Generated.Cameras.Models.StreamLease(LeaseId: leaseId, CameraId: cameraId, PlaylistUrl: "/streams/front/stream.m3u8", RenewSeconds: 30));
 
         sut = new CameraTileViewModel(factory, streams, events, "http://server.test/") { CameraId = cameraId };
@@ -42,6 +42,31 @@ public sealed class CameraTileViewModelStreamTests : IDisposable
     }
 
     [Fact]
+    public async Task A_Grid_Tile_Plays_The_Sub_Stream()
+    {
+        // The server plays the main stream of a camera without a sub-stream.
+        await sut.StartStreamAsync();
+
+        await streams.Received(1).StartStreamAsync(cameraId, global::VideoSurveillance.Generated.Cameras.Models.CameraStream.Sub, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task A_Full_Screen_Tile_Plays_The_Main_Stream()
+    {
+        var factory = Substitute.For<IVideoPlayerFactory>();
+        factory.Create().Returns(Substitute.For<IVideoPlayer>());
+        using var fullScreen = new CameraTileViewModel(factory, streams, events, "http://server.test/")
+        {
+            CameraId = cameraId,
+            Stream = global::VideoSurveillance.Generated.Cameras.Models.CameraStream.Main,
+        };
+
+        await fullScreen.StartStreamAsync();
+
+        await streams.Received(1).StartStreamAsync(cameraId, global::VideoSurveillance.Generated.Cameras.Models.CameraStream.Main, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Stopping_Gives_The_Lease_Back()
     {
         await sut.StartStreamAsync();
@@ -61,7 +86,7 @@ public sealed class CameraTileViewModelStreamTests : IDisposable
         await sut.RenewLeaseAsync();
 
         await streams.Received(1).RenewStreamLeaseAsync(cameraId, leaseId, Arg.Any<CancellationToken>());
-        await streams.Received(1).StartStreamAsync(cameraId, Arg.Any<CancellationToken>());
+        await streams.Received(1).StartStreamAsync(cameraId, Arg.Any<global::VideoSurveillance.Generated.Cameras.Models.CameraStream>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -73,7 +98,7 @@ public sealed class CameraTileViewModelStreamTests : IDisposable
 
         await sut.RenewLeaseAsync();
 
-        await streams.Received(2).StartStreamAsync(cameraId, Arg.Any<CancellationToken>());
+        await streams.Received(2).StartStreamAsync(cameraId, Arg.Any<global::VideoSurveillance.Generated.Cameras.Models.CameraStream>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -85,7 +110,7 @@ public sealed class CameraTileViewModelStreamTests : IDisposable
         await sut.RenewLeaseAsync();
         await sut.StopStreamAsync();
 
-        await streams.Received(1).StartStreamAsync(cameraId, Arg.Any<CancellationToken>());
+        await streams.Received(1).StartStreamAsync(cameraId, Arg.Any<global::VideoSurveillance.Generated.Cameras.Models.CameraStream>(), Arg.Any<CancellationToken>());
         await streams.Received(1).StopStreamAsync(cameraId, leaseId, Arg.Any<CancellationToken>());
     }
 
@@ -103,7 +128,7 @@ public sealed class CameraTileViewModelStreamTests : IDisposable
         var otherCamera = Guid.NewGuid();
         var otherLease = Guid.NewGuid();
         streams
-            .StartStreamAsync(otherCamera, Arg.Any<CancellationToken>())
+            .StartStreamAsync(otherCamera, Arg.Any<global::VideoSurveillance.Generated.Cameras.Models.CameraStream>(), Arg.Any<CancellationToken>())
             .Returns(new global::VideoSurveillance.Generated.Cameras.Models.StreamLease(LeaseId: otherLease, CameraId: otherCamera, PlaylistUrl: "/streams/back/stream.m3u8", RenewSeconds: 30));
         var factory = Substitute.For<IVideoPlayerFactory>();
         factory.Create().Returns(_ => Substitute.For<IVideoPlayer>());

@@ -46,7 +46,12 @@ else
                 context.Protocol.ToString(),
                 context.IpAddress,
                 context.Port,
-                context.Path)</MudTd>
+                context.Path)
+                @if (!string.IsNullOrEmpty(SubStreamStatusText.For(context.SubStreamStatus)))
+                {
+                    <MudText Typo="Typo.caption">@SubStreamStatusText.For(context.SubStreamStatus)</MudText>
+                }
+            </MudTd>
             <MudTd DataLabel="@Translations.State">
                 <MudChip T="string"
                          Size="Size.Small"

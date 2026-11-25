@@ -19,7 +19,7 @@ public sealed class CameraTileViewModelRecoveryTests : IDisposable
         var factory = Substitute.For<IVideoPlayerFactory>();
         factory.Create().Returns(player);
         streams
-            .StartStreamAsync(cameraId, Arg.Any<CancellationToken>())
+            .StartStreamAsync(cameraId, Arg.Any<global::VideoSurveillance.Generated.Cameras.Models.CameraStream>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 var number = Interlocked.Increment(ref leasesGiven);
@@ -77,7 +77,7 @@ public sealed class CameraTileViewModelRecoveryTests : IDisposable
         await sut.StartStreamAsync();
         await WaitForAsync(() => player.State == PlayerState.Playing);
         streams
-            .StartStreamAsync(cameraId, Arg.Any<CancellationToken>())
+            .StartStreamAsync(cameraId, Arg.Any<global::VideoSurveillance.Generated.Cameras.Models.CameraStream>(), Arg.Any<CancellationToken>())
             .Returns<Task<global::VideoSurveillance.Generated.Cameras.Models.StreamLease>>(_ => throw new TaskCanceledException("The request timed out."));
 
         player.Fail();
@@ -92,7 +92,7 @@ public sealed class CameraTileViewModelRecoveryTests : IDisposable
         // The server is away for a long while: ten starts fail, the eleventh plays.
         var failures = 0;
         streams
-            .StartStreamAsync(cameraId, Arg.Any<CancellationToken>())
+            .StartStreamAsync(cameraId, Arg.Any<global::VideoSurveillance.Generated.Cameras.Models.CameraStream>(), Arg.Any<CancellationToken>())
             .Returns(_ => ++failures <= 10
                 ? throw new HttpRequestException("The server could not be reached")
                 : new global::VideoSurveillance.Generated.Cameras.Models.StreamLease(LeaseId: Guid.NewGuid(), CameraId: cameraId, PlaylistUrl: "/streams/back/stream.m3u8", RenewSeconds: 30));

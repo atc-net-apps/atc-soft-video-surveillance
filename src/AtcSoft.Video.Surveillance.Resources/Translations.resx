@@ -402,6 +402,15 @@
   <data name="SubStreamOpenFailed" xml:space="preserve">
     <value>The main stream works, but the sub-stream could not be opened. Check its path and port.</value>
   </data>
+  <data name="SubStream" xml:space="preserve">
+    <value>Sub-stream</value>
+  </data>
+  <data name="SubStreamInUse" xml:space="preserve">
+    <value>Sub-stream in use</value>
+  </data>
+  <data name="SubStreamUnavailable" xml:space="preserve">
+    <value>Sub-stream unavailable: the main stream is used</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Username</value>
   </data>

@@ -395,7 +395,8 @@ else
         StateHasChanged();
 
         // Answered when the stream can be played, or with the server's reason.
-        var started = await Gateway.StartStreamAsync(cameraId);
+        var stream = activeLayout is null ? CameraStream.Sub : LiveStreamChoice.For(activeLayout.Rows, activeLayout.Columns);
+        var started = await Gateway.StartStreamAsync(cameraId, stream);
         if (started.Value is { } lease)
         {
             if (starting.Contains(cameraId))

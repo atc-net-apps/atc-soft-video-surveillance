@@ -111,6 +111,10 @@
                     Width="80"
                     Binding="{Binding Protocol}"
                     Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=Protocol}" />
+                <DataGridTextColumn
+                    Width="140"
+                    Binding="{Binding SubStream}"
+                    Header="{atcTranslation:Resx ResxName=AtcSoft.Video.Surveillance.Resources.Translations, Key=SubStream}" />
 
                 <!--  Connection State with color indicator  -->
                 <DataGridTemplateColumn

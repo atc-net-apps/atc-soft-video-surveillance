@@ -97,9 +97,10 @@ public sealed partial class GatewayService
     /// <inheritdoc />
     public async Task<StreamLease> StartStreamAsync(
         Guid cameraId,
+        CameraStream stream,
         CancellationToken cancellationToken = default)
     {
-        var parameters = new StartStreamParameters(CameraId: cameraId);
+        var parameters = new StartStreamParameters(CameraId: cameraId, Stream: stream);
         var result = await startStreamEndpoint
             .ExecuteAsync(parameters, cancellationToken: cancellationToken)
             .ConfigureAwait(false);

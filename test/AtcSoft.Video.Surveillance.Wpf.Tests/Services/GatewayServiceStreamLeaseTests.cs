@@ -38,7 +38,7 @@ public sealed class GatewayServiceStreamLeaseTests
         using var body = new StringContent("""{"status":503,"detail":"The camera could not be opened."}""");
         using var server = new GatewayTestServer(HttpStatusCode.ServiceUnavailable, body, "application/problem+json");
 
-        var act = () => server.Gateway.StartStreamAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var act = () => server.Gateway.StartStreamAsync(Guid.NewGuid(), global::VideoSurveillance.Generated.Cameras.Models.CameraStream.Main, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>().WithMessage("The camera could not be opened.");
     }

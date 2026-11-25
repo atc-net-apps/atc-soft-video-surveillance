@@ -399,6 +399,15 @@
   <data name="SubStreamOpenFailed" xml:space="preserve">
     <value>Hovedstrømmen virker, men understrømmen kunne ikke åbnes. Kontroller dens sti og port.</value>
   </data>
+  <data name="SubStream" xml:space="preserve">
+    <value>Understrøm</value>
+  </data>
+  <data name="SubStreamInUse" xml:space="preserve">
+    <value>Understrøm i brug</value>
+  </data>
+  <data name="SubStreamUnavailable" xml:space="preserve">
+    <value>Understrøm ikke tilgængelig: hovedstrømmen bruges</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Brugernavn</value>
   </data>

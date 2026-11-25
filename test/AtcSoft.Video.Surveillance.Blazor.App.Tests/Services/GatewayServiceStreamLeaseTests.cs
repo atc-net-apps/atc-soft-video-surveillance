@@ -52,8 +52,8 @@ public sealed class GatewayServiceStreamLeaseTests
                 Content = new StringContent("""{"status":503,"detail":"The camera could not be opened."}""", System.Text.Encoding.UTF8, "application/problem+json"),
             });
 
-        var started = await server.Gateway.StartStreamAsync(cameraId, TestContext.Current.CancellationToken);
-        var refused = await server.Gateway.StartStreamAsync(cameraId, TestContext.Current.CancellationToken);
+        var started = await server.Gateway.StartStreamAsync(cameraId, CameraStream.Sub, TestContext.Current.CancellationToken);
+        var refused = await server.Gateway.StartStreamAsync(cameraId, CameraStream.Sub, TestContext.Current.CancellationToken);
 
         started.Value!.LeaseId.Should().Be(leaseId);
         started.Value.PlaylistUrl.Should().Be("/streams/a/stream.m3u8");

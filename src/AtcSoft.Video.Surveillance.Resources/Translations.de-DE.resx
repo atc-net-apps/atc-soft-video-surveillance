@@ -399,6 +399,15 @@
   <data name="SubStreamOpenFailed" xml:space="preserve">
     <value>Der Hauptstream funktioniert, aber der Substream konnte nicht geöffnet werden. Prüfen Sie Pfad und Port.</value>
   </data>
+  <data name="SubStream" xml:space="preserve">
+    <value>Substream</value>
+  </data>
+  <data name="SubStreamInUse" xml:space="preserve">
+    <value>Substream in Gebrauch</value>
+  </data>
+  <data name="SubStreamUnavailable" xml:space="preserve">
+    <value>Substream nicht verfügbar: der Hauptstream wird verwendet</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Benutzername</value>
   </data>

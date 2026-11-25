@@ -122,13 +122,15 @@ public sealed partial class GatewayService
     }
 
     /// <summary>
-    /// Takes a lease on a camera's live stream; answered when it can be played.
+    /// Takes a lease on one of a camera's live streams (see <see cref="Logic.LiveStreamChoice"/>);
+    /// answered when it can be played.
     /// </summary>
     public async Task<GatewayResult<StreamLease>> StartStreamAsync(
         Guid cameraId,
+        CameraStream stream,
         CancellationToken cancellationToken = default)
     {
-        var parameters = new StartStreamParameters(CameraId: cameraId);
+        var parameters = new StartStreamParameters(CameraId: cameraId, Stream: stream);
         var result = await startStreamEndpoint
             .ExecuteAsync(parameters, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
