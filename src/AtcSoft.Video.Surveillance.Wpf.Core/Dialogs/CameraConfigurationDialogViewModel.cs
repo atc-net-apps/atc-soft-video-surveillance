@@ -1800,6 +1800,16 @@ public partial class CameraConfigurationDialogViewModel : ViewModelDialogBase
             // the right FFmpeg open path.
             var locator = AtcSoft.Video.Surveillance.Helpers.CameraUriHelper.BuildSourceLocator(Camera.Core);
             success = await TestStreamWithPlayerAsync(locator).ConfigureAwait(true);
+
+            // The sub-stream too: a wrong path is caught here, not later by a tile that stays dark.
+            if (success && Camera.Connection.HasSubStream)
+            {
+                var sub = AtcSoft.Video.Surveillance.Helpers.CameraUriHelper.BuildSourceLocator(Camera.Core, CameraStreamRole.Sub);
+                if (!await TestStreamWithPlayerAsync(sub).ConfigureAwait(true))
+                {
+                    SetTestResult(Translations.SubStreamOpenFailed);
+                }
+            }
         }
         catch (Exception ex)
         {

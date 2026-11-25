@@ -262,16 +262,19 @@ public class DialogService : IDialogService
         // The window shows the tile's own player (no second connection, no reconnect delay). The
         // tile keeps it: it goes on recording with it, checks it and reconnects it, and when it
         // gets another player the window follows. A tile without a player: the window opens its own.
-        var sharedPlayer = sourceTile?.Player;
+        // A camera with a sub-stream is shown full screen on its main stream: the tile's player
+        // plays the small sub-stream, so the window opens the main stream itself.
+        var sharedTile = camera.Connection.HasSubStream ? null : sourceTile;
+        var sharedPlayer = sharedTile?.Player;
         FullScreenCameraWindowViewModel? shown = null;
         void OnTilePlayerChanged(
             object? sender,
             IVideoPlayer? newPlayer)
             => shown?.FollowSharedPlayer(newPlayer);
 
-        if (sourceTile is not null)
+        if (sharedTile is not null)
         {
-            sourceTile.PlayerChanged += OnTilePlayerChanged;
+            sharedTile.PlayerChanged += OnTilePlayerChanged;
         }
 
         try
@@ -301,9 +304,9 @@ public class DialogService : IDialogService
         }
         finally
         {
-            if (sourceTile is not null)
+            if (sharedTile is not null)
             {
-                sourceTile.PlayerChanged -= OnTilePlayerChanged;
+                sharedTile.PlayerChanged -= OnTilePlayerChanged;
             }
         }
     }

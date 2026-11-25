@@ -396,6 +396,9 @@
   <data name="SubStreamHelp" xml:space="preserve">
     <value>Ein Stream in niedriger Auflösung für das Live-Raster und die Bewegungserkennung, zum Beispiel /stream2. Leer lassen, wenn die Kamera keinen hat. Port 0 ist der Port oben.</value>
   </data>
+  <data name="SubStreamOpenFailed" xml:space="preserve">
+    <value>Der Hauptstream funktioniert, aber der Substream konnte nicht geöffnet werden. Prüfen Sie Pfad und Port.</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Benutzername</value>
   </data>

@@ -62,18 +62,30 @@ public sealed partial class CameraWallManager
     {
         try
         {
-            var options = CameraStreamOptions.For(
-                camera,
-                camera.Overrides?.Performance.HardwareAcceleration ?? settingsService.Performance.HardwareAcceleration,
-                camera.Overrides?.Performance.VideoQuality ?? settingsService.Performance.VideoQuality,
-                camera.Overrides?.Recording.TranscodeVideoCodec ?? settingsService.Recording.TranscodeVideoCodec);
-            var uri = camera.BuildSourceLocator().Uri;
+            var hardwareAcceleration = camera.Overrides?.Performance.HardwareAcceleration ?? settingsService.Performance.HardwareAcceleration;
+            var videoQuality = camera.Overrides?.Performance.VideoQuality ?? settingsService.Performance.VideoQuality;
+            var transcode = camera.Overrides?.Recording.TranscodeVideoCodec ?? settingsService.Recording.TranscodeVideoCodec;
+
+            // Watched on its sub-stream, when it has one; recorded from its main stream.
+            var stream = camera.Connection.HasSubStream ? CameraStreamRole.Sub : CameraStreamRole.Main;
+            var options = CameraStreamOptions.For(camera, hardwareAcceleration, videoQuality, transcode, stream);
+            var uri = camera.BuildSourceLocator(stream).Uri;
             var cameraId = camera.Id;
             var motion = CameraMotionSettings.Resolve(camera, settingsService.MotionDetection);
             var zones = camera.MotionZones;
 
             var player = videoPlayerFactory.Create();
-            var pipeline = new VideoEngineMediaPipeline(player);
+            IMediaPipeline pipeline = new VideoEngineMediaPipeline(player);
+            if (stream == CameraStreamRole.Sub)
+            {
+                pipeline = new SubStreamTilePipeline(
+                    pipeline,
+                    videoPlayerFactory.Create(),
+                    p => new VideoEngineMediaPipeline(p),
+                    camera.BuildSourceLocator(CameraStreamRole.Main).Uri,
+                    CameraStreamOptions.For(camera, hardwareAcceleration, videoQuality, transcode, CameraStreamRole.Main));
+            }
+
             pipeline.SetRotation(camera.Display.Rotation);
 
             // Watched from its first picture on; a tile that takes the player later keeps it watched.

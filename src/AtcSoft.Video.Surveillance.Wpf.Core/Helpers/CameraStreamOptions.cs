@@ -12,16 +12,18 @@ public static class CameraStreamOptions
     /// <param name="hardwareAcceleration">Whether the stream is decoded on the graphics card.</param>
     /// <param name="videoQuality">The video quality, as in the settings (the highest resolution decoded).</param>
     /// <param name="transcodeVideoCodec">The codec recordings are made in.</param>
+    /// <param name="stream">Which of the camera's streams; a camera without a sub-stream has one.</param>
     /// <returns>The options.</returns>
     public static StreamOptions For(
         CameraConfiguration camera,
         bool hardwareAcceleration,
         string videoQuality,
-        VideoTranscodeCodec transcodeVideoCodec)
+        VideoTranscodeCodec transcodeVideoCodec,
+        CameraStreamRole stream = CameraStreamRole.Main)
     {
         ArgumentNullException.ThrowIfNull(camera);
 
-        var locator = camera.BuildSourceLocator();
+        var locator = camera.BuildSourceLocator(stream);
         return new StreamOptions
         {
             Source = camera.Display.DisplayName,

@@ -542,7 +542,7 @@ public partial class CameraTile : IDisposable
         // Create media pipeline if the player already exists but pipeline was not yet created
         if (this.mediaPipeline is null && Player is not null && MediaPipelineFactory is not null)
         {
-            this.mediaPipeline = MediaPipelineFactory.Invoke(Player);
+            this.mediaPipeline = CreatePipeline(Player);
             ApplyRotation();
         }
 
@@ -601,7 +601,7 @@ public partial class CameraTile : IDisposable
 
         try
         {
-            var locator = Camera.BuildSourceLocator();
+            var locator = Camera.BuildSourceLocator(TileStream(Camera));
             var options = BuildStreamOptions(Camera);
             Player.Open(locator.Uri, options);
         }
@@ -1478,7 +1478,7 @@ public partial class CameraTile : IDisposable
 
         // Swap to new player (without intermediate null state)
         Player = newPlayer;
-        mediaPipeline = MediaPipelineFactory?.Invoke(newPlayer);
+        mediaPipeline = CreatePipeline(newPlayer);
 
         // A new player starts unrotated.
         ApplyRotation();
@@ -1586,7 +1586,7 @@ public partial class CameraTile : IDisposable
 
         Player = CreatePlayer();
         Player.StateChanged += OnPlayerStateChanged;
-        mediaPipeline = MediaPipelineFactory?.Invoke(Player);
+        mediaPipeline = CreatePipeline(Player);
         ApplyRotation();
 
         // Only auto-connect if enabled
@@ -1619,7 +1619,7 @@ public partial class CameraTile : IDisposable
 
         Player = parkedPlayer;
         Player.StateChanged += OnPlayerStateChanged;
-        mediaPipeline = parkedPipeline ?? MediaPipelineFactory?.Invoke(Player);
+        mediaPipeline = parkedPipeline ?? CreatePipeline(Player);
         ApplyRotation();
         LogParkedPlayerTaken(Camera.Display.DisplayName);
 
@@ -1662,7 +1662,7 @@ public partial class CameraTile : IDisposable
 
         // The parking opens the stream again when it ends; the address and options are read here,
         // on the UI thread.
-        var uri = Camera.BuildSourceLocator().Uri;
+        var uri = Camera.BuildSourceLocator(TileStream(Camera)).Uri;
         var options = BuildStreamOptions(Camera);
 
         Player.StateChanged -= OnPlayerStateChanged;
@@ -1685,7 +1685,34 @@ public partial class CameraTile : IDisposable
     }
 
     private StreamOptions BuildStreamOptions(CameraConfiguration camera)
-        => CameraStreamOptions.For(camera, HardwareAcceleration, VideoQuality, TranscodeVideoCodec);
+        => CameraStreamOptions.For(camera, HardwareAcceleration, VideoQuality, TranscodeVideoCodec, TileStream(camera));
+
+    // A camera with a sub-stream shows it in its tile: the small stream is cheaper to decode and
+    // draw, and motion detection watches it. Full screen and the recordings are of the main stream.
+    private static CameraStreamRole TileStream(CameraConfiguration camera)
+        => camera.Connection.HasSubStream ? CameraStreamRole.Sub : CameraStreamRole.Main;
+
+    // The tile's pipeline wraps its player. With a sub-stream, the pipeline also holds the main
+    // stream, undecoded, which everything that records uses.
+    private IMediaPipeline? CreatePipeline(IVideoPlayer player)
+    {
+        var pipeline = MediaPipelineFactory?.Invoke(player);
+        if (pipeline is null ||
+            MediaPipelineFactory is not { } factory ||
+            videoPlayerFactory is null ||
+            Camera is not { } current ||
+            !current.Connection.HasSubStream)
+        {
+            return pipeline;
+        }
+
+        return new SubStreamTilePipeline(
+            pipeline,
+            videoPlayerFactory.Create(),
+            factory,
+            current.BuildSourceLocator(CameraStreamRole.Main).Uri,
+            CameraStreamOptions.For(current, HardwareAcceleration, VideoQuality, TranscodeVideoCodec, CameraStreamRole.Main));
+    }
 
     private void OnPlayerStateChanged(
         object? sender,
@@ -2483,7 +2510,7 @@ public partial class CameraTile : IDisposable
         StreamOptions options;
         try
         {
-            uri = capturedCamera.BuildSourceLocator().Uri;
+            uri = capturedCamera.BuildSourceLocator(TileStream(capturedCamera)).Uri;
             options = BuildStreamOptions(capturedCamera);
         }
         catch (Exception ex) when (ex is UriFormatException or InvalidOperationException or ArgumentException)
@@ -2701,7 +2728,8 @@ public partial class CameraTile : IDisposable
         {
             try
             {
-                var frameData = await Player.CaptureFrameAsync().ConfigureAwait(false);
+                var frameData = await CaptureMainStreamAsync(Camera).ConfigureAwait(false)
+                                ?? await Player.CaptureFrameAsync().ConfigureAwait(false);
                 if (frameData is not null)
                 {
                     await File.WriteAllBytesAsync(dialog.FileName, frameData).ConfigureAwait(false);
@@ -2712,6 +2740,52 @@ public partial class CameraTile : IDisposable
                 LogSnapshotFailed(ex);
             }
         }
+    }
+
+    // A camera with a sub-stream: the tile shows the small sub-stream, so a snapshot opens the
+    // main stream for a moment for a full-size picture. Null (the tile's picture is used) for a
+    // camera without one, or when the main stream gives no picture in time.
+    private async Task<byte[]?> CaptureMainStreamAsync(
+        CameraConfiguration camera)
+    {
+        if (!camera.Connection.HasSubStream || videoPlayerFactory is null)
+        {
+            return null;
+        }
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var mainPlayer = videoPlayerFactory.Create();
+        try
+        {
+            mainPlayer.Open(
+                camera.BuildSourceLocator(CameraStreamRole.Main).Uri,
+                CameraStreamOptions.For(camera, hardwareAcceleration: false, VideoQuality, TranscodeVideoCodec, CameraStreamRole.Main));
+            while (!timeout.IsCancellationRequested)
+            {
+                if (mainPlayer.State == PlayerState.Error)
+                {
+                    return null;
+                }
+
+                if (mainPlayer.State == PlayerState.Playing &&
+                    await mainPlayer.CaptureFrameAsync(timeout.Token).ConfigureAwait(false) is { } png)
+                {
+                    return png;
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(200), timeout.Token).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // No picture in time: the tile's picture is used.
+        }
+        finally
+        {
+            mainPlayer.Close();
+        }
+
+        return null;
     }
 
     [RelayCommand(nameof(Reconnect), CanExecute = nameof(CanExecuteCameraCommand))]

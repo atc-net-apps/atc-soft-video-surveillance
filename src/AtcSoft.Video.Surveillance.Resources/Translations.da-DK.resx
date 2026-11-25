@@ -396,6 +396,9 @@
   <data name="SubStreamHelp" xml:space="preserve">
     <value>En strøm i lav opløsning til live-gitteret og bevægelsesdetektering, for eksempel /stream2. Lad den være tom, hvis kameraet ikke har en. Port 0 er porten ovenfor.</value>
   </data>
+  <data name="SubStreamOpenFailed" xml:space="preserve">
+    <value>Hovedstrømmen virker, men understrømmen kunne ikke åbnes. Kontroller dens sti og port.</value>
+  </data>
   <data name="Username" xml:space="preserve">
     <value>Brugernavn</value>
   </data>
