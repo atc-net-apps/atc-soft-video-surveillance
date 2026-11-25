@@ -95,6 +95,7 @@ public sealed class WebClientSmokeTests(ServerFixture server)
         }
 
         await run("draw a motion zone", () => DrawMotionZoneAsync(page, cameraIds[^1], shots));
+        await run("find and read ONVIF cameras", () => FindAndReadOnvifAsync(page));
 
         await run("play a recording with its activity timeline", () => PlayWithTimelineAsync(page));
         await run("timeline lanes", () => TimelineLanesAsync(page));
@@ -264,6 +265,39 @@ public sealed class WebClientSmokeTests(ServerFixture server)
             await tabs.Nth(i).ClickAsync();
             await page.WaitForTimeoutAsync(400);
         }
+    }
+
+    // The ONVIF part of the camera form: a search and a read through the server, whatever they
+    // find here. The form is left without saving.
+    private static async Task FindAndReadOnvifAsync(IPage page)
+    {
+        await page.GotoAsync("/cameras/create");
+        await page.WaitForTimeoutAsync(1500);
+        await page.GetByText(OnvifWalk.Header).First.ClickAsync();
+        await page.WaitForTimeoutAsync(500);
+
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Find cameras" }).ClickAsync();
+        await WaitForAnyTextAsync(page, OnvifWalk.SearchAnswers);
+
+        // The field takes its value when it loses the focus: Read from camera is enabled then.
+        var address = page.GetByLabel("IP Address").First;
+        await address.FillAsync(OnvifWalk.Address);
+        await address.PressAsync("Tab");
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Read from camera" }).ClickAsync();
+        await WaitForAnyTextAsync(page, OnvifWalk.ReadAnswers);
+    }
+
+    private static Task WaitForAnyTextAsync(
+        IPage page,
+        IReadOnlyList<string> texts)
+    {
+        var locator = page.GetByText(texts[0]);
+        foreach (var text in texts.Skip(1))
+        {
+            locator = locator.Or(page.GetByText(text));
+        }
+
+        return locator.First.WaitForAsync(new LocatorWaitForOptions { Timeout = (float)OnvifWalk.AnswerTimeout.TotalMilliseconds });
     }
 
     private static async Task OpenAndCancelAsync(

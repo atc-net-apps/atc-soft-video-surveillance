@@ -41,6 +41,7 @@ public sealed class CameraWallSmokeTests
         steps.Run("Cameras tab", () => SelectTab(app, main, "Cameras"));
         steps.Run("Add Camera", () => Walk(app, main, "Add Camera"));
         steps.Run("draw a motion zone", () => DrawMotionZone(app, main));
+        steps.Run("find and read ONVIF cameras", () => FindAndReadOnvif(app, main));
         steps.Run("Add USB Camera", () => Walk(app, main, "Add USB Camera"));
         steps.Run("Reconnect All", () => DesktopApp.Press(app.Find(main, "Reconnect All", ControlType.Button)));
 
@@ -74,6 +75,16 @@ public sealed class CameraWallSmokeTests
         Window main,
         string name)
         => DesktopApp.Press(app.Find(main, name, ControlType.TabItem));
+
+    // The ONVIF part of the camera dialog: a search and a read, whatever they find here.
+    private static void FindAndReadOnvif(
+        DesktopApp app,
+        Window main)
+    {
+        var dialog = app.OpenWindow(() => DesktopApp.Press(app.Find(main, "Add Camera", ControlType.Button)), "Add Camera");
+        OnvifWalk.FindAndRead(app, dialog);
+        app.CloseWindow(dialog);
+    }
 
     private static void Walk(
         DesktopApp app,

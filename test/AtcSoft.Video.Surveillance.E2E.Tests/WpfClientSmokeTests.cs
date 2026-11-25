@@ -75,6 +75,7 @@ public sealed class WpfClientSmokeTests(ServerFixture server)
         // Cameras: add, and edit each camera
         steps.Run("Cameras view", () => ShowView(app, main, "Cameras"));
         steps.Run("Add Camera", () => Walk(app, main, "Add Camera"));
+        steps.Run("find and read ONVIF cameras", () => FindAndReadOnvif(app, main));
         steps.Run("Add from a camera hub", () => Walk(app, main, "Add from a camera hub"));
         foreach (var index in RowButtons(app, main, "Edit"))
         {
@@ -169,6 +170,16 @@ public sealed class WpfClientSmokeTests(ServerFixture server)
 
         DesktopApp.Press(app.Find(dialog, "Add zone", ControlType.Button));
         app.Find(dialog, "Remove zone", ControlType.Button).IsEnabled.Should().BeTrue("the new zone is picked");
+        app.CloseWindow(dialog);
+    }
+
+    // The ONVIF part of the camera dialog: a search and a read, whatever they find here.
+    private static void FindAndReadOnvif(
+        DesktopApp app,
+        Window main)
+    {
+        var dialog = app.OpenWindow(() => DesktopApp.Press(app.Find(main, "Add Camera", ControlType.Button)), "Add Camera");
+        OnvifWalk.FindAndRead(app, dialog);
         app.CloseWindow(dialog);
     }
 
